@@ -15,6 +15,7 @@ import { Link } from "@heroui/link";
 import { link as linkStyles } from "@heroui/theme";
 import NextLink from "next/link";
 import clsx from "clsx";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { siteConfig } from "@/config/site";
@@ -36,6 +37,52 @@ export const Navbar = () => {
   const logout = useSessionStore((s) => s.clearSession);
   const role = useSessionStore((s) => s.user?.role);
   const isAdmin = role === "ADMINISTRADOR";
+
+  const [canSeeClients, setCanSeeClients] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!isAuthenticated) {
+      setCanSeeClients(false);
+
+      return;
+    }
+
+    fetch(`/api/auth/permissions?names=VER_CLIENTE`, {
+      credentials: "include",
+    })
+      .then(async (r) => {
+        if (!r.ok) return { permissions: { VER_CLIENTE: false } };
+
+        return (await r.json()) as { permissions?: Record<string, boolean> };
+      })
+      .then((data) => {
+        if (!active) return;
+        setCanSeeClients(Boolean(data?.permissions?.VER_CLIENTE));
+      })
+      .catch(() => {
+        if (!active) return;
+        setCanSeeClients(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated]);
+
+  const menuItems = useMemo(() => {
+    const extra: { name: string; href: string }[] = [];
+
+    if (isAuthenticated && canSeeClients) {
+      extra.push({ name: "Clientes", href: "/clients" });
+    }
+    if (isAdmin) {
+      extra.push({ name: "Administración", href: "/admin" });
+    }
+
+    return [...routes, ...extra];
+  }, [canSeeClients, isAdmin, isAuthenticated]);
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -60,6 +107,21 @@ export const Navbar = () => {
               </NextLink>
             </NavbarItem>
           ))}
+
+          {isAuthenticated && canSeeClients ? (
+            <NavbarItem key="/clients">
+              <NextLink
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                )}
+                href="/clients"
+              >
+                Clientes
+              </NextLink>
+            </NavbarItem>
+          ) : null}
+
           {isAdmin ? (
             <NavbarItem key="/admin">
               <NextLink
@@ -123,10 +185,7 @@ export const Navbar = () => {
 
       <NavbarMenu>
         <div className="mx-4 mt-2 flex flex-col gap-2">
-          {[
-            ...routes,
-            ...(isAdmin ? [{ name: "Administración", href: "/admin" }] : []),
-          ].map((item) => (
+          {menuItems.map((item) => (
             <NavbarMenuItem key={item.href}>
               <Link color="foreground" href={item.href} size="lg">
                 {item.name}

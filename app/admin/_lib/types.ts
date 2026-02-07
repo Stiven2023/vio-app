@@ -29,6 +29,17 @@ export type Employee = {
   createdAt: string | null;
 };
 
+export type Client = {
+  id: string;
+  name: string;
+  identification: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  isActive: boolean | null;
+  createdAt: string | null;
+};
+
 export type RolePermission = {
   roleId: string | null;
   permissionId: string | null;

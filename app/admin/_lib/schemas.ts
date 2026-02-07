@@ -31,3 +31,22 @@ export const createRolePermissionSchema = z.object({
   roleId: z.string().uuid("Selecciona un rol"),
   permissionId: z.string().uuid("Selecciona un permiso"),
 });
+
+export const createClientSchema = z.object({
+  name: z.string().trim().min(1, "Nombre requerido"),
+  identification: z
+    .string()
+    .trim()
+    .min(1, "Identificación requerida")
+    .max(20, "Máximo 20 caracteres"),
+  email: z
+    .string()
+    .trim()
+    .refine(
+      (v) => v === "" || z.string().email().safeParse(v).success,
+      "Email inválido",
+    ),
+  phone: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  isActive: z.boolean().optional(),
+});
