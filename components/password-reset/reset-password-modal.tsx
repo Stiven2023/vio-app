@@ -112,7 +112,9 @@ export function ResetPasswordModal({
           <Input
             isDisabled={loading}
             label="Correo electrónico"
-            startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
+            startContent={
+              <BsEnvelopeFill className="text-xl text-default-500" />
+            }
             type="email"
             value={email}
             onValueChange={setEmail}

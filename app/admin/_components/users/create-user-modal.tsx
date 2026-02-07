@@ -4,11 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import {
-  BsEnvelopeFill,
-  BsEyeFill,
-  BsEyeSlashFill,
-} from "react-icons/bs";
+import { BsEnvelopeFill, BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 import {
   Modal,
   ModalBody,
@@ -218,7 +214,9 @@ export function CreateUserModal({
             errorMessage={errors.email}
             isInvalid={Boolean(errors.email)}
             label="Email"
-            startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
+            startContent={
+              <BsEnvelopeFill className="text-xl text-default-500" />
+            }
             value={email}
             onValueChange={(v) => {
               setEmail(v);

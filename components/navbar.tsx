@@ -39,31 +39,36 @@ export const Navbar = () => {
   const isAdmin = role === "ADMINISTRADOR";
 
   const [canSeeClients, setCanSeeClients] = useState(false);
+  const [canSeeCatalog, setCanSeeCatalog] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     if (!isAuthenticated) {
       setCanSeeClients(false);
+      setCanSeeCatalog(false);
 
       return;
     }
 
-    fetch(`/api/auth/permissions?names=VER_CLIENTE`, {
+    fetch(`/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO`, {
       credentials: "include",
     })
       .then(async (r) => {
-        if (!r.ok) return { permissions: { VER_CLIENTE: false } };
+        if (!r.ok)
+          return { permissions: { VER_CLIENTE: false, VER_INVENTARIO: false } };
 
         return (await r.json()) as { permissions?: Record<string, boolean> };
       })
       .then((data) => {
         if (!active) return;
         setCanSeeClients(Boolean(data?.permissions?.VER_CLIENTE));
+        setCanSeeCatalog(Boolean(data?.permissions?.VER_INVENTARIO));
       })
       .catch(() => {
         if (!active) return;
         setCanSeeClients(false);
+        setCanSeeCatalog(false);
       });
 
     return () => {
@@ -77,12 +82,15 @@ export const Navbar = () => {
     if (isAuthenticated && canSeeClients) {
       extra.push({ name: "Clientes", href: "/clients" });
     }
+    if (isAuthenticated && canSeeCatalog) {
+      extra.push({ name: "Catálogo", href: "/catalog" });
+    }
     if (isAdmin) {
       extra.push({ name: "Administración", href: "/admin" });
     }
 
     return [...routes, ...extra];
-  }, [canSeeClients, isAdmin, isAuthenticated]);
+  }, [canSeeCatalog, canSeeClients, isAdmin, isAuthenticated]);
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -118,6 +126,20 @@ export const Navbar = () => {
                 href="/clients"
               >
                 Clientes
+              </NextLink>
+            </NavbarItem>
+          ) : null}
+
+          {isAuthenticated && canSeeCatalog ? (
+            <NavbarItem key="/catalog">
+              <NextLink
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                )}
+                href="/catalog"
+              >
+                Catálogo
               </NextLink>
             </NavbarItem>
           ) : null}

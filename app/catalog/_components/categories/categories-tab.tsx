@@ -1,6 +1,6 @@
 "use client";
 
-import type { Client } from "../../_lib/types";
+import type { Category } from "../../_lib/types";
 
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -19,68 +19,44 @@ import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
-import { FilterSelect } from "../ui/filter-select";
 
-import { ClientModal } from "./client-modal";
+import { CategoryModal } from "./category-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
-type StatusFilter = "all" | "active" | "inactive";
-
-export function ClientsTab({
-  canCreate = true,
-  canEdit = true,
-  canDelete = true,
+export function CategoriesTab({
+  canCreate,
+  canEdit,
+  canDelete,
 }: {
-  canCreate?: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
-} = {}) {
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<Client>(
-    "/api/clients",
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}) {
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Category>(
+    "/api/categories",
     10,
   );
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Client | null>(null);
+  const [editing, setEditing] = useState<Category | null>(null);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
     const q = search.trim().toLowerCase();
 
-    return items.filter((c) => {
-      if (status === "active" && !c.isActive) return false;
-      if (status === "inactive" && c.isActive) return false;
-      if (!q) return true;
-
-      const email = c.email ?? "";
-      const phone = c.phone ?? "";
-      const city = c.city ?? "";
-
-      return (
-        c.name.toLowerCase().includes(q) ||
-        c.identification.toLowerCase().includes(q) ||
-        email.toLowerCase().includes(q) ||
-        phone.toLowerCase().includes(q) ||
-        city.toLowerCase().includes(q)
-      );
-    });
-  }, [data, search, status]);
+    return items.filter((c) => (!q ? true : c.name.toLowerCase().includes(q)));
+  }, [data, search]);
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (search.trim() !== "" || status !== "all") return "Sin resultados";
+    if (search.trim() !== "") return "Sin resultados";
 
-    return "Sin clientes";
-  }, [loading, search, status]);
-
-  const onSaved = () => {
-    refresh();
-  };
+    return "Sin categorías";
+  }, [loading, search]);
 
   const remove = async () => {
     const c = pendingDelete;
@@ -90,11 +66,11 @@ export function ClientsTab({
 
     setDeletingId(c.id);
     try {
-      await apiJson(`/api/clients`, {
+      await apiJson(`/api/categories`, {
         method: "DELETE",
         body: JSON.stringify({ id: c.id }),
       });
-      toast.success("Cliente eliminado");
+      toast.success("Categoría eliminada");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -108,25 +84,12 @@ export function ClientsTab({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <FilterSearch
-            className="sm:w-72"
-            placeholder="Buscar por nombre, identificación, email…"
-            value={search}
-            onValueChange={setSearch}
-          />
-          <FilterSelect
-            className="sm:w-56"
-            label="Estado"
-            options={[
-              { value: "all", label: "Todos" },
-              { value: "active", label: "Activos" },
-              { value: "inactive", label: "Desactivados" },
-            ]}
-            value={status}
-            onChange={(v) => setStatus(v as StatusFilter)}
-          />
-        </div>
+        <FilterSearch
+          className="sm:w-72"
+          placeholder="Buscar categoría…"
+          value={search}
+          onValueChange={setSearch}
+        />
 
         <div className="flex gap-2">
           {canCreate ? (
@@ -137,10 +100,10 @@ export function ClientsTab({
                 setModalOpen(true);
               }}
             >
-              Crear cliente
+              Crear categoría
             </Button>
           ) : null}
-          <Button variant="flat" onPress={onSaved}>
+          <Button variant="flat" onPress={refresh}>
             Refrescar
           </Button>
         </div>
@@ -148,43 +111,19 @@ export function ClientsTab({
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Clientes"
-          headers={[
-            "Nombre",
-            "Identificación",
-            "Email",
-            "Teléfono",
-            "Ciudad",
-            "Activo",
-            "Acciones",
-          ]}
+          ariaLabel="Categorías"
+          headers={["Nombre", "Acciones"]}
         />
       ) : (
-        <Table aria-label="Clientes">
+        <Table aria-label="Categorías">
           <TableHeader>
             <TableColumn>Nombre</TableColumn>
-            <TableColumn>Identificación</TableColumn>
-            <TableColumn>Email</TableColumn>
-            <TableColumn>Teléfono</TableColumn>
-            <TableColumn>Ciudad</TableColumn>
-            <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(c) => (
               <TableRow key={c.id}>
                 <TableCell>{c.name}</TableCell>
-                <TableCell className="text-default-600">
-                  {c.identification}
-                </TableCell>
-                <TableCell className="text-default-500">
-                  {c.email ?? "-"}
-                </TableCell>
-                <TableCell className="text-default-500">
-                  {c.phone ?? "-"}
-                </TableCell>
-                <TableCell>{c.city ?? "-"}</TableCell>
-                <TableCell>{c.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell className="flex gap-2">
                   {canEdit ? (
                     <Button
@@ -222,11 +161,11 @@ export function ClientsTab({
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <ClientModal
-        client={editing}
+      <CategoryModal
+        category={editing}
         isOpen={modalOpen}
         onOpenChange={setModalOpen}
-        onSaved={onSaved}
+        onSaved={refresh}
       />
 
       <ConfirmActionModal
@@ -234,7 +173,7 @@ export function ClientsTab({
         confirmLabel="Eliminar"
         description={
           pendingDelete
-            ? `¿Eliminar el cliente ${pendingDelete.name}?`
+            ? `¿Eliminar la categoría ${pendingDelete.name}?`
             : undefined
         }
         isLoading={deletingId === pendingDelete?.id}

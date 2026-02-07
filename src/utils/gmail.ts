@@ -42,7 +42,9 @@ export async function sendPasswordResetEmail(to: string, token: string) {
 
         <p style="margin: 12px 0 0; font-size: 13px; color: #374151;">Este token expira en <strong>30 minutos</strong>.</p>
 
-        ${resetUrl ? `
+        ${
+          resetUrl
+            ? `
           <div style="margin-top: 16px;">
             <a href="${resetUrl}" style="display:inline-block; text-decoration:none; border: 1px solid #111; color:#111; padding: 10px 14px; border-radius: 10px; font-weight: 700;">
               Abrir enlace de recuperación
@@ -52,7 +54,9 @@ export async function sendPasswordResetEmail(to: string, token: string) {
               <span>${resetUrl}</span>
             </div>
           </div>
-        ` : ""}
+        `
+            : ""
+        }
 
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 18px 0;" />
         <p style="margin: 0; font-size: 12px; color: #6b7280;">

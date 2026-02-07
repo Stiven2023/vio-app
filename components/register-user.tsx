@@ -11,11 +11,7 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import {
-  BsEnvelopeFill,
-  BsEyeFill,
-  BsEyeSlashFill,
-} from "react-icons/bs";
+import { BsEnvelopeFill, BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 
 import { validateUserRegister } from "@/utils/validation";
 import { AlertToast } from "@/components/alert-toast";

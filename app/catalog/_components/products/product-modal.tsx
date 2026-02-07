@@ -1,8 +1,8 @@
 "use client";
 
-import type { Client } from "../../_lib/types";
+import type { Category, Product } from "../../_lib/types";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -13,42 +13,42 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
+import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
-import { BsEnvelopeFill, BsPersonFill } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
-import { createClientSchema } from "../../_lib/schemas";
+import { createProductSchema } from "../../_lib/schemas";
 
 type FormState = {
   name: string;
-  identification: string;
-  email: string;
-  phone: string;
-  city: string;
+  description: string;
+  categoryId: string;
   isActive: boolean;
 };
 
-export function ClientModal({
-  client,
+export function ProductModal({
+  product,
+  categories,
   isOpen,
   onOpenChange,
   onSaved,
 }: {
-  client: Client | null;
+  product: Product | null;
+  categories: Category[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<FormState>({
     name: "",
-    identification: "",
-    email: "",
-    phone: "",
-    city: "Medellín",
+    description: "",
+    categoryId: "",
     isActive: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const canPickCategory = useMemo(() => categories.length > 0, [categories]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -56,22 +56,20 @@ export function ClientModal({
     setErrors({});
     setSubmitting(false);
     setForm({
-      name: client?.name ?? "",
-      identification: client?.identification ?? "",
-      email: client?.email ?? "",
-      phone: client?.phone ?? "",
-      city: client?.city ?? "Medellín",
-      isActive: Boolean(client?.isActive ?? true),
+      name: product?.name ?? "",
+      description: product?.description ?? "",
+      categoryId: product?.categoryId ?? "",
+      isActive: Boolean(product?.isActive ?? true),
     });
-  }, [client, isOpen]);
+  }, [isOpen, product]);
 
   const submit = async () => {
     if (submitting) return;
 
-    const parsed = createClientSchema.safeParse({
-      ...form,
-      phone: form.phone.trim() ? form.phone : undefined,
-      city: form.city.trim() ? form.city : undefined,
+    const parsed = createProductSchema.safeParse({
+      name: form.name,
+      description: form.description.trim() ? form.description : undefined,
+      categoryId: form.categoryId ? form.categoryId : undefined,
       isActive: form.isActive,
     });
 
@@ -89,19 +87,19 @@ export function ClientModal({
 
     const payload = {
       ...parsed.data,
-      email: parsed.data.email.trim() ? parsed.data.email.trim() : null,
-      phone: form.phone.trim() ? form.phone.trim() : null,
-      city: form.city.trim() ? form.city.trim() : null,
+      description: parsed.data.description ? parsed.data.description : null,
+      categoryId: parsed.data.categoryId ? parsed.data.categoryId : null,
     };
 
     try {
       setSubmitting(true);
-      await apiJson(`/api/clients`, {
-        method: client ? "PUT" : "POST",
-        body: JSON.stringify(client ? { id: client.id, ...payload } : payload),
+      await apiJson(`/api/products`, {
+        method: product ? "PUT" : "POST",
+        body: JSON.stringify(
+          product ? { id: product.id, ...payload } : payload,
+        ),
       });
-
-      toast.success(client ? "Cliente actualizado" : "Cliente creado");
+      toast.success(product ? "Producto actualizado" : "Producto creado");
       onOpenChange(false);
       onSaved();
     } catch (e) {
@@ -114,48 +112,38 @@ export function ClientModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{client ? "Editar cliente" : "Crear cliente"}</ModalHeader>
+        <ModalHeader>
+          {product ? "Editar producto" : "Crear producto"}
+        </ModalHeader>
         <ModalBody>
           <Input
             errorMessage={errors.name}
             isInvalid={Boolean(errors.name)}
             label="Nombre"
-            startContent={<BsPersonFill className="text-xl text-default-500" />}
             value={form.name}
             onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
           />
 
           <Input
-            errorMessage={errors.identification}
-            isInvalid={Boolean(errors.identification)}
-            label="Identificación"
-            value={form.identification}
-            onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
+            label="Descripción"
+            value={form.description}
+            onValueChange={(v) => setForm((s) => ({ ...s, description: v }))}
           />
 
-          <Input
-            errorMessage={errors.email}
-            isInvalid={Boolean(errors.email)}
-            label="Correo electrónico"
-            startContent={
-              <BsEnvelopeFill className="text-xl text-default-500" />
-            }
-            type="email"
-            value={form.email}
-            onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-          />
+          <Select
+            isDisabled={!canPickCategory}
+            label="Categoría"
+            selectedKeys={form.categoryId ? [form.categoryId] : []}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
 
-          <Input
-            label="Teléfono"
-            value={form.phone}
-            onValueChange={(v) => setForm((s) => ({ ...s, phone: v }))}
-          />
-
-          <Input
-            label="Ciudad"
-            value={form.city}
-            onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-          />
+              setForm((s) => ({ ...s, categoryId: String(first ?? "") }));
+            }}
+          >
+            {categories.map((c) => (
+              <SelectItem key={c.id}>{c.name}</SelectItem>
+            ))}
+          </Select>
 
           <div className="flex items-center justify-between">
             <span className="text-sm">Activo</span>
@@ -174,7 +162,7 @@ export function ClientModal({
             Cancelar
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>
-            {client ? "Guardar" : "Crear"}
+            {product ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

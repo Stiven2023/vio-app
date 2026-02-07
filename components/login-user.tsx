@@ -4,11 +4,7 @@ import { Input } from "@heroui/input";
 import { Button } from "@heroui/button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  BsEnvelopeFill,
-  BsEyeFill,
-  BsEyeSlashFill,
-} from "react-icons/bs";
+import { BsEnvelopeFill, BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 
 import { validateLogin } from "@/utils/validation";
 import { AlertToast } from "@/components/alert-toast";

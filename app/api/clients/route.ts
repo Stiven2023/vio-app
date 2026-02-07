@@ -70,7 +70,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (e: unknown) {
     const code =
-      typeof e === "object" && e && "code" in e ? (e as { code?: string }).code : undefined;
+      typeof e === "object" && e && "code" in e
+        ? (e as { code?: string }).code
+        : undefined;
 
     if (code === "23505") {
       return new Response("La identificación ya existe", { status: 409 });
@@ -121,7 +123,9 @@ export async function PUT(request: Request) {
     return Response.json(updated);
   } catch (e: unknown) {
     const code =
-      typeof e === "object" && e && "code" in e ? (e as { code?: string }).code : undefined;
+      typeof e === "object" && e && "code" in e
+        ? (e as { code?: string }).code
+        : undefined;
 
     if (code === "23505") {
       return new Response("La identificación ya existe", { status: 409 });

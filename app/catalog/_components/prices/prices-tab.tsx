@@ -1,8 +1,8 @@
 "use client";
 
-import type { Client } from "../../_lib/types";
+import type { Product, ProductPrice } from "../../_lib/types";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -21,80 +21,84 @@ import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
 
-import { ClientModal } from "./client-modal";
+import { PriceModal } from "./price-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
 
-export function ClientsTab({
-  canCreate = true,
-  canEdit = true,
-  canDelete = true,
+export function PricesTab({
+  canCreate,
+  canEdit,
+  canDelete,
 }: {
-  canCreate?: boolean;
-  canEdit?: boolean;
-  canDelete?: boolean;
-} = {}) {
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<Client>(
-    "/api/clients",
-    10,
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}) {
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<ProductPrice>("/api/product-prices", 10);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const productNameById = useMemo(
+    () => new Map(products.map((p) => [p.id, p.name])),
+    [products],
   );
+
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Client | null>(null);
+  const [editing, setEditing] = useState<ProductPrice | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ProductPrice | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiJson<{ items: Product[] }>(`/api/products?page=1&pageSize=600`)
+      .then((r) => setProducts(r.items))
+      .catch(() => setProducts([]));
+  }, []);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
     const q = search.trim().toLowerCase();
 
-    return items.filter((c) => {
-      if (status === "active" && !c.isActive) return false;
-      if (status === "inactive" && c.isActive) return false;
+    return items.filter((pp) => {
+      if (status === "active" && !pp.isActive) return false;
+      if (status === "inactive" && pp.isActive) return false;
       if (!q) return true;
 
-      const email = c.email ?? "";
-      const phone = c.phone ?? "";
-      const city = c.city ?? "";
+      const prodName = pp.productId
+        ? (productNameById.get(pp.productId) ?? "")
+        : "";
 
       return (
-        c.name.toLowerCase().includes(q) ||
-        c.identification.toLowerCase().includes(q) ||
-        email.toLowerCase().includes(q) ||
-        phone.toLowerCase().includes(q) ||
-        city.toLowerCase().includes(q)
+        pp.referenceCode.toLowerCase().includes(q) ||
+        prodName.toLowerCase().includes(q)
       );
     });
-  }, [data, search, status]);
+  }, [data, productNameById, search, status]);
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim() !== "" || status !== "all") return "Sin resultados";
 
-    return "Sin clientes";
+    return "Sin precios";
   }, [loading, search, status]);
 
-  const onSaved = () => {
-    refresh();
-  };
-
   const remove = async () => {
-    const c = pendingDelete;
+    const pp = pendingDelete;
 
-    if (!c) return;
+    if (!pp) return;
     if (deletingId) return;
 
-    setDeletingId(c.id);
+    setDeletingId(pp.id);
     try {
-      await apiJson(`/api/clients`, {
+      await apiJson(`/api/product-prices`, {
         method: "DELETE",
-        body: JSON.stringify({ id: c.id }),
+        body: JSON.stringify({ id: pp.id }),
       });
-      toast.success("Cliente eliminado");
+      toast.success("Precio eliminado");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -111,7 +115,7 @@ export function ClientsTab({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
-            placeholder="Buscar por nombre, identificación, email…"
+            placeholder="Buscar por código o producto…"
             value={search}
             onValueChange={setSearch}
           />
@@ -137,10 +141,10 @@ export function ClientsTab({
                 setModalOpen(true);
               }}
             >
-              Crear cliente
+              Crear precio
             </Button>
           ) : null}
-          <Button variant="flat" onPress={onSaved}>
+          <Button variant="flat" onPress={refresh}>
             Refrescar
           </Button>
         </div>
@@ -148,43 +152,37 @@ export function ClientsTab({
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Clientes"
-          headers={[
-            "Nombre",
-            "Identificación",
-            "Email",
-            "Teléfono",
-            "Ciudad",
-            "Activo",
-            "Acciones",
-          ]}
+          ariaLabel="Precios"
+          headers={["Código", "Producto", "COP", "USD", "Activo", "Acciones"]}
         />
       ) : (
-        <Table aria-label="Clientes">
+        <Table aria-label="Precios">
           <TableHeader>
-            <TableColumn>Nombre</TableColumn>
-            <TableColumn>Identificación</TableColumn>
-            <TableColumn>Email</TableColumn>
-            <TableColumn>Teléfono</TableColumn>
-            <TableColumn>Ciudad</TableColumn>
+            <TableColumn>Código</TableColumn>
+            <TableColumn>Producto</TableColumn>
+            <TableColumn>COP</TableColumn>
+            <TableColumn>USD</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
-            {(c) => (
-              <TableRow key={c.id}>
-                <TableCell>{c.name}</TableCell>
+            {(pp) => (
+              <TableRow key={pp.id}>
+                <TableCell className="font-medium">
+                  {pp.referenceCode}
+                </TableCell>
+                <TableCell>
+                  {pp.productId
+                    ? (productNameById.get(pp.productId) ?? "-")
+                    : "-"}
+                </TableCell>
                 <TableCell className="text-default-600">
-                  {c.identification}
+                  {pp.priceCOP ?? "-"}
                 </TableCell>
-                <TableCell className="text-default-500">
-                  {c.email ?? "-"}
+                <TableCell className="text-default-600">
+                  {pp.priceUSD ?? "-"}
                 </TableCell>
-                <TableCell className="text-default-500">
-                  {c.phone ?? "-"}
-                </TableCell>
-                <TableCell>{c.city ?? "-"}</TableCell>
-                <TableCell>{c.isActive ? "Sí" : "No"}</TableCell>
+                <TableCell>{pp.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell className="flex gap-2">
                   {canEdit ? (
                     <Button
@@ -192,7 +190,7 @@ export function ClientsTab({
                       size="sm"
                       variant="flat"
                       onPress={() => {
-                        setEditing(c);
+                        setEditing(pp);
                         setModalOpen(true);
                       }}
                     >
@@ -206,7 +204,7 @@ export function ClientsTab({
                       size="sm"
                       variant="flat"
                       onPress={() => {
-                        setPendingDelete(c);
+                        setPendingDelete(pp);
                         setConfirmOpen(true);
                       }}
                     >
@@ -222,11 +220,12 @@ export function ClientsTab({
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <ClientModal
-        client={editing}
+      <PriceModal
         isOpen={modalOpen}
+        price={editing}
+        products={products}
         onOpenChange={setModalOpen}
-        onSaved={onSaved}
+        onSaved={refresh}
       />
 
       <ConfirmActionModal
@@ -234,7 +233,7 @@ export function ClientsTab({
         confirmLabel="Eliminar"
         description={
           pendingDelete
-            ? `¿Eliminar el cliente ${pendingDelete.name}?`
+            ? `¿Eliminar el precio ${pendingDelete.referenceCode}?`
             : undefined
         }
         isLoading={deletingId === pendingDelete?.id}
