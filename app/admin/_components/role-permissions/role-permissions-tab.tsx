@@ -1,11 +1,19 @@
 "use client";
 
+import type { RolePermission } from "../../_lib/types";
+
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 
-import type { RolePermission } from "../../_lib/types";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { useReferenceData } from "../../_hooks/use-reference-data";
@@ -13,27 +21,46 @@ import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
+
 import { RolePermissionsModal } from "./role-permissions-modal";
 
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+
 export function RolePermissionsTab() {
-  const { roles, permissions, roleNameById, permNameById, refresh: refreshRefs } = useReferenceData();
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<RolePermission>("/api/role-permissions", 10);
+  const {
+    roles,
+    permissions,
+    roleNameById,
+    permNameById,
+    refresh: refreshRefs,
+  } = useReferenceData();
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<RolePermission>("/api/role-permissions", 10);
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<RolePermission | null>(
+    null,
+  );
+  const [deletingKey, setDeletingKey] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
     const q = search.trim().toLowerCase();
+
     if (!q) return items;
 
     return items.filter((rp) => {
-      const roleLabel = rp.roleId ? roleNameById.get(rp.roleId) ?? rp.roleId : "";
+      const roleLabel = rp.roleId
+        ? (roleNameById.get(rp.roleId) ?? rp.roleId)
+        : "";
       const permLabel = rp.permissionId
-        ? permNameById.get(rp.permissionId) ?? rp.permissionId
+        ? (permNameById.get(rp.permissionId) ?? rp.permissionId)
         : "";
 
       return (
-        roleLabel.toLowerCase().includes(q) || permLabel.toLowerCase().includes(q)
+        roleLabel.toLowerCase().includes(q) ||
+        permLabel.toLowerCase().includes(q)
       );
     });
   }, [data, permNameById, roleNameById, search]);
@@ -41,6 +68,7 @@ export function RolePermissionsTab() {
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim() !== "") return "Sin resultados";
+
     return "Sin relaciones";
   }, [loading, search]);
 
@@ -49,14 +77,31 @@ export function RolePermissionsTab() {
     refresh();
   };
 
-  const remove = async (rp: RolePermission) => {
-    if (!rp.roleId || !rp.permissionId) return;
+  const remove = async () => {
+    const rp = pendingDelete;
+
+    if (!rp?.roleId || !rp?.permissionId) return;
+    if (deletingKey) return;
+
+    const key = `${rp.roleId}:${rp.permissionId}`;
+
+    setDeletingKey(key);
     try {
-      await apiJson(`/api/role-permissions`, { method: "DELETE", body: JSON.stringify({ roleId: rp.roleId, permissionId: rp.permissionId }) });
+      await apiJson(`/api/role-permissions`, {
+        method: "DELETE",
+        body: JSON.stringify({
+          roleId: rp.roleId,
+          permissionId: rp.permissionId,
+        }),
+      });
       toast.success("Relación eliminada");
+      setConfirmOpen(false);
+      setPendingDelete(null);
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
+    } finally {
+      setDeletingKey(null);
     }
   };
 
@@ -71,8 +116,8 @@ export function RolePermissionsTab() {
             onValueChange={setSearch}
           />
           <FilterSelect
-            className="sm:w-56"
             isDisabled
+            className="sm:w-56"
             label="Estado"
             options={[{ value: "all", label: "Todos" }]}
             value="all"
@@ -91,7 +136,10 @@ export function RolePermissionsTab() {
       </div>
 
       {loading ? (
-        <TableSkeleton ariaLabel="Relaciones rol-permiso" headers={["Rol", "Permiso", "Acciones"]} />
+        <TableSkeleton
+          ariaLabel="Relaciones rol-permiso"
+          headers={["Rol", "Permiso", "Acciones"]}
+        />
       ) : (
         <Table aria-label="Relaciones rol-permiso">
           <TableHeader>
@@ -99,13 +147,28 @@ export function RolePermissionsTab() {
             <TableColumn>Permiso</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody items={filtered} emptyContent={emptyContent}>
+          <TableBody emptyContent={emptyContent} items={filtered}>
             {(rp) => (
               <TableRow key={`${rp.roleId}:${rp.permissionId}`}>
-                <TableCell>{rp.roleId ? roleNameById.get(rp.roleId) ?? rp.roleId : "-"}</TableCell>
-                <TableCell>{rp.permissionId ? permNameById.get(rp.permissionId) ?? rp.permissionId : "-"}</TableCell>
                 <TableCell>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => remove(rp)}>
+                  {rp.roleId ? (roleNameById.get(rp.roleId) ?? rp.roleId) : "-"}
+                </TableCell>
+                <TableCell>
+                  {rp.permissionId
+                    ? (permNameById.get(rp.permissionId) ?? rp.permissionId)
+                    : "-"}
+                </TableCell>
+                <TableCell>
+                  <Button
+                    color="danger"
+                    isDisabled={Boolean(deletingKey)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setPendingDelete(rp);
+                      setConfirmOpen(true);
+                    }}
+                  >
                     Eliminar
                   </Button>
                 </TableCell>
@@ -117,7 +180,35 @@ export function RolePermissionsTab() {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <RolePermissionsModal roles={roles} permissions={permissions} isOpen={modalOpen} onOpenChange={setModalOpen} onCreated={onCreated} />
+      <RolePermissionsModal
+        isOpen={modalOpen}
+        permissions={permissions}
+        roles={roles}
+        onCreated={onCreated}
+        onOpenChange={setModalOpen}
+      />
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete?.roleId && pendingDelete?.permissionId
+            ? `¿Eliminar la relación ${roleNameById.get(pendingDelete.roleId) ?? pendingDelete.roleId} → ${permNameById.get(pendingDelete.permissionId) ?? pendingDelete.permissionId}?`
+            : undefined
+        }
+        isLoading={
+          Boolean(deletingKey) &&
+          deletingKey ===
+            `${pendingDelete?.roleId ?? ""}:${pendingDelete?.permissionId ?? ""}`
+        }
+        isOpen={confirmOpen}
+        title="Confirmar eliminación"
+        onConfirm={remove}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+          setConfirmOpen(open);
+        }}
+      />
     </div>
   );
 }

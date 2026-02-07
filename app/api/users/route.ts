@@ -6,7 +6,11 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/src/db";
 import { users, employees, roles } from "@/src/db/schema";
 import { passwordResetTokens } from "@/src/db/password_reset_tokens";
-import { sendPasswordResetEmail } from "@/src/utils/gmail";
+import { emailVerificationTokens } from "@/src/db/email_verification_tokens";
+import {
+  sendEmailVerificationToken,
+  sendPasswordResetEmail,
+} from "@/src/utils/gmail";
 import { signAuthToken } from "@/src/utils/auth";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -21,8 +25,11 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const { email, password } = await request.json();
+  const normalizedEmail = String(email ?? "")
+    .trim()
+    .toLowerCase();
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     return new Response("Email and password required", { status: 400 });
   }
   // Validación avanzada de contraseña
@@ -41,18 +48,79 @@ export async function POST(request: Request) {
       status: 400,
     });
   }
-  const exists = await db.select().from(users).where(eq(users.email, email));
+  const exists = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, normalizedEmail));
 
+  // Si el usuario ya existe pero NO está verificado, (re)enviamos token y
+  // devolvemos el usuario para que el frontend muestre OTP.
   if (exists.length > 0) {
-    return new Response("User already exists", { status: 409 });
-  }
-  const passwordHash = await bcrypt.hash(password, 10);
-  const newUser = await db
-    .insert(users)
-    .values({ email, passwordHash, isActive: true })
-    .returning();
+    const existing = exists[0];
 
-  return Response.json(newUser);
+    if (existing.emailVerified) {
+      return new Response("User already exists", { status: 409 });
+    }
+
+    const token = String(crypto.randomInt(100_000, 1_000_000));
+    const expiresAt = new Date(Date.now() + 15 * 60_000);
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(emailVerificationTokens)
+        .where(eq(emailVerificationTokens.userId, existing.id));
+      await tx
+        .insert(emailVerificationTokens)
+        .values({ userId: existing.id, token, expiresAt });
+    });
+
+    let emailSent = true;
+
+    try {
+      await sendEmailVerificationToken(normalizedEmail, token);
+    } catch {
+      emailSent = false;
+    }
+
+    return Response.json([
+      { id: existing.id, email: existing.email, emailSent },
+    ]);
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const token = String(crypto.randomInt(100_000, 1_000_000));
+  const expiresAt = new Date(Date.now() + 15 * 60_000);
+
+  const created = await db.transaction(async (tx) => {
+    const newUser = await tx
+      .insert(users)
+      .values({ email: normalizedEmail, passwordHash, isActive: true })
+      .returning();
+    const inserted = newUser[0];
+
+    if (!inserted?.id) {
+      throw new Error("User insert failed");
+    }
+
+    await tx
+      .insert(emailVerificationTokens)
+      .values({ userId: inserted.id, token, expiresAt });
+
+    return inserted;
+  });
+
+  let emailSent = true;
+
+  try {
+    await sendEmailVerificationToken(normalizedEmail, token);
+  } catch {
+    emailSent = false;
+  }
+
+  // Mantiene compatibilidad con el frontend (array), pero agrega emailSent.
+  return Response.json([{ id: created.id, email: created.email, emailSent }], {
+    status: 201,
+  });
 }
 
 // Login
@@ -207,79 +275,44 @@ export async function DELETE(request: Request) {
       status: 400,
     });
   }
-  // Buscar el token válido y no expirado
+  const user = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  if (user.length === 0) {
+    return new Response("User not found", { status: 404 });
+  }
+
   const tokenRow = await db
     .select()
     .from(passwordResetTokens)
     .where(
       and(
         eq(passwordResetTokens.token, token),
-        eq(passwordResetTokens.userId, email),
+        eq(passwordResetTokens.userId, user[0].id),
       ),
-    ) // email es userId si es UUID, si no, buscar user primero
+    )
     .limit(1);
-  let userId = null;
 
   if (tokenRow.length === 0) {
-    // Si no se encontró por userId, buscar el usuario por email
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-
-    if (user.length === 0) {
-      return new Response("User not found", { status: 404 });
-    }
-    userId = user[0].id;
-    const tokenRow2 = await db
-      .select()
-      .from(passwordResetTokens)
-      .where(
-        and(
-          eq(passwordResetTokens.token, token),
-          eq(passwordResetTokens.userId, userId),
-        ),
-      )
-      .limit(1);
-
-    if (tokenRow2.length === 0) {
-      return new Response("Invalid or expired token", { status: 400 });
-    }
-    if (new Date(tokenRow2[0].expiresAt) < new Date()) {
-      return new Response("Token expired", { status: 400 });
-    }
-    // Cambiar contraseña
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-    const updated = await db
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, userId))
-      .returning();
-
-    // Eliminar el token usado
-    await db
-      .delete(passwordResetTokens)
-      .where(eq(passwordResetTokens.id, tokenRow2[0].id));
-
-    return Response.json(updated);
-  } else {
-    if (new Date(tokenRow[0].expiresAt) < new Date()) {
-      return new Response("Token expired", { status: 400 });
-    }
-    // Cambiar contraseña
-    const passwordHash = await bcrypt.hash(newPassword, 10);
-    const updated = await db
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, tokenRow[0].userId))
-      .returning();
-
-    // Eliminar el token usado
-    await db
-      .delete(passwordResetTokens)
-      .where(eq(passwordResetTokens.id, tokenRow[0].id));
-
-    return Response.json(updated);
+    return new Response("Invalid or expired token", { status: 400 });
   }
+  if (new Date(tokenRow[0].expiresAt) < new Date()) {
+    return new Response("Token expired", { status: 400 });
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const updated = await db
+    .update(users)
+    .set({ passwordHash })
+    .where(eq(users.id, user[0].id))
+    .returning();
+
+  await db
+    .delete(passwordResetTokens)
+    .where(eq(passwordResetTokens.id, tokenRow[0].id));
+
+  return Response.json(updated);
 }

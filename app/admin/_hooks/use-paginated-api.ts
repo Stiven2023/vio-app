@@ -1,9 +1,11 @@
 "use client";
 
+import type { Paginated } from "../_lib/types";
+
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+
 import { apiJson, getErrorMessage } from "../_lib/api";
-import type { Paginated } from "../_lib/types";
 
 export function usePaginatedApi<T>(endpoint: string, pageSize: number) {
   const [page, setPage] = useState(1);
@@ -15,6 +17,7 @@ export function usePaginatedApi<T>(endpoint: string, pageSize: number) {
 
   useEffect(() => {
     let active = true;
+
     setLoading(true);
     apiJson<Paginated<T>>(`${endpoint}?page=${page}&pageSize=${pageSize}`)
       .then((res) => {
@@ -24,6 +27,7 @@ export function usePaginatedApi<T>(endpoint: string, pageSize: number) {
       .finally(() => {
         if (active) setLoading(false);
       });
+
     return () => {
       active = false;
     };

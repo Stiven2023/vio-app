@@ -1,8 +1,5 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "react-hot-toast";
-import { apiJson, getErrorMessage } from "../_lib/api";
 import type {
   AdminUser,
   AdminUserOption,
@@ -11,12 +8,20 @@ import type {
   Role,
 } from "../_lib/types";
 
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+
+import { apiJson, getErrorMessage } from "../_lib/api";
+
 export function useReferenceData() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [users, setUsers] = useState<AdminUserOption[]>([]);
 
-  const roleNameById = useMemo(() => new Map(roles.map((r) => [r.id, r.name])), [roles]);
+  const roleNameById = useMemo(
+    () => new Map(roles.map((r) => [r.id, r.name])),
+    [roles],
+  );
   const permNameById = useMemo(
     () => new Map(permissions.map((p) => [p.id, p.name])),
     [permissions],
@@ -29,6 +34,7 @@ export function useReferenceData() {
         apiJson<Paginated<Permission>>(`/api/permissions?page=1&pageSize=800`),
         apiJson<Paginated<AdminUser>>(`/api/admin/users?page=1&pageSize=200`),
       ]);
+
       setRoles(rolesRes.items);
       setPermissions(permsRes.items);
       setUsers(usersRes.items.map((u) => ({ id: u.id, email: u.email })));

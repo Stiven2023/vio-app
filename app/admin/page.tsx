@@ -10,7 +10,9 @@ export default async function AdminPage() {
   const payload = token ? verifyAuthToken(token) : null;
 
   if (!payload || typeof payload !== "object") redirect("/login");
-  const role = "role" in payload ? (payload as { role?: string }).role : undefined;
+  const role =
+    "role" in payload ? (payload as { role?: string }).role : undefined;
+
   if (role !== "ADMINISTRADOR") redirect("/dashboard");
 
   return (

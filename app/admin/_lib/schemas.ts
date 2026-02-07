@@ -16,7 +16,9 @@ export const updateUserSchema = z.object({
   emailVerified: z.boolean().optional(),
 });
 
-export const nameSchema = z.object({ name: z.string().trim().min(1, "Nombre requerido") });
+export const nameSchema = z.object({
+  name: z.string().trim().min(1, "Nombre requerido"),
+});
 
 export const createEmployeeSchema = z.object({
   userId: z.string().uuid("Selecciona un usuario"),

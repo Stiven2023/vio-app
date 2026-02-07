@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { permissions } from "@/src/db/schema";
+import { permissions, rolePermissions } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -137,10 +137,13 @@ export async function DELETE(request: Request) {
   if (exists.length === 0) {
     return new Response("Permission not found", { status: 404 });
   }
-  const deleted = await db
-    .delete(permissions)
-    .where(eq(permissions.id, id))
-    .returning();
+  const deleted = await db.transaction(async (tx) => {
+    await tx
+      .delete(rolePermissions)
+      .where(eq(rolePermissions.permissionId, id));
+
+    return tx.delete(permissions).where(eq(permissions.id, id)).returning();
+  });
 
   return Response.json(deleted);
 }

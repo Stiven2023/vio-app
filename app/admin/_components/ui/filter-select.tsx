@@ -1,6 +1,7 @@
 "use client";
 
 import { Select, SelectItem } from "@heroui/select";
+import { useId } from "react";
 
 type FilterOption = {
   value: string;
@@ -24,15 +25,20 @@ export function FilterSelect({
   isDisabled,
   className,
 }: FilterSelectProps) {
+  const reactId = useId();
+  const stableId = `filter-select-${reactId.replace(/:/g, "")}`;
+
   return (
     <Select
       className={className}
+      id={stableId}
       isDisabled={isDisabled}
       label={label}
       selectedKeys={new Set([value])}
       size="sm"
       onSelectionChange={(keys) => {
         const first = Array.from(keys)[0];
+
         if (typeof first === "string") onChange(first);
       }}
     >

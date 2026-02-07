@@ -8,8 +8,12 @@ export function validateUserRegister({
   if (!email) return "El correo es obligatorio.";
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Correo inválido.";
   if (!password) return "La contraseña es obligatoria.";
-  if (password.length < 6)
-    return "La contraseña debe tener al menos 6 caracteres.";
+  if (password.length < 7)
+    return "La contraseña debe tener al menos 7 caracteres.";
+  if (!/[A-Z]/.test(password))
+    return "La contraseña debe contener al menos una mayúscula.";
+  if (/[^A-Za-z0-9.*]/.test(password))
+    return "La contraseña solo puede contener letras, números, . y *.";
 
   return "";
 }

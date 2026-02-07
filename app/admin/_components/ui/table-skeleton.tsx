@@ -18,6 +18,7 @@ type TableSkeletonProps = {
 
 function cellWidthClass(colIndex: number) {
   const widths = ["w-44", "w-28", "w-24", "w-24", "w-20", "w-32"];
+
   return widths[colIndex % widths.length];
 }
 

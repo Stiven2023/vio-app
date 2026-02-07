@@ -1,28 +1,46 @@
 "use client";
 
+import type { Role } from "../../_lib/types";
+
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 
-import type { Role } from "../../_lib/types";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
+
 import { RoleModal } from "./role-modal";
 
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+
 export function RolesTab() {
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<Role>("/api/roles", 10);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Role>(
+    "/api/roles",
+    10,
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Role | null>(null);
   const [search, setSearch] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Role | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
     const q = search.trim().toLowerCase();
+
     if (!q) return items;
 
     return items.filter((r) => r.name.toLowerCase().includes(q));
@@ -31,16 +49,30 @@ export function RolesTab() {
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim() !== "") return "Sin resultados";
+
     return "Sin roles";
   }, [loading, search]);
 
-  const remove = async (r: Role) => {
+  const remove = async () => {
+    const r = pendingDelete;
+
+    if (!r) return;
+    if (deletingId) return;
+
+    setDeletingId(r.id);
     try {
-      await apiJson(`/api/roles`, { method: "DELETE", body: JSON.stringify({ id: r.id }) });
+      await apiJson(`/api/roles`, {
+        method: "DELETE",
+        body: JSON.stringify({ id: r.id }),
+      });
       toast.success("Rol eliminado");
+      setConfirmOpen(false);
+      setPendingDelete(null);
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -55,8 +87,8 @@ export function RolesTab() {
             onValueChange={setSearch}
           />
           <FilterSelect
-            className="sm:w-56"
             isDisabled
+            className="sm:w-56"
             label="Estado"
             options={[{ value: "all", label: "Todos" }]}
             value="all"
@@ -65,7 +97,13 @@ export function RolesTab() {
         </div>
 
         <div className="flex gap-2">
-          <Button color="primary" onPress={() => { setEditing(null); setModalOpen(true); }}>
+          <Button
+            color="primary"
+            onPress={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+          >
             Crear rol
           </Button>
           <Button variant="flat" onPress={refresh}>
@@ -82,15 +120,32 @@ export function RolesTab() {
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody items={filtered} emptyContent={emptyContent}>
+          <TableBody emptyContent={emptyContent} items={filtered}>
             {(r) => (
               <TableRow key={r.id}>
                 <TableCell>{r.name}</TableCell>
                 <TableCell className="flex gap-2">
-                  <Button size="sm" variant="flat" onPress={() => { setEditing(r); setModalOpen(true); }}>
+                  <Button
+                    isDisabled={Boolean(deletingId)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setEditing(r);
+                      setModalOpen(true);
+                    }}
+                  >
                     Editar
                   </Button>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => remove(r)}>
+                  <Button
+                    color="danger"
+                    isDisabled={Boolean(deletingId)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setPendingDelete(r);
+                      setConfirmOpen(true);
+                    }}
+                  >
                     Eliminar
                   </Button>
                 </TableCell>
@@ -102,7 +157,28 @@ export function RolesTab() {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <RoleModal role={editing} isOpen={modalOpen} onOpenChange={setModalOpen} onSaved={refresh} />
+      <RoleModal
+        isOpen={modalOpen}
+        role={editing}
+        onOpenChange={setModalOpen}
+        onSaved={refresh}
+      />
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete ? `¿Eliminar el rol ${pendingDelete.name}?` : undefined
+        }
+        isLoading={deletingId === pendingDelete?.id}
+        isOpen={confirmOpen}
+        title="Confirmar eliminación"
+        onConfirm={remove}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+          setConfirmOpen(open);
+        }}
+      />
     </div>
   );
 }

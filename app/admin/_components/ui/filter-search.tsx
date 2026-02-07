@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@heroui/input";
+
 import { SearchIcon } from "@/components/icons";
 
 type FilterSearchProps = {
@@ -18,13 +19,13 @@ export function FilterSearch({
 }: FilterSearchProps) {
   return (
     <Input
-      className={className}
       isClearable
+      className={className}
       placeholder={placeholder}
       size="lg"
+      startContent={<SearchIcon />}
       value={value}
       onValueChange={onValueChange}
-      startContent={<SearchIcon />}
     />
   );
 }

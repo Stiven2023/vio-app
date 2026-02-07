@@ -9,14 +9,23 @@ import { RolesTab } from "./roles/roles-tab";
 import { PermissionsTab } from "./permissions/permissions-tab";
 import { RolePermissionsTab } from "./role-permissions/role-permissions-tab";
 
-type AdminTabKey = "users" | "employees" | "roles" | "permissions" | "rolePermissions";
+type AdminTabKey =
+  | "users"
+  | "employees"
+  | "roles"
+  | "permissions"
+  | "rolePermissions";
 
 export function AdminTabs() {
   const [activeTab, setActiveTab] = useState<AdminTabKey>("users");
 
   return (
     <div>
-      <Tabs aria-label="Administración" selectedKey={activeTab} onSelectionChange={(k) => setActiveTab(k as AdminTabKey)}>
+      <Tabs
+        aria-label="Administración"
+        selectedKey={activeTab}
+        onSelectionChange={(k) => setActiveTab(k as AdminTabKey)}
+      >
         <Tab key="users" title="Usuarios" />
         <Tab key="employees" title="Empleados" />
         <Tab key="roles" title="Roles" />

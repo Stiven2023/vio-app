@@ -20,6 +20,9 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+import { emailVerificationTokens } from "./email_verification_tokens";
+import { passwordResetTokens } from "./password_reset_tokens";
+
 // Enum de roles
 export const roleEnum = pgEnum("role", [
   "ADMINISTRADOR",
@@ -146,6 +149,8 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "ANULADO",
 ]);
 
+export { emailVerificationTokens, passwordResetTokens };
+
 /* =========================
 	 USERS (AUTH)
 ========================= */
@@ -174,8 +179,12 @@ export const permissions = pgTable("permissions", {
 export const rolePermissions = pgTable(
   "role_permissions",
   {
-    roleId: uuid("role_id").references(() => roles.id),
-    permissionId: uuid("permission_id").references(() => permissions.id),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id),
+    permissionId: uuid("permission_id")
+      .notNull()
+      .references(() => permissions.id),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.roleId, t.permissionId] }),

@@ -1,28 +1,46 @@
 "use client";
 
+import type { Permission } from "../../_lib/types";
+
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 
-import type { Permission } from "../../_lib/types";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
+
 import { PermissionModal } from "./permission-modal";
 
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+
 export function PermissionsTab() {
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<Permission>("/api/permissions", 10);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Permission>(
+    "/api/permissions",
+    10,
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Permission | null>(null);
   const [search, setSearch] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Permission | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
     const q = search.trim().toLowerCase();
+
     if (!q) return items;
 
     return items.filter((p) => p.name.toLowerCase().includes(q));
@@ -31,16 +49,30 @@ export function PermissionsTab() {
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim() !== "") return "Sin resultados";
+
     return "Sin permisos";
   }, [loading, search]);
 
-  const remove = async (p: Permission) => {
+  const remove = async () => {
+    const p = pendingDelete;
+
+    if (!p) return;
+    if (deletingId) return;
+
+    setDeletingId(p.id);
     try {
-      await apiJson(`/api/permissions`, { method: "DELETE", body: JSON.stringify({ id: p.id }) });
+      await apiJson(`/api/permissions`, {
+        method: "DELETE",
+        body: JSON.stringify({ id: p.id }),
+      });
       toast.success("Permiso eliminado");
+      setConfirmOpen(false);
+      setPendingDelete(null);
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -55,8 +87,8 @@ export function PermissionsTab() {
             onValueChange={setSearch}
           />
           <FilterSelect
-            className="sm:w-56"
             isDisabled
+            className="sm:w-56"
             label="Estado"
             options={[{ value: "all", label: "Todos" }]}
             value="all"
@@ -65,7 +97,13 @@ export function PermissionsTab() {
         </div>
 
         <div className="flex gap-2">
-          <Button color="primary" onPress={() => { setEditing(null); setModalOpen(true); }}>
+          <Button
+            color="primary"
+            onPress={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+          >
             Crear permiso
           </Button>
           <Button variant="flat" onPress={refresh}>
@@ -82,15 +120,32 @@ export function PermissionsTab() {
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody items={filtered} emptyContent={emptyContent}>
+          <TableBody emptyContent={emptyContent} items={filtered}>
             {(p) => (
               <TableRow key={p.id}>
                 <TableCell>{p.name}</TableCell>
                 <TableCell className="flex gap-2">
-                  <Button size="sm" variant="flat" onPress={() => { setEditing(p); setModalOpen(true); }}>
+                  <Button
+                    isDisabled={Boolean(deletingId)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setEditing(p);
+                      setModalOpen(true);
+                    }}
+                  >
                     Editar
                   </Button>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => remove(p)}>
+                  <Button
+                    color="danger"
+                    isDisabled={Boolean(deletingId)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setPendingDelete(p);
+                      setConfirmOpen(true);
+                    }}
+                  >
                     Eliminar
                   </Button>
                 </TableCell>
@@ -102,7 +157,30 @@ export function PermissionsTab() {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <PermissionModal permission={editing} isOpen={modalOpen} onOpenChange={setModalOpen} onSaved={refresh} />
+      <PermissionModal
+        isOpen={modalOpen}
+        permission={editing}
+        onOpenChange={setModalOpen}
+        onSaved={refresh}
+      />
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete
+            ? `¿Eliminar el permiso ${pendingDelete.name}?`
+            : undefined
+        }
+        isLoading={deletingId === pendingDelete?.id}
+        isOpen={confirmOpen}
+        title="Confirmar eliminación"
+        onConfirm={remove}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+          setConfirmOpen(open);
+        }}
+      />
     </div>
   );
 }

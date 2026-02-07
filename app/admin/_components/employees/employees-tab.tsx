@@ -1,11 +1,19 @@
 "use client";
 
+import type { Employee } from "../../_lib/types";
+
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 
-import type { Employee } from "../../_lib/types";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { useReferenceData } from "../../_hooks/use-reference-data";
@@ -13,17 +21,31 @@ import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
+
 import { EmployeeModal } from "./employee-modal";
+
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
 
 export function EmployeesTab() {
-  const { roles, users, roleNameById, refresh: refreshRefs } = useReferenceData();
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<Employee>("/api/employees", 10);
+  const {
+    roles,
+    users,
+    roleNameById,
+    refresh: refreshRefs,
+  } = useReferenceData();
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Employee>(
+    "/api/employees",
+    10,
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Employee | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -34,7 +56,7 @@ export function EmployeesTab() {
       if (status === "inactive" && e.isActive) return false;
       if (!q) return true;
 
-      const roleName = e.roleId ? roleNameById.get(e.roleId) ?? e.roleId : "";
+      const roleName = e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "";
       const userId = e.userId ?? "";
 
       return (
@@ -47,6 +69,7 @@ export function EmployeesTab() {
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim() !== "" || status !== "all") return "Sin resultados";
+
     return "Sin empleados";
   }, [loading, search, status]);
 
@@ -55,13 +78,26 @@ export function EmployeesTab() {
     refresh();
   };
 
-  const remove = async (e: Employee) => {
+  const remove = async () => {
+    const e = pendingDelete;
+
+    if (!e) return;
+    if (deletingId) return;
+
+    setDeletingId(e.id);
     try {
-      await apiJson(`/api/employees`, { method: "DELETE", body: JSON.stringify({ id: e.id }) });
+      await apiJson(`/api/employees`, {
+        method: "DELETE",
+        body: JSON.stringify({ id: e.id }),
+      });
       toast.success("Empleado eliminado");
+      setConfirmOpen(false);
+      setPendingDelete(null);
       refresh();
     } catch (err) {
       toast.error(getErrorMessage(err));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -89,7 +125,13 @@ export function EmployeesTab() {
         </div>
 
         <div className="flex gap-2">
-          <Button color="primary" onPress={() => { setEditing(null); setModalOpen(true); }}>
+          <Button
+            color="primary"
+            onPress={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
+          >
             Crear empleado
           </Button>
           <Button variant="flat" onPress={onSaved}>
@@ -112,18 +154,39 @@ export function EmployeesTab() {
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody items={filtered} emptyContent={emptyContent}>
+          <TableBody emptyContent={emptyContent} items={filtered}>
             {(e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.name}</TableCell>
-                <TableCell className="text-default-500">{e.userId ?? "-"}</TableCell>
-                <TableCell>{e.roleId ? roleNameById.get(e.roleId) ?? e.roleId : "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {e.userId ?? "-"}
+                </TableCell>
+                <TableCell>
+                  {e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "-"}
+                </TableCell>
                 <TableCell>{e.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell className="flex gap-2">
-                  <Button size="sm" variant="flat" onPress={() => { setEditing(e); setModalOpen(true); }}>
+                  <Button
+                    isDisabled={Boolean(deletingId)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setEditing(e);
+                      setModalOpen(true);
+                    }}
+                  >
                     Editar
                   </Button>
-                  <Button size="sm" color="danger" variant="flat" onPress={() => remove(e)}>
+                  <Button
+                    color="danger"
+                    isDisabled={Boolean(deletingId)}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => {
+                      setPendingDelete(e);
+                      setConfirmOpen(true);
+                    }}
+                  >
                     Eliminar
                   </Button>
                 </TableCell>
@@ -135,7 +198,32 @@ export function EmployeesTab() {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <EmployeeModal employee={editing} users={users} roles={roles} isOpen={modalOpen} onOpenChange={setModalOpen} onSaved={onSaved} />
+      <EmployeeModal
+        employee={editing}
+        isOpen={modalOpen}
+        roles={roles}
+        users={users}
+        onOpenChange={setModalOpen}
+        onSaved={onSaved}
+      />
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete
+            ? `¿Eliminar el empleado ${pendingDelete.name}?`
+            : undefined
+        }
+        isLoading={deletingId === pendingDelete?.id}
+        isOpen={confirmOpen}
+        title="Confirmar eliminación"
+        onConfirm={remove}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+          setConfirmOpen(open);
+        }}
+      />
     </div>
   );
 }

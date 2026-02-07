@@ -1,27 +1,69 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Button } from "@heroui/button";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/table";
-
 import type { AdminUser } from "../../_lib/types";
+
+import { useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+import { Button } from "@heroui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
+
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
-import { CreateUserModal } from "./create-user-modal";
-import { EditUserModal } from "./edit-user-modal";
+import { apiJson, getErrorMessage } from "../../_lib/api";
 import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
 
+import { EditUserModal } from "./edit-user-modal";
+import { CreateUserModal } from "./create-user-modal";
+
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+
 type StatusFilter = "all" | "active" | "inactive";
 
 export function UsersTab() {
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<AdminUser>("/api/admin/users", 10);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<AdminUser>(
+    "/api/admin/users",
+    10,
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
+
+  const deleteUser = async () => {
+    const u = pendingDelete;
+
+    if (!u) return;
+    if (deletingId) return;
+
+    setDeletingId(u.id);
+    try {
+      await apiJson(`/api/admin/users`, {
+        method: "DELETE",
+        body: JSON.stringify({ id: u.id }),
+      });
+      toast.success("Usuario eliminado");
+      setConfirmOpen(false);
+      setPendingDelete(null);
+      refresh();
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -31,6 +73,7 @@ export function UsersTab() {
       if (status === "active" && !u.isActive) return false;
       if (status === "inactive" && u.isActive) return false;
       if (!q) return true;
+
       return u.email.toLowerCase().includes(q);
     });
   }, [data, search, status]);
@@ -38,6 +81,7 @@ export function UsersTab() {
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim() !== "" || status !== "all") return "Sin resultados";
+
     return "Sin usuarios";
   }, [loading, search, status]);
 
@@ -87,23 +131,38 @@ export function UsersTab() {
             <TableColumn>Verificado</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody items={filtered} emptyContent={emptyContent}>
+          <TableBody emptyContent={emptyContent} items={filtered}>
             {(u) => (
               <TableRow key={u.id}>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{u.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>{u.emailVerified ? "Sí" : "No"}</TableCell>
                 <TableCell>
-                  <Button
-                    size="sm"
-                    variant="flat"
-                    onPress={() => {
-                      setEditingUser(u);
-                      setEditOpen(true);
-                    }}
-                  >
-                    Editar
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      isDisabled={Boolean(deletingId)}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => {
+                        setEditingUser(u);
+                        setEditOpen(true);
+                      }}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      color="danger"
+                      isDisabled={Boolean(deletingId)}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => {
+                        setPendingDelete(u);
+                        setConfirmOpen(true);
+                      }}
+                    >
+                      Eliminar
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -113,8 +172,35 @@ export function UsersTab() {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <CreateUserModal isOpen={createOpen} onOpenChange={setCreateOpen} onCreated={refresh} />
-      <EditUserModal user={editingUser} isOpen={editOpen} onOpenChange={setEditOpen} onSaved={refresh} />
+      <CreateUserModal
+        isOpen={createOpen}
+        onCreated={refresh}
+        onOpenChange={setCreateOpen}
+      />
+      <EditUserModal
+        isOpen={editOpen}
+        user={editingUser}
+        onOpenChange={setEditOpen}
+        onSaved={refresh}
+      />
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete
+            ? `¿Eliminar el usuario ${pendingDelete.email}? Esto también eliminará el empleado asociado.`
+            : undefined
+        }
+        isLoading={Boolean(deletingId)}
+        isOpen={confirmOpen}
+        title="Confirmar eliminación"
+        onConfirm={deleteUser}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+          setConfirmOpen(open);
+        }}
+      />
     </div>
   );
 }

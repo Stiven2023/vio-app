@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { roles } from "@/src/db/schema";
+import { employees, rolePermissions, roles } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -121,7 +121,15 @@ export async function DELETE(request: Request) {
   if (exists.length === 0) {
     return new Response("Role not found", { status: 404 });
   }
-  const deleted = await db.delete(roles).where(eq(roles.id, id)).returning();
+  const deleted = await db.transaction(async (tx) => {
+    await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, id));
+    await tx
+      .update(employees)
+      .set({ roleId: null })
+      .where(eq(employees.roleId, id));
+
+    return tx.delete(roles).where(eq(roles.id, id)).returning();
+  });
 
   return Response.json(deleted);
 }

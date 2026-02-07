@@ -15,7 +15,8 @@ export function getAuthFromRequest(request: Request) {
 
 export function getRoleFromRequest(request: Request): string | null {
   const auth = getAuthFromRequest(request);
-  const role = auth && typeof auth === "object" ? (auth as { role?: unknown }).role : null;
+  const role =
+    auth && typeof auth === "object" ? (auth as { role?: unknown }).role : null;
 
   return typeof role === "string" && role.trim() !== "" ? role : null;
 }

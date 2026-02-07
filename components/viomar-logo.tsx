@@ -24,7 +24,7 @@ export function ViomarLogo({ className, height = 28 }: ViomarLogoProps) {
     <Image
       priority
       alt="VIOMAR"
-      className={clsx("w-auto", className)}
+      className={clsx("w-auto h-auto", className)}
       height={height}
       src={src}
       width={width}
