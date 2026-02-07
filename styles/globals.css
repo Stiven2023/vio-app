@@ -10,3 +10,26 @@
     --font-sans: "font", sans-serif;
     --font-mono: "monospace", monospace;
 }
+
+/* === COLORES PRINCIPALES VIOMAR === */
+:root {
+  --viomar-primary: #00D4AA;
+  --viomar-primary-dark: #00B894;
+  --viomar-primary-light: #1DE9B6;
+  --viomar-black: #1A1A1A;
+  --viomar-white: #FFFFFF;
+
+  --viomar-bg: var(--viomar-white);
+  --viomar-fg: var(--viomar-black);
+}
+
+.dark {
+  --viomar-bg: var(--viomar-black);
+  --viomar-fg: var(--viomar-white);
+}
+
+html,
+body {
+  background: var(--viomar-bg);
+  color: var(--viomar-fg);
+}

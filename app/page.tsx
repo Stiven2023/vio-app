@@ -2,12 +2,20 @@ import { Link } from "@heroui/link";
 import { Snippet } from "@heroui/snippet";
 import { Code } from "@heroui/code";
 import { button as buttonStyles } from "@heroui/theme";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
+import { verifyAuthToken } from "@/src/utils/auth";
 import { siteConfig } from "@/config/site";
 import { title, subtitle } from "@/components/primitives";
 import { GithubIcon } from "@/components/icons";
 
-export default function Home() {
+export default async function Home() {
+  const token = (await cookies()).get("auth_token")?.value;
+  const payload = token ? verifyAuthToken(token) : null;
+
+  if (payload) redirect("/dashboard");
+
   return (
     <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
       <div className="inline-block max-w-xl text-center justify-center">

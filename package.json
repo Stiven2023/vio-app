@@ -1,12 +1,16 @@
 {
-  "name": "next-app-template",
+  "name": "vio-app",
   "version": "0.0.1",
+  "description": "",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --fix"
+    "lint": "eslint --fix",
+    "db:migrate": "drizzle-kit push",
+    "db:seed:roles": "tsx src/db/seed-roles-perms.ts",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "@heroui/accordion": "2.2.27",
@@ -51,23 +55,38 @@
     "@heroui/user": "2.2.25",
     "@react-aria/ssr": "3.9.10",
     "@react-aria/visually-hidden": "3.8.29",
+    "bcryptjs": "^3.0.3",
     "clsx": "2.1.1",
+    "cookie": "^1.1.1",
+    "drizzle-orm": "^0.45.1",
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
+    "jsonwebtoken": "^9.0.3",
     "next": "15.5.9",
     "next-themes": "0.4.6",
+    "nodemailer": "^8.0.0",
+    "pg": "^8.18.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "react-hot-toast": "^2.6.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@eslint/compat": "^2.0.2",
     "@next/eslint-plugin-next": "15.5.9",
     "@react-types/shared": "3.32.1",
     "@tailwindcss/postcss": "4.1.11",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "20.5.7",
+    "@types/nodemailer": "^7.0.9",
+    "@types/pg": "^8.16.0",
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "@typescript-eslint/eslint-plugin": "8.34.1",
     "@typescript-eslint/parser": "8.34.1",
+    "dotenv": "^17.2.4",
+    "drizzle-kit": "^0.31.8",
     "eslint": "9.25.1",
     "eslint-config-next": "15.5.9",
     "eslint-config-prettier": "9.1.0",
@@ -83,6 +102,7 @@
     "prettier": "3.5.3",
     "tailwind-variants": "3.2.2",
     "tailwindcss": "4.1.11",
+    "tsx": "^4.21.0",
     "typescript": "5.6.3"
   }
 }

@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: viomar-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: viomar_db
+      POSTGRES_USER: viomar_user
+      POSTGRES_PASSWORD: viomar_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
