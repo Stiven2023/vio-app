@@ -11,32 +11,32 @@ const NECK_OPTIONS: Array<{ id: string; label: string; src: string }> = [
   {
     id: "NATIONAL",
     label: "National",
-    src: "/assets/cuellos/NATIONAL_C-NECK.svg",
+    src: "/assets/cuellos/NATIONAL_ssfzxh.svg",
   },
   {
     id: "OLYMPUS_BARUDA_KNOB",
     label: "Olympus Baruda (Knob)",
-    src: "/assets/cuellos/OLYPUSBARUDAKNOB_C-NECK.svg",
+    src: "/assets/cuellos/OLYPUSBARUDAKNOB_mzb7vd.svg",
   },
   {
     id: "OLYMPUS_BARUDA",
     label: "Olympus Baruda",
-    src: "/assets/cuellos/OLYPUSBARUDA_C-NECK.svg",
+    src: "/assets/cuellos/OLYPUSBARUDA_seqne0.svg",
   },
   {
     id: "POLO",
     label: "Polo",
-    src: "/assets/cuellos/POLO_C-NECK.svg",
+    src: "/assets/cuellos/POLO_zarbng.svg",
   },
   {
     id: "ROUND",
     label: "Round",
-    src: "/assets/cuellos/ROUND_C-NECK.svg",
+    src: "/assets/cuellos/ROUND_mfljm4.svg",
   },
   {
     id: "VEE",
     label: "Vee",
-    src: "/assets/cuellos/VEE_C-NECK.svg",
+    src: "/assets/cuellos/VEE_xmweiu.svg",
   },
 ];
 
@@ -49,6 +49,7 @@ function getPastedImageFile(ev: React.ClipboardEvent) {
 
 export function DesignSection({
   value,
+  imageFile,
   computedTotal,
   orderKind,
   isCreateBlocked,
@@ -56,6 +57,7 @@ export function DesignSection({
   onSelectImageFile,
 }: {
   value: OrderItemInput;
+  imageFile: File | null;
   computedTotal: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   isCreateBlocked: boolean;
@@ -64,6 +66,19 @@ export function DesignSection({
 }) {
   const locked = orderKind === "COMPLETACION";
   const dropDisabled = locked || isCreateBlocked;
+
+  const previewUrl = React.useMemo(() => {
+    if (!imageFile) return null;
+    return URL.createObjectURL(imageFile);
+  }, [imageFile]);
+
+  React.useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const resolvedImage = previewUrl ?? (value.imageUrl ? String(value.imageUrl) : "");
 
   function setNeck(id: string) {
     onChange({ ...value, neckType: value.neckType === id ? null : id });
@@ -281,6 +296,22 @@ export function DesignSection({
           value={String(value.imageUrl ?? "")}
         />
       </div>
+
+      {resolvedImage ? (
+        <div className="rounded-medium border border-default-200 bg-content1 p-3">
+          <div className="text-sm font-semibold mb-2">Preview</div>
+          <div className="flex flex-col gap-2 md:flex-row md:items-start">
+            <img
+              alt="Preview del diseño"
+              className="h-40 w-auto rounded-medium border border-default-200 object-contain"
+              src={resolvedImage}
+            />
+            <div className="text-xs text-default-500">
+              {imageFile ? imageFile.name : "Imagen actual"}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -192,6 +192,7 @@ export function OrderItemModal(props: {
 
               <DesignSection
                 computedTotal={computedTotal}
+                imageFile={imageFile}
                 isCreateBlocked={isCreateBlocked}
                 orderKind={orderKind}
                 value={item}

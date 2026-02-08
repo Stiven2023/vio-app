@@ -3,15 +3,45 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  employees,
   inventoryItems,
   orderItemMaterials,
   orderItemPackaging,
   orderItemSocks,
+  orderItemStatusHistory,
   orderItems,
   orders,
+  products,
 } from "@/src/db/schema";
+import {
+  getEmployeeIdFromRequest,
+  getUserIdFromRequest,
+} from "@/src/utils/auth-middleware";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+const orderItemStatuses = new Set([
+  "PENDIENTE",
+  "REVISION_ADMIN",
+  "APROBACION_INICIAL",
+  "PENDIENTE_PRODUCCION",
+  "EN_MONTAJE",
+  "EN_IMPRESION",
+  "SUBLIMACION",
+  "CORTE_MANUAL",
+  "CORTE_LASER",
+  "PENDIENTE_CONFECCION",
+  "CONFECCION",
+  "EN_BODEGA",
+  "EMPAQUE",
+  "ENVIADO",
+  "EN_REVISION_CAMBIO",
+  "APROBADO_CAMBIO",
+  "RECHAZADO_CAMBIO",
+  "COMPLETADO",
+  "CANCELADO",
+]);
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -64,13 +94,22 @@ export async function GET(
 
   if (!orderItemId) return new Response("id required", { status: 400 });
 
-  const [item] = await db
-    .select()
+  const [itemRow] = await db
+    .select({
+      item: orderItems,
+      productName: products.name,
+    })
     .from(orderItems)
+    .leftJoin(products, eq(orderItems.productId, products.id))
     .where(eq(orderItems.id, orderItemId))
     .limit(1);
 
-  if (!item) return new Response("Not found", { status: 404 });
+  if (!itemRow?.item) return new Response("Not found", { status: 404 });
+
+  const item = {
+    ...itemRow.item,
+    productName: itemRow.productName ?? null,
+  };
 
   const packaging = await db
     .select()
@@ -114,6 +153,24 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
+async function resolveEmployeeId(request: Request) {
+  const direct = getEmployeeIdFromRequest(request);
+
+  if (direct) return direct;
+
+  const userId = getUserIdFromRequest(request);
+
+  if (!userId) return null;
+
+  const [row] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(eq(employees.userId, userId))
+    .limit(1);
+
+  return row?.id ?? null;
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -132,13 +189,28 @@ export async function PUT(
 
   const { id } = await params;
   const body = (await request.json()) as any;
+  const employeeId = await resolveEmployeeId(request);
+
+  if (body.status !== undefined) {
+    const forbiddenStatus = await requirePermission(
+      request,
+      "CAMBIAR_ESTADO_DISEÑO",
+    );
+
+    if (forbiddenStatus) return forbiddenStatus;
+  }
 
   const orderItemId = String(id ?? "").trim();
 
   if (!orderItemId) return new Response("id required", { status: 400 });
 
   const [existing] = await db
-    .select({ id: orderItems.id, orderId: orderItems.orderId })
+    .select({
+      id: orderItems.id,
+      orderId: orderItems.orderId,
+      name: orderItems.name,
+      status: orderItems.status,
+    })
     .from(orderItems)
     .where(eq(orderItems.id, orderItemId))
     .limit(1);
@@ -159,6 +231,12 @@ export async function PUT(
 
   // COMPLETACION: solo se permite cambiar quantity y empaques
   if (kind === "COMPLETACION") {
+    if (body.status !== undefined) {
+      return new Response("status change not allowed for completacion", {
+        status: 400,
+      });
+    }
+
     if (qty) patch.quantity = qty;
 
     await db.transaction(async (tx) => {
@@ -238,6 +316,15 @@ export async function PUT(
   if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
   if (body.manufacturingId !== undefined)
     patch.manufacturingId = toNullableString(body.manufacturingId);
+  if (body.status !== undefined) {
+    const nextStatus = String(body.status ?? "").trim().toUpperCase();
+
+    if (!orderItemStatuses.has(nextStatus)) {
+      return new Response("invalid status", { status: 400 });
+    }
+
+    patch.status = nextStatus as any;
+  }
 
   const updated = await db.transaction(async (tx) => {
     if (Object.keys(patch).length > 0) {
@@ -245,6 +332,18 @@ export async function PUT(
         .update(orderItems)
         .set(patch)
         .where(eq(orderItems.id, orderItemId));
+    }
+
+    if (
+      patch.status !== undefined &&
+      patch.status !== null &&
+      String(patch.status) !== String(existing.status ?? "")
+    ) {
+      await tx.insert(orderItemStatusHistory).values({
+        orderItemId,
+        status: patch.status as any,
+        changedBy: employeeId,
+      });
     }
 
     if (Array.isArray(body.packaging)) {
@@ -333,6 +432,16 @@ export async function PUT(
 
     return res;
   });
+
+  const nextStatus = patch.status !== undefined ? String(patch.status) : null;
+
+  if (nextStatus && nextStatus !== String(existing.status ?? "")) {
+    await createNotificationsForPermission("VER_DISEÑO", {
+      title: "Cambio de estado",
+      message: `Diseño ${existing.name ?? existing.id} pasó a ${nextStatus}.`,
+      href: `/orders/${existing.orderId}/items/${existing.id}`,
+    });
+  }
 
   return Response.json(updated);
 }

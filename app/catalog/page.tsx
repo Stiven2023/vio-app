@@ -17,21 +17,25 @@ export default async function CatalogPage() {
 
   if (forbidden) redirect("/dashboard");
 
-  const canCreate = !(await requirePermission(req, "CREAR_ITEM_INVENTARIO"));
-  const canEdit = !(await requirePermission(req, "EDITAR_ITEM_INVENTARIO"));
-  const canDelete = !(await requirePermission(req, "ELIMINAR_ITEM_INVENTARIO"));
+  const canCreateItem = !(await requirePermission(req, "CREAR_ITEM_INVENTARIO"));
+  const canEditItem = !(await requirePermission(req, "EDITAR_ITEM_INVENTARIO"));
+  const canDeleteItem = !(await requirePermission(req, "ELIMINAR_ITEM_INVENTARIO"));
+  const canEntry = !(await requirePermission(req, "REGISTRAR_ENTRADA"));
+  const canOutput = !(await requirePermission(req, "REGISTRAR_SALIDA"));
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Catálogo</h1>
       <p className="text-default-600 mt-1">
-        Gestiona productos, categorías y precios.
+        Gestiona productos, categorías, precios e inventario.
       </p>
       <div className="mt-6">
         <CatalogTabs
-          canCreate={canCreate}
-          canDelete={canDelete}
-          canEdit={canEdit}
+          canCreateItem={canCreateItem}
+          canDeleteItem={canDeleteItem}
+          canEditItem={canEditItem}
+          canEntry={canEntry}
+          canOutput={canOutput}
         />
       </div>
     </div>

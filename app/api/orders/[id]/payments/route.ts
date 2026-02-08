@@ -5,6 +5,7 @@ import { orderPayments, orders } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 
 function toNullableNumericString(v: unknown) {
   if (v === null || v === undefined || v === "") return null;
@@ -129,7 +130,7 @@ export async function POST(
 
   const created = await db.transaction(async (tx) => {
     const [o] = await tx
-      .select({ id: orders.id })
+      .select({ id: orders.id, orderCode: orders.orderCode })
       .from(orders)
       .where(eq(orders.id, orderId))
       .limit(1);
@@ -147,8 +148,14 @@ export async function POST(
       })
       .returning();
 
-    return p;
+    return { payment: p, orderCode: o.orderCode };
   });
 
-  return Response.json(created, { status: 201 });
+  await createNotificationsForPermission("VER_PAGO", {
+    title: "Pago registrado",
+    message: `Se registró un pago para el pedido ${created.orderCode}.`,
+    href: `/orders/${orderId}/payments`,
+  });
+
+  return Response.json(created.payment, { status: 201 });
 }

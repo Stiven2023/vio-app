@@ -21,8 +21,10 @@ import {
 } from "@heroui/table";
 import NextLink from "next/link";
 import {
+  BsArrowRepeat,
   BsClockHistory,
   BsCreditCard,
+  BsEye,
   BsPencilSquare,
   BsReceipt,
   BsThreeDotsVertical,
@@ -34,6 +36,7 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 import { usePaginatedApi } from "../_hooks/use-paginated-api";
 
 import { OrderModal } from "./order-modal";
+import { OrderStatusModal } from "./order-status-modal";
 
 import { FilterSearch } from "@/app/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
@@ -90,6 +93,8 @@ export function OrdersTab({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrderListItem | null>(null);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<OrderListItem | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<OrderListItem | null>(null);
@@ -253,6 +258,15 @@ export function OrdersTab({
                       </DropdownItem>
 
                       <DropdownItem
+                        key="detail"
+                        as={NextLink}
+                        href={`/orders/${o.id}/detail`}
+                        startContent={<BsEye />}
+                      >
+                        Ver detalle
+                      </DropdownItem>
+
+                      <DropdownItem
                         key="prefactura"
                         as={NextLink}
                         href={`/orders/${o.id}/prefactura`}
@@ -280,6 +294,19 @@ export function OrdersTab({
                       >
                         Historial
                       </DropdownItem>
+
+                      {canChangeStatus ? (
+                        <DropdownItem
+                          key="status"
+                          startContent={<BsArrowRepeat />}
+                          onPress={() => {
+                            setStatusTarget(o);
+                            setStatusModalOpen(true);
+                          }}
+                        >
+                          Cambiar estado
+                        </DropdownItem>
+                      ) : null}
 
                       {canEdit ? (
                         <DropdownItem
@@ -324,6 +351,17 @@ export function OrdersTab({
         options={options}
         order={editing}
         onOpenChange={setModalOpen}
+        onSaved={refresh}
+      />
+
+      <OrderStatusModal
+        canChangeStatus={canChangeStatus}
+        isOpen={statusModalOpen}
+        order={statusTarget}
+        onOpenChange={(open) => {
+          if (!open) setStatusTarget(null);
+          setStatusModalOpen(open);
+        }}
         onSaved={refresh}
       />
 

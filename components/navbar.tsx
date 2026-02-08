@@ -11,16 +11,31 @@ import {
 } from "@heroui/navbar";
 import { Avatar } from "@heroui/avatar";
 import { Button } from "@heroui/button";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
 import { Link } from "@heroui/link";
-import { link as linkStyles } from "@heroui/theme";
+import { Tooltip } from "@heroui/tooltip";
 import NextLink from "next/link";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  BsBoxSeam,
+  BsClipboardData,
+  BsClockHistory,
+  BsGear,
+  BsPeople,
+  BsPerson,
+  BsTruck,
+} from "react-icons/bs";
 
-import { siteConfig } from "@/config/site";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ViomarLogo } from "@/components/viomar-logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useSessionStore } from "@/store/session";
 
 const routes = [
@@ -44,6 +59,9 @@ export const Navbar = () => {
   const [canSeeSuppliers, setCanSeeSuppliers] = useState(false);
   const [canSeeConfectionists, setCanSeeConfectionists] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
+  const [canSeeNotifications, setCanSeeNotifications] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     let active = true;
@@ -55,12 +73,13 @@ export const Navbar = () => {
       setCanSeeSuppliers(false);
       setCanSeeConfectionists(false);
       setCanSeeStatusHistory(false);
+      setCanSeeNotifications(false);
 
       return;
     }
 
     fetch(
-      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO`,
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO,VER_NOTIFICACION`,
       {
         credentials: "include",
       },
@@ -75,6 +94,7 @@ export const Navbar = () => {
               VER_PROVEEDOR: false,
               VER_CONFECCIONISTA: false,
               VER_HISTORIAL_ESTADO: false,
+              VER_NOTIFICACION: false,
             },
           };
 
@@ -88,6 +108,7 @@ export const Navbar = () => {
         setCanSeeSuppliers(Boolean(data?.permissions?.VER_PROVEEDOR));
         setCanSeeConfectionists(Boolean(data?.permissions?.VER_CONFECCIONISTA));
         setCanSeeStatusHistory(Boolean(data?.permissions?.VER_HISTORIAL_ESTADO));
+        setCanSeeNotifications(Boolean(data?.permissions?.VER_NOTIFICACION));
       })
       .catch(() => {
         if (!active) return;
@@ -97,6 +118,7 @@ export const Navbar = () => {
         setCanSeeSuppliers(false);
         setCanSeeConfectionists(false);
         setCanSeeStatusHistory(false);
+        setCanSeeNotifications(false);
       });
 
     return () => {
@@ -125,6 +147,9 @@ export const Navbar = () => {
     if (isAuthenticated && canSeeStatusHistory) {
       extra.push({ name: "Historial", href: "/status-history" });
     }
+    if (isAuthenticated && canSeeNotifications) {
+      extra.push({ name: "Notificaciones", href: "/notifications" });
+    }
     if (isAdmin) {
       extra.push({ name: "Administración", href: "/admin" });
     }
@@ -137,9 +162,18 @@ export const Navbar = () => {
     canSeeOrders,
     canSeeStatusHistory,
     canSeeSuppliers,
+    canSeeNotifications,
     isAdmin,
     isAuthenticated,
   ]);
+
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
+
+  const iconBase =
+    "flex h-9 w-9 items-center justify-center rounded-medium border border-transparent";
+  const activeClass = "text-success border-success/40 bg-success-50";
+  const idleClass = "text-default-600 hover:text-foreground hover:bg-default-100";
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -149,117 +183,150 @@ export const Navbar = () => {
             <ViomarLogo className="h-7" />
           </NextLink>
         </NavbarBrand>
-        <ul className="hidden lg:flex gap-4 justify-start ml-2">
-          {siteConfig.navItems.map((item) => (
-            <NavbarItem key={item.href}>
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                color="foreground"
-                href={item.href}
+        <ul className="hidden lg:flex gap-2 justify-start ml-2">
+          {isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
+            <NavbarItem key="nav-orders">
+              <Dropdown
+                onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}
               >
-                {item.label}
-              </NextLink>
+                <DropdownTrigger>
+                  <Tooltip content="Pedidos">
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      className={clsx(
+                        iconBase,
+                        isActive("/orders") ||
+                          isActive("/status-history") ||
+                          openGroup === "orders"
+                          ? activeClass
+                          : idleClass,
+                      )}
+                    >
+                      <BsClipboardData />
+                    </Button>
+                  </Tooltip>
+                </DropdownTrigger>
+                <DropdownMenu aria-label="Pedidos">
+                  {canSeeOrders ? (
+                    <DropdownItem
+                      key="orders"
+                      as={NextLink}
+                      href="/orders"
+                      startContent={<BsClipboardData />}
+                    >
+                      Pedidos
+                    </DropdownItem>
+                  ) : null}
+                  {canSeeStatusHistory ? (
+                    <DropdownItem
+                      key="history"
+                      as={NextLink}
+                      href="/status-history"
+                      startContent={<BsClockHistory />}
+                    >
+                      Historial
+                    </DropdownItem>
+                  ) : null}
+                </DropdownMenu>
+              </Dropdown>
             </NavbarItem>
-          ))}
+          ) : null}
+
+          {isAuthenticated && (canSeeCatalog || canSeeSuppliers) ? (
+            <NavbarItem key="nav-inventory">
+              <Dropdown
+                onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
+              >
+                <DropdownTrigger>
+                  <Tooltip content="Inventario">
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      className={clsx(
+                        iconBase,
+                        isActive("/catalog") ||
+                          isActive("/suppliers") ||
+                          openGroup === "inventory"
+                          ? activeClass
+                          : idleClass,
+                      )}
+                    >
+                      <BsBoxSeam />
+                    </Button>
+                  </Tooltip>
+                </DropdownTrigger>
+                <DropdownMenu aria-label="Inventario">
+                  {canSeeCatalog ? (
+                    <DropdownItem
+                      key="catalog"
+                      as={NextLink}
+                      href="/catalog"
+                      startContent={<BsBoxSeam />}
+                    >
+                      Catálogo
+                    </DropdownItem>
+                  ) : null}
+                  {canSeeSuppliers ? (
+                    <DropdownItem
+                      key="suppliers"
+                      as={NextLink}
+                      href="/suppliers"
+                      startContent={<BsTruck />}
+                    >
+                      Proveedores
+                    </DropdownItem>
+                  ) : null}
+                </DropdownMenu>
+              </Dropdown>
+            </NavbarItem>
+          ) : null}
 
           {isAuthenticated && canSeeClients ? (
             <NavbarItem key="/clients">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/clients"
-              >
-                Clientes
-              </NextLink>
-            </NavbarItem>
-          ) : null}
-
-          {isAuthenticated && canSeeOrders ? (
-            <NavbarItem key="/orders">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/orders"
-              >
-                Pedidos
-              </NextLink>
-            </NavbarItem>
-          ) : null}
-
-          {isAuthenticated && canSeeCatalog ? (
-            <NavbarItem key="/catalog">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/catalog"
-              >
-                Catálogo
-              </NextLink>
-            </NavbarItem>
-          ) : null}
-
-          {isAuthenticated && canSeeSuppliers ? (
-            <NavbarItem key="/suppliers">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/suppliers"
-              >
-                Proveedores
-              </NextLink>
+              <Tooltip content="Clientes">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/clients") ? activeClass : idleClass,
+                  )}
+                  href="/clients"
+                >
+                  <BsPeople />
+                </NextLink>
+              </Tooltip>
             </NavbarItem>
           ) : null}
 
           {isAuthenticated && canSeeConfectionists ? (
             <NavbarItem key="/confectionists">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/confectionists"
-              >
-                Confeccionistas
-              </NextLink>
-            </NavbarItem>
-          ) : null}
-
-          {isAuthenticated && canSeeStatusHistory ? (
-            <NavbarItem key="/status-history">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/status-history"
-              >
-                Historial
-              </NextLink>
+              <Tooltip content="Confeccionistas">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/confectionists") ? activeClass : idleClass,
+                  )}
+                  href="/confectionists"
+                >
+                  <BsPerson />
+                </NextLink>
+              </Tooltip>
             </NavbarItem>
           ) : null}
 
           {isAdmin ? (
             <NavbarItem key="/admin">
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "data-[active=true]:text-primary data-[active=true]:font-medium",
-                )}
-                href="/admin"
-              >
-                Administración
-              </NextLink>
+              <Tooltip content="Administración">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/admin") ? activeClass : idleClass,
+                  )}
+                  href="/admin"
+                >
+                  <BsGear />
+                </NextLink>
+              </Tooltip>
             </NavbarItem>
           ) : null}
         </ul>
@@ -270,6 +337,7 @@ export const Navbar = () => {
         justify="end"
       >
         <NavbarItem className="hidden sm:flex gap-2 items-center">
+          <NotificationBell enabled={isAuthenticated && canSeeNotifications} />
           <ThemeSwitch />
         </NavbarItem>
 

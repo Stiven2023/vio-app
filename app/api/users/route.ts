@@ -189,7 +189,12 @@ export async function PUT(request: Request) {
   let token: string;
 
   try {
-    token = signAuthToken({ name, role: roleName });
+    token = signAuthToken({
+      name,
+      role: roleName,
+      userId: user[0].id,
+      employeeId: employee.length > 0 ? employee[0].id : null,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error firmando token";
 

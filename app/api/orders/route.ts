@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, inArray, like, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
   clients,
+  employees,
   inventoryOutputs,
   orderItemConfection,
   orderItemMaterials,
@@ -15,6 +16,11 @@ import {
   orderPayments,
   orderStatusHistory,
 } from "@/src/db/schema";
+import {
+  getEmployeeIdFromRequest,
+  getUserIdFromRequest,
+} from "@/src/utils/auth-middleware";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -67,6 +73,24 @@ function isUniqueViolation(e: unknown) {
   return code === "23505";
 }
 
+async function resolveEmployeeId(request: Request) {
+  const direct = getEmployeeIdFromRequest(request);
+
+  if (direct) return direct;
+
+  const userId = getUserIdFromRequest(request);
+
+  if (!userId) return null;
+
+  const [row] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(eq(employees.userId, userId))
+    .limit(1);
+
+  return row?.id ?? null;
+}
+
 async function generateOrderCode(tx: any, type: "VN" | "VI"): Promise<string> {
   const prefix = `${type}-`;
   const seqLen = type === "VN" ? 6 : 4;
@@ -87,6 +111,35 @@ async function generateOrderCode(tx: any, type: "VN" | "VI"): Promise<string> {
   const nextSeq = Number.isFinite(maxSeq) ? maxSeq + 1 : 1;
 
   return `${prefix}${String(nextSeq).padStart(seqLen, "0")}`;
+}
+
+async function insertOrderStatusHistory(
+  tx: any,
+  orderId: string,
+  status: string,
+  changedBy: string | null,
+) {
+  await tx.insert(orderStatusHistory).values({
+    orderId,
+    status: status as any,
+    changedBy,
+  });
+}
+
+async function insertOrderItemStatusHistory(
+  tx: any,
+  items: Array<{ id: string; status: string | null }> | null | undefined,
+  changedBy: string | null,
+) {
+  if (!items || items.length === 0) return;
+
+  await tx.insert(orderItemStatusHistory).values(
+    items.map((item) => ({
+      orderItemId: item.id,
+      status: (item.status ?? "PENDIENTE") as any,
+      changedBy,
+    })),
+  );
 }
 
 type OrderItemInput = {
@@ -207,6 +260,8 @@ export async function POST(request: Request) {
 
   const itemInputs: OrderItemInput[] = Array.isArray(items) ? items : [];
 
+  const employeeId = await resolveEmployeeId(request);
+
   const created = await db.transaction(async (tx) => {
     let sourceOrderId: string | null = null;
 
@@ -250,6 +305,7 @@ export async function POST(request: Request) {
             currency: String(currency ?? "COP"),
             shippingFee: toNonNegativeNumericString(shippingFee),
             total: "0",
+            createdBy: employeeId,
           })
           .returning();
 
@@ -266,6 +322,13 @@ export async function POST(request: Request) {
     }
 
     const orderId = createdOrder[0]!.id;
+
+    await insertOrderStatusHistory(
+      tx,
+      orderId,
+      String(createdOrder[0]!.status ?? "PENDIENTE"),
+      employeeId,
+    );
 
     // Copy/paste real: COMPLETACION/REFERENTE clonan los diseños del pedido origen.
     if (orderKind !== "NUEVO" && sourceOrderId) {
@@ -313,6 +376,13 @@ export async function POST(request: Request) {
         const srcOrderItemId = (src as any)?.id;
 
         if (!newOrderItemId || !srcOrderItemId) continue;
+
+        await insertOrderItemStatusHistory(tx, [
+          {
+            id: newOrderItemId,
+            status: String((newItem as any)?.status ?? "PENDIENTE"),
+          },
+        ], employeeId);
 
         const srcPackaging = await tx
           .select()
@@ -415,7 +485,12 @@ export async function POST(request: Request) {
         };
       });
 
-      await tx.insert(orderItems).values(normalizedItems as any);
+      const inserted = await tx
+        .insert(orderItems)
+        .values(normalizedItems as any)
+        .returning({ id: orderItems.id, status: orderItems.status });
+
+      await insertOrderItemStatusHistory(tx, inserted as any, employeeId);
     }
 
     const totalAfterDiscount = subtotal * (1 - discountPercent / 100);
@@ -426,6 +501,12 @@ export async function POST(request: Request) {
       .where(eq(orders.id, orderId));
 
     return createdOrder[0]!;
+  });
+
+  await createNotificationsForPermission("VER_PEDIDO", {
+    title: "Pedido creado",
+    message: `Se creó el pedido ${created.orderCode}.`,
+    href: `/orders/${created.id}/detail`,
   });
 
   return Response.json(created, { status: 201 });
@@ -532,12 +613,37 @@ export async function PUT(request: Request) {
     ? items
     : undefined;
 
+  const employeeId = await resolveEmployeeId(request);
+
+  const [orderRow] = await db
+    .select({ orderCode: orders.orderCode, status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, String(id)))
+    .limit(1);
+
+  if (!orderRow) return new Response("Not found", { status: 404 });
+
   const updated = await db.transaction(async (tx) => {
+    const previousStatus = orderRow.status ?? null;
+
     if (Object.keys(patch).length > 0) {
       await tx
         .update(orders)
         .set(patch)
         .where(eq(orders.id, String(id)));
+    }
+
+    if (
+      patch.status !== undefined &&
+      patch.status !== null &&
+      String(patch.status) !== String(previousStatus ?? "")
+    ) {
+      await insertOrderStatusHistory(
+        tx,
+        String(id),
+        String(patch.status),
+        employeeId,
+      );
     }
 
     if (itemInputs) {
@@ -592,7 +698,12 @@ export async function PUT(request: Request) {
           };
         });
 
-        await tx.insert(orderItems).values(normalizedItems as any);
+        const inserted = await tx
+          .insert(orderItems)
+          .values(normalizedItems as any)
+          .returning({ id: orderItems.id, status: orderItems.status });
+
+        await insertOrderItemStatusHistory(tx, inserted as any, employeeId);
       }
       const currentDiscount =
         discount !== undefined
@@ -622,6 +733,16 @@ export async function PUT(request: Request) {
 
     return res;
   });
+
+  const nextStatus = patch.status !== undefined ? String(patch.status) : null;
+
+  if (nextStatus && nextStatus !== String(orderRow.status ?? "")) {
+    await createNotificationsForPermission("VER_PEDIDO", {
+      title: "Cambio de estado",
+      message: `Pedido ${orderRow.orderCode} pasó a ${nextStatus}.`,
+      href: `/orders/${id}/detail`,
+    });
+  }
 
   return Response.json(updated);
 }

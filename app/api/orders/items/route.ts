@@ -2,13 +2,20 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  employees,
   inventoryItems,
   orderItemMaterials,
   orderItemPackaging,
   orderItemSocks,
+  orderItemStatusHistory,
   orderItems,
   orders,
 } from "@/src/db/schema";
+import {
+  getEmployeeIdFromRequest,
+  getUserIdFromRequest,
+} from "@/src/utils/auth-middleware";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -67,6 +74,24 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
+async function resolveEmployeeId(request: Request) {
+  const direct = getEmployeeIdFromRequest(request);
+
+  if (direct) return direct;
+
+  const userId = getUserIdFromRequest(request);
+
+  if (!userId) return null;
+
+  const [row] = await db
+    .select({ id: employees.id })
+    .from(employees)
+    .where(eq(employees.userId, userId))
+    .limit(1);
+
+  return row?.id ?? null;
+}
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "order-items:get",
@@ -103,6 +128,8 @@ export async function GET(request: Request) {
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
       totalPrice: orderItems.totalPrice,
+      imageUrl: orderItems.imageUrl,
+      status: orderItems.status,
       createdAt: orderItems.createdAt,
       confectionistName: sql<string | null>`(
         select c.name
@@ -147,6 +174,8 @@ export async function POST(request: Request) {
   const qty = toPositiveInt(body.quantity);
 
   if (!qty) return new Response("quantity must be positive", { status: 400 });
+
+  const employeeId = await resolveEmployeeId(request);
 
   const created = await db.transaction(async (tx) => {
     const [orderRow] = await tx
@@ -197,6 +226,12 @@ export async function POST(request: Request) {
       .returning();
 
     const orderItemId = oi!.id;
+
+    await tx.insert(orderItemStatusHistory).values({
+      orderItemId,
+      status: (oi as any)?.status ?? "PENDIENTE",
+      changedBy: employeeId,
+    });
 
     const packaging = Array.isArray(body.packaging) ? body.packaging : [];
 
@@ -254,6 +289,12 @@ export async function POST(request: Request) {
           .filter((m: any) => existingSet.has(m.inventoryItemId)) as any,
       );
     }
+
+        await createNotificationsForPermission("VER_DISEÑO", {
+          title: "Diseño creado",
+          message: `Se creó el diseño ${created?.name ?? "(sin nombre)"}.`,
+          href: `/orders/${orderId}/items/${created?.id}`,
+        });
 
     await recalcOrderTotal(tx, orderId);
 

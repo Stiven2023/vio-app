@@ -22,15 +22,19 @@ import {
   TableRow,
 } from "@heroui/table";
 import {
+  BsArrowRepeat,
   BsClockHistory,
+  BsEye,
   BsPencilSquare,
   BsPersonPlus,
   BsThreeDotsVertical,
   BsTrash,
 } from "react-icons/bs";
-
-import { OrderItemModal } from "./order-item-modal";
 import { ConfectionAssignModal } from "./confection-assign-modal";
+import {
+  OrderItemStatusModal,
+  type OrderItemStatusTarget,
+} from "./order-item-status-modal";
 
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
 
@@ -41,6 +45,8 @@ type OrderItemRow = {
   quantity: number;
   unitPrice: string | null;
   totalPrice: string | null;
+  imageUrl?: string | null;
+  status: OrderItemStatusTarget["status"] | null;
   confectionistName?: string | null;
   createdAt: string | null;
 };
@@ -54,10 +60,12 @@ export function OrderItemsPage({
   orderId,
   canEdit,
   canAssign,
+  canChangeStatus,
 }: {
   orderId: string;
   canEdit: boolean;
   canAssign: boolean;
+  canChangeStatus: boolean;
 }) {
   const [order, setOrder] = useState<OrderListItem | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -71,12 +79,12 @@ export function OrderItemsPage({
   );
   const [loadingItems, setLoadingItems] = useState(false);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedValue, setSelectedValue] = useState<any | null>(null);
-
   const [assignOpen, setAssignOpen] = useState(false);
   const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [statusTarget, setStatusTarget] = useState<OrderItemStatusTarget | null>(
+    null,
+  );
 
   useEffect(() => {
     let active = true;
@@ -135,6 +143,7 @@ export function OrderItemsPage({
 
   const columns: ColumnDef[] = [
     { key: "name", name: "Diseño" },
+    { key: "image", name: "Imagen" },
     { key: "confectionist", name: "Confeccionista" },
     { key: "quantity", name: "Cantidad" },
     { key: "unitPrice", name: "Unit" },
@@ -143,17 +152,6 @@ export function OrderItemsPage({
   ];
 
   // creación ahora es en página dedicada
-
-  async function openEdit(id: string) {
-    try {
-      const payload = await apiJson<any>(`/api/orders/items/${id}`);
-      setSelectedId(id);
-      setSelectedValue(payload);
-      setModalOpen(true);
-    } catch (e) {
-      toast.error(getErrorMessage(e));
-    }
-  }
 
   async function onDelete(id: string) {
     if (!canEdit) return;
@@ -174,6 +172,17 @@ export function OrderItemsPage({
     if (!canAssign) return;
     setAssigningId(id);
     setAssignOpen(true);
+  }
+
+  function openStatus(item: OrderItemRow) {
+    if (!canChangeStatus) return;
+    setStatusTarget({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      status: item.status ?? "PENDIENTE",
+    });
+    setStatusOpen(true);
   }
 
   const rows = itemsData?.items ?? [];
@@ -268,6 +277,15 @@ export function OrderItemsPage({
                               </DropdownItem>
 
                               <DropdownItem
+                                key="detail"
+                                as={NextLink}
+                                href={`/orders/${orderId}/items/${row.id}`}
+                                startContent={<BsEye />}
+                              >
+                                Ver detalle
+                              </DropdownItem>
+
+                              <DropdownItem
                                 key="assign"
                                 isDisabled={!canAssign}
                                 startContent={<BsPersonPlus />}
@@ -277,9 +295,20 @@ export function OrderItemsPage({
                               </DropdownItem>
 
                               <DropdownItem
+                                key="status"
+                                isDisabled={!canChangeStatus}
+                                startContent={<BsArrowRepeat />}
+                                onPress={() => openStatus(row)}
+                              >
+                                Cambiar estado
+                              </DropdownItem>
+
+                              <DropdownItem
                                 key="edit"
+                                as={NextLink}
+                                href={`/orders/${orderId}/items/${row.id}/edit`}
+                                isDisabled={!canEdit}
                                 startContent={<BsPencilSquare />}
-                                onPress={() => openEdit(row.id)}
                               >
                                 Editar
                               </DropdownItem>
@@ -303,6 +332,22 @@ export function OrderItemsPage({
                       return (
                         <TableCell className="text-default-600">
                           {row.confectionistName ?? "-"}
+                        </TableCell>
+                      );
+                    }
+
+                    if (columnKey === "image") {
+                      return (
+                        <TableCell>
+                          {row.imageUrl ? (
+                            <img
+                              alt="Imagen del diseño"
+                              className="h-10 w-10 rounded-small border border-default-200 object-cover"
+                              src={row.imageUrl}
+                            />
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
                       );
                     }
@@ -345,21 +390,6 @@ export function OrderItemsPage({
         </CardBody>
       </Card>
 
-      <OrderItemModal
-        initialValue={selectedValue ?? undefined}
-        isOpen={modalOpen}
-        mode={selectedId ? "edit" : "create"}
-        orderId={orderId}
-        orderKind={orderKind}
-        onOpenChange={setModalOpen}
-        onSaved={() => {
-          refresh();
-          apiJson<OrderListItem>(`/api/orders/${orderId}`)
-            .then(setOrder)
-            .catch(() => setOrder(null));
-        }}
-      />
-
       <ConfectionAssignModal
         isOpen={assignOpen}
         orderItemId={assigningId}
@@ -370,6 +400,17 @@ export function OrderItemsPage({
         onSaved={() => {
           refresh();
         }}
+      />
+
+      <OrderItemStatusModal
+        canChangeStatus={canChangeStatus}
+        isOpen={statusOpen}
+        orderItem={statusTarget}
+        onOpenChange={(open) => {
+          if (!open) setStatusTarget(null);
+          setStatusOpen(open);
+        }}
+        onSaved={refresh}
       />
     </div>
   );

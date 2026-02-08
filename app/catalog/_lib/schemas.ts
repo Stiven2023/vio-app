@@ -37,3 +37,29 @@ export const createProductPriceSchema = z.object({
   endDate: z.string().trim().optional(),
   isActive: z.boolean().optional(),
 });
+
+export const createInventoryItemSchema = z.object({
+  name: z.string().trim().min(1, "Nombre requerido").max(255, "Máximo 255"),
+  unit: z.string().trim().min(1, "Unidad requerida").max(50, "Máximo 50"),
+});
+
+export const createInventoryEntrySchema = z.object({
+  inventoryItemId: z.string().uuid("Selecciona un item"),
+  supplierId: z.string().uuid().optional(),
+  quantity: z
+    .string()
+    .trim()
+    .min(1, "Cantidad requerida")
+    .refine((v) => Number(v) > 0, "Cantidad debe ser mayor a 0"),
+});
+
+export const createInventoryOutputSchema = z.object({
+  inventoryItemId: z.string().uuid("Selecciona un item"),
+  orderItemId: z.string().uuid().optional(),
+  reason: z.string().trim().min(1, "Motivo requerido").max(100, "Máximo 100"),
+  quantity: z
+    .string()
+    .trim()
+    .min(1, "Cantidad requerida")
+    .refine((v) => Number(v) > 0, "Cantidad debe ser mayor a 0"),
+});

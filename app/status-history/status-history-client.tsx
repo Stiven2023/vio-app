@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Tabs, Tab } from "@heroui/tabs";
 import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
 import {
   Table,
@@ -41,6 +42,65 @@ type ItemHistoryRow = {
 };
 
 type TabKey = "orders" | "items";
+
+type ColumnDef = {
+  key: string;
+  name: string;
+};
+
+const orderStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
+  PENDIENTE: "warning",
+  PRODUCCION: "primary",
+  ATRASADO: "danger",
+  FINALIZADO: "success",
+  ENTREGADO: "success",
+  CANCELADO: "default",
+  REVISION: "warning",
+};
+
+const itemStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
+  PENDIENTE: "warning",
+  REVISION_ADMIN: "warning",
+  APROBACION_INICIAL: "primary",
+  PENDIENTE_PRODUCCION: "primary",
+  EN_MONTAJE: "primary",
+  EN_IMPRESION: "primary",
+  SUBLIMACION: "primary",
+  CORTE_MANUAL: "primary",
+  CORTE_LASER: "primary",
+  PENDIENTE_CONFECCION: "primary",
+  CONFECCION: "primary",
+  EN_BODEGA: "primary",
+  EMPAQUE: "primary",
+  ENVIADO: "success",
+  EN_REVISION_CAMBIO: "warning",
+  APROBADO_CAMBIO: "success",
+  RECHAZADO_CAMBIO: "danger",
+  COMPLETADO: "success",
+  CANCELADO: "default",
+};
+
+function formatStatus(status: string | null | undefined) {
+  if (!status) return "-";
+  return status.replace(/_/g, " ");
+}
+
+function formatRelative(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  const diffMs = date.getTime() - Date.now();
+  const diffSec = Math.round(diffMs / 1000);
+  const abs = Math.abs(diffSec);
+  const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+
+  if (abs < 60) return rtf.format(diffSec, "second");
+  if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
+  if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
+  return rtf.format(Math.round(diffSec / 86400), "day");
+}
 
 export function StatusHistoryClient() {
   const [tab, setTab] = useState<TabKey>("orders");
@@ -108,6 +168,24 @@ export function StatusHistoryClient() {
 
   const data = tab === "orders" ? dataOrders : dataItems;
   const maxPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const columns: ColumnDef[] = useMemo(() => {
+    if (tab === "orders") {
+      return [
+        { key: "order", name: "Pedido" },
+        { key: "status", name: "Estado" },
+        { key: "user", name: "Usuario" },
+        { key: "date", name: "Fecha" },
+      ];
+    }
+
+    return [
+      { key: "order", name: "Pedido" },
+      { key: "item", name: "Diseño" },
+      { key: "status", name: "Estado" },
+      { key: "user", name: "Usuario" },
+      { key: "date", name: "Fecha" },
+    ];
+  }, [tab]);
 
   return (
     <div className="space-y-3">
@@ -154,23 +232,8 @@ export function StatusHistoryClient() {
       </div>
 
       <Table removeWrapper aria-label="Historial">
-        <TableHeader>
-          {tab === "orders" ? (
-            <>
-              <TableColumn>Pedido</TableColumn>
-              <TableColumn>Estado</TableColumn>
-              <TableColumn>Usuario</TableColumn>
-              <TableColumn>Fecha</TableColumn>
-            </>
-          ) : (
-            <>
-              <TableColumn>Pedido</TableColumn>
-              <TableColumn>Diseño</TableColumn>
-              <TableColumn>Estado</TableColumn>
-              <TableColumn>Usuario</TableColumn>
-              <TableColumn>Fecha</TableColumn>
-            </>
-          )}
+        <TableHeader columns={columns}>
+          {(column) => <TableColumn key={column.key}>{column.name}</TableColumn>}
         </TableHeader>
         <TableBody
           emptyContent={loading ? "" : "Sin historial"}
@@ -178,24 +241,52 @@ export function StatusHistoryClient() {
         >
           {(row: any) => (
             <TableRow key={row.id}>
-              {tab === "orders" ? (
-                <>
-                  <TableCell>{row.orderCode ?? row.orderId ?? "-"}</TableCell>
-                  <TableCell>{row.status ?? "-"}</TableCell>
-                  <TableCell>{row.changedByName ?? "-"}</TableCell>
-                  <TableCell>{row.createdAt ?? "-"}</TableCell>
-                </>
-              ) : (
-                <>
-                  <TableCell>{row.orderCode ?? row.orderId ?? "-"}</TableCell>
-                  <TableCell className="text-default-600">
-                    {row.itemName ?? row.orderItemId ?? "-"}
-                  </TableCell>
-                  <TableCell>{row.status ?? "-"}</TableCell>
-                  <TableCell>{row.changedByName ?? "-"}</TableCell>
-                  <TableCell>{row.createdAt ?? "-"}</TableCell>
-                </>
-              )}
+              {(columnKey) => {
+                if (columnKey === "order") {
+                  return <TableCell>{row.orderCode ?? row.orderId ?? "-"}</TableCell>;
+                }
+
+                if (columnKey === "item") {
+                  return (
+                    <TableCell className="text-default-600">
+                      {row.itemName ?? row.orderItemId ?? "-"}
+                    </TableCell>
+                  );
+                }
+
+                if (columnKey === "status") {
+                  const raw = String(row.status ?? "-");
+                  const map = tab === "orders" ? orderStatusColors : itemStatusColors;
+                  const color = map[raw] ?? "default";
+
+                  return (
+                    <TableCell>
+                      <Chip color={color} size="sm" variant="flat">
+                        {formatStatus(raw)}
+                      </Chip>
+                    </TableCell>
+                  );
+                }
+
+                if (columnKey === "user") {
+                  return <TableCell>{row.changedByName ?? "Sistema"}</TableCell>;
+                }
+
+                if (columnKey === "date") {
+                  return (
+                    <TableCell>
+                      <div className="text-sm">
+                        {formatRelative(row.createdAt)}
+                      </div>
+                      <div className="text-xs text-default-500">
+                        {row.createdAt ? new Date(row.createdAt).toLocaleString() : "-"}
+                      </div>
+                    </TableCell>
+                  );
+                }
+
+                return <TableCell>-</TableCell>;
+              }}
             </TableRow>
           )}
         </TableBody>

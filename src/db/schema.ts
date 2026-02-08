@@ -462,6 +462,10 @@ export const orderPayments = pgTable("order_payments", {
 ========================= */
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
+  title: text("title"),
   message: text("message").notNull(),
+  role: varchar("role", { length: 150 }),
+  href: text("href"),
+  isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });

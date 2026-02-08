@@ -32,3 +32,30 @@ export type ProductPrice = {
   endDate: string | null;
   isActive: boolean | null;
 };
+
+export type InventoryItem = {
+  id: string;
+  name: string;
+  unit: string | null;
+};
+
+export type InventoryEntry = {
+  id: string;
+  inventoryItemId: string | null;
+  itemName: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
+  quantity: string | null;
+  createdAt: string | null;
+};
+
+export type InventoryOutput = {
+  id: string;
+  inventoryItemId: string | null;
+  itemName: string | null;
+  orderItemId: string | null;
+  orderItemName: string | null;
+  quantity: string | null;
+  reason: string | null;
+  createdAt: string | null;
+};

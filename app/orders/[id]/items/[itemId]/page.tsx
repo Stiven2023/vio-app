@@ -1,14 +1,14 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { OrderItemsPage } from "./_components/order-items-page";
+import { OrderItemDetailPage } from "./_components/order-item-detail-page";
 
 import { requirePermission } from "@/src/utils/permission-middleware";
 
-export default async function OrderItemsRoute({
+export default async function OrderItemDetailRoute({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; itemId: string }>;
 }) {
   const token = (await cookies()).get("auth_token")?.value;
 
@@ -22,23 +22,11 @@ export default async function OrderItemsRoute({
 
   if (forbidden) redirect("/dashboard");
 
-  const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));
-  const canAssign = !(await requirePermission(req, "ASIGNAR_CONFECCIONISTA"));
-  const canChangeStatus = !(await requirePermission(
-    req,
-    "CAMBIAR_ESTADO_DISEÑO",
-  ));
-
-  const { id } = await params;
+  const { id, itemId } = await params;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <OrderItemsPage
-        canAssign={canAssign}
-        canChangeStatus={canChangeStatus}
-        canEdit={canEdit}
-        orderId={id}
-      />
+      <OrderItemDetailPage itemId={itemId} orderId={id} />
     </div>
   );
 }

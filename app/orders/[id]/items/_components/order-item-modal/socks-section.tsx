@@ -118,7 +118,7 @@ export function SocksSection({
 
       <div className="flex flex-col gap-3">
         {value.map((s, idx) => (
-          <div key={idx} className="grid grid-cols-1 gap-3 md:grid-cols-5">
+          <div key={idx} className="grid grid-cols-1 gap-3 md:grid-cols-6">
             <Input
               isDisabled={disabled}
               label="Talla"
@@ -194,6 +194,18 @@ export function SocksSection({
               >
                 Quitar
               </Button>
+            </div>
+
+            <div className="flex items-center">
+              {s.imageUrl ? (
+                <img
+                  alt="Preview media"
+                  className="h-12 w-12 rounded-small border border-default-200 object-cover"
+                  src={s.imageUrl}
+                />
+              ) : (
+                <div className="text-xs text-default-400">Sin imagen</div>
+              )}
             </div>
           </div>
         ))}

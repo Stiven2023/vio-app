@@ -10,11 +10,14 @@ import { Select, SelectItem } from "@heroui/select";
 import { getErrorMessage } from "@/app/orders/_lib/api";
 import { uploadToCloudinary } from "@/app/orders/_lib/cloudinary";
 
-import { DesignSection } from "../../_components/order-item-modal/design-section";
-import { MaterialsSection } from "../../_components/order-item-modal/materials-section";
-import { PackagingSection } from "../../_components/order-item-modal/packaging-section";
-import { SocksSection } from "../../_components/order-item-modal/socks-section";
-import { useOrderItemModalState } from "../../_components/order-item-modal/use-order-item-modal-state";
+import { DesignSection } from "../../../_components/order-item-modal/design-section";
+import { MaterialsSection } from "../../../_components/order-item-modal/materials-section";
+import { PackagingSection } from "../../../_components/order-item-modal/packaging-section";
+import { SocksSection } from "../../../_components/order-item-modal/socks-section";
+import {
+  useOrderItemModalState,
+  type OrderItemModalValue,
+} from "../../../_components/order-item-modal/use-order-item-modal-state";
 
 type Currency = "COP" | "USD";
 
@@ -46,16 +49,47 @@ function pickUnitPrice(currency: Currency, row: ProductPriceRow) {
   return currency === "USD" ? row.priceUSD : row.priceCOP;
 }
 
-export function OrderItemCreatePage(props: {
+export function OrderItemEditPage(props: {
   orderId: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   orderCurrency: Currency;
+  itemId: string;
 }) {
-  const { orderId, orderKind, orderCurrency } = props;
+  const { orderId, orderKind, orderCurrency, itemId } = props;
 
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
+  const [loadingItem, setLoadingItem] = React.useState(true);
+  const [initialValue, setInitialValue] = React.useState<
+    Partial<OrderItemModalValue> | undefined
+  >(undefined);
+
+  React.useEffect(() => {
+    let active = true;
+
+    setLoadingItem(true);
+    fetch(`/api/orders/items/${itemId}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return (await res.json()) as OrderItemModalValue;
+      })
+      .then((payload) => {
+        if (!active) return;
+        setInitialValue(payload);
+      })
+      .catch((e) => {
+        if (!active) return;
+        toast.error(getErrorMessage(e));
+      })
+      .finally(() => {
+        if (active) setLoadingItem(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [itemId]);
 
   const {
     inventoryItems,
@@ -74,6 +108,7 @@ export function OrderItemCreatePage(props: {
   } = useOrderItemModalState({
     isOpen: true,
     orderId,
+    initialValue,
   });
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
@@ -81,8 +116,6 @@ export function OrderItemCreatePage(props: {
 
   const [prices, setPrices] = React.useState<ProductPriceRow[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(false);
-
-  const isCreateBlocked = orderKind !== "NUEVO";
 
   React.useEffect(() => {
     let active = true;
@@ -117,7 +150,6 @@ export function OrderItemCreatePage(props: {
     const productId = String(item.productId ?? "").trim();
 
     setPrices([]);
-    setItem((s) => ({ ...s, productPriceId: null }));
 
     if (!productId) return;
 
@@ -135,18 +167,6 @@ export function OrderItemCreatePage(props: {
         const list = Array.isArray(d.items) ? d.items : [];
 
         setPrices(list);
-
-        // si solo hay 1, autoseleccionar
-        if (list.length === 1) {
-          const only = list[0];
-          const p = pickUnitPrice(orderCurrency, only);
-
-          setItem((s) => ({
-            ...s,
-            productPriceId: only.id,
-            unitPrice: p ?? s.unitPrice,
-          }));
-        }
       })
       .catch((e) => {
         if (!active) return;
@@ -161,7 +181,7 @@ export function OrderItemCreatePage(props: {
     return () => {
       active = false;
     };
-  }, [item.productId, orderCurrency]);
+  }, [item.productId]);
 
   const selectedProduct = React.useMemo(() => {
     const id = String(item.productId ?? "").trim();
@@ -192,16 +212,11 @@ export function OrderItemCreatePage(props: {
     return (q * up).toFixed(2);
   }, [item.quantity, item.unitPrice]);
 
-  const uiDisabled = isSaving;
+  const uiDisabled = isSaving || loadingItem;
+  const isRestricted = orderKind === "COMPLETACION";
 
   async function onSubmit() {
     setError(null);
-
-    if (isCreateBlocked) {
-      setError("En COMPLETACIÓN/REFERENTE no se pueden crear diseños nuevos.");
-
-      return;
-    }
 
     if (isUploadingAssets) {
       setError("Espera a que termine la subida de imágenes.");
@@ -211,55 +226,30 @@ export function OrderItemCreatePage(props: {
 
     const name = String(item.name ?? "").trim();
 
-    if (!name) {
+    if (!name && !isRestricted) {
       setError("El nombre del diseño es obligatorio.");
 
       return;
     }
 
-    const productId = String(item.productId ?? "").trim();
-
-    if (!productId) {
-      setError("Selecciona un producto.");
-
-      return;
-    }
-
-    const productPriceId = String(item.productPriceId ?? "").trim();
-
-    if (!productPriceId) {
-      setError("Selecciona un precio vigente.");
-
-      return;
-    }
-
-    const selectedPrice = prices.find((p) => p.id === productPriceId) ?? null;
-    const picked = selectedPrice ? pickUnitPrice(orderCurrency, selectedPrice) : null;
-
-    if (!picked) {
-      setError(`El precio seleccionado no tiene valor en ${orderCurrency}.`);
-
-      return;
-    }
-
     const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
-    const unitPrice = Math.max(0, asNumber(picked));
+    const unitPrice = Math.max(0, asNumber(item.unitPrice));
 
     setIsSaving(true);
     try {
       let imageUrl = item.imageUrl ?? null;
 
-      if (imageFile) {
+      if (imageFile && orderKind !== "COMPLETACION") {
         imageUrl = await uploadToCloudinary({
           file: imageFile,
           folder: `order-items/${orderId}`,
         });
       }
 
-      const payload: any = {
+      const base: any = {
         orderId,
-        productId,
-        productPriceId,
+        productId: item.productId ?? null,
+        productPriceId: (item as any).productPriceId ?? null,
         name,
         quantity,
         unitPrice: String(unitPrice),
@@ -279,20 +269,22 @@ export function OrderItemCreatePage(props: {
         tag: Boolean(item.tag),
         flag: Boolean(item.flag),
         requiresSocks: Boolean(item.requiresSocks),
-        packaging,
-        socks,
-        materials,
       };
 
-      const res = await fetch(`/api/orders/items`, {
-        method: "POST",
+      const payload: any =
+        orderKind === "COMPLETACION"
+          ? { orderId, quantity, packaging }
+          : { ...base, packaging, socks, materials };
+
+      const res = await fetch(`/api/orders/items/${itemId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) throw new Error(await res.text());
 
-      toast.success("Diseño creado");
+      toast.success("Diseño actualizado");
       window.location.href = `/orders/${orderId}/items`;
     } catch (e) {
       setError(getErrorMessage(e));
@@ -305,9 +297,9 @@ export function OrderItemCreatePage(props: {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Nuevo diseño</h1>
+          <h1 className="text-2xl font-semibold">Editar diseño</h1>
           <p className="text-sm text-default-500">
-            Selecciona producto + precio vigente ({orderCurrency}).
+            Actualiza la informacion del diseño ({orderCurrency}).
           </p>
         </div>
         <div className="flex gap-2">
@@ -322,10 +314,9 @@ export function OrderItemCreatePage(props: {
           <div className="font-semibold">Referencia</div>
         </CardHeader>
         <CardBody className="space-y-3">
-          {isCreateBlocked ? (
-            <div className="text-sm text-danger">
-              Este pedido es COMPLETACIÓN/REFERENTE. No se pueden crear diseños
-              nuevos.
+          {isRestricted ? (
+            <div className="text-sm text-default-500">
+              En COMPLETACION solo puedes ajustar cantidad y empaque.
             </div>
           ) : null}
 
@@ -333,7 +324,7 @@ export function OrderItemCreatePage(props: {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Select
-              isDisabled={uiDisabled || loadingProducts || isCreateBlocked}
+              isDisabled={uiDisabled || loadingProducts || isRestricted}
               label="Producto"
               selectedKeys={item.productId ? [String(item.productId)] : []}
               onSelectionChange={(keys: any) => {
@@ -355,7 +346,7 @@ export function OrderItemCreatePage(props: {
                 uiDisabled ||
                 loadingPrices ||
                 !item.productId ||
-                isCreateBlocked ||
+                isRestricted ||
                 prices.length === 0
               }
               label="Precio vigente (referencia)"
@@ -388,9 +379,9 @@ export function OrderItemCreatePage(props: {
 
           {selectedProduct ? (
             <div className="text-sm text-default-600">
-              Características: {selectedProduct.isSet ? "Conjunto (lleva medias)" : "No conjunto"}
+              Caracteristicas: {selectedProduct.isSet ? "Conjunto (lleva medias)" : "No conjunto"}
               {selectedProduct.productionType
-                ? ` · Producción: ${selectedProduct.productionType}`
+                ? ` · Produccion: ${selectedProduct.productionType}`
                 : null}
             </div>
           ) : null}
@@ -405,7 +396,7 @@ export function OrderItemCreatePage(props: {
           <DesignSection
             computedTotal={computedTotal}
             imageFile={imageFile}
-            isCreateBlocked={isCreateBlocked}
+            isCreateBlocked={false}
             orderKind={orderKind}
             value={item}
             onChange={setItem}
@@ -430,35 +421,39 @@ export function OrderItemCreatePage(props: {
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Medias</div>
-        </CardHeader>
-        <CardBody>
-          <SocksSection
-            disabled={uiDisabled}
-            orderId={orderId}
-            value={socks}
-            onChange={setSocks}
-            onUploadingChange={setIsUploadingAssets}
-            onError={(m) => setError(m)}
-          />
-        </CardBody>
-      </Card>
+      {orderKind !== "COMPLETACION" ? (
+        <Card>
+          <CardHeader>
+            <div className="font-semibold">Medias</div>
+          </CardHeader>
+          <CardBody>
+            <SocksSection
+              disabled={uiDisabled}
+              orderId={orderId}
+              value={socks}
+              onChange={setSocks}
+              onUploadingChange={setIsUploadingAssets}
+              onError={(m) => setError(m)}
+            />
+          </CardBody>
+        </Card>
+      ) : null}
 
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Materiales</div>
-        </CardHeader>
-        <CardBody>
-          <MaterialsSection
-            disabled={uiDisabled}
-            inventoryItems={inventoryItems}
-            value={materials}
-            onChange={setMaterials}
-          />
-        </CardBody>
-      </Card>
+      {orderKind !== "COMPLETACION" ? (
+        <Card>
+          <CardHeader>
+            <div className="font-semibold">Materiales</div>
+          </CardHeader>
+          <CardBody>
+            <MaterialsSection
+              disabled={uiDisabled}
+              inventoryItems={inventoryItems}
+              value={materials}
+              onChange={setMaterials}
+            />
+          </CardBody>
+        </Card>
+      ) : null}
 
       <div className="flex justify-end gap-2">
         <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
@@ -466,7 +461,7 @@ export function OrderItemCreatePage(props: {
         </Button>
         <Button
           color="primary"
-          isDisabled={isUploadingAssets || isCreateBlocked}
+          isDisabled={isUploadingAssets || loadingItem}
           isLoading={isSaving}
           onPress={onSubmit}
         >

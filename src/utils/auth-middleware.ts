@@ -21,6 +21,26 @@ export function getRoleFromRequest(request: Request): string | null {
   return typeof role === "string" && role.trim() !== "" ? role : null;
 }
 
+export function getUserIdFromRequest(request: Request): string | null {
+  const auth = getAuthFromRequest(request);
+  const userId =
+    auth && typeof auth === "object" ? (auth as { userId?: unknown }).userId : null;
+
+  return typeof userId === "string" && userId.trim() !== "" ? userId : null;
+}
+
+export function getEmployeeIdFromRequest(request: Request): string | null {
+  const auth = getAuthFromRequest(request);
+  const employeeId =
+    auth && typeof auth === "object"
+      ? (auth as { employeeId?: unknown }).employeeId
+      : null;
+
+  return typeof employeeId === "string" && employeeId.trim() !== ""
+    ? employeeId
+    : null;
+}
+
 export function requireRole(request: Request, allowedRoles: string[]) {
   const role = getRoleFromRequest(request);
 

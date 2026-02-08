@@ -26,7 +26,7 @@ type InventoryItem = {
 function defaultPackaging(mode: PackagingMode): OrderItemPackagingInput[] {
   if (mode === "INDIVIDUAL") return [];
 
-  return [{ mode: "AGRUPADO", size: "" }];
+  return [{ mode: "AGRUPADO", size: "", quantity: 1 }];
 }
 
 export function useOrderItemModalState(options: {

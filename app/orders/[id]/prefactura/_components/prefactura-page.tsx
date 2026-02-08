@@ -7,6 +7,12 @@ import NextLink from "next/link";
 import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalHeader,
+} from "@heroui/modal";
+import {
   Table,
   TableBody,
   TableCell,
@@ -41,13 +47,31 @@ type PrefacturaResponse = {
   };
 };
 
+type PaymentRow = {
+  id: string;
+  orderId: string | null;
+  amount: string | null;
+  method: string | null;
+  status: string | null;
+  proofImageUrl?: string | null;
+  createdAt: string | null;
+};
+
 export function PrefacturaPage({ orderId }: { orderId: string }) {
   const [data, setData] = useState<PrefacturaResponse | null>(null);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     apiJson<PrefacturaResponse>(`/api/orders/${orderId}/prefactura`)
       .then(setData)
       .catch(() => setData(null));
+
+    apiJson<{ items: PaymentRow[] }>(
+      `/api/orders/${orderId}/payments?page=1&pageSize=200`,
+    )
+      .then((res) => setPayments(res.items ?? []))
+      .catch(() => setPayments([]));
   }, [orderId]);
 
   const companyName = useMemo(
@@ -205,6 +229,74 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
           </CardBody>
         </Card>
       ) : null}
+
+      <Card>
+        <CardBody>
+          <div className="text-sm font-semibold">Pagos</div>
+          <div className="text-xs text-default-500 mb-2">
+            Soportes cargados para este pedido.
+          </div>
+          <Table removeWrapper aria-label="Pagos">
+            <TableHeader>
+              <TableColumn>Fecha</TableColumn>
+              <TableColumn>Metodo</TableColumn>
+              <TableColumn>Estado</TableColumn>
+              <TableColumn>Monto</TableColumn>
+              <TableColumn>Soporte</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent="Sin pagos" items={payments}>
+              {(p) => (
+                <TableRow key={p.id}>
+                  <TableCell>
+                    {p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}
+                  </TableCell>
+                  <TableCell>{p.method ?? "-"}</TableCell>
+                  <TableCell>{p.status ?? "-"}</TableCell>
+                  <TableCell>{formatMoney(p.amount)}</TableCell>
+                  <TableCell>
+                    {p.proofImageUrl ? (
+                      <button
+                        className="h-10 w-10 overflow-hidden rounded-small border border-default-200"
+                        type="button"
+                        onClick={() => setPreviewUrl(p.proofImageUrl ?? null)}
+                      >
+                        <img
+                          alt="Soporte de pago"
+                          className="h-full w-full object-cover"
+                          src={p.proofImageUrl}
+                        />
+                      </button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
+
+      <Modal
+        isOpen={Boolean(previewUrl)}
+        size="3xl"
+        onOpenChange={(open) => {
+          if (!open) setPreviewUrl(null);
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>Soporte de pago</ModalHeader>
+          <ModalBody>
+            {previewUrl ? (
+              <img
+                alt="Soporte de pago"
+                className="max-h-[70vh] w-full rounded-medium border border-default-200 object-contain"
+                src={previewUrl}
+              />
+            ) : null}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
