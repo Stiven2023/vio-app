@@ -19,7 +19,11 @@ export function usePaginatedApi<T>(endpoint: string, pageSize: number) {
     let active = true;
 
     setLoading(true);
-    apiJson<Paginated<T>>(`${endpoint}?page=${page}&pageSize=${pageSize}`)
+    const joiner = endpoint.includes("?") ? "&" : "?";
+
+    apiJson<Paginated<T>>(
+      `${endpoint}${joiner}page=${page}&pageSize=${pageSize}`,
+    )
       .then((res) => {
         if (active) setData(res);
       })

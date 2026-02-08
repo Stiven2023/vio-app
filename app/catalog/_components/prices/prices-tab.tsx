@@ -6,6 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -183,34 +190,46 @@ export function PricesTab({
                   {pp.priceUSD ?? "-"}
                 </TableCell>
                 <TableCell>{pp.isActive ? "Sí" : "No"}</TableCell>
-                <TableCell className="flex gap-2">
-                  {canEdit ? (
-                    <Button
-                      isDisabled={Boolean(deletingId)}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => {
-                        setEditing(pp);
-                        setModalOpen(true);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                  ) : null}
-                  {canDelete ? (
-                    <Button
-                      color="danger"
-                      isDisabled={Boolean(deletingId)}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => {
-                        setPendingDelete(pp);
-                        setConfirmOpen(true);
-                      }}
-                    >
-                      Eliminar
-                    </Button>
-                  ) : null}
+                <TableCell>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isDisabled={Boolean(deletingId)}
+                        size="sm"
+                        variant="flat"
+                      >
+                        <BsThreeDotsVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Acciones">
+                      {canEdit ? (
+                        <DropdownItem
+                          key="edit"
+                          startContent={<BsPencilSquare />}
+                          onPress={() => {
+                            setEditing(pp);
+                            setModalOpen(true);
+                          }}
+                        >
+                          Editar
+                        </DropdownItem>
+                      ) : null}
+
+                      {canDelete ? (
+                        <DropdownItem
+                          key="delete"
+                          className="text-danger"
+                          startContent={<BsTrash />}
+                          onPress={() => {
+                            setPendingDelete(pp);
+                            setConfirmOpen(true);
+                          }}
+                        >
+                          Eliminar
+                        </DropdownItem>
+                      ) : null}
+                    </DropdownMenu>
+                  </Dropdown>
                 </TableCell>
               </TableRow>
             )}

@@ -44,7 +44,8 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { name, description, categoryId, isActive } = await request.json();
+  const { name, description, categoryId, isActive, isSet, productionType } =
+    await request.json();
 
   const n = String(name ?? "").trim();
 
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
       name: n,
       description: description ? String(description) : null,
       categoryId: categoryId ? String(categoryId) : null,
+      isSet: isSet === undefined ? undefined : Boolean(isSet),
+      productionType: productionType ? String(productionType) : null,
       isActive: isActive ?? true,
     })
     .returning();
@@ -78,7 +81,8 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, name, description, categoryId, isActive } = await request.json();
+  const { id, name, description, categoryId, isActive, isSet, productionType } =
+    await request.json();
 
   if (!id) {
     return new Response("Product ID required", { status: 400 });
@@ -93,6 +97,9 @@ export async function PUT(request: Request) {
     patch.description = description ? String(description) : null;
   if (categoryId !== undefined)
     patch.categoryId = categoryId ? String(categoryId) : null;
+  if (isSet !== undefined) patch.isSet = Boolean(isSet);
+  if (productionType !== undefined)
+    patch.productionType = productionType ? String(productionType) : null;
 
   const updated = await db
     .update(products)

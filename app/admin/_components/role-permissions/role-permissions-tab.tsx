@@ -6,6 +6,12 @@ import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+import { BsThreeDotsVertical, BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -159,18 +166,30 @@ export function RolePermissionsTab() {
                     : "-"}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    color="danger"
-                    isDisabled={Boolean(deletingKey)}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => {
-                      setPendingDelete(rp);
-                      setConfirmOpen(true);
-                    }}
-                  >
-                    Eliminar
-                  </Button>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isDisabled={Boolean(deletingKey)}
+                        size="sm"
+                        variant="flat"
+                      >
+                        <BsThreeDotsVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="delete"
+                        className="text-danger"
+                        startContent={<BsTrash />}
+                        onPress={() => {
+                          setPendingDelete(rp);
+                          setConfirmOpen(true);
+                        }}
+                      >
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </TableCell>
               </TableRow>
             )}

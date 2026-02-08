@@ -9,6 +9,11 @@ export const createProductSchema = z.object({
   description: z.string().optional(),
   categoryId: z.string().uuid("Selecciona una categoría").optional(),
   isActive: z.boolean().optional(),
+  isSet: z.boolean().optional(),
+  productionType: z
+    .enum(["SUBLIMADO", "CORTE_MANUAL"])
+    .optional()
+    .or(z.literal("" as any).transform(() => undefined)),
 });
 
 export const createProductPriceSchema = z.object({

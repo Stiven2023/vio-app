@@ -16,6 +16,8 @@ export type Product = {
   name: string;
   description: string | null;
   categoryId: string | null;
+  isSet?: boolean | null;
+  productionType?: string | null;
   isActive: boolean | null;
   createdAt: string | null;
 };

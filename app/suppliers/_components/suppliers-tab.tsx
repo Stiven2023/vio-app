@@ -1,0 +1,256 @@
+"use client";
+
+import type { Paginated } from "@/app/catalog/_lib/types";
+
+import { useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+import { Button } from "@heroui/button";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+
+import { FilterSearch } from "@/app/catalog/_components/ui/filter-search";
+import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
+import { Pager } from "@/app/catalog/_components/ui/pager";
+import { TableSkeleton } from "@/app/catalog/_components/ui/table-skeleton";
+import { usePaginatedApi } from "@/app/catalog/_hooks/use-paginated-api";
+import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+
+import { SupplierModal } from "./supplier-modal";
+
+export type Supplier = {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  isActive: boolean | null;
+};
+
+type StatusFilter = "all" | "active" | "inactive";
+
+export function SuppliersTab({
+  canCreate,
+  canEdit,
+  canDelete,
+}: {
+  canCreate: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}) {
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<Supplier>("/api/suppliers", 10);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Supplier | null>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Supplier | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    const items = data?.items ?? [];
+    const q = search.trim().toLowerCase();
+
+    return items.filter((s) => {
+      if (status === "active" && !s.isActive) return false;
+      if (status === "inactive" && s.isActive) return false;
+      if (!q) return true;
+
+      const email = s.email ?? "";
+      const phone = s.phone ?? "";
+
+      return (
+        s.name.toLowerCase().includes(q) ||
+        email.toLowerCase().includes(q) ||
+        phone.toLowerCase().includes(q)
+      );
+    });
+  }, [data, search, status]);
+
+  const emptyContent = useMemo(() => {
+    if (loading) return "";
+    if (search.trim() !== "" || status !== "all") return "Sin resultados";
+
+    return "Sin proveedores";
+  }, [loading, search, status]);
+
+  const remove = async () => {
+    const s = pendingDelete;
+
+    if (!s) return;
+    if (deletingId) return;
+
+    setDeletingId(s.id);
+    try {
+      await apiJson(`/api/suppliers`, {
+        method: "DELETE",
+        body: JSON.stringify({ id: s.id }),
+      });
+      toast.success("Proveedor eliminado");
+      setConfirmOpen(false);
+      setPendingDelete(null);
+      refresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <FilterSearch
+            className="sm:w-72"
+            placeholder="Buscar por nombre, email o teléfono…"
+            value={search}
+            onValueChange={setSearch}
+          />
+          <FilterSelect
+            className="sm:w-56"
+            label="Estado"
+            options={[
+              { value: "all", label: "Todos" },
+              { value: "active", label: "Activos" },
+              { value: "inactive", label: "Desactivados" },
+            ]}
+            value={status}
+            onChange={(v) => setStatus(v as StatusFilter)}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          {canCreate ? (
+            <Button
+              color="primary"
+              onPress={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+            >
+              Crear proveedor
+            </Button>
+          ) : null}
+          <Button variant="flat" onPress={refresh}>
+            Refrescar
+          </Button>
+        </div>
+      </div>
+
+      {loading ? (
+        <TableSkeleton
+          ariaLabel="Proveedores"
+          headers={["Nombre", "Email", "Teléfono", "Activo", "Acciones"]}
+        />
+      ) : (
+        <Table aria-label="Proveedores">
+          <TableHeader>
+            <TableColumn>Nombre</TableColumn>
+            <TableColumn>Email</TableColumn>
+            <TableColumn>Teléfono</TableColumn>
+            <TableColumn>Activo</TableColumn>
+            <TableColumn>Acciones</TableColumn>
+          </TableHeader>
+          <TableBody emptyContent={emptyContent} items={filtered}>
+            {(s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell className="text-default-500">
+                  {s.email ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {s.phone ?? "-"}
+                </TableCell>
+                <TableCell>{s.isActive ? "Sí" : "No"}</TableCell>
+                <TableCell>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isDisabled={Boolean(deletingId)}
+                        size="sm"
+                        variant="flat"
+                      >
+                        <BsThreeDotsVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Acciones">
+                      {canEdit ? (
+                        <DropdownItem
+                          key="edit"
+                          startContent={<BsPencilSquare />}
+                          onPress={() => {
+                            setEditing(s);
+                            setModalOpen(true);
+                          }}
+                        >
+                          Editar
+                        </DropdownItem>
+                      ) : null}
+
+                      {canDelete ? (
+                        <DropdownItem
+                          key="delete"
+                          className="text-danger"
+                          startContent={<BsTrash />}
+                          onPress={() => {
+                            setPendingDelete(s);
+                            setConfirmOpen(true);
+                          }}
+                        >
+                          Eliminar
+                        </DropdownItem>
+                      ) : null}
+                    </DropdownMenu>
+                  </Dropdown>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      )}
+
+      {data ? (
+        <Pager data={data as Paginated<Supplier>} page={page} onChange={setPage} />
+      ) : null}
+
+      <SupplierModal
+        supplier={editing}
+        isOpen={modalOpen}
+        onOpenChange={setModalOpen}
+        onSaved={refresh}
+      />
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete ? `¿Eliminar el proveedor ${pendingDelete.name}?` : undefined
+        }
+        isLoading={deletingId === pendingDelete?.id}
+        isOpen={confirmOpen}
+        title="Confirmar eliminación"
+        onConfirm={remove}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null);
+          setConfirmOpen(open);
+        }}
+      />
+    </div>
+  );
+}

@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { useEffect } from "react";
 import { toast } from "react-hot-toast";
 
 interface AlertToastProps {
@@ -8,8 +9,6 @@ interface AlertToastProps {
   icon?: string | ReactElement;
   duration?: number;
 }
-
-import { useEffect } from "react";
 
 export function AlertToast({
   message,

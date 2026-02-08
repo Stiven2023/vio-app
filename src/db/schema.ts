@@ -20,9 +20,6 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import { emailVerificationTokens } from "./email_verification_tokens";
-import { passwordResetTokens } from "./password_reset_tokens";
-
 // Enum de roles
 export const roleEnum = pgEnum("role", [
   "ADMINISTRADOR",
@@ -104,6 +101,12 @@ export const permissionEnum = pgEnum("permission", [
 ========================= */
 export const orderTypeEnum = pgEnum("order_type", ["VN", "VI"]);
 
+export const orderKindEnum = pgEnum("order_kind", [
+  "NUEVO",
+  "COMPLETACION",
+  "REFERENTE",
+]);
+
 export const orderStatusEnum = pgEnum("order_status", [
   "PENDIENTE",
   "PRODUCCION",
@@ -149,8 +152,6 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "ANULADO",
 ]);
 
-export { emailVerificationTokens, passwordResetTokens };
-
 /* =========================
 	 USERS (AUTH)
 ========================= */
@@ -161,6 +162,24 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const emailVerificationTokens = pgTable("email_verification_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  token: varchar("token", { length: 64 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  token: varchar("token", { length: 64 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 /* =========================
@@ -179,12 +198,8 @@ export const permissions = pgTable("permissions", {
 export const rolePermissions = pgTable(
   "role_permissions",
   {
-    roleId: uuid("role_id")
-      .notNull()
-      .references(() => roles.id),
-    permissionId: uuid("permission_id")
-      .notNull()
-      .references(() => permissions.id),
+    roleId: uuid("role_id").notNull().references(() => roles.id),
+    permissionId: uuid("permission_id").notNull().references(() => permissions.id),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.roleId, t.permissionId] }),
@@ -232,6 +247,8 @@ export const products = pgTable("products", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   categoryId: uuid("category_id").references(() => categories.id),
+  isSet: boolean("is_set").default(false),
+  productionType: varchar("production_type", { length: 30 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -255,11 +272,16 @@ export const orders = pgTable("orders", {
   orderCode: varchar("order_code", { length: 20 }).unique().notNull(),
   clientId: uuid("client_id").references(() => clients.id),
   type: orderTypeEnum("type").notNull(),
+  kind: orderKindEnum("kind").default("NUEVO"),
+  sourceOrderId: uuid("source_order_id"),
   status: orderStatusEnum("status").notNull(),
   total: numeric("total", { precision: 14, scale: 2 }).default("0"),
   ivaEnabled: boolean("iva_enabled").default(false),
   discount: numeric("discount", { precision: 14, scale: 2 }).default("0"),
   currency: varchar("currency", { length: 5 }).default("COP"),
+  shippingFee: numeric("shipping_fee", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
   createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -271,13 +293,58 @@ export const orderItems = pgTable("order_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").references(() => orders.id),
   productId: uuid("product_id").references(() => products.id),
+  productPriceId: uuid("product_price_id").references(() => productPrices.id),
   name: varchar("name", { length: 255 }),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }),
   totalPrice: numeric("total_price", { precision: 14, scale: 2 }),
+  observations: text("observations"),
+  fabric: varchar("fabric", { length: 100 }),
+  imageUrl: text("image_url"),
+  screenPrint: boolean("screen_print").default(false),
+  embroidery: boolean("embroidery").default(false),
+  buttonhole: boolean("buttonhole").default(false),
+  snap: boolean("snap").default(false),
+  tag: boolean("tag").default(false),
+  flag: boolean("flag").default(false),
+  gender: varchar("gender", { length: 50 }),
+  process: varchar("process", { length: 100 }),
+  neckType: varchar("neck_type", { length: 100 }),
+  sleeve: varchar("sleeve", { length: 100 }),
+  color: varchar("color", { length: 100 }),
+  requiresSocks: boolean("requires_socks").default(false),
+  isActive: boolean("is_active").default(true),
+  manufacturingId: varchar("manufacturing_id", { length: 100 }),
   status: orderItemStatusEnum("status").notNull(),
   requiresRevision: boolean("requires_revision").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const orderItemPackaging = pgTable("order_item_packaging", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  mode: varchar("mode", { length: 20 }).default("AGRUPADO"),
+  size: varchar("size", { length: 50 }).default(""),
+  quantity: integer("quantity"),
+  personName: varchar("person_name", { length: 255 }),
+  personNumber: varchar("person_number", { length: 50 }),
+});
+
+export const orderItemSocks = pgTable("order_item_socks", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  size: varchar("size", { length: 50 }).default(""),
+  quantity: integer("quantity"),
+  description: text("description"),
+  imageUrl: text("image_url"),
+});
+
+export const orderItemMaterials = pgTable("order_item_materials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }),
+  note: text("note"),
 });
 
 export const orderItemRevisions = pgTable("order_item_revisions", {
@@ -386,6 +453,7 @@ export const orderPayments = pgTable("order_payments", {
   amount: numeric("amount", { precision: 14, scale: 2 }),
   method: paymentMethodEnum("method"),
   status: paymentStatusEnum("status").default("PENDIENTE"),
+  proofImageUrl: text("proof_image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

@@ -6,6 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,6 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+import {
+  BsCashCoin,
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+} from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -272,49 +284,60 @@ export function ProductsTab({
                     : "-"}
                 </TableCell>
                 <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
-                <TableCell className="flex gap-2">
-                  {canEdit ? (
-                    <Button
-                      isDisabled={Boolean(deletingId)}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => {
-                        setEditing(p);
-                        setModalOpen(true);
-                      }}
-                    >
-                      Editar
-                    </Button>
-                  ) : null}
+                <TableCell>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isDisabled={Boolean(deletingId)}
+                        size="sm"
+                        variant="flat"
+                      >
+                        <BsThreeDotsVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Acciones">
+                      {canEdit ? (
+                        <DropdownItem
+                          key="edit"
+                          startContent={<BsPencilSquare />}
+                          onPress={() => {
+                            setEditing(p);
+                            setModalOpen(true);
+                          }}
+                        >
+                          Editar
+                        </DropdownItem>
+                      ) : null}
 
-                  {canEdit ? (
-                    <Button
-                      isDisabled={Boolean(deletingId)}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => {
-                        setEditingPrice(null);
-                        setPriceProductId(p.id);
-                        setPriceModalOpen(true);
-                      }}
-                    >
-                      Precios
-                    </Button>
-                  ) : null}
-                  {canDelete ? (
-                    <Button
-                      color="danger"
-                      isDisabled={Boolean(deletingId)}
-                      size="sm"
-                      variant="flat"
-                      onPress={() => {
-                        setPendingDelete(p);
-                        setConfirmOpen(true);
-                      }}
-                    >
-                      Eliminar
-                    </Button>
-                  ) : null}
+                      {canEdit ? (
+                        <DropdownItem
+                          key="prices"
+                          startContent={<BsCashCoin />}
+                          onPress={() => {
+                            setEditingPrice(null);
+                            setPriceProductId(p.id);
+                            setPriceModalOpen(true);
+                          }}
+                        >
+                          Precios
+                        </DropdownItem>
+                      ) : null}
+
+                      {canDelete ? (
+                        <DropdownItem
+                          key="delete"
+                          className="text-danger"
+                          startContent={<BsTrash />}
+                          onPress={() => {
+                            setPendingDelete(p);
+                            setConfirmOpen(true);
+                          }}
+                        >
+                          Eliminar
+                        </DropdownItem>
+                      ) : null}
+                    </DropdownMenu>
+                  </Dropdown>
                 </TableCell>
               </TableRow>
             )}
@@ -424,34 +447,45 @@ export function ProductsTab({
                       {pp.priceUSD ?? "-"}
                     </TableCell>
                     <TableCell>{pp.isActive ? "Sí" : "No"}</TableCell>
-                    <TableCell className="flex gap-2">
-                      {canEdit ? (
-                        <Button
-                          isDisabled={Boolean(deletingPriceId)}
-                          size="sm"
-                          variant="flat"
-                          onPress={() => {
-                            setEditingPrice(pp);
-                            setPriceModalOpen(true);
-                          }}
-                        >
-                          Editar
-                        </Button>
-                      ) : null}
-                      {canDelete ? (
-                        <Button
-                          color="danger"
-                          isDisabled={Boolean(deletingPriceId)}
-                          size="sm"
-                          variant="flat"
-                          onPress={() => {
-                            setPendingPriceDelete(pp);
-                            setPriceConfirmOpen(true);
-                          }}
-                        >
-                          Eliminar
-                        </Button>
-                      ) : null}
+                    <TableCell>
+                      <Dropdown>
+                        <DropdownTrigger>
+                          <Button
+                            isDisabled={Boolean(deletingPriceId)}
+                            size="sm"
+                            variant="flat"
+                          >
+                            <BsThreeDotsVertical />
+                          </Button>
+                        </DropdownTrigger>
+                        <DropdownMenu aria-label="Acciones">
+                          {canEdit ? (
+                            <DropdownItem
+                              key="edit"
+                              startContent={<BsPencilSquare />}
+                              onPress={() => {
+                                setEditingPrice(pp);
+                                setPriceModalOpen(true);
+                              }}
+                            >
+                              Editar
+                            </DropdownItem>
+                          ) : null}
+                          {canDelete ? (
+                            <DropdownItem
+                              key="delete"
+                              className="text-danger"
+                              startContent={<BsTrash />}
+                              onPress={() => {
+                                setPendingPriceDelete(pp);
+                                setPriceConfirmOpen(true);
+                              }}
+                            >
+                              Eliminar
+                            </DropdownItem>
+                          ) : null}
+                        </DropdownMenu>
+                      </Dropdown>
                     </TableCell>
                   </TableRow>
                 )}

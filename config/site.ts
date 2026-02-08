@@ -1,30 +1,26 @@
-export type SiteConfig = typeof siteConfig;
+export type NavItem = {
+  label: string;
+  href: string;
+};
 
-export const siteConfig = {
+export type SiteConfig = {
+  name: string;
+  description: string;
+  navItems: NavItem[];
+  navMenuItems: NavItem[];
+  links: {
+    github: string;
+    twitter: string;
+    docs: string;
+    discord: string;
+    sponsor: string;
+  };
+};
+
+export const siteConfig: SiteConfig = {
   name: "VIOMAR",
   description: "Plataforma VIOMAR.",
-  navItems: [
-    {
-      label: "Home",
-      href: "/",
-    },
-    {
-      label: "Docs",
-      href: "/docs",
-    },
-    {
-      label: "Pricing",
-      href: "/pricing",
-    },
-    {
-      label: "Blog",
-      href: "/blog",
-    },
-    {
-      label: "About",
-      href: "/about",
-    },
-  ],
+  navItems: [],
   navMenuItems: [
     {
       label: "Profile",

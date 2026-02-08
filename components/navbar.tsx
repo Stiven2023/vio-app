@@ -40,6 +40,10 @@ export const Navbar = () => {
 
   const [canSeeClients, setCanSeeClients] = useState(false);
   const [canSeeCatalog, setCanSeeCatalog] = useState(false);
+  const [canSeeOrders, setCanSeeOrders] = useState(false);
+  const [canSeeSuppliers, setCanSeeSuppliers] = useState(false);
+  const [canSeeConfectionists, setCanSeeConfectionists] = useState(false);
+  const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -47,16 +51,32 @@ export const Navbar = () => {
     if (!isAuthenticated) {
       setCanSeeClients(false);
       setCanSeeCatalog(false);
+      setCanSeeOrders(false);
+      setCanSeeSuppliers(false);
+      setCanSeeConfectionists(false);
+      setCanSeeStatusHistory(false);
 
       return;
     }
 
-    fetch(`/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO`, {
-      credentials: "include",
-    })
+    fetch(
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO`,
+      {
+        credentials: "include",
+      },
+    )
       .then(async (r) => {
         if (!r.ok)
-          return { permissions: { VER_CLIENTE: false, VER_INVENTARIO: false } };
+          return {
+            permissions: {
+              VER_CLIENTE: false,
+              VER_INVENTARIO: false,
+              VER_PEDIDO: false,
+              VER_PROVEEDOR: false,
+              VER_CONFECCIONISTA: false,
+              VER_HISTORIAL_ESTADO: false,
+            },
+          };
 
         return (await r.json()) as { permissions?: Record<string, boolean> };
       })
@@ -64,11 +84,19 @@ export const Navbar = () => {
         if (!active) return;
         setCanSeeClients(Boolean(data?.permissions?.VER_CLIENTE));
         setCanSeeCatalog(Boolean(data?.permissions?.VER_INVENTARIO));
+        setCanSeeOrders(Boolean(data?.permissions?.VER_PEDIDO));
+        setCanSeeSuppliers(Boolean(data?.permissions?.VER_PROVEEDOR));
+        setCanSeeConfectionists(Boolean(data?.permissions?.VER_CONFECCIONISTA));
+        setCanSeeStatusHistory(Boolean(data?.permissions?.VER_HISTORIAL_ESTADO));
       })
       .catch(() => {
         if (!active) return;
         setCanSeeClients(false);
         setCanSeeCatalog(false);
+        setCanSeeOrders(false);
+        setCanSeeSuppliers(false);
+        setCanSeeConfectionists(false);
+        setCanSeeStatusHistory(false);
       });
 
     return () => {
@@ -82,15 +110,36 @@ export const Navbar = () => {
     if (isAuthenticated && canSeeClients) {
       extra.push({ name: "Clientes", href: "/clients" });
     }
+    if (isAuthenticated && canSeeOrders) {
+      extra.push({ name: "Pedidos", href: "/orders" });
+    }
     if (isAuthenticated && canSeeCatalog) {
       extra.push({ name: "Catálogo", href: "/catalog" });
+    }
+    if (isAuthenticated && canSeeSuppliers) {
+      extra.push({ name: "Proveedores", href: "/suppliers" });
+    }
+    if (isAuthenticated && canSeeConfectionists) {
+      extra.push({ name: "Confeccionistas", href: "/confectionists" });
+    }
+    if (isAuthenticated && canSeeStatusHistory) {
+      extra.push({ name: "Historial", href: "/status-history" });
     }
     if (isAdmin) {
       extra.push({ name: "Administración", href: "/admin" });
     }
 
     return [...routes, ...extra];
-  }, [canSeeCatalog, canSeeClients, isAdmin, isAuthenticated]);
+  }, [
+    canSeeCatalog,
+    canSeeClients,
+    canSeeConfectionists,
+    canSeeOrders,
+    canSeeStatusHistory,
+    canSeeSuppliers,
+    isAdmin,
+    isAuthenticated,
+  ]);
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
@@ -130,6 +179,20 @@ export const Navbar = () => {
             </NavbarItem>
           ) : null}
 
+          {isAuthenticated && canSeeOrders ? (
+            <NavbarItem key="/orders">
+              <NextLink
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                )}
+                href="/orders"
+              >
+                Pedidos
+              </NextLink>
+            </NavbarItem>
+          ) : null}
+
           {isAuthenticated && canSeeCatalog ? (
             <NavbarItem key="/catalog">
               <NextLink
@@ -140,6 +203,48 @@ export const Navbar = () => {
                 href="/catalog"
               >
                 Catálogo
+              </NextLink>
+            </NavbarItem>
+          ) : null}
+
+          {isAuthenticated && canSeeSuppliers ? (
+            <NavbarItem key="/suppliers">
+              <NextLink
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                )}
+                href="/suppliers"
+              >
+                Proveedores
+              </NextLink>
+            </NavbarItem>
+          ) : null}
+
+          {isAuthenticated && canSeeConfectionists ? (
+            <NavbarItem key="/confectionists">
+              <NextLink
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                )}
+                href="/confectionists"
+              >
+                Confeccionistas
+              </NextLink>
+            </NavbarItem>
+          ) : null}
+
+          {isAuthenticated && canSeeStatusHistory ? (
+            <NavbarItem key="/status-history">
+              <NextLink
+                className={clsx(
+                  linkStyles({ color: "foreground" }),
+                  "data-[active=true]:text-primary data-[active=true]:font-medium",
+                )}
+                href="/status-history"
+              >
+                Historial
               </NextLink>
             </NavbarItem>
           ) : null}

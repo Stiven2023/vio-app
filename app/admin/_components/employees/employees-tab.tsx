@@ -6,6 +6,12 @@ import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
   Table,
   TableBody,
   TableCell,
@@ -13,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -165,30 +172,41 @@ export function EmployeesTab() {
                   {e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "-"}
                 </TableCell>
                 <TableCell>{e.isActive ? "Sí" : "No"}</TableCell>
-                <TableCell className="flex gap-2">
-                  <Button
-                    isDisabled={Boolean(deletingId)}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => {
-                      setEditing(e);
-                      setModalOpen(true);
-                    }}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    color="danger"
-                    isDisabled={Boolean(deletingId)}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => {
-                      setPendingDelete(e);
-                      setConfirmOpen(true);
-                    }}
-                  >
-                    Eliminar
-                  </Button>
+                <TableCell>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button
+                        isDisabled={Boolean(deletingId)}
+                        size="sm"
+                        variant="flat"
+                      >
+                        <BsThreeDotsVertical />
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="edit"
+                        startContent={<BsPencilSquare />}
+                        onPress={() => {
+                          setEditing(e);
+                          setModalOpen(true);
+                        }}
+                      >
+                        Editar
+                      </DropdownItem>
+                      <DropdownItem
+                        key="delete"
+                        className="text-danger"
+                        startContent={<BsTrash />}
+                        onPress={() => {
+                          setPendingDelete(e);
+                          setConfirmOpen(true);
+                        }}
+                      >
+                        Eliminar
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
                 </TableCell>
               </TableRow>
             )}

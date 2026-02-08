@@ -1,0 +1,385 @@
+import { eq, inArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+
+import { db } from "@/src/db";
+import {
+  inventoryItems,
+  orderItemMaterials,
+  orderItemPackaging,
+  orderItemSocks,
+  orderItems,
+  orders,
+} from "@/src/db/schema";
+import { requirePermission } from "@/src/utils/permission-middleware";
+import { rateLimit } from "@/src/utils/rate-limit";
+
+function asNumber(v: unknown) {
+  const n = Number(String(v ?? "0"));
+
+  return Number.isFinite(n) ? n : 0;
+}
+
+async function recalcOrderTotal(tx: any, orderId: string) {
+  const [{ subtotal }] = await tx
+    .select({
+      subtotal: sql<string>`coalesce(sum(coalesce(${orderItems.totalPrice}, ${orderItems.unitPrice} * ${orderItems.quantity})), 0)::text`,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
+  const [o] = await tx
+    .select({ discount: orders.discount })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  const discountPercent = Math.min(100, Math.max(0, asNumber(o?.discount)));
+  const subtotalNumber = asNumber(subtotal);
+  const totalAfterDiscount = subtotalNumber * (1 - discountPercent / 100);
+
+  await tx
+    .update(orders)
+    .set({ total: String(totalAfterDiscount) })
+    .where(eq(orders.id, orderId));
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const limited = rateLimit(request, {
+    key: "order-items:get-one",
+    limit: 200,
+    windowMs: 60_000,
+  });
+
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "VER_PEDIDO");
+
+  if (forbidden) return forbidden;
+
+  const { id } = await params;
+  const orderItemId = String(id ?? "").trim();
+
+  if (!orderItemId) return new Response("id required", { status: 400 });
+
+  const [item] = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.id, orderItemId))
+    .limit(1);
+
+  if (!item) return new Response("Not found", { status: 404 });
+
+  const packaging = await db
+    .select()
+    .from(orderItemPackaging)
+    .where(eq(orderItemPackaging.orderItemId, orderItemId));
+
+  const socks = await db
+    .select()
+    .from(orderItemSocks)
+    .where(eq(orderItemSocks.orderItemId, orderItemId));
+
+  const materials = await db
+    .select()
+    .from(orderItemMaterials)
+    .where(eq(orderItemMaterials.orderItemId, orderItemId));
+
+  return Response.json({ item, packaging, socks, materials });
+}
+
+function toNullableString(v: unknown) {
+  const s = String(v ?? "").trim();
+
+  return s ? s : null;
+}
+
+function toNullableNumericString(v: unknown) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v));
+
+  if (Number.isNaN(n)) return null;
+
+  return String(n);
+}
+
+function toPositiveInt(v: unknown) {
+  const n = Number(String(v));
+
+  if (!Number.isFinite(n)) return null;
+  const i = Math.floor(n);
+
+  return i > 0 ? i : null;
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const limited = rateLimit(request, {
+    key: "order-items:put",
+    limit: 200,
+    windowMs: 60_000,
+  });
+
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "EDITAR_PEDIDO");
+
+  if (forbidden) return forbidden;
+
+  const { id } = await params;
+  const body = (await request.json()) as any;
+
+  const orderItemId = String(id ?? "").trim();
+
+  if (!orderItemId) return new Response("id required", { status: 400 });
+
+  const [existing] = await db
+    .select({ id: orderItems.id, orderId: orderItems.orderId })
+    .from(orderItems)
+    .where(eq(orderItems.id, orderItemId))
+    .limit(1);
+
+  if (!existing) return new Response("Not found", { status: 404 });
+
+  const [orderRow] = await db
+    .select({ kind: orders.kind })
+    .from(orders)
+    .where(eq(orders.id, existing.orderId!))
+    .limit(1);
+
+  const kind = orderRow?.kind ?? "NUEVO";
+
+  const patch: Partial<typeof orderItems.$inferInsert> = {};
+
+  const qty = body.quantity !== undefined ? toPositiveInt(body.quantity) : null;
+
+  // COMPLETACION: solo se permite cambiar quantity y empaques
+  if (kind === "COMPLETACION") {
+    if (qty) patch.quantity = qty;
+
+    await db.transaction(async (tx) => {
+      if (Object.keys(patch).length > 0) {
+        await tx
+          .update(orderItems)
+          .set(patch)
+          .where(eq(orderItems.id, orderItemId));
+      }
+
+      if (Array.isArray(body.packaging)) {
+        await tx
+          .delete(orderItemPackaging)
+          .where(eq(orderItemPackaging.orderItemId, orderItemId));
+
+        const packaging = body.packaging as any[];
+
+        if (packaging.length > 0) {
+          await tx.insert(orderItemPackaging).values(
+            packaging.map((p) => ({
+              orderItemId,
+              mode: String(p.mode ?? "AGRUPADO"),
+              size: String(p.size ?? ""),
+              quantity:
+                p.quantity === undefined ? null : toPositiveInt(p.quantity),
+              personName: toNullableString(p.personName),
+              personNumber: toNullableString(p.personNumber),
+            })) as any,
+          );
+        }
+      }
+
+      await recalcOrderTotal(tx, existing.orderId!);
+    });
+
+    const [res] = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.id, orderItemId));
+
+    return Response.json(res);
+  }
+
+  if (qty) patch.quantity = qty;
+  if (body.productId !== undefined)
+    patch.productId = toNullableString(body.productId);
+  if (body.productPriceId !== undefined)
+    patch.productPriceId = toNullableString(body.productPriceId);
+  if (body.name !== undefined) patch.name = toNullableString(body.name);
+  if (body.unitPrice !== undefined)
+    patch.unitPrice = toNullableNumericString(body.unitPrice);
+  if (body.totalPrice !== undefined)
+    patch.totalPrice = toNullableNumericString(body.totalPrice);
+  if (body.observations !== undefined)
+    patch.observations = toNullableString(body.observations);
+  if (body.fabric !== undefined) patch.fabric = toNullableString(body.fabric);
+  if (body.imageUrl !== undefined)
+    patch.imageUrl = toNullableString(body.imageUrl);
+  if (body.screenPrint !== undefined)
+    patch.screenPrint = Boolean(body.screenPrint);
+  if (body.embroidery !== undefined)
+    patch.embroidery = Boolean(body.embroidery);
+  if (body.buttonhole !== undefined)
+    patch.buttonhole = Boolean(body.buttonhole);
+  if (body.snap !== undefined) patch.snap = Boolean(body.snap);
+  if (body.tag !== undefined) patch.tag = Boolean(body.tag);
+  if (body.flag !== undefined) patch.flag = Boolean(body.flag);
+  if (body.gender !== undefined) patch.gender = toNullableString(body.gender);
+  if (body.process !== undefined)
+    patch.process = toNullableString(body.process);
+  if (body.neckType !== undefined)
+    patch.neckType = toNullableString(body.neckType);
+  if (body.sleeve !== undefined) patch.sleeve = toNullableString(body.sleeve);
+  if (body.color !== undefined) patch.color = toNullableString(body.color);
+  if (body.requiresSocks !== undefined)
+    patch.requiresSocks = Boolean(body.requiresSocks);
+  if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
+  if (body.manufacturingId !== undefined)
+    patch.manufacturingId = toNullableString(body.manufacturingId);
+
+  const updated = await db.transaction(async (tx) => {
+    if (Object.keys(patch).length > 0) {
+      await tx
+        .update(orderItems)
+        .set(patch)
+        .where(eq(orderItems.id, orderItemId));
+    }
+
+    if (Array.isArray(body.packaging)) {
+      await tx
+        .delete(orderItemPackaging)
+        .where(eq(orderItemPackaging.orderItemId, orderItemId));
+
+      const packaging = body.packaging as any[];
+
+      if (packaging.length > 0) {
+        await tx.insert(orderItemPackaging).values(
+          packaging.map((p) => ({
+            orderItemId,
+            mode: String(p.mode ?? "AGRUPADO"),
+            size: String(p.size ?? ""),
+            quantity:
+              p.quantity === undefined ? null : toPositiveInt(p.quantity),
+            personName: toNullableString(p.personName),
+            personNumber: toNullableString(p.personNumber),
+          })) as any,
+        );
+      }
+    }
+
+    if (Array.isArray(body.socks)) {
+      await tx
+        .delete(orderItemSocks)
+        .where(eq(orderItemSocks.orderItemId, orderItemId));
+
+      const socks = body.socks as any[];
+
+      if (socks.length > 0) {
+        await tx.insert(orderItemSocks).values(
+          socks.map((s) => ({
+            orderItemId,
+            size: String(s.size ?? ""),
+            quantity:
+              s.quantity === undefined ? null : toPositiveInt(s.quantity),
+            description: toNullableString(s.description),
+            imageUrl: toNullableString(s.imageUrl),
+          })) as any,
+        );
+      }
+    }
+
+    if (Array.isArray(body.materials)) {
+      await tx
+        .delete(orderItemMaterials)
+        .where(eq(orderItemMaterials.orderItemId, orderItemId));
+
+      const materials = body.materials as any[];
+      const inventoryIds = materials
+        .map((m) => String(m.inventoryItemId ?? "").trim())
+        .filter(Boolean);
+
+      const existingInv = inventoryIds.length
+        ? await tx
+            .select({ id: inventoryItems.id })
+            .from(inventoryItems)
+            .where(inArray(inventoryItems.id, inventoryIds))
+        : [];
+
+      const existingSet = new Set(existingInv.map((r) => r.id));
+
+      if (materials.length > 0) {
+        await tx.insert(orderItemMaterials).values(
+          materials
+            .map((m) => ({
+              orderItemId,
+              inventoryItemId: String(m.inventoryItemId ?? "").trim(),
+              quantity: toNullableNumericString(m.quantity),
+              note: toNullableString(m.note),
+            }))
+            .filter((m) => existingSet.has(m.inventoryItemId)) as any,
+        );
+      }
+    }
+
+    const [res] = await tx
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.id, orderItemId))
+      .limit(1);
+
+    await recalcOrderTotal(tx, existing.orderId!);
+
+    return res;
+  });
+
+  return Response.json(updated);
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const limited = rateLimit(request, {
+    key: "order-items:delete",
+    limit: 120,
+    windowMs: 60_000,
+  });
+
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "EDITAR_PEDIDO");
+
+  if (forbidden) return forbidden;
+
+  const { id } = await params;
+  const orderItemId = String(id ?? "").trim();
+
+  if (!orderItemId) return new Response("id required", { status: 400 });
+
+  const [existing] = await db
+    .select({ id: orderItems.id, orderId: orderItems.orderId })
+    .from(orderItems)
+    .where(eq(orderItems.id, orderItemId))
+    .limit(1);
+
+  if (!existing) return new Response("Not found", { status: 404 });
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(orderItemMaterials)
+      .where(eq(orderItemMaterials.orderItemId, orderItemId));
+    await tx
+      .delete(orderItemPackaging)
+      .where(eq(orderItemPackaging.orderItemId, orderItemId));
+    await tx
+      .delete(orderItemSocks)
+      .where(eq(orderItemSocks.orderItemId, orderItemId));
+    await tx.delete(orderItems).where(eq(orderItems.id, orderItemId));
+
+    await recalcOrderTotal(tx, existing.orderId!);
+  });
+
+  return new Response(null, { status: 204 });
+}

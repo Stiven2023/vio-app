@@ -1,0 +1,376 @@
+"use client";
+
+import type { OrderKind, OrderListItem, Paginated } from "@/app/orders/_lib/types";
+
+import { useEffect, useMemo, useState } from "react";
+import NextLink from "next/link";
+import { toast } from "react-hot-toast";
+import { Button } from "@heroui/button";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
+import {
+  BsClockHistory,
+  BsPencilSquare,
+  BsPersonPlus,
+  BsThreeDotsVertical,
+  BsTrash,
+} from "react-icons/bs";
+
+import { OrderItemModal } from "./order-item-modal";
+import { ConfectionAssignModal } from "./confection-assign-modal";
+
+import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
+
+type OrderItemRow = {
+  id: string;
+  orderId: string | null;
+  name: string | null;
+  quantity: number;
+  unitPrice: string | null;
+  totalPrice: string | null;
+  confectionistName?: string | null;
+  createdAt: string | null;
+};
+
+type ColumnDef = {
+  key: string;
+  name: string;
+};
+
+export function OrderItemsPage({
+  orderId,
+  canEdit,
+  canAssign,
+}: {
+  orderId: string;
+  canEdit: boolean;
+  canAssign: boolean;
+}) {
+  const [order, setOrder] = useState<OrderListItem | null>(null);
+  const [loadingOrder, setLoadingOrder] = useState(false);
+
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const [itemsData, setItemsData] = useState<Paginated<OrderItemRow> | null>(
+    null,
+  );
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedValue, setSelectedValue] = useState<any | null>(null);
+
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    setLoadingOrder(true);
+    apiJson<OrderListItem>(`/api/orders/${orderId}`)
+      .then((o) => {
+        if (active) setOrder(o);
+      })
+      .catch(() => {
+        if (active) setOrder(null);
+      })
+      .finally(() => {
+        if (active) setLoadingOrder(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [orderId]);
+
+  const endpoint = useMemo(() => {
+    const sp = new URLSearchParams();
+
+    sp.set("orderId", orderId);
+    sp.set("page", String(page));
+    sp.set("pageSize", String(pageSize));
+
+    return `/api/orders/items?${sp.toString()}`;
+  }, [orderId, page]);
+
+  useEffect(() => {
+    let active = true;
+
+    setLoadingItems(true);
+    apiJson<Paginated<OrderItemRow>>(endpoint)
+      .then((res) => {
+        if (active) setItemsData(res);
+      })
+      .catch((e) => toast.error(getErrorMessage(e)))
+      .finally(() => {
+        if (active) setLoadingItems(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [endpoint, reloadKey]);
+
+  function refresh() {
+    setReloadKey((v) => v + 1);
+  }
+
+  const orderKind: OrderKind = order?.kind ?? "NUEVO";
+  const canCreate = canEdit && orderKind === "NUEVO";
+
+  const columns: ColumnDef[] = [
+    { key: "name", name: "Diseño" },
+    { key: "confectionist", name: "Confeccionista" },
+    { key: "quantity", name: "Cantidad" },
+    { key: "unitPrice", name: "Unit" },
+    { key: "totalPrice", name: "Total" },
+    { key: "actions", name: "Acciones" },
+  ];
+
+  // creación ahora es en página dedicada
+
+  async function openEdit(id: string) {
+    try {
+      const payload = await apiJson<any>(`/api/orders/items/${id}`);
+      setSelectedId(id);
+      setSelectedValue(payload);
+      setModalOpen(true);
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    }
+  }
+
+  async function onDelete(id: string) {
+    if (!canEdit) return;
+
+    const ok = window.confirm("¿Eliminar este diseño?");
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/orders/items/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      refresh();
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    }
+  }
+
+  function openAssign(id: string) {
+    if (!canAssign) return;
+    setAssigningId(id);
+    setAssignOpen(true);
+  }
+
+  const rows = itemsData?.items ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Diseños</h1>
+          <p className="text-sm text-default-500">
+            En COMPLETACIÓN/REFERENTE, los diseños se copian del pedido origen.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            as={NextLink}
+            href={`/orders/${orderId}/items/new`}
+            isDisabled={!canCreate}
+            variant="flat"
+          >
+            Nuevo diseño
+          </Button>
+          <Button as={NextLink} href="/orders" variant="flat">
+            Volver
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="flex items-center justify-between">
+          <div>
+            <div className="font-semibold">Información</div>
+            <div className="text-sm text-default-500">
+              Pedido: {orderId} {loadingOrder ? "(cargando...)" : null}
+              <span className="ml-2">Kind: {orderKind}</span>
+            </div>
+          </div>
+          <Button
+            isDisabled={loadingItems}
+            size="sm"
+            variant="flat"
+            onPress={refresh}
+          >
+            Refrescar
+          </Button>
+        </CardHeader>
+        <CardBody>
+          {orderKind === "COMPLETACION" ? (
+            <div className="text-sm text-default-500">
+              En COMPLETACIÓN el backend solo permite ajustar cantidad y empaque.
+            </div>
+          ) : null}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Lista</div>
+        </CardHeader>
+        <CardBody>
+          {loadingItems ? <div>Cargando...</div> : null}
+
+          <Table removeWrapper aria-label="Diseños">
+            <TableHeader columns={columns}>
+              {(column) => (
+                <TableColumn key={column.key}>{column.name}</TableColumn>
+              )}
+            </TableHeader>
+            <TableBody emptyContent="Sin diseños" items={rows}>
+              {(row) => (
+                <TableRow key={row.id}>
+                  {(columnKey) => {
+                    if (columnKey === "actions") {
+                      return (
+                        <TableCell>
+                          <Dropdown>
+                            <DropdownTrigger>
+                              <Button size="sm" variant="flat">
+                                <BsThreeDotsVertical />
+                              </Button>
+                            </DropdownTrigger>
+                            <DropdownMenu aria-label="Acciones">
+                              <DropdownItem
+                                key="history"
+                                as={NextLink}
+                                href={`/status-history?tab=items&orderItemId=${encodeURIComponent(
+                                  row.id,
+                                )}`}
+                                startContent={<BsClockHistory />}
+                              >
+                                Historial
+                              </DropdownItem>
+
+                              <DropdownItem
+                                key="assign"
+                                isDisabled={!canAssign}
+                                startContent={<BsPersonPlus />}
+                                onPress={() => openAssign(row.id)}
+                              >
+                                Asignar
+                              </DropdownItem>
+
+                              <DropdownItem
+                                key="edit"
+                                startContent={<BsPencilSquare />}
+                                onPress={() => openEdit(row.id)}
+                              >
+                                Editar
+                              </DropdownItem>
+
+                              <DropdownItem
+                                key="delete"
+                                className="text-danger"
+                                isDisabled={!canEdit}
+                                startContent={<BsTrash />}
+                                onPress={() => onDelete(row.id)}
+                              >
+                                Eliminar
+                              </DropdownItem>
+                            </DropdownMenu>
+                          </Dropdown>
+                        </TableCell>
+                      );
+                    }
+
+                    if (columnKey === "confectionist") {
+                      return (
+                        <TableCell className="text-default-600">
+                          {row.confectionistName ?? "-"}
+                        </TableCell>
+                      );
+                    }
+
+                    return (
+                      <TableCell>{String((row as any)[columnKey] ?? "-")}</TableCell>
+                    );
+                  }}
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          <div className="mt-3 flex items-center justify-between text-sm text-default-500">
+            <div>
+              Página {itemsData?.page ?? page} /{" "}
+              {itemsData
+                ? Math.max(1, Math.ceil(itemsData.total / itemsData.pageSize))
+                : 1}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                isDisabled={page <= 1 || loadingItems}
+                size="sm"
+                variant="flat"
+                onPress={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <Button
+                isDisabled={!itemsData?.hasNextPage || loadingItems}
+                size="sm"
+                variant="flat"
+                onPress={() => setPage((p) => p + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <OrderItemModal
+        initialValue={selectedValue ?? undefined}
+        isOpen={modalOpen}
+        mode={selectedId ? "edit" : "create"}
+        orderId={orderId}
+        orderKind={orderKind}
+        onOpenChange={setModalOpen}
+        onSaved={() => {
+          refresh();
+          apiJson<OrderListItem>(`/api/orders/${orderId}`)
+            .then(setOrder)
+            .catch(() => setOrder(null));
+        }}
+      />
+
+      <ConfectionAssignModal
+        isOpen={assignOpen}
+        orderItemId={assigningId}
+        onOpenChange={(open) => {
+          if (!open) setAssigningId(null);
+          setAssignOpen(open);
+        }}
+        onSaved={() => {
+          refresh();
+        }}
+      />
+    </div>
+  );
+}
