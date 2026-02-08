@@ -41,6 +41,7 @@ export function InventoryEntryModal({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const itemOptions = items;
   const supplierOptions = [
     { id: "__none", name: "Sin proveedor" },
     ...suppliers,
@@ -96,21 +97,26 @@ export function InventoryEntryModal({
           <Select
             isDisabled={submitting}
             label="Item"
-            selectedKeys={inventoryItemId ? [inventoryItemId] : []}
+            selectedKeys={
+              inventoryItemId ? new Set([inventoryItemId]) : new Set([])
+            }
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
               setInventoryItemId(first ? String(first) : "");
             }}
+            items={itemOptions}
           >
-            {items.map((it) => (
-              <SelectItem key={it.id}>{it.name}</SelectItem>
-            ))}
+            {(it) => (
+              <SelectItem key={it.id} textValue={it.name}>
+                {it.name}
+              </SelectItem>
+            )}
           </Select>
 
           <Select
             isDisabled={submitting}
             label="Proveedor (opcional)"
-            selectedKeys={supplierId ? [supplierId] : []}
+            selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
               setSupplierId(first === "__none" ? "" : first ? String(first) : "");

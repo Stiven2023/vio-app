@@ -190,22 +190,24 @@ export const Navbar = () => {
                 onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}
               >
                 <DropdownTrigger>
-                  <Tooltip content="Pedidos">
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      className={clsx(
-                        iconBase,
-                        isActive("/orders") ||
-                          isActive("/status-history") ||
-                          openGroup === "orders"
-                          ? activeClass
-                          : idleClass,
-                      )}
-                    >
-                      <BsClipboardData />
-                    </Button>
-                  </Tooltip>
+                  <span className="inline-flex">
+                    <Tooltip content="Pedidos">
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        className={clsx(
+                          iconBase,
+                          isActive("/orders") ||
+                            isActive("/status-history") ||
+                            openGroup === "orders"
+                            ? activeClass
+                            : idleClass,
+                        )}
+                      >
+                        <BsClipboardData />
+                      </Button>
+                    </Tooltip>
+                  </span>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="Pedidos">
                   {canSeeOrders ? (
@@ -239,22 +241,24 @@ export const Navbar = () => {
                 onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
               >
                 <DropdownTrigger>
-                  <Tooltip content="Inventario">
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      className={clsx(
-                        iconBase,
-                        isActive("/catalog") ||
-                          isActive("/suppliers") ||
-                          openGroup === "inventory"
-                          ? activeClass
-                          : idleClass,
-                      )}
-                    >
-                      <BsBoxSeam />
-                    </Button>
-                  </Tooltip>
+                  <span className="inline-flex">
+                    <Tooltip content="Inventario">
+                      <Button
+                        isIconOnly
+                        variant="light"
+                        className={clsx(
+                          iconBase,
+                          isActive("/catalog") ||
+                            isActive("/suppliers") ||
+                            openGroup === "inventory"
+                            ? activeClass
+                            : idleClass,
+                        )}
+                      >
+                        <BsBoxSeam />
+                      </Button>
+                    </Tooltip>
+                  </span>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="Inventario">
                   {canSeeCatalog ? (

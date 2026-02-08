@@ -290,15 +290,15 @@ export async function POST(request: Request) {
       );
     }
 
-        await createNotificationsForPermission("VER_DISEÑO", {
-          title: "Diseño creado",
-          message: `Se creó el diseño ${created?.name ?? "(sin nombre)"}.`,
-          href: `/orders/${orderId}/items/${created?.id}`,
-        });
-
     await recalcOrderTotal(tx, orderId);
 
     return oi;
+  });
+
+  await createNotificationsForPermission("VER_DISEÑO", {
+    title: "Diseño creado",
+    message: `Se creó el diseño ${created?.name ?? "(sin nombre)"}.`,
+    href: `/orders/${orderId}/items/${created?.id}`,
   });
 
   return Response.json(created, { status: 201 });

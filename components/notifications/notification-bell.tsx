@@ -176,7 +176,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
       >
         <BsBell />
         {unreadCount > 0 ? (
-          <span className="absolute -top-1 -right-1 min-w-[18px] rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+          <span className="absolute -top-1 -right-1 min-w-[18px] rounded-full bg-success px-1 text-[10px] font-semibold text-white shadow-sm">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         ) : null}
