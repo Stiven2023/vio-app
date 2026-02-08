@@ -15,7 +15,7 @@ export default async function RegisterEmployeePage() {
 
   const forbidden = await requirePermission(req, "CREAR_EMPLEADO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   return <RegisterEmployee />;
 }

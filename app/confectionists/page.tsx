@@ -16,7 +16,7 @@ export default async function ConfectionistsPage() {
 
   const forbidden = await requirePermission(req, "VER_CONFECCIONISTA");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canCreate = !(await requirePermission(req, "CREAR_CONFECCIONISTA"));
   const canEdit = !(await requirePermission(req, "EDITAR_CONFECCIONISTA"));

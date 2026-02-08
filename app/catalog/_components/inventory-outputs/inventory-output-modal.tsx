@@ -21,12 +21,14 @@ import { createInventoryOutputSchema } from "../../_lib/schemas";
 export function InventoryOutputModal({
   output,
   items,
+  itemsLoading,
   isOpen,
   onOpenChange,
   onSaved,
 }: {
   output: InventoryOutput | null;
   items: InventoryItem[];
+  itemsLoading: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -38,6 +40,8 @@ export function InventoryOutputModal({
   const [available, setAvailable] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const itemOptions = items;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -110,17 +114,23 @@ export function InventoryOutputModal({
         <ModalHeader>{output ? "Editar salida" : "Registrar salida"}</ModalHeader>
         <ModalBody>
           <Select
-            isDisabled={submitting}
+            isDisabled={submitting || itemsLoading}
+            isLoading={itemsLoading}
             label="Item"
-            selectedKeys={inventoryItemId ? [inventoryItemId] : []}
+            selectedKeys={
+              inventoryItemId ? new Set([inventoryItemId]) : new Set([])
+            }
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
               setInventoryItemId(first ? String(first) : "");
             }}
+            items={itemOptions}
           >
-            {items.map((it) => (
-              <SelectItem key={it.id}>{it.name}</SelectItem>
-            ))}
+            {(it) => (
+              <SelectItem key={it.id} textValue={it.name}>
+                {it.name}
+              </SelectItem>
+            )}
           </Select>
 
           <Input

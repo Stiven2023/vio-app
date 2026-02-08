@@ -57,15 +57,33 @@ export function OrderItemDetailPage({
 }) {
   const [payload, setPayload] = useState<OrderItemPayload | null>(null);
   const [order, setOrder] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiJson<OrderItemPayload>(`/api/orders/items/${itemId}`)
-      .then(setPayload)
-      .catch(() => setPayload(null));
+    let active = true;
 
-    apiJson<any>(`/api/orders/${orderId}`)
-      .then(setOrder)
-      .catch(() => setOrder(null));
+    setLoading(true);
+    Promise.all([
+      apiJson<OrderItemPayload>(`/api/orders/items/${itemId}`),
+      apiJson<any>(`/api/orders/${orderId}`),
+    ])
+      .then(([itemPayload, orderPayload]) => {
+        if (!active) return;
+        setPayload(itemPayload);
+        setOrder(orderPayload);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPayload(null);
+        setOrder(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [itemId, orderId]);
 
   const groupedSummary = useMemo(
@@ -78,11 +96,13 @@ export function OrderItemDetailPage({
       (p) => p.mode === "INDIVIDUAL",
     );
 
-    if (rows.length > 0) return rows;
+    if (rows.length > 0)
+      return rows.map((row, idx) => ({ ...row, __key: `ind-${idx}` }));
 
-    return groupedSummary.flatMap((row) =>
+    return groupedSummary.flatMap((row, idx) =>
       Array.from({ length: Math.max(1, Number(row.quantity) || 1) }).map(
-        () => ({
+        (_, subIdx) => ({
+          __key: `grp-${idx}-${subIdx}`,
           personName: "",
           personNumber: "",
           size: row.size,
@@ -93,6 +113,22 @@ export function OrderItemDetailPage({
   }, [groupedSummary, payload?.packaging]);
 
   const item = payload?.item ?? null;
+
+  if (loading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 w-64 rounded-medium bg-default-200" />
+        <div className="h-4 w-80 rounded-medium bg-default-100" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, idx) => (
+            <div key={idx} className="h-20 rounded-medium bg-default-100" />
+          ))}
+        </div>
+        <div className="h-56 rounded-medium bg-default-100" />
+        <div className="h-56 rounded-medium bg-default-100" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -299,8 +335,8 @@ export function OrderItemDetailPage({
               emptyContent="Sin registros"
               items={individualRows}
             >
-              {(row) => (
-                <TableRow key={`${row.personName}-${row.personNumber}-${row.size}`}>
+              {(row: any) => (
+                <TableRow key={row.__key}>
                   <TableCell>{row.personName ?? "-"}</TableCell>
                   <TableCell>{row.personNumber ?? "-"}</TableCell>
                   <TableCell>{row.size ?? "-"}</TableCell>

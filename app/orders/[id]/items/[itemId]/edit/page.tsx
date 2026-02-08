@@ -24,7 +24,7 @@ export default async function EditOrderItemRoute({
 
   const forbidden = await requirePermission(req, "EDITAR_PEDIDO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const { id, itemId } = await params;
   const orderId = String(id ?? "").trim();

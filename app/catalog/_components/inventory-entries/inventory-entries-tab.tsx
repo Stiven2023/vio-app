@@ -45,15 +45,43 @@ export function InventoryEntriesTab({
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
 
   useEffect(() => {
-    apiJson<{ items: InventoryItem[] }>(`/api/inventory-items?page=1&pageSize=600`)
-      .then((res) => setItems(res.items ?? []))
-      .catch(() => setItems([]));
+    let active = true;
 
+    setLoadingItems(true);
+    apiJson<{ items: InventoryItem[] }>(`/api/inventory-items?page=1&pageSize=600`)
+      .then((res) => {
+        if (!active) return;
+        setItems(res.items ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setItems([]);
+      })
+      .finally(() => {
+        if (active) setLoadingItems(false);
+      });
+
+    setLoadingSuppliers(true);
     apiJson<{ items: SupplierRow[] }>(`/api/suppliers?page=1&pageSize=600`)
-      .then((res) => setSuppliers(res.items ?? []))
-      .catch(() => setSuppliers([]));
+      .then((res) => {
+        if (!active) return;
+        setSuppliers(res.items ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setSuppliers([]);
+      })
+      .finally(() => {
+        if (active) setLoadingSuppliers(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const endpoint = useMemo(() => {
@@ -211,7 +239,9 @@ export function InventoryEntriesTab({
         entry={editing}
         isOpen={modalOpen}
         items={items}
+        itemsLoading={loadingItems}
         suppliers={suppliers}
+        suppliersLoading={loadingSuppliers}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />

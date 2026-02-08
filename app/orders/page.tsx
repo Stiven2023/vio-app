@@ -15,7 +15,7 @@ export default async function OrdersPage() {
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canCreate = !(await requirePermission(req, "CREAR_PEDIDO"));
   const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));

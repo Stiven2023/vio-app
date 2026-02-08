@@ -27,6 +27,7 @@ import {
   BsBoxSeam,
   BsClipboardData,
   BsClockHistory,
+  BsChevronDown,
   BsGear,
   BsPeople,
   BsPerson,
@@ -186,103 +187,121 @@ export const Navbar = () => {
         <ul className="hidden lg:flex gap-2 justify-start ml-2">
           {isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
             <NavbarItem key="nav-orders">
-              <Dropdown
-                onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}
-              >
-                <DropdownTrigger>
-                  <span className="inline-flex">
-                    <Tooltip content="Pedidos">
+              <div className="flex items-center gap-1">
+                <Tooltip content="Pedidos">
+                  <NextLink
+                    className={clsx(
+                      iconBase,
+                      isActive("/orders") || isActive("/status-history")
+                        ? activeClass
+                        : idleClass,
+                    )}
+                    href="/orders"
+                  >
+                    <BsClipboardData />
+                  </NextLink>
+                </Tooltip>
+                <Dropdown
+                  onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}
+                >
+                  <DropdownTrigger>
+                    <span className="inline-flex">
                       <Button
                         isIconOnly
                         variant="light"
                         className={clsx(
-                          iconBase,
-                          isActive("/orders") ||
-                            isActive("/status-history") ||
-                            openGroup === "orders"
-                            ? activeClass
-                            : idleClass,
+                          "h-9 w-7",
+                          openGroup === "orders" ? activeClass : idleClass,
                         )}
                       >
-                        <BsClipboardData />
+                        <BsChevronDown />
                       </Button>
-                    </Tooltip>
-                  </span>
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Pedidos">
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="orders"
-                      as={NextLink}
-                      href="/orders"
-                      startContent={<BsClipboardData />}
-                    >
-                      Pedidos
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeStatusHistory ? (
-                    <DropdownItem
-                      key="history"
-                      as={NextLink}
-                      href="/status-history"
-                      startContent={<BsClockHistory />}
-                    >
-                      Historial
-                    </DropdownItem>
-                  ) : null}
-                </DropdownMenu>
-              </Dropdown>
+                    </span>
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label="Pedidos">
+                    {canSeeOrders ? (
+                      <DropdownItem
+                        key="orders"
+                        as={NextLink}
+                        href="/orders"
+                        startContent={<BsClipboardData />}
+                      >
+                        Pedidos
+                      </DropdownItem>
+                    ) : null}
+                    {canSeeStatusHistory ? (
+                      <DropdownItem
+                        key="history"
+                        as={NextLink}
+                        href="/status-history"
+                        startContent={<BsClockHistory />}
+                      >
+                        Historial
+                      </DropdownItem>
+                    ) : null}
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
             </NavbarItem>
           ) : null}
 
           {isAuthenticated && (canSeeCatalog || canSeeSuppliers) ? (
             <NavbarItem key="nav-inventory">
-              <Dropdown
-                onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
-              >
-                <DropdownTrigger>
-                  <span className="inline-flex">
-                    <Tooltip content="Inventario">
+              <div className="flex items-center gap-1">
+                <Tooltip content="Inventario">
+                  <NextLink
+                    className={clsx(
+                      iconBase,
+                      isActive("/catalog") || isActive("/suppliers")
+                        ? activeClass
+                        : idleClass,
+                    )}
+                    href="/catalog"
+                  >
+                    <BsBoxSeam />
+                  </NextLink>
+                </Tooltip>
+                <Dropdown
+                  onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
+                >
+                  <DropdownTrigger>
+                    <span className="inline-flex">
                       <Button
                         isIconOnly
                         variant="light"
                         className={clsx(
-                          iconBase,
-                          isActive("/catalog") ||
-                            isActive("/suppliers") ||
-                            openGroup === "inventory"
-                            ? activeClass
-                            : idleClass,
+                          "h-9 w-7",
+                          openGroup === "inventory" ? activeClass : idleClass,
                         )}
                       >
-                        <BsBoxSeam />
+                        <BsChevronDown />
                       </Button>
-                    </Tooltip>
-                  </span>
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Inventario">
-                  {canSeeCatalog ? (
-                    <DropdownItem
-                      key="catalog"
-                      as={NextLink}
-                      href="/catalog"
-                      startContent={<BsBoxSeam />}
-                    >
-                      Catálogo
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeSuppliers ? (
-                    <DropdownItem
-                      key="suppliers"
-                      as={NextLink}
-                      href="/suppliers"
-                      startContent={<BsTruck />}
-                    >
-                      Proveedores
-                    </DropdownItem>
-                  ) : null}
-                </DropdownMenu>
-              </Dropdown>
+                    </span>
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label="Inventario">
+                    {canSeeCatalog ? (
+                      <DropdownItem
+                        key="catalog"
+                        as={NextLink}
+                        href="/catalog"
+                        startContent={<BsBoxSeam />}
+                      >
+                        Catálogo
+                      </DropdownItem>
+                    ) : null}
+                    {canSeeSuppliers ? (
+                      <DropdownItem
+                        key="suppliers"
+                        as={NextLink}
+                        href="/suppliers"
+                        startContent={<BsTruck />}
+                      >
+                        Proveedores
+                      </DropdownItem>
+                    ) : null}
+                  </DropdownMenu>
+                </Dropdown>
+              </div>
             </NavbarItem>
           ) : null}
 

@@ -20,7 +20,7 @@ export default async function PrefacturaRoute({
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const { id } = await params;
 

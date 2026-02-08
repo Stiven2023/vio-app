@@ -13,7 +13,7 @@ export default async function AdminPage() {
   const role =
     "role" in payload ? (payload as { role?: string }).role : undefined;
 
-  if (role !== "ADMINISTRADOR") redirect("/dashboard");
+  if (role !== "ADMINISTRADOR") redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

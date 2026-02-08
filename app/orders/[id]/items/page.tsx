@@ -20,7 +20,7 @@ export default async function OrderItemsRoute({
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));
   const canAssign = !(await requirePermission(req, "ASIGNAR_CONFECCIONISTA"));

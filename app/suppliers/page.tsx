@@ -16,7 +16,7 @@ export default async function SuppliersPage() {
 
   const forbidden = await requirePermission(req, "VER_PROVEEDOR");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canCreate = !(await requirePermission(req, "CREAR_PROVEEDOR"));
   const canEdit = !(await requirePermission(req, "EDITAR_PROVEEDOR"));

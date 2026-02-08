@@ -15,7 +15,7 @@ export default async function RegisterUserPage() {
 
   const forbidden = await requirePermission(req, "CREAR_USUARIO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   return <RegisterUser />;
 }

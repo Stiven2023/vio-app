@@ -42,11 +42,28 @@ export function InventoryOutputsTab({
 }) {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
+    setLoadingItems(true);
     apiJson<{ items: InventoryItem[] }>(`/api/inventory-items?page=1&pageSize=600`)
-      .then((res) => setItems(res.items ?? []))
-      .catch(() => setItems([]));
+      .then((res) => {
+        if (!active) return;
+        setItems(res.items ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setItems([]);
+      })
+      .finally(() => {
+        if (active) setLoadingItems(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const endpoint = useMemo(() => {
@@ -206,6 +223,7 @@ export function InventoryOutputsTab({
         output={editing}
         isOpen={modalOpen}
         items={items}
+        itemsLoading={loadingItems}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />

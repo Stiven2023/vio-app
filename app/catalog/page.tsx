@@ -15,7 +15,7 @@ export default async function CatalogPage() {
 
   const forbidden = await requirePermission(req, "VER_INVENTARIO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canCreateItem = !(await requirePermission(req, "CREAR_ITEM_INVENTARIO"));
   const canEditItem = !(await requirePermission(req, "EDITAR_ITEM_INVENTARIO"));

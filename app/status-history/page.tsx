@@ -16,7 +16,7 @@ export default async function StatusHistoryPage() {
 
   const forbidden = await requirePermission(req, "VER_HISTORIAL_ESTADO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

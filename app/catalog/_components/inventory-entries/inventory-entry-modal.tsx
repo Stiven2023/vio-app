@@ -23,14 +23,18 @@ type SupplierRow = { id: string; name: string };
 export function InventoryEntryModal({
   entry,
   items,
+  itemsLoading,
   suppliers,
+  suppliersLoading,
   isOpen,
   onOpenChange,
   onSaved,
 }: {
   entry: InventoryEntry | null;
   items: InventoryItem[];
+  itemsLoading: boolean;
   suppliers: SupplierRow[];
+  suppliersLoading: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -95,7 +99,8 @@ export function InventoryEntryModal({
         <ModalHeader>{entry ? "Editar entrada" : "Registrar entrada"}</ModalHeader>
         <ModalBody>
           <Select
-            isDisabled={submitting}
+            isDisabled={submitting || itemsLoading}
+            isLoading={itemsLoading}
             label="Item"
             selectedKeys={
               inventoryItemId ? new Set([inventoryItemId]) : new Set([])
@@ -114,7 +119,8 @@ export function InventoryEntryModal({
           </Select>
 
           <Select
-            isDisabled={submitting}
+            isDisabled={submitting || suppliersLoading}
+            isLoading={suppliersLoading}
             label="Proveedor (opcional)"
             selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
             onSelectionChange={(keys) => {

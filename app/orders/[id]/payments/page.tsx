@@ -20,7 +20,7 @@ export default async function OrderPaymentsRoute({
 
   const forbidden = await requirePermission(req, "VER_PAGO");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canCreate = !(await requirePermission(req, "CREAR_PAGO"));
   const canEdit = !(await requirePermission(req, "EDITAR_PAGO"));

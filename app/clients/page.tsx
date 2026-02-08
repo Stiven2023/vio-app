@@ -15,7 +15,7 @@ export default async function ClientsPage() {
 
   const forbidden = await requirePermission(req, "VER_CLIENTE");
 
-  if (forbidden) redirect("/dashboard");
+  if (forbidden) redirect("/unauthorized");
 
   const canCreate = !(await requirePermission(req, "CREAR_CLIENTE"));
   const canEdit = !(await requirePermission(req, "EDITAR_CLIENTE"));
