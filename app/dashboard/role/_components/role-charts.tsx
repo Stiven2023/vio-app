@@ -31,6 +31,14 @@ const LegendBase = Legend as unknown as ComponentType<any>;
 const LineBase = Line as unknown as ComponentType<any>;
 const BarBase = Bar as unknown as ComponentType<any>;
 
+const ROLE_CHART_COLORS = {
+  sold: "#0F766E",
+  paid: "#F59E0B",
+  orders: "#2563EB",
+  status: "#8B5CF6",
+  grid: "#D1FAE5",
+};
+
 type ChartPoint = {
   day: string;
   sold: number;
@@ -153,7 +161,7 @@ export function RoleCharts({ role }: { role: string }) {
           <CardBody className="h-72">
             <ResponsiveContainerBase width="100%" height="100%">
               <LineChartBase data={series} margin={{ left: 8, right: 8 }}>
-                <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
+                <CartesianGridBase strokeDasharray="3 3" stroke={ROLE_CHART_COLORS.grid} />
                 <XAxisBase
                   dataKey="day"
                   tickFormatter={(v: string) => v.slice(-2)}
@@ -172,14 +180,14 @@ export function RoleCharts({ role }: { role: string }) {
                   type="monotone"
                   dataKey="sold"
                   name="Vendido"
-                  stroke="var(--viomar-primary)"
+                  stroke={ROLE_CHART_COLORS.sold}
                   strokeWidth={2}
                 />
                 <LineBase
                   type="monotone"
                   dataKey="paid"
                   name="Abonos"
-                  stroke="var(--viomar-primary-dark)"
+                  stroke={ROLE_CHART_COLORS.paid}
                   strokeWidth={2}
                 />
               </LineChartBase>
@@ -198,7 +206,7 @@ export function RoleCharts({ role }: { role: string }) {
             <CardBody className="h-72">
               <ResponsiveContainerBase width="100%" height="100%">
                 <BarChartBase data={status} margin={{ left: 8, right: 8 }}>
-                  <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
+                  <CartesianGridBase strokeDasharray="3 3" stroke={ROLE_CHART_COLORS.grid} />
                   <XAxisBase
                     dataKey="status"
                     tickFormatter={(v: string) => v.slice(0, 6)}
@@ -214,7 +222,7 @@ export function RoleCharts({ role }: { role: string }) {
                   />
                   <TooltipBase />
                   <LegendBase />
-                  <BarBase dataKey="count" name="Pedidos" fill="var(--viomar-primary-light)" />
+                  <BarBase dataKey="count" name="Pedidos" fill={ROLE_CHART_COLORS.status} />
                 </BarChartBase>
               </ResponsiveContainerBase>
             </CardBody>
@@ -231,7 +239,7 @@ export function RoleCharts({ role }: { role: string }) {
             <CardBody className="h-72">
               <ResponsiveContainerBase width="100%" height="100%">
                 <BarChartBase data={series} margin={{ left: 8, right: 8 }}>
-                  <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
+                  <CartesianGridBase strokeDasharray="3 3" stroke={ROLE_CHART_COLORS.grid} />
                   <XAxisBase
                     dataKey="day"
                     tickFormatter={(v: string) => v.slice(-2)}
@@ -247,7 +255,7 @@ export function RoleCharts({ role }: { role: string }) {
                   />
                   <TooltipBase />
                   <LegendBase />
-                  <BarBase dataKey="orders" name="Pedidos" fill="var(--viomar-primary-light)" />
+                  <BarBase dataKey="orders" name="Pedidos" fill={ROLE_CHART_COLORS.orders} />
                 </BarChartBase>
               </ResponsiveContainerBase>
             </CardBody>

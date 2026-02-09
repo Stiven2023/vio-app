@@ -72,8 +72,11 @@ export function addImageToCell(
     size * 0.75,
   );
 
+  const cell = worksheet.getCell(rowNumber, colNumber);
+  cell.alignment = { vertical: "middle", horizontal: "center" };
+
   worksheet.addImage(imageId, {
-    tl: { col: colNumber - 1, row: rowNumber - 1 },
+    tl: { col: colNumber - 1 + 0.15, row: rowNumber - 1 + 0.1 },
     ext: { width: size, height: size },
   });
 }

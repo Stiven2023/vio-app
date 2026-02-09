@@ -25,6 +25,7 @@ export type OrderListItem = {
   kind?: OrderKind;
   sourceOrderId?: string | null;
   sourceOrderCode?: string | null;
+  createdBy?: string | null;
   clientId: string | null;
   clientName: string | null;
   type: OrderType;

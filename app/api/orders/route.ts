@@ -19,6 +19,7 @@ import {
 import {
   getEmployeeIdFromRequest,
   getUserIdFromRequest,
+  getRoleFromRequest,
 } from "@/src/utils/auth-middleware";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
@@ -89,6 +90,42 @@ async function resolveEmployeeId(request: Request) {
     .limit(1);
 
   return row?.id ?? null;
+}
+
+async function resolveAdvisorFilter(request: Request) {
+  const role = getRoleFromRequest(request);
+
+  if (role !== "ASESOR") return null;
+
+  const employeeId = await resolveEmployeeId(request);
+
+  if (!employeeId) return "forbidden";
+
+  return employeeId;
+}
+
+async function assertAdvisorOwnsOrder(request: Request, orderId: string) {
+  const advisorScope = await resolveAdvisorFilter(request);
+
+  if (advisorScope === "forbidden") {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  if (!advisorScope) return null;
+
+  const [row] = await db
+    .select({ createdBy: orders.createdBy })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!row) return new Response("Not found", { status: 404 });
+
+  if (row.createdBy !== advisorScope) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  return null;
 }
 
 async function generateOrderCode(tx: any, type: "VN" | "VI"): Promise<string> {
@@ -162,15 +199,22 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
+  const advisorScope = await resolveAdvisorFilter(request);
+
+  if (advisorScope === "forbidden") {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const { searchParams } = new URL(request.url);
   const { page, pageSize, offset } = parsePagination(searchParams);
   const q = String(searchParams.get("q") ?? "").trim();
   const status = String(searchParams.get("status") ?? "").trim();
 
-  const filters = [
+  const filters: Array<ReturnType<typeof ilike> | ReturnType<typeof eq>> = [
     q ? ilike(orders.orderCode, `%${q}%`) : undefined,
     status && status !== "all" ? eq(orders.status, status as any) : undefined,
-  ].filter(Boolean) as Array<ReturnType<typeof ilike>>;
+    advisorScope ? eq(orders.createdBy, advisorScope) : undefined,
+  ].filter(Boolean) as Array<ReturnType<typeof ilike> | ReturnType<typeof eq>>;
 
   const where = filters.length ? and(...filters) : undefined;
 
@@ -190,6 +234,7 @@ export async function GET(request: Request) {
       sourceOrderCode: sql<
         string | null
       >`(select o2.order_code from orders o2 where o2.id = ${(orders as any).sourceOrderId})`,
+      createdBy: orders.createdBy,
       clientId: orders.clientId,
       clientName: clients.name,
       type: orders.type,
@@ -568,6 +613,10 @@ export async function PUT(request: Request) {
 
   if (forbiddenEdit) return forbiddenEdit;
 
+  const advisorForbidden = await assertAdvisorOwnsOrder(request, String(id));
+
+  if (advisorForbidden) return advisorForbidden;
+
   if (status !== undefined) {
     const forbiddenStatus = await requirePermission(
       request,
@@ -780,6 +829,10 @@ export async function DELETE(request: Request) {
   if (!id) {
     return new Response("Order ID required", { status: 400 });
   }
+
+  const advisorForbidden = await assertAdvisorOwnsOrder(request, String(id));
+
+  if (advisorForbidden) return advisorForbidden;
 
   const deleted = await db.transaction(async (tx) => {
     const items = await tx

@@ -67,12 +67,16 @@ export function OrdersTab({
   canDelete,
   canChangeStatus,
   canSeeHistory,
+  isAdvisor,
+  advisorEmployeeId,
 }: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
   canChangeStatus: boolean;
   canSeeHistory: boolean;
+  isAdvisor: boolean;
+  advisorEmployeeId: string | null;
 }) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
@@ -112,6 +116,12 @@ export function OrdersTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<OrderListItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const canAccessOrder = (order: OrderListItem) => {
+    if (!isAdvisor) return true;
+    if (!advisorEmployeeId) return false;
+    return order.createdBy === advisorEmployeeId;
+  };
 
   useEffect(() => {
     let active = true;
@@ -319,45 +329,53 @@ export function OrdersTab({
                         Diseños
                       </DropdownItem>
 
-                      <DropdownItem
+                      {canAccessOrder(o) ? (
+                        <DropdownItem
                         key="detail"
                         as={NextLink}
                         href={`/orders/${o.id}/detail`}
                         startContent={<BsEye />}
-                      >
-                        Ver detalle
-                      </DropdownItem>
+                        >
+                          Ver detalle
+                        </DropdownItem>
+                      ) : null}
 
-                      <DropdownItem
+                      {canAccessOrder(o) ? (
+                        <DropdownItem
                         key="prefactura"
                         as={NextLink}
                         href={`/orders/${o.id}/prefactura`}
                         startContent={<BsReceipt />}
-                      >
-                        Prefactura
-                      </DropdownItem>
+                        >
+                          Prefactura
+                        </DropdownItem>
+                      ) : null}
 
-                      <DropdownItem
+                      {canAccessOrder(o) ? (
+                        <DropdownItem
                         key="payments"
                         as={NextLink}
                         href={`/orders/${o.id}/payments`}
                         startContent={<BsCreditCard />}
-                      >
-                        Pagos
-                      </DropdownItem>
+                        >
+                          Pagos
+                        </DropdownItem>
+                      ) : null}
 
-                      <DropdownItem
+                      {canAccessOrder(o) ? (
+                        <DropdownItem
                         key="history"
                         as={NextLink}
                         href={`/status-history?tab=orders&orderId=${encodeURIComponent(
                           o.id,
                         )}`}
                         startContent={<BsClockHistory />}
-                      >
-                        Historial
-                      </DropdownItem>
+                        >
+                          Historial
+                        </DropdownItem>
+                      ) : null}
 
-                      {canChangeStatus ? (
+                      {canChangeStatus && canAccessOrder(o) ? (
                         <DropdownItem
                           key="status"
                           startContent={<BsArrowRepeat />}
@@ -370,7 +388,7 @@ export function OrdersTab({
                         </DropdownItem>
                       ) : null}
 
-                      {canEdit ? (
+                      {canEdit && canAccessOrder(o) ? (
                         <DropdownItem
                           key="edit"
                           startContent={<BsPencilSquare />}
@@ -383,7 +401,7 @@ export function OrdersTab({
                         </DropdownItem>
                       ) : null}
 
-                      {canDelete ? (
+                      {canDelete && canAccessOrder(o) ? (
                         <DropdownItem
                           key="delete"
                           className="text-danger"

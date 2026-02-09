@@ -13,6 +13,7 @@ import {
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
+  getRoleFromRequest,
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
@@ -92,6 +93,30 @@ async function resolveEmployeeId(request: Request) {
   return row?.id ?? null;
 }
 
+async function assertAdvisorOrderAccess(request: Request, orderId: string) {
+  const role = getRoleFromRequest(request);
+
+  if (role !== "ASESOR") return null;
+
+  const employeeId = await resolveEmployeeId(request);
+
+  if (!employeeId) return new Response("Forbidden", { status: 403 });
+
+  const [orderRow] = await db
+    .select({ createdBy: orders.createdBy })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!orderRow) return new Response("Not found", { status: 404 });
+
+  if (orderRow.createdBy !== employeeId) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  return null;
+}
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "order-items:get",
@@ -112,6 +137,10 @@ export async function GET(request: Request) {
   if (!orderId) {
     return new Response("orderId required", { status: 400 });
   }
+
+  const advisorForbidden = await assertAdvisorOrderAccess(request, orderId);
+
+  if (advisorForbidden) return advisorForbidden;
 
   const where = and(eq(orderItems.orderId, orderId));
 
@@ -185,6 +214,10 @@ export async function POST(request: Request) {
   const orderId = String(body.orderId ?? "").trim();
 
   if (!orderId) return new Response("orderId required", { status: 400 });
+
+  const advisorForbidden = await assertAdvisorOrderAccess(request, orderId);
+
+  if (advisorForbidden) return advisorForbidden;
 
   const qty = toPositiveInt(body.quantity);
 

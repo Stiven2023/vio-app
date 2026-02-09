@@ -3,11 +3,21 @@ import { redirect } from "next/navigation";
 
 import { OrdersTab } from "@/app/orders/_components/orders-tab";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import { verifyAuthToken } from "@/src/utils/auth";
 
 export default async function OrdersPage() {
   const token = (await cookies()).get("auth_token")?.value;
 
   if (!token) redirect("/login");
+
+  const payload = verifyAuthToken(token);
+  const role =
+    payload && typeof payload === "object" ? (payload as { role?: unknown }).role : null;
+  const employeeId =
+    payload && typeof payload === "object"
+      ? (payload as { employeeId?: unknown }).employeeId
+      : null;
+  const isAdvisor = role === "ASESOR";
 
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),
@@ -37,6 +47,8 @@ export default async function OrdersPage() {
           canDelete={canDelete}
           canEdit={canEdit}
           canSeeHistory={canSeeHistory}
+          advisorEmployeeId={typeof employeeId === "string" ? employeeId : null}
+          isAdvisor={isAdvisor}
         />
       </div>
     </div>

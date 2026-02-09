@@ -15,6 +15,7 @@ import {
   orderPayments,
   orders,
 } from "@/src/db/schema";
+import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import {
@@ -106,6 +107,60 @@ function applyRowBorder(
 ) {
   for (let col = fromCol; col <= toCol; col += 1) {
     applyThinBorder(worksheet.getCell(rowNumber, col));
+  }
+}
+
+function styleSectionTitle(
+  worksheet: ExcelJS.Worksheet,
+  rowNumber: number,
+  fromCol: number,
+  toCol: number,
+  title: string,
+) {
+  worksheet.mergeCells(rowNumber, fromCol, rowNumber, toCol);
+  const cell = worksheet.getCell(rowNumber, fromCol);
+  cell.value = title;
+  cell.font = { bold: true };
+  cell.alignment = { vertical: "middle", horizontal: "left" };
+  applyRowBorder(worksheet, rowNumber, fromCol, toCol);
+}
+
+function styleTableHeader(
+  worksheet: ExcelJS.Worksheet,
+  rowNumber: number,
+  fromCol: number,
+  toCol: number,
+) {
+  const row = worksheet.getRow(rowNumber);
+  row.font = { bold: true };
+  for (let col = fromCol; col <= toCol; col += 1) {
+    const cell = worksheet.getCell(rowNumber, col);
+    cell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF3F4F6" },
+    };
+    cell.alignment = { vertical: "middle", horizontal: "center" };
+  }
+  applyRowBorder(worksheet, rowNumber, fromCol, toCol);
+}
+
+function setCenteredCellValue(cell: ExcelJS.Cell, value: string) {
+  cell.value = value;
+  cell.alignment = { vertical: "middle", horizontal: "center" };
+}
+
+function centerRowCells(
+  worksheet: ExcelJS.Worksheet,
+  rowNumber: number,
+  fromCol: number,
+  toCol: number,
+) {
+  for (let col = fromCol; col <= toCol; col += 1) {
+    worksheet.getCell(rowNumber, col).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
   }
 }
 
@@ -217,6 +272,7 @@ export async function GET(
       orderCode: orders.orderCode,
       kind: (orders as any).kind,
       sourceOrderId: (orders as any).sourceOrderId,
+      createdBy: orders.createdBy,
       clientId: orders.clientId,
       clientName: clients.name,
       clientNit: clients.identification,
@@ -234,6 +290,13 @@ export async function GET(
     .limit(1);
 
   if (!orderRow) return new Response("Not found", { status: 404 });
+
+  const role = getRoleFromRequest(request);
+  const employeeId = getEmployeeIdFromRequest(request);
+
+  if (role === "ASESOR" && (!employeeId || orderRow.createdBy !== employeeId)) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   const items = await db
     .select({
@@ -356,7 +419,6 @@ export async function GET(
   const stickerPath = path.join(
     process.cwd(),
     "public",
-    "assets",
     "STICKER VIOMAR.png",
   );
   const stickerBuffer = await readFile(stickerPath).catch(() => null);
@@ -386,10 +448,7 @@ export async function GET(
   let rowPointer = applyDocumentHeader(resumenSheet, headerInfo, stickerImageId);
   rowPointer += 1;
 
-  resumenSheet.mergeCells(rowPointer, 1, rowPointer, 5);
-  resumenSheet.getCell(rowPointer, 1).value = "Totales";
-  resumenSheet.getCell(rowPointer, 1).font = { bold: true };
-  applyRowBorder(resumenSheet, rowPointer, 1, 5);
+  styleSectionTitle(resumenSheet, rowPointer, 1, 5, "Totales");
   rowPointer += 1;
 
   const resumenRows = [
@@ -408,23 +467,28 @@ export async function GET(
     resumenSheet.getCell(rowPointer, 1).font = { bold: true };
     resumenSheet.getCell(rowPointer, 2).value = value;
     resumenSheet.mergeCells(rowPointer, 2, rowPointer, 5);
+    resumenSheet.getCell(rowPointer, 2).alignment = {
+      vertical: "middle",
+      horizontal: "right",
+    };
     applyRowBorder(resumenSheet, rowPointer, 1, 5);
     rowPointer += 1;
   }
 
   const prefacturaSheet = workbook.addWorksheet("Prefactura");
   rowPointer = applyDocumentHeader(prefacturaSheet, headerInfo, stickerImageId);
+  prefacturaSheet.getColumn(1).width = 28;
+  prefacturaSheet.getColumn(2).width = 12;
+  prefacturaSheet.getColumn(3).width = 16;
+  prefacturaSheet.getColumn(4).width = 16;
+  prefacturaSheet.getColumn(5).width = 20;
   rowPointer += 1;
 
-  prefacturaSheet.mergeCells(rowPointer, 1, rowPointer, 5);
-  prefacturaSheet.getCell(rowPointer, 1).value = "Detalles de disenos";
-  prefacturaSheet.getCell(rowPointer, 1).font = { bold: true };
-  applyRowBorder(prefacturaSheet, rowPointer, 1, 5);
+  styleSectionTitle(prefacturaSheet, rowPointer, 1, 5, "DETALLE DE PRODUCTOS");
   rowPointer += 1;
 
   prefacturaSheet.addRow(["Diseno", "Cantidad", "Unitario", "Total", "Imagen"]);
-  applyRowBorder(prefacturaSheet, rowPointer, 1, 5);
-  prefacturaSheet.getRow(rowPointer).font = { bold: true };
+  styleTableHeader(prefacturaSheet, rowPointer, 1, 5);
   rowPointer += 1;
 
   for (const line of items) {
@@ -436,6 +500,7 @@ export async function GET(
       "",
     ]);
     applyRowBorder(prefacturaSheet, row.number, 1, 5);
+    centerRowCells(prefacturaSheet, row.number, 1, 5);
     rowPointer = row.number + 1;
 
     if (line.imageUrl) {
@@ -450,18 +515,15 @@ export async function GET(
         });
         addImageToCell(prefacturaSheet, imageId, row.number, 5, 80);
       } else {
-        row.getCell(5).value = "Imagen no disponible";
+        setCenteredCellValue(row.getCell(5), "Imagen no disponible");
       }
     } else {
-      row.getCell(5).value = "Imagen no disponible";
+      setCenteredCellValue(row.getCell(5), "Imagen no disponible");
     }
   }
 
   rowPointer += 1;
-  prefacturaSheet.mergeCells(rowPointer, 1, rowPointer, 5);
-  prefacturaSheet.getCell(rowPointer, 1).value = "Resumen";
-  prefacturaSheet.getCell(rowPointer, 1).font = { bold: true };
-  applyRowBorder(prefacturaSheet, rowPointer, 1, 5);
+  styleSectionTitle(prefacturaSheet, rowPointer, 1, 5, "RESUMEN FINANCIERO");
   rowPointer += 1;
 
   const resumenPrefactura = [
@@ -476,24 +538,28 @@ export async function GET(
   ];
 
   for (const [label, value] of resumenPrefactura) {
+    const isEmphasis = label === "Total" || label === "Saldo";
     prefacturaSheet.getCell(rowPointer, 1).value = label;
     prefacturaSheet.getCell(rowPointer, 1).font = { bold: true };
     prefacturaSheet.getCell(rowPointer, 2).value = value;
     prefacturaSheet.mergeCells(rowPointer, 2, rowPointer, 5);
+    prefacturaSheet.getCell(rowPointer, 2).alignment = {
+      vertical: "middle",
+      horizontal: "right",
+    };
+    if (isEmphasis) {
+      prefacturaSheet.getCell(rowPointer, 2).font = { bold: true };
+    }
     applyRowBorder(prefacturaSheet, rowPointer, 1, 5);
     rowPointer += 1;
   }
 
   rowPointer += 1;
-  prefacturaSheet.mergeCells(rowPointer, 1, rowPointer, 5);
-  prefacturaSheet.getCell(rowPointer, 1).value = "Abonos";
-  prefacturaSheet.getCell(rowPointer, 1).font = { bold: true };
-  applyRowBorder(prefacturaSheet, rowPointer, 1, 5);
+  styleSectionTitle(prefacturaSheet, rowPointer, 1, 5, "HISTORIAL DE ABONOS");
   rowPointer += 1;
 
   prefacturaSheet.addRow(["Fecha", "Metodo", "Estado", "Monto", "Soporte"]);
-  prefacturaSheet.getRow(rowPointer).font = { bold: true };
-  applyRowBorder(prefacturaSheet, rowPointer, 1, 5);
+  styleTableHeader(prefacturaSheet, rowPointer, 1, 5);
   rowPointer += 1;
 
   for (const payment of payments) {
@@ -505,6 +571,7 @@ export async function GET(
       "",
     ]);
     applyRowBorder(prefacturaSheet, row.number, 1, 5);
+    centerRowCells(prefacturaSheet, row.number, 1, 5);
     rowPointer = row.number + 1;
 
     if (payment.proofImageUrl) {
@@ -519,10 +586,10 @@ export async function GET(
         });
         addImageToCell(prefacturaSheet, imageId, row.number, 5, 80);
       } else {
-        row.getCell(5).value = "Imagen no disponible";
+        setCenteredCellValue(row.getCell(5), "Imagen no disponible");
       }
     } else {
-      row.getCell(5).value = "Imagen no disponible";
+      setCenteredCellValue(row.getCell(5), "Imagen no disponible");
     }
   }
 

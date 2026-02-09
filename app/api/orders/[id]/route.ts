@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { clients, orders } from "@/src/db/schema";
+import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -21,6 +22,12 @@ export async function GET(
 
   if (forbidden) return forbidden;
 
+  const role = getRoleFromRequest(request);
+  const employeeId = getEmployeeIdFromRequest(request);
+  if (role === "ASESOR" && !employeeId) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const { id } = await params;
   const orderId = String(id ?? "").trim();
 
@@ -35,6 +42,7 @@ export async function GET(
       sourceOrderCode: sql<
         string | null
       >`(select o2.order_code from orders o2 where o2.id = ${(orders as any).sourceOrderId})`,
+      createdBy: orders.createdBy,
       clientId: orders.clientId,
       clientName: clients.name,
       type: orders.type,
@@ -52,6 +60,10 @@ export async function GET(
     .limit(1);
 
   if (!row) return new Response("Not found", { status: 404 });
+
+  if (role === "ASESOR" && row.createdBy !== employeeId) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
   return Response.json(row);
 }

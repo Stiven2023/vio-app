@@ -173,6 +173,37 @@ async function resolveEmployeeId(request: Request) {
   return row?.id ?? null;
 }
 
+async function assertAdvisorOrderAccess(request: Request, orderId: string) {
+  const role = getRoleFromRequest(request);
+
+  if (role !== "ASESOR") return null;
+
+  const employeeId = await resolveEmployeeId(request);
+
+  if (!employeeId) return new Response("Forbidden", { status: 403 });
+
+  const [orderRow] = await db
+    .select({ createdBy: orders.createdBy })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!orderRow) return new Response("Not found", { status: 404 });
+
+  if (orderRow.createdBy !== employeeId) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  return null;
+}
+
+  const advisorForbidden = await assertAdvisorOrderAccess(
+    request,
+    String(itemRow.item.orderId ?? ""),
+  );
+
+  if (advisorForbidden) return advisorForbidden;
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -218,6 +249,20 @@ export async function PUT(
     .limit(1);
 
   if (!existing) return new Response("Not found", { status: 404 });
+
+  const advisorForbidden = await assertAdvisorOrderAccess(
+    request,
+    String(existing.orderId ?? ""),
+  );
+
+  if (advisorForbidden) return advisorForbidden;
+
+  const advisorForbidden = await assertAdvisorOrderAccess(
+    request,
+    String(existing.orderId ?? ""),
+  );
+
+  if (advisorForbidden) return advisorForbidden;
 
   const [orderRow] = await db
     .select({ kind: orders.kind })

@@ -70,12 +70,16 @@ export function OrderItemsPage({
   canAssign,
   canChangeStatus,
   canSeeHistory,
+  isAdvisor,
+  advisorEmployeeId,
 }: {
   orderId: string;
   canEdit: boolean;
   canAssign: boolean;
   canChangeStatus: boolean;
   canSeeHistory: boolean;
+  isAdvisor: boolean;
+  advisorEmployeeId: string | null;
 }) {
   const [order, setOrder] = useState<OrderListItem | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -154,7 +158,12 @@ export function OrderItemsPage({
   }
 
   const orderKind: OrderKind = order?.kind ?? "NUEVO";
-  const canCreate = canEdit && orderKind === "NUEVO";
+  const canAccessOrder =
+    !isAdvisor || (advisorEmployeeId && order?.createdBy === advisorEmployeeId);
+  const effectiveCanEdit = canEdit && canAccessOrder;
+  const effectiveCanAssign = canAssign && canAccessOrder;
+  const effectiveCanChangeStatus = canChangeStatus && canAccessOrder;
+  const canCreate = effectiveCanEdit && orderKind === "NUEVO";
 
   const columns: ColumnDef[] = [
     { key: "name", name: "Diseño" },
@@ -180,7 +189,7 @@ export function OrderItemsPage({
   // creación ahora es en página dedicada
 
   async function onDelete(id: string) {
-    if (!canEdit) return;
+    if (!effectiveCanEdit) return;
 
     const ok = window.confirm("¿Eliminar este diseño?");
     if (!ok) return;
@@ -195,13 +204,13 @@ export function OrderItemsPage({
   }
 
   function openAssign(id: string) {
-    if (!canAssign) return;
+    if (!effectiveCanAssign) return;
     setAssigningId(id);
     setAssignOpen(true);
   }
 
   function openStatus(item: OrderItemRow) {
-    if (!canChangeStatus) return;
+    if (!effectiveCanChangeStatus) return;
     setStatusTarget({
       id: item.id,
       name: item.name,
@@ -338,7 +347,7 @@ export function OrderItemsPage({
 
                               <DropdownItem
                                 key="assign"
-                                isDisabled={!canAssign}
+                                isDisabled={!effectiveCanAssign}
                                 startContent={<BsPersonPlus />}
                                 onPress={() => openAssign(row.id)}
                               >
@@ -347,7 +356,7 @@ export function OrderItemsPage({
 
                               <DropdownItem
                                 key="status"
-                                isDisabled={!canChangeStatus}
+                                isDisabled={!effectiveCanChangeStatus}
                                 startContent={<BsArrowRepeat />}
                                 onPress={() => openStatus(row)}
                               >
@@ -358,7 +367,7 @@ export function OrderItemsPage({
                                 key="edit"
                                 as={NextLink}
                                 href={`/orders/${orderId}/items/${row.id}/edit`}
-                                isDisabled={!canEdit}
+                                isDisabled={!effectiveCanEdit}
                                 startContent={<BsPencilSquare />}
                               >
                                 Editar
@@ -367,7 +376,7 @@ export function OrderItemsPage({
                               <DropdownItem
                                 key="delete"
                                 className="text-danger"
-                                isDisabled={!canEdit}
+                                isDisabled={!effectiveCanEdit}
                                 startContent={<BsTrash />}
                                 onPress={() => onDelete(row.id)}
                               >
@@ -473,7 +482,7 @@ export function OrderItemsPage({
       />
 
       <OrderItemStatusModal
-        canChangeStatus={canChangeStatus}
+        canChangeStatus={effectiveCanChangeStatus}
         isOpen={statusOpen}
         orderItem={statusTarget}
         onOpenChange={(open) => {
