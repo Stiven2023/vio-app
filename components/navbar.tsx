@@ -32,18 +32,36 @@ import {
   BsPeople,
   BsPerson,
   BsTruck,
+  BsWindowStack,
 } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ViomarLogo } from "@/components/viomar-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useSessionStore } from "@/store/session";
+import { isOperarioRole } from "@/src/utils/role-status";
 
-const routes = [
+const publicMenuItems = [{ name: "Login", href: "/login" }];
+const baseMenuItems = [
+  { name: "Dashboard", href: "/dashboard" },
   { name: "Inicio", href: "/" },
-  { name: "Registro Usuario", href: "/register" },
-  { name: "Registro Empleado", href: "/employee-register" },
-  { name: "Login", href: "/login" },
+];
+const permissionsStorageKey = "viomar.permissions.v1";
+const roleOptions = [
+  "ADMINISTRADOR",
+  "LIDER_DE_PROCESOS",
+  "ASESOR",
+  "COMPRAS",
+  "DISEÑADOR",
+  "OPERARIO_EMPAQUE",
+  "OPERARIO_INVENTARIO",
+  "OPERARIO_INTEGRACION",
+  "OPERARIO_CORTE_LASER",
+  "OPERARIO_CORTE_MANUAL",
+  "OPERARIO_IMPRESION",
+  "OPERARIO_ESTAMPACION",
+  "OPERARIO_MONTAJE",
+  "OPERARIO_SUBLIMACION",
 ];
 
 export const Navbar = () => {
@@ -60,27 +78,64 @@ export const Navbar = () => {
   const [canSeeSuppliers, setCanSeeSuppliers] = useState(false);
   const [canSeeConfectionists, setCanSeeConfectionists] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
-  const [canSeeNotifications, setCanSeeNotifications] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [roleOverride, setRoleOverride] = useState("");
   const pathname = usePathname();
+  const canOverrideRole =
+    isAuthenticated && isAdmin && process.env.NODE_ENV !== "production";
+  const effectiveRole = canOverrideRole && roleOverride ? roleOverride : role ?? null;
+  const operarioOnly = isOperarioRole(effectiveRole);
+
+  const applyPermissions = (permissions?: Record<string, boolean>) => {
+    setCanSeeClients(Boolean(permissions?.VER_CLIENTE));
+    setCanSeeCatalog(Boolean(permissions?.VER_INVENTARIO));
+    setCanSeeOrders(Boolean(permissions?.VER_PEDIDO));
+    setCanSeeSuppliers(Boolean(permissions?.VER_PROVEEDOR));
+    setCanSeeConfectionists(Boolean(permissions?.VER_CONFECCIONISTA));
+    setCanSeeStatusHistory(Boolean(permissions?.VER_HISTORIAL_ESTADO));
+  };
+
+  const readCachedPermissions = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = sessionStorage.getItem(permissionsStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as Record<string, boolean> | null;
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const writeCachedPermissions = (permissions?: Record<string, boolean>) => {
+    if (typeof window === "undefined") return;
+    if (!permissions) return;
+    try {
+      sessionStorage.setItem(permissionsStorageKey, JSON.stringify(permissions));
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   useEffect(() => {
     let active = true;
 
     if (!isAuthenticated) {
-      setCanSeeClients(false);
-      setCanSeeCatalog(false);
-      setCanSeeOrders(false);
-      setCanSeeSuppliers(false);
-      setCanSeeConfectionists(false);
-      setCanSeeStatusHistory(false);
-      setCanSeeNotifications(false);
+      applyPermissions();
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem(permissionsStorageKey);
+      }
 
       return;
     }
 
+    const cached = readCachedPermissions();
+    if (cached) {
+      applyPermissions(cached);
+    }
+
     fetch(
-      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO,VER_NOTIFICACION`,
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO`,
       {
         credentials: "include",
       },
@@ -95,7 +150,6 @@ export const Navbar = () => {
               VER_PROVEEDOR: false,
               VER_CONFECCIONISTA: false,
               VER_HISTORIAL_ESTADO: false,
-              VER_NOTIFICACION: false,
             },
           };
 
@@ -103,23 +157,12 @@ export const Navbar = () => {
       })
       .then((data) => {
         if (!active) return;
-        setCanSeeClients(Boolean(data?.permissions?.VER_CLIENTE));
-        setCanSeeCatalog(Boolean(data?.permissions?.VER_INVENTARIO));
-        setCanSeeOrders(Boolean(data?.permissions?.VER_PEDIDO));
-        setCanSeeSuppliers(Boolean(data?.permissions?.VER_PROVEEDOR));
-        setCanSeeConfectionists(Boolean(data?.permissions?.VER_CONFECCIONISTA));
-        setCanSeeStatusHistory(Boolean(data?.permissions?.VER_HISTORIAL_ESTADO));
-        setCanSeeNotifications(Boolean(data?.permissions?.VER_NOTIFICACION));
+        applyPermissions(data?.permissions);
+        writeCachedPermissions(data?.permissions);
       })
       .catch(() => {
         if (!active) return;
-        setCanSeeClients(false);
-        setCanSeeCatalog(false);
-        setCanSeeOrders(false);
-        setCanSeeSuppliers(false);
-        setCanSeeConfectionists(false);
-        setCanSeeStatusHistory(false);
-        setCanSeeNotifications(false);
+        applyPermissions();
       });
 
     return () => {
@@ -127,7 +170,74 @@ export const Navbar = () => {
     };
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    let active = true;
+
+    if (!canOverrideRole) {
+      setRoleOverride("");
+      return;
+    }
+
+    fetch("/api/auth/role-override", { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok) return { roleOverride: "" };
+        return (await res.json()) as { roleOverride?: string };
+      })
+      .then((data) => {
+        if (!active) return;
+        setRoleOverride(String(data?.roleOverride ?? ""));
+      })
+      .catch(() => {
+        if (!active) return;
+        setRoleOverride("");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [canOverrideRole]);
+
+  const handleRoleOverride = async (roleValue: string) => {
+    if (!canOverrideRole) return;
+
+    const trimmed = roleValue.trim();
+
+    if (!trimmed) {
+      const res = await fetch("/api/auth/role-override", {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        setRoleOverride("");
+        router.refresh();
+      }
+
+      return;
+    }
+
+    const res = await fetch("/api/auth/role-override", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ role: trimmed }),
+    });
+
+    if (res.ok) {
+      setRoleOverride(trimmed);
+      router.refresh();
+    }
+  };
+
   const menuItems = useMemo(() => {
+    if (!isAuthenticated) {
+      return publicMenuItems;
+    }
+
+    if (operarioOnly) {
+      return [{ name: "Dashboard", href: "/dashboard" }];
+    }
+
     const extra: { name: string; href: string }[] = [];
 
     if (isAuthenticated && canSeeClients) {
@@ -148,14 +258,14 @@ export const Navbar = () => {
     if (isAuthenticated && canSeeStatusHistory) {
       extra.push({ name: "Historial", href: "/status-history" });
     }
-    if (isAuthenticated && canSeeNotifications) {
+    if (isAuthenticated) {
       extra.push({ name: "Notificaciones", href: "/notifications" });
     }
     if (isAdmin) {
       extra.push({ name: "Administración", href: "/admin" });
     }
 
-    return [...routes, ...extra];
+    return [...baseMenuItems, ...extra];
   }, [
     canSeeCatalog,
     canSeeClients,
@@ -163,9 +273,9 @@ export const Navbar = () => {
     canSeeOrders,
     canSeeStatusHistory,
     canSeeSuppliers,
-    canSeeNotifications,
     isAdmin,
     isAuthenticated,
+    operarioOnly,
   ]);
 
   const isActive = (href: string) =>
@@ -185,7 +295,23 @@ export const Navbar = () => {
           </NextLink>
         </NavbarBrand>
         <ul className="hidden lg:flex gap-2 justify-start ml-2">
-          {isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
+          {isAuthenticated ? (
+            <NavbarItem key="nav-dashboard">
+              <Tooltip content="Dashboard">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/dashboard") ? activeClass : idleClass,
+                  )}
+                  href="/dashboard"
+                >
+                  <BsWindowStack />
+                </NextLink>
+              </Tooltip>
+            </NavbarItem>
+          ) : null}
+
+          {!operarioOnly && isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
             <NavbarItem key="nav-orders">
               <div className="flex items-center gap-1">
                 <Tooltip content="Pedidos">
@@ -245,7 +371,7 @@ export const Navbar = () => {
             </NavbarItem>
           ) : null}
 
-          {isAuthenticated && (canSeeCatalog || canSeeSuppliers) ? (
+          {!operarioOnly && isAuthenticated && (canSeeCatalog || canSeeSuppliers) ? (
             <NavbarItem key="nav-inventory">
               <div className="flex items-center gap-1">
                 <Tooltip content="Inventario">
@@ -305,7 +431,7 @@ export const Navbar = () => {
             </NavbarItem>
           ) : null}
 
-          {isAuthenticated && canSeeClients ? (
+          {!operarioOnly && isAuthenticated && canSeeClients ? (
             <NavbarItem key="/clients">
               <Tooltip content="Clientes">
                 <NextLink
@@ -321,7 +447,7 @@ export const Navbar = () => {
             </NavbarItem>
           ) : null}
 
-          {isAuthenticated && canSeeConfectionists ? (
+          {!operarioOnly && isAuthenticated && canSeeConfectionists ? (
             <NavbarItem key="/confectionists">
               <Tooltip content="Confeccionistas">
                 <NextLink
@@ -337,7 +463,7 @@ export const Navbar = () => {
             </NavbarItem>
           ) : null}
 
-          {isAdmin ? (
+          {!operarioOnly && isAdmin ? (
             <NavbarItem key="/admin">
               <Tooltip content="Administración">
                 <NextLink
@@ -360,7 +486,29 @@ export const Navbar = () => {
         justify="end"
       >
         <NavbarItem className="hidden sm:flex gap-2 items-center">
-          <NotificationBell enabled={isAuthenticated && canSeeNotifications} />
+          {canOverrideRole ? (
+            <Dropdown>
+              <DropdownTrigger>
+                <Button size="sm" variant="flat">
+                  Rol: {roleOverride || user?.role || "Sin rol"}
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Cambiar rol"
+                onAction={(key) => handleRoleOverride(String(key))}
+                selectedKeys={roleOverride ? [roleOverride] : []}
+                selectionMode="single"
+                items={[{ key: "" }, ...roleOptions.map((role) => ({ key: role }))]}
+              >
+                {(item) => (
+                  <DropdownItem key={item.key}>
+                    {item.key || "Sin override"}
+                  </DropdownItem>
+                )}
+              </DropdownMenu>
+            </Dropdown>
+          ) : null}
+          <NotificationBell enabled={isAuthenticated} />
           <ThemeSwitch />
         </NavbarItem>
 

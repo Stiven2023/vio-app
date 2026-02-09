@@ -3,7 +3,6 @@ import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { notifications } from "@/src/db/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
-import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -29,10 +28,6 @@ export async function GET(request: Request) {
   });
 
   if (limited) return limited;
-
-  const forbidden = await requirePermission(request, "VER_NOTIFICACION");
-
-  if (forbidden) return forbidden;
 
   const roleFromToken = getRoleFromRequest(request);
   const { searchParams } = new URL(request.url);
@@ -110,10 +105,6 @@ export async function PATCH(request: Request) {
   });
 
   if (limited) return limited;
-
-  const forbidden = await requirePermission(request, "VER_NOTIFICACION");
-
-  if (forbidden) return forbidden;
 
   const role = getRoleFromRequest(request);
 

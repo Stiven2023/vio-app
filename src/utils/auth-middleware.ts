@@ -1,5 +1,15 @@
 import { verifyAuthToken } from "@/src/utils/auth";
 
+function readCookieValue(request: Request, name: string) {
+  const cookie = request.headers.get("cookie");
+
+  if (!cookie) return null;
+
+  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+
+  return match ? match[1] : null;
+}
+
 export function getAuthFromRequest(request: Request) {
   const cookie = request.headers.get("cookie");
 
@@ -18,7 +28,15 @@ export function getRoleFromRequest(request: Request): string | null {
   const role =
     auth && typeof auth === "object" ? (auth as { role?: unknown }).role : null;
 
-  return typeof role === "string" && role.trim() !== "" ? role : null;
+  const baseRole =
+    typeof role === "string" && role.trim() !== "" ? role.trim() : null;
+
+  if (process.env.NODE_ENV !== "production" && baseRole === "ADMINISTRADOR") {
+    const override = readCookieValue(request, "role_override");
+    if (override && override.trim() !== "") return override.trim();
+  }
+
+  return baseRole;
 }
 
 export function getUserIdFromRequest(request: Request): string | null {

@@ -1,0 +1,205 @@
+import type { ReactNode } from "react";
+
+import NextLink from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
+import { Button } from "@heroui/button";
+import { Card, CardBody } from "@heroui/card";
+import {
+  BsBoxSeam,
+  BsClipboardData,
+  BsGear,
+  BsPeople,
+  BsTruck,
+} from "react-icons/bs";
+import { and, eq, sql } from "drizzle-orm";
+
+import { verifyAuthToken } from "@/src/utils/auth";
+import { db } from "@/src/db";
+import { notifications, orderPayments, orders, orderStatusEnum } from "@/src/db/schema";
+
+type QuickAction = {
+  title: string;
+  description: string;
+  href: string;
+  icon: ReactNode;
+};
+
+const quickActions: QuickAction[] = [
+  {
+    title: "Pedidos",
+    description: "Gestiona pedidos y estados.",
+    href: "/orders",
+    icon: <BsClipboardData className="text-lg" />,
+  },
+  {
+    title: "Catalogo",
+    description: "Productos, inventario y precios.",
+    href: "/catalog",
+    icon: <BsBoxSeam className="text-lg" />,
+  },
+  {
+    title: "Clientes",
+    description: "Listado y gestion de clientes.",
+    href: "/clients",
+    icon: <BsPeople className="text-lg" />,
+  },
+  {
+    title: "Proveedores",
+    description: "Administra proveedores.",
+    href: "/suppliers",
+    icon: <BsTruck className="text-lg" />,
+  },
+  {
+    title: "Administracion",
+    description: "Roles, permisos y configuracion.",
+    href: "/admin",
+    icon: <BsGear className="text-lg" />,
+  },
+];
+
+export default async function AdminDashboardPage() {
+  const token = (await cookies()).get("auth_token")?.value;
+  const payload = token ? verifyAuthToken(token) : null;
+
+  if (!payload) redirect("/login");
+
+  const role =
+    payload && typeof payload === "object"
+      ? (payload as { role?: unknown }).role
+      : null;
+  const roleName = typeof role === "string" ? role : "";
+  const overrideRole = (await cookies()).get("role_override")?.value ?? "";
+  const effectiveRole =
+    process.env.NODE_ENV !== "production" && roleName === "ADMINISTRADOR"
+      ? overrideRole || roleName
+      : roleName;
+
+  if (effectiveRole !== "ADMINISTRADOR") redirect("/unauthorized");
+
+  const ordersByStatus = await db
+    .select({
+      status: orders.status,
+      total: sql<number>`count(*)::int`,
+    })
+    .from(orders)
+    .groupBy(orders.status);
+
+  const unreadNotifications = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(notifications)
+    .where(eq(notifications.isRead, false));
+
+  const monthlySales = await db
+    .select({
+      total: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
+    })
+    .from(orderPayments)
+    .where(
+      and(
+        sql`date_trunc('month', ${orderPayments.createdAt}) = date_trunc('month', now())`,
+        sql`${orderPayments.status} <> 'ANULADO'`,
+      ),
+    );
+
+  const statusTotals = new Map<string, number>();
+  for (const status of orderStatusEnum.enumValues) {
+    statusTotals.set(status, 0);
+  }
+  for (const row of ordersByStatus) {
+    if (row.status) statusTotals.set(row.status, Number(row.total || 0));
+  }
+
+  const totalOrders = Array.from(statusTotals.values()).reduce(
+    (acc, value) => acc + value,
+    0,
+  );
+  const unreadCount = Number(unreadNotifications[0]?.total ?? 0);
+  const monthSalesValue = Number(monthlySales[0]?.total ?? 0);
+  const salesFormatter = new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  });
+
+  return (
+    <div className="container mx-auto max-w-7xl pt-16 px-6">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-2xl font-bold">Dashboard Admin</h1>
+        <p className="text-default-600">
+          Accesos rapidos y resumen general de la operacion.
+        </p>
+      </div>
+
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold">Metricas</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <Card className="border border-default-200">
+            <CardBody className="flex flex-col gap-2">
+              <div className="text-sm text-default-500">Pedidos totales</div>
+              <div className="text-2xl font-semibold">{totalOrders}</div>
+              <div className="flex flex-wrap gap-2 text-xs text-default-500">
+                {Array.from(statusTotals.entries()).map(([status, value]) => (
+                  <span key={status}>
+                    {status}: {value}
+                  </span>
+                ))}
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="border border-default-200">
+            <CardBody className="flex flex-col gap-2">
+              <div className="text-sm text-default-500">
+                Notificaciones sin leer
+              </div>
+              <div className="text-2xl font-semibold">{unreadCount}</div>
+              <div className="text-xs text-default-400">
+                Incluye todas las areas.
+              </div>
+            </CardBody>
+          </Card>
+          <Card className="border border-default-200">
+            <CardBody className="flex flex-col gap-2">
+              <div className="text-sm text-default-500">Ventas del mes</div>
+              <div className="text-2xl font-semibold">
+                {salesFormatter.format(monthSalesValue)}
+              </div>
+              <div className="text-xs text-default-400">
+                Pagos confirmados o parciales.
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold">Accesos rapidos</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {quickActions.map((action) => (
+            <Card key={action.href} className="border border-default-200">
+              <CardBody className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-medium bg-success-50 text-success">
+                    {action.icon}
+                  </div>
+                  <div>
+                    <div className="text-base font-semibold">
+                      {action.title}
+                    </div>
+                    <div className="text-sm text-default-500">
+                      {action.description}
+                    </div>
+                  </div>
+                </div>
+                <Button as={NextLink} href={action.href} size="sm" variant="flat">
+                  Ir ahora
+                </Button>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

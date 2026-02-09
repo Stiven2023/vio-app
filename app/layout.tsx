@@ -9,6 +9,8 @@ import { SessionBootstrap } from "@/components/session-bootstrap";
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
 import { Navbar } from "@/components/navbar";
+import { Suspense } from "react";
+
 import { RouteLoader } from "@/components/route-loader";
 
 export const metadata: Metadata = {
@@ -49,7 +51,9 @@ export default function RootLayout({
           <ToastProvider />
           <SessionBootstrap />
           <div className="relative flex flex-col h-screen">
-            <RouteLoader />
+            <Suspense fallback={null}>
+              <RouteLoader />
+            </Suspense>
             <Navbar />
             <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
               {children}

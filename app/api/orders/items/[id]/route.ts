@@ -15,11 +15,13 @@ import {
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
+  getRoleFromRequest,
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { canRoleChangeToStatus } from "@/src/utils/role-status";
 
 const orderItemStatuses = new Set([
   "PENDIENTE",
@@ -321,6 +323,12 @@ export async function PUT(
 
     if (!orderItemStatuses.has(nextStatus)) {
       return new Response("invalid status", { status: 400 });
+    }
+
+    const role = getRoleFromRequest(request);
+
+    if (!canRoleChangeToStatus(role, nextStatus)) {
+      return new Response("Forbidden", { status: 403 });
     }
 
     patch.status = nextStatus as any;

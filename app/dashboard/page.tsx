@@ -9,13 +9,37 @@ export default async function DashboardPage() {
 
   if (!payload) redirect("/login");
 
-  return (
-    <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-      <p>
-        Bienvenido al panel principal. Solo usuarios autenticados pueden ver
-        esto.
-      </p>
-    </div>
-  );
+  const role =
+    payload && typeof payload === "object"
+      ? (payload as { role?: unknown }).role
+      : null;
+  const roleName = typeof role === "string" ? role : "";
+  const overrideRole = (await cookies()).get("role_override")?.value ?? "";
+  const effectiveRole =
+    process.env.NODE_ENV !== "production" && roleName === "ADMINISTRADOR"
+      ? overrideRole || roleName
+      : roleName;
+  const roleDashboards: Record<string, string> = {
+    ADMINISTRADOR: "/dashboard/admin",
+    LIDER_DE_PROCESOS: "/dashboard/role/LIDER_DE_PROCESOS",
+    ASESOR: "/dashboard/role/ASESOR",
+    COMPRAS: "/dashboard/role/COMPRAS",
+    DISEÑADOR: "/dashboard/role/DISEÑADOR",
+    OPERARIO_EMPAQUE: "/dashboard/role/OPERARIO_EMPAQUE",
+    OPERARIO_INVENTARIO: "/dashboard/role/OPERARIO_INVENTARIO",
+    OPERARIO_INTEGRACION: "/dashboard/role/OPERARIO_INTEGRACION",
+    OPERARIO_CORTE_LASER: "/dashboard/role/OPERARIO_CORTE_LASER",
+    OPERARIO_CORTE_MANUAL: "/dashboard/role/OPERARIO_CORTE_MANUAL",
+    OPERARIO_IMPRESION: "/dashboard/role/OPERARIO_IMPRESION",
+    OPERARIO_ESTAMPACION: "/dashboard/role/OPERARIO_ESTAMPACION",
+    OPERARIO_MONTAJE: "/dashboard/role/OPERARIO_MONTAJE",
+    OPERARIO_SUBLIMACION: "/dashboard/role/OPERARIO_SUBLIMACION",
+  };
+  const target = roleDashboards[effectiveRole];
+
+  if (target) redirect(target);
+
+  redirect("/unauthorized");
+
+  return null;
 }
