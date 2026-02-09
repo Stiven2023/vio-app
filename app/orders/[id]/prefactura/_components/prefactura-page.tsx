@@ -109,6 +109,20 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
         </div>
 
         <div className="flex gap-2">
+          <Button
+            as={NextLink}
+            href={`/api/exports/orders/${orderId}/prefactura-excel`}
+            variant="flat"
+          >
+            Descargar prefactura
+          </Button>
+          <Button
+            as={NextLink}
+            href={`/api/exports/orders/${orderId}/excel`}
+            variant="flat"
+          >
+            Descargar pedido
+          </Button>
           <Button as={NextLink} href="/orders" variant="flat">
             Volver
           </Button>

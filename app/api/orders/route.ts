@@ -200,6 +200,21 @@ export async function GET(request: Request) {
       currency: orders.currency,
       shippingFee: (orders as any).shippingFee,
       paidTotal: sql<string>`coalesce((select sum(op.amount) from order_payments op where op.order_id = ${orders.id} and op.status <> 'ANULADO'), 0)::text`,
+      lastStatusAt: sql<string | null>`(
+        select osh.created_at
+        from order_status_history osh
+        where osh.order_id = ${orders.id}
+        order by osh.created_at desc
+        limit 1
+      )`,
+      lastStatusBy: sql<string | null>`(
+        select e.name
+        from order_status_history osh
+        left join employees e on e.id = osh.changed_by
+        where osh.order_id = ${orders.id}
+        order by osh.created_at desc
+        limit 1
+      )`,
       createdAt: orders.createdAt,
     })
     .from(orders)

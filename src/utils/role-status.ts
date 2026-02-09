@@ -32,6 +32,35 @@ const ALL_STATUS_SET = new Set(ALL_STATUSES);
 
 const leaderAllowed = ALL_STATUSES.filter((status) => status !== "CANCELADO");
 
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  PENDIENTE: ["REVISION_ADMIN", "APROBACION_INICIAL"],
+  REVISION_ADMIN: ["APROBACION_INICIAL"],
+  APROBACION_INICIAL: ["PENDIENTE_PRODUCCION", "EN_REVISION_CAMBIO"],
+  PENDIENTE_PRODUCCION: [
+    "EN_MONTAJE",
+    "EN_IMPRESION",
+    "SUBLIMACION",
+    "CORTE_MANUAL",
+    "CORTE_LASER",
+    "PENDIENTE_CONFECCION",
+  ],
+  EN_MONTAJE: ["PENDIENTE_CONFECCION"],
+  EN_IMPRESION: ["PENDIENTE_CONFECCION"],
+  SUBLIMACION: ["PENDIENTE_CONFECCION"],
+  CORTE_MANUAL: ["PENDIENTE_CONFECCION"],
+  CORTE_LASER: ["PENDIENTE_CONFECCION"],
+  PENDIENTE_CONFECCION: ["CONFECCION"],
+  CONFECCION: ["EN_BODEGA"],
+  EN_BODEGA: ["EMPAQUE"],
+  EMPAQUE: ["ENVIADO"],
+  ENVIADO: ["COMPLETADO"],
+  EN_REVISION_CAMBIO: ["APROBADO_CAMBIO", "RECHAZADO_CAMBIO"],
+  APROBADO_CAMBIO: ["PENDIENTE_PRODUCCION"],
+  RECHAZADO_CAMBIO: ["PENDIENTE_PRODUCCION"],
+  COMPLETADO: [],
+  CANCELADO: [],
+};
+
 export function getAllowedStatusesForRole(role: string | null) {
   if (!role) return [] as string[];
   if (role === "ADMINISTRADOR") return ALL_STATUSES.slice();
@@ -42,13 +71,42 @@ export function getAllowedStatusesForRole(role: string | null) {
     .map(([status]) => status);
 }
 
-export function canRoleChangeToStatus(role: string | null, status: string) {
+export function getAllowedNextStatuses(
+  role: string | null,
+  current: string | null,
+) {
+  if (!role || !current) return [] as string[];
+  if (!ALL_STATUS_SET.has(current)) return [] as string[];
+
+  if (role === "ADMINISTRADOR") {
+    return ALL_STATUSES.slice();
+  }
+
+  const allowedByRole = new Set(getAllowedStatusesForRole(role));
+  const next = STATUS_TRANSITIONS[current] ?? [];
+
+  return next.filter((status) => allowedByRole.has(status));
+}
+
+export function canRoleChangeStatus(
+  role: string | null,
+  current: string | null,
+  next: string,
+) {
   if (!role) return false;
-  if (!ALL_STATUS_SET.has(status)) return false;
+  if (!ALL_STATUS_SET.has(next)) return false;
+
+  if (role === "ADMINISTRADOR") return true;
+
+  if (!current || !ALL_STATUS_SET.has(current)) return false;
 
   const allowed = getAllowedStatusesForRole(role);
 
-  return allowed.includes(status);
+  if (!allowed.includes(next)) return false;
+
+  const allowedNext = STATUS_TRANSITIONS[current] ?? [];
+
+  return allowedNext.includes(next) || next === current;
 }
 
 export function isOperarioRole(role: string | null) {

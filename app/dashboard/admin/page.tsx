@@ -18,6 +18,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { verifyAuthToken } from "@/src/utils/auth";
 import { db } from "@/src/db";
 import { notifications, orderPayments, orders, orderStatusEnum } from "@/src/db/schema";
+import { AdminCharts } from "@/app/dashboard/_components/admin-charts";
 
 type QuickAction = {
   title: string;
@@ -122,6 +123,10 @@ export default async function AdminDashboardPage() {
     currency: "COP",
     maximumFractionDigits: 0,
   });
+  const now = new Date();
+  const reportYear = now.getFullYear();
+  const reportMonth = now.getMonth() + 1;
+  const reportMonthLabel = String(reportMonth).padStart(2, "0");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
@@ -198,6 +203,73 @@ export default async function AdminDashboardPage() {
               </CardBody>
             </Card>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">Reportes visuales</h2>
+        <div className="mt-4">
+          <AdminCharts />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">Reportes</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <Card className="border border-default-200">
+            <CardBody className="flex flex-col gap-3">
+              <div>
+                <div className="text-sm font-semibold">Inventario actual</div>
+                <div className="text-xs text-default-500">
+                  Snapshot del stock disponible.
+                </div>
+              </div>
+              <Button
+                as={NextLink}
+                href="/api/exports/reports/inventory"
+                size="sm"
+                variant="flat"
+              >
+                Descargar Excel
+              </Button>
+            </CardBody>
+          </Card>
+          <Card className="border border-default-200">
+            <CardBody className="flex flex-col gap-3">
+              <div>
+                <div className="text-sm font-semibold">Ventas del mes</div>
+                <div className="text-xs text-default-500">
+                  {reportYear}-{reportMonthLabel}
+                </div>
+              </div>
+              <Button
+                as={NextLink}
+                href={`/api/exports/reports/sales-month?year=${reportYear}&month=${reportMonth}`}
+                size="sm"
+                variant="flat"
+              >
+                Descargar Excel
+              </Button>
+            </CardBody>
+          </Card>
+          <Card className="border border-default-200">
+            <CardBody className="flex flex-col gap-3">
+              <div>
+                <div className="text-sm font-semibold">Pedidos del mes</div>
+                <div className="text-xs text-default-500">
+                  Incluye top asesor y recaudo.
+                </div>
+              </div>
+              <Button
+                as={NextLink}
+                href={`/api/exports/reports/orders-month?year=${reportYear}&month=${reportMonth}`}
+                size="sm"
+                variant="flat"
+              >
+                Descargar Excel
+              </Button>
+            </CardBody>
+          </Card>
         </div>
       </section>
     </div>

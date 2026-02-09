@@ -24,6 +24,7 @@ export default async function OrdersPage() {
     req,
     "CAMBIAR_ESTADO_PEDIDO",
   ));
+  const canSeeHistory = !(await requirePermission(req, "VER_HISTORIAL_ESTADO"));
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
@@ -35,6 +36,7 @@ export default async function OrdersPage() {
           canCreate={canCreate}
           canDelete={canDelete}
           canEdit={canEdit}
+          canSeeHistory={canSeeHistory}
         />
       </div>
     </div>

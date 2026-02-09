@@ -21,7 +21,7 @@ import {
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
-import { canRoleChangeToStatus } from "@/src/utils/role-status";
+import { canRoleChangeStatus } from "@/src/utils/role-status";
 
 const orderItemStatuses = new Set([
   "PENDIENTE",
@@ -326,8 +326,9 @@ export async function PUT(
     }
 
     const role = getRoleFromRequest(request);
+    const currentStatus = String(existing.status ?? "").trim().toUpperCase();
 
-    if (!canRoleChangeToStatus(role, nextStatus)) {
+    if (!canRoleChangeStatus(role, currentStatus, nextStatus)) {
       return new Response("Forbidden", { status: 403 });
     }
 

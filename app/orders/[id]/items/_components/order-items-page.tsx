@@ -8,6 +8,12 @@ import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalHeader,
+} from "@heroui/modal";
+import {
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -47,6 +53,8 @@ type OrderItemRow = {
   totalPrice: string | null;
   imageUrl?: string | null;
   status: OrderItemStatusTarget["status"] | null;
+  lastStatusAt?: string | null;
+  lastStatusBy?: string | null;
   confectionistName?: string | null;
   createdAt: string | null;
 };
@@ -61,11 +69,13 @@ export function OrderItemsPage({
   canEdit,
   canAssign,
   canChangeStatus,
+  canSeeHistory,
 }: {
   orderId: string;
   canEdit: boolean;
   canAssign: boolean;
   canChangeStatus: boolean;
+  canSeeHistory: boolean;
 }) {
   const [order, setOrder] = useState<OrderListItem | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -85,6 +95,11 @@ export function OrderItemsPage({
   const [statusTarget, setStatusTarget] = useState<OrderItemStatusTarget | null>(
     null,
   );
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState<
+    Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -144,12 +159,23 @@ export function OrderItemsPage({
   const columns: ColumnDef[] = [
     { key: "name", name: "Diseño" },
     { key: "image", name: "Imagen" },
+    { key: "statusHistory", name: "Ultimo cambio" },
     { key: "confectionist", name: "Confeccionista" },
     { key: "quantity", name: "Cantidad" },
     { key: "unitPrice", name: "Unit" },
     { key: "totalPrice", name: "Total" },
     { key: "actions", name: "Acciones" },
   ];
+
+  const formatHistory = (value?: string | null, by?: string | null) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    const label = Number.isNaN(date.getTime())
+      ? value
+      : date.toLocaleString("es-CO");
+
+    return by ? `${label} · ${by}` : label;
+  };
 
   // creación ahora es en página dedicada
 
@@ -183,6 +209,31 @@ export function OrderItemsPage({
       status: item.status ?? "PENDIENTE",
     });
     setStatusOpen(true);
+  }
+
+  async function openHistory(itemId: string) {
+    if (!canSeeHistory) return;
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+
+    try {
+      const res = await apiJson<{
+        items: Array<{
+          id: string;
+          status: string | null;
+          changedByName: string | null;
+          createdAt: string | null;
+        }>;
+      }>(
+        `/api/status-history/order-items?orderItemId=${encodeURIComponent(itemId)}&page=1&pageSize=50`,
+      );
+      setHistoryItems(res.items ?? []);
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+      setHistoryItems([]);
+    } finally {
+      setHistoryLoading(false);
+    }
   }
 
   const rows = itemsData?.items ?? [];
@@ -336,6 +387,25 @@ export function OrderItemsPage({
                       );
                     }
 
+                    if (columnKey === "statusHistory") {
+                      return (
+                        <TableCell className="text-default-600">
+                          {formatHistory(row.lastStatusAt, row.lastStatusBy)}
+                          {canSeeHistory ? (
+                            <div>
+                              <Button
+                                size="sm"
+                                variant="light"
+                                onPress={() => openHistory(row.id)}
+                              >
+                                Ver historial
+                              </Button>
+                            </div>
+                          ) : null}
+                        </TableCell>
+                      );
+                    }
+
                     if (columnKey === "image") {
                       return (
                         <TableCell>
@@ -412,6 +482,37 @@ export function OrderItemsPage({
         }}
         onSaved={refresh}
       />
+
+      <Modal isOpen={historyOpen} onOpenChange={setHistoryOpen}>
+        <ModalContent>
+          <ModalHeader>Historial de estado</ModalHeader>
+          <ModalBody>
+            {historyLoading ? (
+              <div className="text-sm text-default-500">Cargando...</div>
+            ) : historyItems.length === 0 ? (
+              <div className="text-sm text-default-500">Sin cambios.</div>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {historyItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{item.status ?? "-"}</div>
+                      <div className="text-xs text-default-500">
+                        {item.changedByName ?? "Sistema"}
+                      </div>
+                    </div>
+                    <div className="text-xs text-default-500">
+                      {item.createdAt
+                        ? new Date(item.createdAt).toLocaleString("es-CO")
+                        : "-"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

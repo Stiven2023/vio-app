@@ -7,7 +7,10 @@ import { Select, SelectItem } from "@heroui/select";
 import { Spinner } from "@heroui/spinner";
 import { toast } from "react-hot-toast";
 
-import { getAllowedStatusesForRole } from "@/src/utils/role-status";
+import {
+  getAllowedNextStatuses,
+  getAllowedStatusesForRole,
+} from "@/src/utils/role-status";
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
 import { Pager } from "@/app/catalog/_components/ui/pager";
 
@@ -290,7 +293,14 @@ export function OperarioDashboard({ role }: { role: string }) {
                           }));
                         }}
                       >
-                        {allowedStatuses.map((status) => (
+                        {(getAllowedNextStatuses(role, item.status ?? "")
+                          .filter((status) => allowedStatuses.includes(status))
+                          .length
+                          ? getAllowedNextStatuses(role, item.status ?? "")
+                          : item.status
+                            ? [item.status]
+                            : []
+                        ).map((status) => (
                           <SelectItem key={status}>
                             {status.replace(/_/g, " ")}
                           </SelectItem>

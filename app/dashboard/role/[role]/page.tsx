@@ -17,6 +17,7 @@ import {
 import { verifyAuthToken } from "@/src/utils/auth";
 import { isOperarioRole } from "@/src/utils/role-status";
 import { OperarioDashboard } from "@/app/dashboard/role/_components/operario-dashboard";
+import { RoleCharts } from "@/app/dashboard/role/_components/role-charts";
 
 type RoleConfig = {
   title: string;
@@ -314,8 +315,7 @@ export default async function RoleDashboardPage({
     redirect("/unauthorized");
   }
 
-  const useOperarioDashboard =
-    isOperarioRole(requestedRole) || requestedRole === "LIDER_DE_PROCESOS";
+  const useOperarioDashboard = isOperarioRole(requestedRole);
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
@@ -330,6 +330,14 @@ export default async function RoleDashboardPage({
         </div>
       ) : (
         <>
+          {(requestedRole === "ASESOR" || requestedRole === "LIDER_DE_PROCESOS") ? (
+            <section className="mt-6">
+              <h2 className="text-lg font-semibold">Reportes visuales</h2>
+              <div className="mt-4">
+                <RoleCharts role={requestedRole} />
+              </div>
+            </section>
+          ) : null}
           <section className="mt-6">
             <h2 className="text-lg font-semibold">Metricas</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -28,6 +28,7 @@ export default async function OrderItemsRoute({
     req,
     "CAMBIAR_ESTADO_DISEÑO",
   ));
+  const canSeeHistory = !(await requirePermission(req, "VER_HISTORIAL_ESTADO"));
 
   const { id } = await params;
 
@@ -37,6 +38,7 @@ export default async function OrderItemsRoute({
         canAssign={canAssign}
         canChangeStatus={canChangeStatus}
         canEdit={canEdit}
+        canSeeHistory={canSeeHistory}
         orderId={id}
       />
     </div>

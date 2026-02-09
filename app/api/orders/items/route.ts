@@ -130,6 +130,21 @@ export async function GET(request: Request) {
       totalPrice: orderItems.totalPrice,
       imageUrl: orderItems.imageUrl,
       status: orderItems.status,
+      lastStatusAt: sql<string | null>`(
+        select oish.created_at
+        from order_item_status_history oish
+        where oish.order_item_id = ${sql.raw('"order_items"."id"')}
+        order by oish.created_at desc
+        limit 1
+      )`,
+      lastStatusBy: sql<string | null>`(
+        select e.name
+        from order_item_status_history oish
+        left join employees e on e.id = oish.changed_by
+        where oish.order_item_id = ${sql.raw('"order_items"."id"')}
+        order by oish.created_at desc
+        limit 1
+      )`,
       createdAt: orderItems.createdAt,
       confectionistName: sql<string | null>`(
         select c.name

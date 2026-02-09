@@ -43,6 +43,12 @@ import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/catalog/_components/ui/table-skeleton";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalHeader,
+} from "@heroui/modal";
 
 const statusOptions: Array<{ value: string; label: string }> = [
   { value: "all", label: "Todos" },
@@ -60,11 +66,13 @@ export function OrdersTab({
   canEdit,
   canDelete,
   canChangeStatus,
+  canSeeHistory,
 }: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
   canChangeStatus: boolean;
+  canSeeHistory: boolean;
 }) {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
@@ -95,6 +103,11 @@ export function OrdersTab({
   const [editing, setEditing] = useState<OrderListItem | null>(null);
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<OrderListItem | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyItems, setHistoryItems] = useState<
+    Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
+  >([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<OrderListItem | null>(null);
@@ -148,6 +161,29 @@ export function OrdersTab({
     }
   };
 
+  const openHistory = async (order: OrderListItem) => {
+    if (!canSeeHistory) return;
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    try {
+      const res = await apiJson<{
+        items: Array<{
+          id: string;
+          status: string | null;
+          changedByName: string | null;
+          createdAt: string | null;
+        }>;
+      }>(
+        `/api/status-history/orders?orderId=${encodeURIComponent(order.id)}&page=1&pageSize=50`,
+      );
+      setHistoryItems(res.items ?? []);
+    } catch {
+      setHistoryItems([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -194,6 +230,7 @@ export function OrdersTab({
             "Cliente",
             "Tipo",
             "Estado",
+            "Ultimo cambio",
             "Total",
             "Abono %",
             "Acciones",
@@ -206,6 +243,7 @@ export function OrdersTab({
             <TableColumn>Cliente</TableColumn>
             <TableColumn>Tipo</TableColumn>
             <TableColumn>Estado</TableColumn>
+            <TableColumn>Ultimo cambio</TableColumn>
             <TableColumn>Total</TableColumn>
             <TableColumn>Abono %</TableColumn>
             <TableColumn>Acciones</TableColumn>
@@ -217,6 +255,30 @@ export function OrdersTab({
                 <TableCell>{o.clientName ?? "-"}</TableCell>
                 <TableCell>{o.type}</TableCell>
                 <TableCell>{o.status}</TableCell>
+                <TableCell className="text-default-600">
+                  {(() => {
+                    if (!o.lastStatusAt) return "-";
+                    const date = new Date(o.lastStatusAt);
+                    const label = Number.isNaN(date.getTime())
+                      ? o.lastStatusAt
+                      : date.toLocaleString("es-CO");
+
+                    return o.lastStatusBy
+                      ? `${label} · ${o.lastStatusBy}`
+                      : label;
+                  })()}
+                  {canSeeHistory ? (
+                    <div>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        onPress={() => openHistory(o)}
+                      >
+                        Ver historial
+                      </Button>
+                    </div>
+                  ) : null}
+                </TableCell>
                 <TableCell>{o.total ?? "0"}</TableCell>
                 <TableCell>
                   {(() => {
@@ -380,6 +442,37 @@ export function OrdersTab({
           setConfirmOpen(open);
         }}
       />
+
+      <Modal isOpen={historyOpen} onOpenChange={setHistoryOpen}>
+        <ModalContent>
+          <ModalHeader>Historial de estado</ModalHeader>
+          <ModalBody>
+            {historyLoading ? (
+              <div className="text-sm text-default-500">Cargando...</div>
+            ) : historyItems.length === 0 ? (
+              <div className="text-sm text-default-500">Sin cambios.</div>
+            ) : (
+              <div className="space-y-2 text-sm">
+                {historyItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium">{item.status ?? "-"}</div>
+                      <div className="text-xs text-default-500">
+                        {item.changedByName ?? "Sistema"}
+                      </div>
+                    </div>
+                    <div className="text-xs text-default-500">
+                      {item.createdAt
+                        ? new Date(item.createdAt).toLocaleString("es-CO")
+                        : "-"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

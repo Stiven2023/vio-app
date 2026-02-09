@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -13,6 +13,8 @@ import {
 import { Select, SelectItem } from "@heroui/select";
 
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
+import { useSessionStore } from "@/store/session";
+import { getAllowedNextStatuses } from "@/src/utils/role-status";
 
 type OrderItemStatus =
   | "PENDIENTE"
@@ -79,6 +81,14 @@ export function OrderItemStatusModal({
 }) {
   const [status, setStatus] = useState<OrderItemStatus>("PENDIENTE");
   const [saving, setSaving] = useState(false);
+  const role = useSessionStore((s) => s.user?.role ?? null);
+
+  const allowedNext = useMemo(() => {
+    const current = (orderItem?.status ?? "") as string;
+    const next = getAllowedNextStatuses(role, current);
+
+    return next.length ? next : current ? [current] : [];
+  }, [orderItem?.status, role]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -138,7 +148,9 @@ export function OrderItemStatusModal({
               setStatus(first ?? "PENDIENTE");
             }}
           >
-            {statusOptions.map((opt) => (
+            {statusOptions
+              .filter((opt) => allowedNext.includes(opt))
+              .map((opt) => (
               <SelectItem key={opt}>{opt.replace(/_/g, " ")}</SelectItem>
             ))}
           </Select>

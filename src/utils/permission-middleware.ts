@@ -4,6 +4,10 @@ import { db } from "@/src/db";
 import { roles, permissions, rolePermissions } from "@/src/db/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 
+const ROLE_PERMISSION_OVERRIDES: Record<string, string[]> = {
+  COMPRAS: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
+};
+
 export async function requirePermission(
   request: Request,
   permissionName: string,
@@ -16,6 +20,11 @@ export async function requirePermission(
 
   // Bypass para administrador: acceso total al panel
   if (roleName === "ADMINISTRADOR") {
+    return null;
+  }
+
+  const overrides = ROLE_PERMISSION_OVERRIDES[roleName] ?? [];
+  if (overrides.includes(permissionName)) {
     return null;
   }
 

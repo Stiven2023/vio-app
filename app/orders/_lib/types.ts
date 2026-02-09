@@ -35,6 +35,8 @@ export type OrderListItem = {
   currency: string | null;
   shippingFee?: string | null;
   paidTotal?: string | null;
+  lastStatusAt?: string | null;
+  lastStatusBy?: string | null;
   createdAt: string | null;
 };
 
