@@ -102,7 +102,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         </div>
         <div className="flex gap-2">
           <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
-            Ver disenos
+            Ver Diseños
           </Button>
           <Button as={NextLink} href={`/orders/${orderId}/payments`} variant="flat">
             Ver pagos
@@ -197,12 +197,12 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
       <Card>
         <CardHeader>
-          <div className="font-semibold">Disenos</div>
+          <div className="font-semibold">Diseños</div>
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <div>
-              <div className="text-xs text-default-500">Disenos</div>
+              <div className="text-xs text-default-500">Diseños</div>
               <div className="font-medium">{lineCount}</div>
             </div>
             <div>
@@ -217,7 +217,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                 size="sm"
                 variant="flat"
               >
-                Ir a disenos
+                Ir a Diseños
               </Button>
             </div>
           </div>

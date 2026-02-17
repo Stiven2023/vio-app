@@ -2,6 +2,8 @@ import { desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { inventoryEntries, inventoryItems, suppliers } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
+import { syncInventoryForItem } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -26,40 +28,52 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
-  const q = String(searchParams.get("q") ?? "").trim();
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
+    const q = String(searchParams.get("q") ?? "").trim();
 
-  const where = q ? ilike(inventoryItems.name, `%${q}%`) : undefined;
+    const where = q ? ilike(inventoryItems.name, `%${q}%`) : undefined;
 
-  const totalQuery = db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(inventoryEntries)
-    .leftJoin(inventoryItems, eq(inventoryEntries.inventoryItemId, inventoryItems.id));
+    const totalQuery = db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(inventoryEntries)
+      .leftJoin(
+        inventoryItems,
+        eq(inventoryEntries.inventoryItemId, inventoryItems.id),
+      );
 
-  const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
 
-  const itemsQuery = db
-    .select({
-      id: inventoryEntries.id,
-      inventoryItemId: inventoryEntries.inventoryItemId,
-      itemName: inventoryItems.name,
-      supplierId: inventoryEntries.supplierId,
-      supplierName: suppliers.name,
-      quantity: inventoryEntries.quantity,
-      createdAt: inventoryEntries.createdAt,
-    })
-    .from(inventoryEntries)
-    .leftJoin(inventoryItems, eq(inventoryEntries.inventoryItemId, inventoryItems.id))
-    .leftJoin(suppliers, eq(inventoryEntries.supplierId, suppliers.id))
-    .orderBy(desc(inventoryEntries.createdAt))
-    .limit(pageSize)
-    .offset(offset);
+    const itemsQuery = db
+      .select({
+        id: inventoryEntries.id,
+        inventoryItemId: inventoryEntries.inventoryItemId,
+        itemName: inventoryItems.name,
+        supplierId: inventoryEntries.supplierId,
+        supplierName: suppliers.name,
+        quantity: inventoryEntries.quantity,
+        createdAt: inventoryEntries.createdAt,
+      })
+      .from(inventoryEntries)
+      .leftJoin(
+        inventoryItems,
+        eq(inventoryEntries.inventoryItemId, inventoryItems.id),
+      )
+      .leftJoin(suppliers, eq(inventoryEntries.supplierId, suppliers.id))
+      .orderBy(desc(inventoryEntries.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-  const items = where ? await itemsQuery.where(where) : await itemsQuery;
-  const hasNextPage = offset + items.length < total;
+    const items = where ? await itemsQuery.where(where) : await itemsQuery;
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar entradas", { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -84,14 +98,19 @@ export async function POST(request: Request) {
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
-  const created = await db
-    .insert(inventoryEntries)
-    .values({
-      inventoryItemId: itemId,
-      supplierId: supId ? supId : null,
-      quantity: String(qty),
-    })
-    .returning();
+  const created = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(inventoryEntries)
+      .values({
+        inventoryItemId: itemId,
+        supplierId: supId ? supId : null,
+        quantity: String(qty),
+      })
+      .returning();
+
+    await syncInventoryForItem(tx, itemId);
+    return rows;
+  });
 
   const [itemRow] = await db
     .select({ name: inventoryItems.name })
@@ -132,15 +151,34 @@ export async function PUT(request: Request) {
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
-  const updated = await db
-    .update(inventoryEntries)
-    .set({
-      inventoryItemId: itemId,
-      supplierId: supId ? supId : null,
-      quantity: String(qty),
-    })
-    .where(eq(inventoryEntries.id, String(id)))
-    .returning();
+  const updated = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ inventoryItemId: inventoryEntries.inventoryItemId })
+      .from(inventoryEntries)
+      .where(eq(inventoryEntries.id, String(id)))
+      .limit(1);
+
+    if (!existing) return [];
+
+    const rows = await tx
+      .update(inventoryEntries)
+      .set({
+        inventoryItemId: itemId,
+        supplierId: supId ? supId : null,
+        quantity: String(qty),
+      })
+      .where(eq(inventoryEntries.id, String(id)))
+      .returning();
+
+    await syncInventoryForItem(tx, existing.inventoryItemId ?? itemId);
+    if (existing.inventoryItemId && existing.inventoryItemId !== itemId) {
+      await syncInventoryForItem(tx, itemId);
+    }
+
+    return rows;
+  });
+
+  if (updated.length === 0) return new Response("Not found", { status: 404 });
 
   return Response.json(updated);
 }
@@ -162,10 +200,27 @@ export async function DELETE(request: Request) {
 
   if (!id) return new Response("Inventory entry ID required", { status: 400 });
 
-  const deleted = await db
-    .delete(inventoryEntries)
-    .where(eq(inventoryEntries.id, String(id)))
-    .returning();
+  const deleted = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ inventoryItemId: inventoryEntries.inventoryItemId })
+      .from(inventoryEntries)
+      .where(eq(inventoryEntries.id, String(id)))
+      .limit(1);
+
+    if (!existing) return [];
+
+    const rows = await tx
+      .delete(inventoryEntries)
+      .where(eq(inventoryEntries.id, String(id)))
+      .returning();
+
+    if (existing.inventoryItemId) {
+      await syncInventoryForItem(tx, existing.inventoryItemId);
+    }
+    return rows;
+  });
+
+  if (deleted.length === 0) return new Response("Not found", { status: 404 });
 
   return Response.json(deleted);
 }

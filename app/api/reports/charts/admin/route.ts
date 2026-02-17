@@ -2,6 +2,7 @@ import { and, gte, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { orderPayments, orders } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -39,52 +40,66 @@ export async function GET(request: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const year = Number(searchParams.get("year") ?? "");
-  const month = Number(searchParams.get("month") ?? "");
-  const range = toMonthRange(
-    Number.isFinite(year) && year > 0 ? year : undefined,
-    Number.isFinite(month) && month > 0 ? month : undefined,
-  );
+  try {
+    const { searchParams } = new URL(request.url);
+    const year = Number(searchParams.get("year") ?? "");
+    const month = Number(searchParams.get("month") ?? "");
+    const range = toMonthRange(
+      Number.isFinite(year) && year > 0 ? year : undefined,
+      Number.isFinite(month) && month > 0 ? month : undefined,
+    );
 
-  const ordersRows = await db
-    .select({
-      day: sql<string>`to_char(date_trunc('day', ${orders.createdAt}), 'YYYY-MM-DD')`,
-      count: sql<number>`count(*)::int`,
-      soldTotal: sql<string>`coalesce(sum(${orders.total} + coalesce(${orders.shippingFee}, 0)), 0)::text`,
-    })
-    .from(orders)
-    .where(and(gte(orders.createdAt, range.start), lte(orders.createdAt, range.end)))
-    .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
-    .orderBy(sql`date_trunc('day', ${orders.createdAt})`);
+    const ordersRows = await db
+      .select({
+        day: sql<string>`to_char(date_trunc('day', ${orders.createdAt}), 'YYYY-MM-DD')`,
+        count: sql<number>`count(*)::int`,
+        soldTotal: sql<string>`coalesce(sum(${orders.total} + coalesce(${orders.shippingFee}, 0)), 0)::text`,
+      })
+      .from(orders)
+      .where(
+        and(gte(orders.createdAt, range.start), lte(orders.createdAt, range.end)),
+      )
+      .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${orders.createdAt})`);
 
-  const paymentsRows = await db
-    .select({
-      day: sql<string>`to_char(date_trunc('day', ${orderPayments.createdAt}), 'YYYY-MM-DD')`,
-      paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
-    })
-    .from(orderPayments)
-    .where(
-      and(
-        gte(orderPayments.createdAt, range.start),
-        lte(orderPayments.createdAt, range.end),
-        sql`${orderPayments.status} <> 'ANULADO'`,
-      ),
-    )
-    .groupBy(sql`date_trunc('day', ${orderPayments.createdAt})`)
-    .orderBy(sql`date_trunc('day', ${orderPayments.createdAt})`);
+    const paymentsRows = await db
+      .select({
+        day: sql<string>`to_char(date_trunc('day', ${orderPayments.createdAt}), 'YYYY-MM-DD')`,
+        paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
+      })
+      .from(orderPayments)
+      .where(
+        and(
+          gte(orderPayments.createdAt, range.start),
+          lte(orderPayments.createdAt, range.end),
+          sql`${orderPayments.status} <> 'ANULADO'`,
+        ),
+      )
+      .groupBy(sql`date_trunc('day', ${orderPayments.createdAt})`)
+      .orderBy(sql`date_trunc('day', ${orderPayments.createdAt})`);
 
-  const soldByDay = new Map(ordersRows.map((row) => [row.day, Number(row.soldTotal ?? 0)]));
-  const countByDay = new Map(ordersRows.map((row) => [row.day, Number(row.count ?? 0)]));
-  const paidByDay = new Map(paymentsRows.map((row) => [row.day, Number(row.paidTotal ?? 0)]));
+    const soldByDay = new Map(
+      ordersRows.map((row) => [row.day, Number(row.soldTotal ?? 0)]),
+    );
+    const countByDay = new Map(
+      ordersRows.map((row) => [row.day, Number(row.count ?? 0)]),
+    );
+    const paidByDay = new Map(
+      paymentsRows.map((row) => [row.day, Number(row.paidTotal ?? 0)]),
+    );
 
-  const days = buildDays(range.year, range.month);
-  const series = days.map((day) => ({
-    day,
-    sold: soldByDay.get(day) ?? 0,
-    paid: paidByDay.get(day) ?? 0,
-    orders: countByDay.get(day) ?? 0,
-  }));
+    const days = buildDays(range.year, range.month);
+    const series = days.map((day) => ({
+      day,
+      sold: soldByDay.get(day) ?? 0,
+      paid: paidByDay.get(day) ?? 0,
+      orders: countByDay.get(day) ?? 0,
+    }));
 
-  return Response.json({ year: range.year, month: range.month, series });
+    return Response.json({ year: range.year, month: range.month, series });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar graficos", { status: 500 });
+  }
 }

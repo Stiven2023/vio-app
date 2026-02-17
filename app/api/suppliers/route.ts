@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { suppliers } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -19,17 +20,27 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
 
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(suppliers);
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(suppliers);
 
-  const items = await db.select().from(suppliers).limit(pageSize).offset(offset);
-  const hasNextPage = offset + items.length < total;
+    const items = await db
+      .select()
+      .from(suppliers)
+      .limit(pageSize)
+      .offset(offset);
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar proveedores", { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {

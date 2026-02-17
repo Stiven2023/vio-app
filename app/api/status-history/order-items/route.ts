@@ -7,6 +7,7 @@ import {
   orderItems,
   orders,
 } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -24,42 +25,53 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
-  const orderItemId = String(searchParams.get("orderItemId") ?? "").trim();
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
+    const orderItemId = String(searchParams.get("orderItemId") ?? "").trim();
 
-  const where = orderItemId
-    ? eq(orderItemStatusHistory.orderItemId, orderItemId)
-    : undefined;
+    const where = orderItemId
+      ? eq(orderItemStatusHistory.orderItemId, orderItemId)
+      : undefined;
 
-  const totalQuery = db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(orderItemStatusHistory);
+    const totalQuery = db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(orderItemStatusHistory);
 
-  const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
 
-  const itemsQuery = db
-    .select({
-      id: orderItemStatusHistory.id,
-      orderItemId: orderItemStatusHistory.orderItemId,
-      itemName: orderItems.name,
-      orderId: orderItems.orderId,
-      orderCode: orders.orderCode,
-      status: orderItemStatusHistory.status,
-      changedBy: orderItemStatusHistory.changedBy,
-      changedByName: employees.name,
-      createdAt: orderItemStatusHistory.createdAt,
-    })
-    .from(orderItemStatusHistory)
-    .leftJoin(orderItems, eq(orderItemStatusHistory.orderItemId, orderItems.id))
-    .leftJoin(orders, eq(orderItems.orderId, orders.id))
-    .leftJoin(employees, eq(orderItemStatusHistory.changedBy, employees.id))
-    .orderBy(desc(orderItemStatusHistory.createdAt))
-    .limit(pageSize)
-    .offset(offset);
+    const itemsQuery = db
+      .select({
+        id: orderItemStatusHistory.id,
+        orderItemId: orderItemStatusHistory.orderItemId,
+        itemName: orderItems.name,
+        orderId: orderItems.orderId,
+        orderCode: orders.orderCode,
+        status: orderItemStatusHistory.status,
+        changedBy: orderItemStatusHistory.changedBy,
+        changedByName: employees.name,
+        createdAt: orderItemStatusHistory.createdAt,
+      })
+      .from(orderItemStatusHistory)
+      .leftJoin(
+        orderItems,
+        eq(orderItemStatusHistory.orderItemId, orderItems.id),
+      )
+      .leftJoin(orders, eq(orderItems.orderId, orders.id))
+      .leftJoin(employees, eq(orderItemStatusHistory.changedBy, employees.id))
+      .orderBy(desc(orderItemStatusHistory.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-  const items = where ? await itemsQuery.where(where) : await itemsQuery;
-  const hasNextPage = offset + items.length < total;
+    const items = where ? await itemsQuery.where(where) : await itemsQuery;
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar historial de Diseños", {
+      status: 500,
+    });
+  }
 }

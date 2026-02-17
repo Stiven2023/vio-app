@@ -35,6 +35,10 @@ export function InventoryOutputModal({
 }) {
   const [inventoryItemId, setInventoryItemId] = useState("");
   const [orderItemId, setOrderItemId] = useState("");
+  const [orderItems, setOrderItems] = useState<
+    Array<{ id: string; orderCode: string | null; name: string | null; status: string | null }>
+  >([]);
+  const [orderItemsLoading, setOrderItemsLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
   const [available, setAvailable] = useState<number | null>(null);
@@ -52,6 +56,32 @@ export function InventoryOutputModal({
     setQuantity(output?.quantity ? String(output.quantity) : "");
     setReason(output?.reason ?? "");
   }, [output, isOpen]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!isOpen) return;
+
+    setOrderItemsLoading(true);
+    apiJson<{ items: Array<{ id: string; orderCode: string | null; name: string | null; status: string | null }> }>(
+      `/api/order-items/options?pageSize=200`,
+    )
+      .then((res) => {
+        if (!active) return;
+        setOrderItems(Array.isArray(res.items) ? res.items : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setOrderItems([]);
+      })
+      .finally(() => {
+        if (active) setOrderItemsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     const id = String(inventoryItemId ?? "").trim();
@@ -151,11 +181,26 @@ export function InventoryOutputModal({
             onValueChange={setReason}
           />
 
-          <Input
-            label="Order item ID (opcional)"
-            value={orderItemId}
-            onValueChange={setOrderItemId}
-          />
+          <Select
+            isDisabled={submitting || orderItemsLoading}
+            isLoading={orderItemsLoading}
+            label="Diseño (opcional)"
+            selectedKeys={orderItemId ? new Set([orderItemId]) : new Set([])}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              setOrderItemId(first ? String(first) : "");
+            }}
+            items={orderItems}
+          >
+            {(it) => (
+              <SelectItem
+                key={it.id}
+                textValue={`${it.orderCode ?? "-"} - ${it.name ?? "(sin nombre)"}`}
+              >
+                {it.orderCode ?? "-"} - {it.name ?? "(sin nombre)"}
+              </SelectItem>
+            )}
+          </Select>
 
           <div className="text-xs text-default-500">
             Disponible: {available === null ? "-" : available}

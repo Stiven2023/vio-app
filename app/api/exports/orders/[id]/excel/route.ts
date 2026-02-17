@@ -487,7 +487,7 @@ export async function GET(
   styleSectionTitle(prefacturaSheet, rowPointer, 1, 5, "DETALLE DE PRODUCTOS");
   rowPointer += 1;
 
-  prefacturaSheet.addRow(["Diseno", "Cantidad", "Unitario", "Total", "Imagen"]);
+  prefacturaSheet.addRow(["Diseño", "Cantidad", "Unitario", "Total", "Imagen"]);
   styleTableHeader(prefacturaSheet, rowPointer, 1, 5);
   rowPointer += 1;
 
@@ -620,23 +620,23 @@ export async function GET(
   const totalItems = items.length;
 
   for (const [index, item] of items.entries()) {
-    const sheetName = `Diseno ${index + 1} de ${totalItems}`;
+    const sheetName = `Diseño ${index + 1} de ${totalItems}`;
     const sheet = workbook.addWorksheet(sheetName);
     const sheetHeaderInfo = {
       ...headerInfo,
-      subtitle: "Ficha de Diseno",
+      subtitle: "Ficha de Diseño",
     };
     let sheetRow = applyDocumentHeader(sheet, sheetHeaderInfo, stickerImageId);
     sheetRow += 1;
 
     sheet.mergeCells(sheetRow, 1, sheetRow, 5);
-    sheet.getCell(sheetRow, 1).value = "Detalle del diseno";
+    sheet.getCell(sheetRow, 1).value = "Detalle del Diseño";
     sheet.getCell(sheetRow, 1).font = { bold: true };
     applyRowBorder(sheet, sheetRow, 1, 5);
     sheetRow += 1;
 
     const detailRows: Array<[string, string, string?, string?]> = [
-      ["Diseno", item.name ?? "-", "Estado", item.status ?? "-"],
+      ["Diseño", item.name ?? "-", "Estado", item.status ?? "-"],
       ["Cantidad", String(item.quantity ?? 0), "Proceso", item.process ?? "-"],
       ["Tela", item.fabric ?? "-", "Cuello", item.neckType ?? "-"],
       ["Manga", item.sleeve ?? "-", "Color", item.color ?? "-"],
@@ -678,20 +678,17 @@ export async function GET(
     }
 
     sheetRow += 2;
-    sheet.mergeCells(sheetRow, 1, sheetRow, 5);
-    sheet.getCell(sheetRow, 1).value = "Empaque";
-    sheet.getCell(sheetRow, 1).font = { bold: true };
-    applyRowBorder(sheet, sheetRow, 1, 5);
+    styleSectionTitle(sheet, sheetRow, 1, 5, "EMPAQUE");
     sheetRow += 1;
     sheet.addRow(["Modo", "Talla", "Cantidad", "Nombre", "Numero"]);
-    sheet.getRow(sheetRow).font = { bold: true };
-    applyRowBorder(sheet, sheetRow, 1, 5);
+    styleTableHeader(sheet, sheetRow, 1, 5);
     sheetRow += 1;
 
     const itemPackaging = packagingByItem.get(item.id) ?? [];
     if (itemPackaging.length === 0) {
       const row = sheet.addRow(["-", "-", "-", "-", "-"]);
       applyRowBorder(sheet, row.number, 1, 5);
+      centerRowCells(sheet, row.number, 1, 5);
       sheetRow = row.number + 1;
     } else {
       itemPackaging.forEach((p) => {
@@ -703,25 +700,23 @@ export async function GET(
           p.personNumber ?? "-",
         ]);
         applyRowBorder(sheet, row.number, 1, 5);
+        centerRowCells(sheet, row.number, 1, 5);
         sheetRow = row.number + 1;
       });
     }
 
     sheetRow += 1;
-    sheet.mergeCells(sheetRow, 1, sheetRow, 5);
-    sheet.getCell(sheetRow, 1).value = "Medias";
-    sheet.getCell(sheetRow, 1).font = { bold: true };
-    applyRowBorder(sheet, sheetRow, 1, 5);
+    styleSectionTitle(sheet, sheetRow, 1, 5, "MEDIAS");
     sheetRow += 1;
     sheet.addRow(["Talla", "Cantidad", "Descripcion", "Imagen"]);
-    sheet.getRow(sheetRow).font = { bold: true };
-    applyRowBorder(sheet, sheetRow, 1, 5);
+    styleTableHeader(sheet, sheetRow, 1, 4);
     sheetRow += 1;
 
     const itemSocks = socksByItem.get(item.id) ?? [];
     if (itemSocks.length === 0) {
       const row = sheet.addRow(["-", "-", "-", "-"]);
       applyRowBorder(sheet, row.number, 1, 4);
+      centerRowCells(sheet, row.number, 1, 4);
       sheetRow = row.number + 1;
     } else {
       for (const sock of itemSocks) {
@@ -732,6 +727,7 @@ export async function GET(
           "",
         ]);
         applyRowBorder(sheet, row.number, 1, 4);
+        centerRowCells(sheet, row.number, 1, 4);
 
         if (sock.imageUrl) {
           const image = await fetchImageBuffer(sock.imageUrl);
@@ -745,30 +741,27 @@ export async function GET(
             });
             addImageToCell(sheet, imageId, row.number, 4, 70);
           } else {
-            row.getCell(4).value = "Imagen no disponible";
+            setCenteredCellValue(row.getCell(4), "Imagen no disponible");
           }
         } else {
-          row.getCell(4).value = "Imagen no disponible";
+          setCenteredCellValue(row.getCell(4), "Imagen no disponible");
         }
         sheetRow = row.number + 1;
       }
     }
 
     sheetRow += 1;
-    sheet.mergeCells(sheetRow, 1, sheetRow, 5);
-    sheet.getCell(sheetRow, 1).value = "Insumos";
-    sheet.getCell(sheetRow, 1).font = { bold: true };
-    applyRowBorder(sheet, sheetRow, 1, 5);
+    styleSectionTitle(sheet, sheetRow, 1, 5, "INSUMOS");
     sheetRow += 1;
     sheet.addRow(["Insumo", "Cantidad", "Nota"]);
-    sheet.getRow(sheetRow).font = { bold: true };
-    applyRowBorder(sheet, sheetRow, 1, 3);
+    styleTableHeader(sheet, sheetRow, 1, 3);
     sheetRow += 1;
 
     const itemMaterials = materialsByItem.get(item.id) ?? [];
     if (itemMaterials.length === 0) {
       const row = sheet.addRow(["-", "-", "-"]);
       applyRowBorder(sheet, row.number, 1, 3);
+      centerRowCells(sheet, row.number, 1, 3);
     } else {
       itemMaterials.forEach((m) => {
         const row = sheet.addRow([
@@ -777,6 +770,7 @@ export async function GET(
           m.note ?? "",
         ]);
         applyRowBorder(sheet, row.number, 1, 3);
+        centerRowCells(sheet, row.number, 1, 3);
       });
     }
   }

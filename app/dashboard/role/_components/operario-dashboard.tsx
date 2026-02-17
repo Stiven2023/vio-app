@@ -202,7 +202,7 @@ export function OperarioDashboard({ role }: { role: string }) {
           <div>
             <div className="text-lg font-semibold">Pedidos en proceso</div>
             <div className="text-sm text-default-500">
-              Solo se muestran disenos en estados permitidos para tu rol.
+              Solo se muestran Diseños en estados permitidos para tu rol.
             </div>
           </div>
           {loading ? <Spinner size="sm" /> : null}
@@ -224,7 +224,7 @@ export function OperarioDashboard({ role }: { role: string }) {
                     <div className="font-medium">{group.clientName}</div>
                   </div>
                   <div className="text-xs text-default-400">
-                    {group.items.length} disenos
+                    {group.items.length} Diseños
                   </div>
                 </div>
               </summary>
@@ -252,7 +252,7 @@ export function OperarioDashboard({ role }: { role: string }) {
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
-                          alt={item.name ?? "Diseno"}
+                          alt={item.name ?? "Diseño"}
                           className="h-16 w-16 rounded-medium object-cover"
                         />
                       ) : null}
@@ -412,7 +412,7 @@ export function OperarioDashboard({ role }: { role: string }) {
                   <div>
                     <div className="font-medium">{output.itemName ?? "Item"}</div>
                     <div className="text-xs text-default-500">
-                      {output.orderItemName ?? "Sin diseno"}
+                      {output.orderItemName ?? "Sin Diseño"}
                     </div>
                   </div>
                   <div className="text-default-500">-{output.quantity ?? "0"}</div>

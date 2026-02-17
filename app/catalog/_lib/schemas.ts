@@ -41,6 +41,30 @@ export const createProductPriceSchema = z.object({
 export const createInventoryItemSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido").max(255, "Máximo 255"),
   unit: z.string().trim().min(1, "Unidad requerida").max(50, "Máximo 50"),
+  description: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  price: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio inválido"),
+  supplierId: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+    .refine((v) => !v || /^[0-9a-fA-F-]{36}$/.test(v), "Proveedor inválido"),
+  minStock: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Stock mínimo inválido"),
+  isActive: z.boolean().optional(),
 });
 
 export const createInventoryEntrySchema = z.object({

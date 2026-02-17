@@ -22,12 +22,14 @@ export function CatalogTabs({
   canDeleteItem,
   canEntry,
   canOutput,
+  canViewInventoryItems,
 }: {
   canCreateItem: boolean;
   canEditItem: boolean;
   canDeleteItem: boolean;
   canEntry: boolean;
   canOutput: boolean;
+  canViewInventoryItems: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<CatalogTabKey>("products");
 
@@ -40,9 +42,9 @@ export function CatalogTabs({
       >
         <Tab key="products" title="Productos" />
         <Tab key="categories" title="Categorías" />
-        <Tab key="inventory" title="Inventario" />
-        <Tab key="entries" title="Entradas" />
-        <Tab key="outputs" title="Salidas" />
+        {canViewInventoryItems ? <Tab key="inventory" title="Inventario" /> : null}
+        {canEntry ? <Tab key="entries" title="Entradas" /> : null}
+        {canOutput ? <Tab key="outputs" title="Salidas" /> : null}
       </Tabs>
 
       <div className="mt-4">

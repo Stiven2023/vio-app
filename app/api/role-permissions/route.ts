@@ -2,6 +2,7 @@ import { eq, and, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { rolePermissions } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -18,20 +19,29 @@ export async function GET(request: Request) {
   const forbidden = await requirePermission(request, "VER_ROLE_PERMISSION");
 
   if (forbidden) return forbidden;
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
 
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(rolePermissions);
-  const items = await db
-    .select()
-    .from(rolePermissions)
-    .limit(pageSize)
-    .offset(offset);
-  const hasNextPage = offset + items.length < total;
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(rolePermissions);
+    const items = await db
+      .select()
+      .from(rolePermissions)
+      .limit(pageSize)
+      .offset(offset);
+    const hasNextPage = offset + items.length < total;
+
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar permisos por rol", {
+      status: 500,
+    });
+  }
 }
 
 export async function POST(request: Request) {

@@ -5,6 +5,7 @@ import { db } from "@/src/db";
 import {
   employees,
   inventoryItems,
+  inventoryOutputs,
   orderItemMaterials,
   orderItemPackaging,
   orderItemSocks,
@@ -123,10 +124,43 @@ export async function GET(
     .from(orderItemSocks)
     .where(eq(orderItemSocks.orderItemId, orderItemId));
 
-  const materials = await db
-    .select()
+  const materialsRows = await db
+    .select({
+      orderItemId: orderItemMaterials.orderItemId,
+      inventoryItemId: orderItemMaterials.inventoryItemId,
+      quantity: orderItemMaterials.quantity,
+      note: orderItemMaterials.note,
+      itemName: inventoryItems.name,
+      unit: inventoryItems.unit,
+    })
     .from(orderItemMaterials)
+    .leftJoin(
+      inventoryItems,
+      eq(orderItemMaterials.inventoryItemId, inventoryItems.id),
+    )
     .where(eq(orderItemMaterials.orderItemId, orderItemId));
+
+  const deliveredRows = await db
+    .select({
+      inventoryItemId: inventoryOutputs.inventoryItemId,
+      deliveredQty: sql<string>`coalesce(sum(coalesce(${inventoryOutputs.quantity}, 0)::numeric), 0)::text`,
+    })
+    .from(inventoryOutputs)
+    .where(eq(inventoryOutputs.orderItemId, orderItemId))
+    .groupBy(inventoryOutputs.inventoryItemId);
+
+  const deliveredByItem = new Map(
+    deliveredRows
+      .filter((r) => r.inventoryItemId)
+      .map((r) => [String(r.inventoryItemId), r.deliveredQty]),
+  );
+
+  const materials = materialsRows.map((m) => ({
+    ...m,
+    deliveredQty: m.inventoryItemId
+      ? deliveredByItem.get(String(m.inventoryItemId)) ?? "0"
+      : "0",
+  }));
 
   return Response.json({ item, packaging, socks, materials });
 }

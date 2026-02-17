@@ -8,6 +8,21 @@ const ROLE_PERMISSION_OVERRIDES: Record<string, string[]> = {
   COMPRAS: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
 };
 
+const PERMISSION_ALIASES: Record<string, string[]> = {
+  // Proveedores: el seed/roleUseCases usa permisos agregados como GESTIONAR_PROVEEDORES
+  VER_PROVEEDOR: ["VER_PROVEEDORES", "GESTIONAR_PROVEEDORES"],
+  CREAR_PROVEEDOR: ["GESTIONAR_PROVEEDORES"],
+  EDITAR_PROVEEDOR: ["GESTIONAR_PROVEEDORES"],
+  ELIMINAR_PROVEEDOR: ["GESTIONAR_PROVEEDORES"],
+
+  // Inventario: algunos roles/config usan nombres distintos
+  REGISTRAR_ENTRADA: ["REGISTRAR_ENTRADA_INVENTARIO"],
+  REGISTRAR_SALIDA: ["REGISTRAR_SALIDA_INVENTARIO"],
+
+  // Si puedes ver inventario, puedes ver el catálogo de items
+  VER_ITEM_INVENTARIO: ["VER_INVENTARIO"],
+};
+
 export async function requirePermission(
   request: Request,
   permissionName: string,
@@ -34,29 +49,34 @@ export async function requirePermission(
   if (role.length === 0) {
     return new Response("Forbidden", { status: 403 });
   }
-  // Buscar el permiso por nombre
-  const perm = await db
-    .select()
-    .from(permissions)
-    .where(eq(permissions.name, permissionName));
+  const candidates = [
+    permissionName,
+    ...(PERMISSION_ALIASES[permissionName] ?? []),
+  ];
+  const uniqueCandidates = Array.from(new Set(candidates));
 
-  if (perm.length === 0) {
-    return new Response("Forbidden", { status: 403 });
+  for (const candidate of uniqueCandidates) {
+    const perm = await db
+      .select()
+      .from(permissions)
+      .where(eq(permissions.name, candidate));
+
+    if (perm.length === 0) continue;
+
+    const hasPerm = await db
+      .select()
+      .from(rolePermissions)
+      .where(
+        and(
+          eq(rolePermissions.roleId, role[0].id),
+          eq(rolePermissions.permissionId, perm[0].id),
+        ),
+      );
+
+    if (hasPerm.length > 0) {
+      return null; // autorizado por permiso directo o alias
+    }
   }
-  // Verificar si el rol tiene ese permiso
-  const hasPerm = await db
-    .select()
-    .from(rolePermissions)
-    .where(
-      and(
-        eq(rolePermissions.roleId, role[0].id),
-        eq(rolePermissions.permissionId, perm[0].id),
-      ),
-    );
 
-  if (hasPerm.length === 0) {
-    return new Response("Forbidden: missing permission", { status: 403 });
-  }
-
-  return null; // autorizado
+  return new Response("Forbidden: missing permission", { status: 403 });
 }

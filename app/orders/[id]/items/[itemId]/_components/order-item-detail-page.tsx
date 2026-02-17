@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Textarea } from "@heroui/input";
 import {
   Table,
   TableBody,
@@ -20,6 +21,14 @@ type OrderItemPayload = {
   packaging: Array<any>;
   socks: Array<any>;
   materials: Array<any>;
+};
+
+type IssueRow = {
+  id: string;
+  message: string;
+  role: string | null;
+  statusSnapshot: string | null;
+  createdAt: string | null;
 };
 
 type GroupedRow = { size: string; quantity: number };
@@ -58,6 +67,10 @@ export function OrderItemDetailPage({
   const [payload, setPayload] = useState<OrderItemPayload | null>(null);
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [issues, setIssues] = useState<IssueRow[]>([]);
+  const [issuesLoading, setIssuesLoading] = useState(false);
+  const [issueMessage, setIssueMessage] = useState("");
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -85,6 +98,44 @@ export function OrderItemDetailPage({
       active = false;
     };
   }, [itemId, orderId]);
+
+  const loadIssues = async () => {
+    setIssuesLoading(true);
+    try {
+      const res = await apiJson<{ items: IssueRow[] }>(
+        `/api/orders/items/${itemId}/issues`,
+      );
+      setIssues(Array.isArray(res.items) ? res.items : []);
+    } catch {
+      setIssues([]);
+    } finally {
+      setIssuesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!itemId) return;
+    loadIssues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
+
+  const reportIssue = async () => {
+    const msg = issueMessage.trim();
+    if (!msg) return;
+    if (reporting) return;
+
+    try {
+      setReporting(true);
+      await apiJson(`/api/orders/items/${itemId}/issues`, {
+        method: "POST",
+        body: JSON.stringify({ message: msg }),
+      });
+      setIssueMessage("");
+      await loadIssues();
+    } finally {
+      setReporting(false);
+    }
+  };
 
   const groupedSummary = useMemo(
     () => buildGroupedSummary(payload?.packaging ?? []),
@@ -134,12 +185,12 @@ export function OrderItemDetailPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Detalle del diseno</h1>
-          <p className="text-default-600 mt-1">Informacion completa del diseno.</p>
+          <h1 className="text-2xl font-bold">Detalle del Diseño</h1>
+          <p className="text-default-600 mt-1">Informacion completa del Diseño.</p>
         </div>
         <div className="flex gap-2">
           <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
-            Volver a disenos
+            Volver a Diseños
           </Button>
         </div>
       </div>
@@ -158,7 +209,7 @@ export function OrderItemDetailPage({
               </div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Diseno</div>
+              <div className="text-xs text-default-500">Diseño</div>
               <div className="font-medium">{item?.name ?? "-"}</div>
               <div className="text-sm text-default-600">
                 Estado: {item?.status ?? "-"}
@@ -177,7 +228,7 @@ export function OrderItemDetailPage({
 
       <Card>
         <CardHeader>
-          <div className="font-semibold">Detalles del diseno</div>
+          <div className="font-semibold">Detalles del Diseño</div>
         </CardHeader>
         <CardBody>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -281,11 +332,11 @@ export function OrderItemDetailPage({
       {item?.imageUrl ? (
         <Card>
           <CardHeader>
-            <div className="font-semibold">Imagen del diseno</div>
+            <div className="font-semibold">Imagen del Diseño</div>
           </CardHeader>
           <CardBody>
             <img
-              alt="Imagen del diseno"
+              alt="Imagen del Diseño"
               className="max-h-96 w-auto rounded-medium border border-default-200 object-contain"
               src={item.imageUrl}
             />
@@ -395,14 +446,67 @@ export function OrderItemDetailPage({
             <TableHeader>
               <TableColumn>Item</TableColumn>
               <TableColumn>Cantidad</TableColumn>
+              <TableColumn>Entregado</TableColumn>
               <TableColumn>Nota</TableColumn>
             </TableHeader>
             <TableBody emptyContent="Sin materiales" items={payload?.materials ?? []}>
               {(row) => (
                 <TableRow key={`${row.inventoryItemId}-${row.note}`}>
-                  <TableCell>{row.inventoryItemId ?? "-"}</TableCell>
+                  <TableCell>{(row as any).itemName ?? row.inventoryItemId ?? "-"}</TableCell>
                   <TableCell>{row.quantity ?? "-"}</TableCell>
+                  <TableCell>{(row as any).deliveredQty ?? "0"}</TableCell>
                   <TableCell>{row.note ?? "-"}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Problemas</div>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          <Textarea
+            label="Reportar problema"
+            minRows={2}
+            placeholder="Describe el error o bloqueo del proceso…"
+            value={issueMessage}
+            onValueChange={setIssueMessage}
+          />
+          <div className="flex justify-end">
+            <Button
+              color="primary"
+              isDisabled={!issueMessage.trim()}
+              isLoading={reporting}
+              onPress={reportIssue}
+            >
+              Reportar
+            </Button>
+          </div>
+
+          <Table removeWrapper aria-label="Problemas">
+            <TableHeader>
+              <TableColumn>Fecha</TableColumn>
+              <TableColumn>Estado</TableColumn>
+              <TableColumn>Rol</TableColumn>
+              <TableColumn>Mensaje</TableColumn>
+            </TableHeader>
+            <TableBody
+              emptyContent={issuesLoading ? "" : "Sin problemas"}
+              items={issues}
+            >
+              {(row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    {row.createdAt
+                      ? new Date(row.createdAt).toLocaleString()
+                      : "-"}
+                  </TableCell>
+                  <TableCell>{row.statusSnapshot ?? "-"}</TableCell>
+                  <TableCell>{row.role ?? "-"}</TableCell>
+                  <TableCell>{row.message ?? "-"}</TableCell>
                 </TableRow>
               )}
             </TableBody>

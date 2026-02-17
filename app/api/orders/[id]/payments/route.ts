@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { orderPayments, orders } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -44,40 +45,46 @@ export async function GET(
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
 
-  const { id } = await params;
-  const orderId = String(id ?? "").trim();
+    const { id } = await params;
+    const orderId = String(id ?? "").trim();
 
-  if (!orderId) return new Response("id required", { status: 400 });
+    if (!orderId) return new Response("id required", { status: 400 });
 
-  const where = and(eq(orderPayments.orderId, orderId));
+    const where = and(eq(orderPayments.orderId, orderId));
 
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(orderPayments)
-    .where(where);
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(orderPayments)
+      .where(where);
 
-  const items = await db
-    .select({
-      id: orderPayments.id,
-      orderId: orderPayments.orderId,
-      amount: orderPayments.amount,
-      method: orderPayments.method,
-      status: orderPayments.status,
-      proofImageUrl: orderPayments.proofImageUrl,
-      createdAt: orderPayments.createdAt,
-    })
-    .from(orderPayments)
-    .where(where)
-    .orderBy(desc(orderPayments.createdAt))
-    .limit(pageSize)
-    .offset(offset);
+    const items = await db
+      .select({
+        id: orderPayments.id,
+        orderId: orderPayments.orderId,
+        amount: orderPayments.amount,
+        method: orderPayments.method,
+        status: orderPayments.status,
+        proofImageUrl: orderPayments.proofImageUrl,
+        createdAt: orderPayments.createdAt,
+      })
+      .from(orderPayments)
+      .where(where)
+      .orderBy(desc(orderPayments.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-  const hasNextPage = offset + items.length < total;
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar pagos", { status: 500 });
+  }
 }
 
 export async function POST(

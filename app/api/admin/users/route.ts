@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 
 import { db } from "@/src/db";
 import { employees, users } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { emailVerificationTokens } from "@/src/db/email_verification_tokens";
 import { passwordResetTokens } from "@/src/db/password_reset_tokens";
 import { parsePagination } from "@/src/utils/pagination";
@@ -86,27 +87,33 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
 
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(users);
-  const items = await db
-    .select({
-      id: users.id,
-      email: users.email,
-      emailVerified: users.emailVerified,
-      isActive: users.isActive,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .limit(pageSize)
-    .offset(offset);
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(users);
+    const items = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        emailVerified: users.emailVerified,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .limit(pageSize)
+      .offset(offset);
 
-  const hasNextPage = offset + items.length < total;
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar usuarios", { status: 500 });
+  }
 }
 
 export async function PUT(request: Request) {

@@ -13,9 +13,12 @@ export default async function CatalogPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_INVENTARIO");
+  const forbiddenInventory = await requirePermission(req, "VER_INVENTARIO");
+  const forbiddenItems = await requirePermission(req, "VER_ITEM_INVENTARIO");
 
-  if (forbidden) redirect("/unauthorized");
+  if (forbiddenInventory && forbiddenItems) redirect("/unauthorized");
+
+  const canViewInventoryItems = !forbiddenItems;
 
   const canCreateItem = !(await requirePermission(req, "CREAR_ITEM_INVENTARIO"));
   const canEditItem = !(await requirePermission(req, "EDITAR_ITEM_INVENTARIO"));
@@ -36,6 +39,7 @@ export default async function CatalogPage() {
           canEditItem={canEditItem}
           canEntry={canEntry}
           canOutput={canOutput}
+          canViewInventoryItems={canViewInventoryItems}
         />
       </div>
     </div>

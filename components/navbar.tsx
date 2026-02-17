@@ -76,6 +76,7 @@ export const Navbar = () => {
   const [canSeeCatalog, setCanSeeCatalog] = useState(false);
   const [canSeeOrders, setCanSeeOrders] = useState(false);
   const [canSeeSuppliers, setCanSeeSuppliers] = useState(false);
+  const [canSeePurchaseOrders, setCanSeePurchaseOrders] = useState(false);
   const [canSeeConfectionists, setCanSeeConfectionists] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export const Navbar = () => {
     setCanSeeCatalog(Boolean(permissions?.VER_INVENTARIO));
     setCanSeeOrders(Boolean(permissions?.VER_PEDIDO));
     setCanSeeSuppliers(Boolean(permissions?.VER_PROVEEDOR));
+    setCanSeePurchaseOrders(Boolean(permissions?.CREAR_ORDEN_COMPRA));
     setCanSeeConfectionists(Boolean(permissions?.VER_CONFECCIONISTA));
     setCanSeeStatusHistory(Boolean(permissions?.VER_HISTORIAL_ESTADO));
   };
@@ -135,7 +137,7 @@ export const Navbar = () => {
     }
 
     fetch(
-      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO`,
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO`,
       {
         credentials: "include",
       },
@@ -148,6 +150,7 @@ export const Navbar = () => {
               VER_INVENTARIO: false,
               VER_PEDIDO: false,
               VER_PROVEEDOR: false,
+              CREAR_ORDEN_COMPRA: false,
               VER_CONFECCIONISTA: false,
               VER_HISTORIAL_ESTADO: false,
             },
@@ -249,6 +252,9 @@ export const Navbar = () => {
     if (isAuthenticated && canSeeCatalog) {
       extra.push({ name: "Catálogo", href: "/catalog" });
     }
+    if (isAuthenticated && canSeePurchaseOrders) {
+      extra.push({ name: "Órdenes de compra", href: "/purchase-orders" });
+    }
     if (isAuthenticated && canSeeSuppliers) {
       extra.push({ name: "Proveedores", href: "/suppliers" });
     }
@@ -271,6 +277,7 @@ export const Navbar = () => {
     canSeeClients,
     canSeeConfectionists,
     canSeeOrders,
+    canSeePurchaseOrders,
     canSeeStatusHistory,
     canSeeSuppliers,
     isAdmin,
@@ -313,121 +320,109 @@ export const Navbar = () => {
 
           {!operarioOnly && isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
             <NavbarItem key="nav-orders">
-              <div className="flex items-center gap-1">
+              <Dropdown onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}>
                 <Tooltip content="Pedidos">
-                  <NextLink
-                    className={clsx(
-                      iconBase,
-                      isActive("/orders") || isActive("/status-history")
-                        ? activeClass
-                        : idleClass,
-                    )}
-                    href="/orders"
-                  >
-                    <BsClipboardData />
-                  </NextLink>
-                </Tooltip>
-                <Dropdown
-                  onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}
-                >
                   <DropdownTrigger>
-                    <span className="inline-flex">
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        className={clsx(
-                          "h-9 w-7",
-                          openGroup === "orders" ? activeClass : idleClass,
-                        )}
-                      >
-                        <BsChevronDown />
-                      </Button>
-                    </span>
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      className={clsx(
+                        iconBase,
+                        isActive("/orders") || isActive("/status-history")
+                          ? activeClass
+                          : idleClass,
+                        openGroup === "orders" ? activeClass : null,
+                      )}
+                    >
+                      <BsClipboardData />
+                    </Button>
                   </DropdownTrigger>
-                  <DropdownMenu aria-label="Pedidos">
-                    {canSeeOrders ? (
-                      <DropdownItem
-                        key="orders"
-                        as={NextLink}
-                        href="/orders"
-                        startContent={<BsClipboardData />}
-                      >
-                        Pedidos
-                      </DropdownItem>
-                    ) : null}
-                    {canSeeStatusHistory ? (
-                      <DropdownItem
-                        key="history"
-                        as={NextLink}
-                        href="/status-history"
-                        startContent={<BsClockHistory />}
-                      >
-                        Historial
-                      </DropdownItem>
-                    ) : null}
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
+                </Tooltip>
+                <DropdownMenu aria-label="Pedidos">
+                  {canSeeOrders ? (
+                    <DropdownItem
+                      key="orders"
+                      as={NextLink}
+                      href="/orders"
+                      startContent={<BsClipboardData />}
+                    >
+                      Pedidos
+                    </DropdownItem>
+                  ) : null}
+                  {canSeeStatusHistory ? (
+                    <DropdownItem
+                      key="history"
+                      as={NextLink}
+                      href="/status-history"
+                      startContent={<BsClockHistory />}
+                    >
+                      Historial
+                    </DropdownItem>
+                  ) : null}
+                </DropdownMenu>
+              </Dropdown>
             </NavbarItem>
           ) : null}
 
-          {!operarioOnly && isAuthenticated && (canSeeCatalog || canSeeSuppliers) ? (
+          {!operarioOnly &&
+          isAuthenticated &&
+          (canSeeCatalog || canSeePurchaseOrders || canSeeSuppliers) ? (
             <NavbarItem key="nav-inventory">
-              <div className="flex items-center gap-1">
+              <Dropdown
+                onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
+              >
                 <Tooltip content="Inventario">
-                  <NextLink
-                    className={clsx(
-                      iconBase,
-                      isActive("/catalog") || isActive("/suppliers")
-                        ? activeClass
-                        : idleClass,
-                    )}
-                    href="/catalog"
-                  >
-                    <BsBoxSeam />
-                  </NextLink>
-                </Tooltip>
-                <Dropdown
-                  onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
-                >
                   <DropdownTrigger>
-                    <span className="inline-flex">
-                      <Button
-                        isIconOnly
-                        variant="light"
-                        className={clsx(
-                          "h-9 w-7",
-                          openGroup === "inventory" ? activeClass : idleClass,
-                        )}
-                      >
-                        <BsChevronDown />
-                      </Button>
-                    </span>
+                    <Button
+                      isIconOnly
+                      variant="light"
+                      className={clsx(
+                        iconBase,
+                        isActive("/catalog") ||
+                          isActive("/purchase-orders") ||
+                          isActive("/suppliers")
+                          ? activeClass
+                          : idleClass,
+                        openGroup === "inventory" ? activeClass : null,
+                      )}
+                    >
+                      <BsBoxSeam />
+                    </Button>
                   </DropdownTrigger>
-                  <DropdownMenu aria-label="Inventario">
-                    {canSeeCatalog ? (
-                      <DropdownItem
-                        key="catalog"
-                        as={NextLink}
-                        href="/catalog"
-                        startContent={<BsBoxSeam />}
-                      >
-                        Catálogo
-                      </DropdownItem>
-                    ) : null}
-                    {canSeeSuppliers ? (
-                      <DropdownItem
-                        key="suppliers"
-                        as={NextLink}
-                        href="/suppliers"
-                        startContent={<BsTruck />}
-                      >
-                        Proveedores
-                      </DropdownItem>
-                    ) : null}
-                  </DropdownMenu>
-                </Dropdown>
-              </div>
+                </Tooltip>
+                <DropdownMenu aria-label="Inventario">
+                  {canSeeCatalog ? (
+                    <DropdownItem
+                      key="catalog"
+                      as={NextLink}
+                      href="/catalog"
+                      startContent={<BsBoxSeam />}
+                    >
+                      Catálogo
+                    </DropdownItem>
+                  ) : null}
+                  {canSeePurchaseOrders ? (
+                    <DropdownItem
+                      key="purchase-orders"
+                      as={NextLink}
+                      href="/purchase-orders"
+                      startContent={<BsBoxSeam />}
+                    >
+                      Órdenes de compra
+                    </DropdownItem>
+                  ) : null}
+                  {canSeeSuppliers ? (
+                    <DropdownItem
+                      key="suppliers"
+                      as={NextLink}
+                      href="/suppliers"
+                      startContent={<BsTruck />}
+                    >
+                      Proveedores
+                    </DropdownItem>
+                  ) : null}
+                </DropdownMenu>
+              </Dropdown>
             </NavbarItem>
           ) : null}
 

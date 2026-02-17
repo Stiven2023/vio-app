@@ -14,6 +14,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  uniqueIndex,
   text,
   timestamp,
   uuid,
@@ -347,6 +348,18 @@ export const orderItemMaterials = pgTable("order_item_materials", {
   note: text("note"),
 });
 
+export const orderItemIssues = pgTable("order_item_issues", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id")
+    .notNull()
+    .references(() => orderItems.id),
+  message: text("message").notNull(),
+  role: varchar("role", { length: 150 }),
+  statusSnapshot: varchar("status_snapshot", { length: 50 }),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const orderItemRevisions = pgTable("order_item_revisions", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderItemId: uuid("order_item_id").references(() => orderItems.id),
@@ -413,8 +426,58 @@ export const suppliers = pgTable("suppliers", {
 export const inventoryItems = pgTable("inventory_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
   unit: varchar("unit", { length: 50 }),
+  price: numeric("price", { precision: 14, scale: 2 }).default("0"),
+  supplierId: uuid("supplier_id").references(() => suppliers.id),
   minStock: numeric("min_stock", { precision: 12, scale: 2 }).default("0"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+	 INVENTORY (STATE)
+========================= */
+export const inventory = pgTable("inventory", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .unique()
+    .references(() => inventoryItems.id),
+  availableQty: numeric("available_qty", { precision: 12, scale: 2 }).default(
+    "0",
+  ),
+  color: varchar("color", { length: 50 }),
+  size: varchar("size", { length: 50 }),
+  unit: varchar("unit", { length: 50 }).default("unit"),
+  lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  isActive: boolean("is_active").default(true),
+});
+
+/* =========================
+	 PURCHASE ORDERS
+========================= */
+export const purchaseOrders = pgTable("purchase_orders", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  supplierId: uuid("supplier_id").references(() => suppliers.id),
+  status: purchaseOrderStatusEnum("status").default("PENDIENTE"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+});
+
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  purchaseOrderId: uuid("purchase_order_id")
+    .notNull()
+    .references(() => purchaseOrders.id),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItems.id),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
 });
 
 /* =========================
@@ -443,6 +506,31 @@ export const inventoryOutputs = pgTable("inventory_outputs", {
   reason: varchar("reason", { length: 100 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+/* =========================
+	 ORDER SUPPLIES
+========================= */
+export const orderSupplies = pgTable(
+  "order_supplies",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderItemId: uuid("order_item_id").notNull().references(() => orderItems.id),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItems.id),
+    supplierId: uuid("supplier_id").references(() => suppliers.id),
+    quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    uniq: uniqueIndex("order_supplies_order_item_inventory_item_uniq").on(
+      t.orderItemId,
+      t.inventoryItemId,
+    ),
+  }),
+);
 
 /* =========================
 	 PAYMENTS

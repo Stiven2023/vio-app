@@ -2,11 +2,12 @@ import { desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
-  inventoryEntries,
   inventoryItems,
   inventoryOutputs,
   orderItems,
 } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
+import { computeStockForItem, syncInventoryForItem } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -24,26 +25,6 @@ function asNumber(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
-async function getStockForItem(itemId: string) {
-  const [entriesRow] = await db
-    .select({
-      total: sql<string>`coalesce(sum(${inventoryEntries.quantity}), 0)::text`,
-    })
-    .from(inventoryEntries)
-    .where(eq(inventoryEntries.inventoryItemId, itemId));
-
-  const [outputsRow] = await db
-    .select({
-      total: sql<string>`coalesce(sum(${inventoryOutputs.quantity}), 0)::text`,
-    })
-    .from(inventoryOutputs)
-    .where(eq(inventoryOutputs.inventoryItemId, itemId));
-
-  const entries = asNumber(entriesRow?.total);
-  const outputs = asNumber(outputsRow?.total);
-
-  return entries - outputs;
-}
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -58,41 +39,53 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
-  const q = String(searchParams.get("q") ?? "").trim();
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
+    const q = String(searchParams.get("q") ?? "").trim();
 
-  const where = q ? ilike(inventoryItems.name, `%${q}%`) : undefined;
+    const where = q ? ilike(inventoryItems.name, `%${q}%`) : undefined;
 
-  const totalQuery = db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(inventoryOutputs)
-    .leftJoin(inventoryItems, eq(inventoryOutputs.inventoryItemId, inventoryItems.id));
+    const totalQuery = db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(inventoryOutputs)
+      .leftJoin(
+        inventoryItems,
+        eq(inventoryOutputs.inventoryItemId, inventoryItems.id),
+      );
 
-  const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
 
-  const itemsQuery = db
-    .select({
-      id: inventoryOutputs.id,
-      inventoryItemId: inventoryOutputs.inventoryItemId,
-      itemName: inventoryItems.name,
-      orderItemId: inventoryOutputs.orderItemId,
-      orderItemName: orderItems.name,
-      quantity: inventoryOutputs.quantity,
-      reason: inventoryOutputs.reason,
-      createdAt: inventoryOutputs.createdAt,
-    })
-    .from(inventoryOutputs)
-    .leftJoin(inventoryItems, eq(inventoryOutputs.inventoryItemId, inventoryItems.id))
-    .leftJoin(orderItems, eq(inventoryOutputs.orderItemId, orderItems.id))
-    .orderBy(desc(inventoryOutputs.createdAt))
-    .limit(pageSize)
-    .offset(offset);
+    const itemsQuery = db
+      .select({
+        id: inventoryOutputs.id,
+        inventoryItemId: inventoryOutputs.inventoryItemId,
+        itemName: inventoryItems.name,
+        orderItemId: inventoryOutputs.orderItemId,
+        orderItemName: orderItems.name,
+        quantity: inventoryOutputs.quantity,
+        reason: inventoryOutputs.reason,
+        createdAt: inventoryOutputs.createdAt,
+      })
+      .from(inventoryOutputs)
+      .leftJoin(
+        inventoryItems,
+        eq(inventoryOutputs.inventoryItemId, inventoryItems.id),
+      )
+      .leftJoin(orderItems, eq(inventoryOutputs.orderItemId, orderItems.id))
+      .orderBy(desc(inventoryOutputs.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-  const items = where ? await itemsQuery.where(where) : await itemsQuery;
-  const hasNextPage = offset + items.length < total;
+    const items = where ? await itemsQuery.where(where) : await itemsQuery;
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar salidas", { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -119,21 +112,26 @@ export async function POST(request: Request) {
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!r) return new Response("reason required", { status: 400 });
 
-  const stock = await getStockForItem(itemId);
+  const stock = await computeStockForItem(db, itemId);
 
   if (qty > stock) {
     return new Response("Stock insuficiente", { status: 400 });
   }
 
-  const created = await db
-    .insert(inventoryOutputs)
-    .values({
-      inventoryItemId: itemId,
-      orderItemId: ordId ? ordId : null,
-      quantity: String(qty),
-      reason: r,
-    })
-    .returning();
+  const created = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(inventoryOutputs)
+      .values({
+        inventoryItemId: itemId,
+        orderItemId: ordId ? ordId : null,
+        quantity: String(qty),
+        reason: r,
+      })
+      .returning();
+
+    await syncInventoryForItem(tx, itemId);
+    return rows;
+  });
 
   const [itemRow] = await db
     .select({ name: inventoryItems.name })
@@ -188,24 +186,66 @@ export async function PUT(request: Request) {
 
   if (!existing) return new Response("Not found", { status: 404 });
 
-  const stock = await getStockForItem(itemId);
+  const stock = await computeStockForItem(db, itemId);
   const currentQty = asNumber(existing.quantity);
-  const available = stock + currentQty;
+  const available = stock + (existing.inventoryItemId === itemId ? currentQty : 0);
 
   if (qty > available) {
     return new Response("Stock insuficiente", { status: 400 });
   }
 
-  const updated = await db
-    .update(inventoryOutputs)
-    .set({
-      inventoryItemId: itemId,
-      orderItemId: ordId ? ordId : null,
-      quantity: String(qty),
-      reason: r,
-    })
-    .where(eq(inventoryOutputs.id, String(id)))
-    .returning();
+  const updated = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({
+        inventoryItemId: inventoryOutputs.inventoryItemId,
+        quantity: inventoryOutputs.quantity,
+      })
+      .from(inventoryOutputs)
+      .where(eq(inventoryOutputs.id, String(id)))
+      .limit(1);
+
+    if (!existing) return [];
+
+    // Revalidar stock con el estado más reciente dentro de la tx
+    const stock = await computeStockForItem(tx, itemId);
+    const currentQty = asNumber(existing.quantity);
+    const available = stock + (existing.inventoryItemId === itemId ? currentQty : 0);
+
+    if (qty > available) {
+      throw new Error("Stock insuficiente");
+    }
+
+    const rows = await tx
+      .update(inventoryOutputs)
+      .set({
+        inventoryItemId: itemId,
+        orderItemId: ordId ? ordId : null,
+        quantity: String(qty),
+        reason: r,
+      })
+      .where(eq(inventoryOutputs.id, String(id)))
+      .returning();
+
+    await syncInventoryForItem(tx, existing.inventoryItemId ?? itemId);
+    if (existing.inventoryItemId && existing.inventoryItemId !== itemId) {
+      await syncInventoryForItem(tx, itemId);
+    }
+
+    return rows;
+  }).catch((e) => {
+    if (String((e as any)?.message ?? "") === "Stock insuficiente") {
+      return "__stock" as any;
+    }
+    throw e;
+  });
+
+  if (updated === "__stock") {
+    return new Response("Stock insuficiente", { status: 400 });
+  }
+
+  if (Array.isArray(updated) && updated.length === 0) {
+    return new Response("Not found", { status: 404 });
+  }
 
   return Response.json(updated);
 }
@@ -227,10 +267,27 @@ export async function DELETE(request: Request) {
 
   if (!id) return new Response("Inventory output ID required", { status: 400 });
 
-  const deleted = await db
-    .delete(inventoryOutputs)
-    .where(eq(inventoryOutputs.id, String(id)))
-    .returning();
+  const deleted = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ inventoryItemId: inventoryOutputs.inventoryItemId })
+      .from(inventoryOutputs)
+      .where(eq(inventoryOutputs.id, String(id)))
+      .limit(1);
+
+    if (!existing) return [];
+
+    const rows = await tx
+      .delete(inventoryOutputs)
+      .where(eq(inventoryOutputs.id, String(id)))
+      .returning();
+
+    if (existing.inventoryItemId) {
+      await syncInventoryForItem(tx, existing.inventoryItemId);
+    }
+    return rows;
+  });
+
+  if (deleted.length === 0) return new Response("Not found", { status: 404 });
 
   return Response.json(deleted);
 }

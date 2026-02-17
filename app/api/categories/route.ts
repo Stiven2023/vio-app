@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { categories } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -19,20 +20,26 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(categories);
+  try {
+    const { searchParams } = new URL(request.url);
+    const { page, pageSize, offset } = parsePagination(searchParams);
+    const [{ total }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(categories);
 
-  const items = await db
-    .select()
-    .from(categories)
-    .limit(pageSize)
-    .offset(offset);
-  const hasNextPage = offset + items.length < total;
+    const items = await db
+      .select()
+      .from(categories)
+      .limit(pageSize)
+      .offset(offset);
+    const hasNextPage = offset + items.length < total;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({ items, page, pageSize, total, hasNextPage });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar categorías", { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {

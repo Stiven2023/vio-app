@@ -375,7 +375,7 @@ export async function GET(
   styleSectionTitle(sheet, rowPointer, 1, 5, "DETALLE DE PRODUCTOS");
   rowPointer += 1;
 
-  sheet.addRow(["Diseno", "Cantidad", "Unitario", "Total", "Imagen"]);
+  sheet.addRow(["Diseño", "Cantidad", "Unitario", "Total", "Imagen"]);
   styleTableHeader(sheet, rowPointer, 1, 5);
   rowPointer += 1;
 

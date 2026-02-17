@@ -2,6 +2,7 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { confectionists, orderItemConfection } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -21,23 +22,31 @@ export async function GET(request: Request) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const rows = await db
-    .select({
-      id: confectionists.id,
-      name: confectionists.name,
-      activeCount: sql<number>`count(${orderItemConfection.id})::int`,
-      latestAssigned: sql<string | null>`max(${orderItemConfection.assignedAt})::text`,
-    })
-    .from(confectionists)
-    .leftJoin(
-      orderItemConfection,
-      and(
-        eq(orderItemConfection.confectionistId, confectionists.id),
-        isNull(orderItemConfection.finishedAt),
-      ),
-    )
-    .groupBy(confectionists.id)
-    .orderBy(desc(sql`count(${orderItemConfection.id})`));
+  try {
+    const rows = await db
+      .select({
+        id: confectionists.id,
+        name: confectionists.name,
+        activeCount: sql<number>`count(${orderItemConfection.id})::int`,
+        latestAssigned: sql<string | null>`max(${orderItemConfection.assignedAt})::text`,
+      })
+      .from(confectionists)
+      .leftJoin(
+        orderItemConfection,
+        and(
+          eq(orderItemConfection.confectionistId, confectionists.id),
+          isNull(orderItemConfection.finishedAt),
+        ),
+      )
+      .groupBy(confectionists.id)
+      .orderBy(desc(sql`count(${orderItemConfection.id})`));
 
-  return Response.json({ items: rows });
+    return Response.json({ items: rows });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar carga de confeccionistas", {
+      status: 500,
+    });
+  }
 }

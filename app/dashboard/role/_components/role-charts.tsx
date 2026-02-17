@@ -143,7 +143,7 @@ export function RoleCharts({ role }: { role: string }) {
         />
         <FilterSelect
           className="sm:w-36"
-          label="Anio"
+          label="Año"
           options={yearOptions}
           value={year}
           onChange={setYear}

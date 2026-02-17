@@ -112,7 +112,7 @@ export function AdminCharts() {
         />
         <FilterSelect
           className="sm:w-36"
-          label="Anio"
+          label="Año"
           options={yearOptions}
           value={year}
           onChange={setYear}

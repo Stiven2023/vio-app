@@ -41,12 +41,25 @@ function formatDate(value: string | null) {
   if (!value) return "-";
   const d = new Date(value);
 
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleString();
+  if (Number.isNaN(d.getTime())) return value;
+
+  try {
+    return new Intl.DateTimeFormat("es-CO", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "America/Bogota",
+    }).format(d);
+  } catch {
+    // Fallback determinista si Intl/timeZone no está disponible
+    return d.toISOString();
+  }
 }
 
 export function NotificationsPage() {
   const role = useSessionStore((s) => s.user?.role ?? "");
   const isAdmin = role === "ADMINISTRADOR";
+
+  const [mounted, setMounted] = useState(false);
 
   const [items, setItems] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,6 +73,10 @@ export function NotificationsPage() {
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(total / 10));
   }, [total]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setRoleFilter(role ?? "");
@@ -145,20 +162,24 @@ export function NotificationsPage() {
               value={endDate}
               onValueChange={setEndDate}
             />
-            <Select
-              isDisabled={!isAdmin}
-              label="Rol"
-              selectedKeys={roleFilter ? [roleFilter] : []}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
-                setRoleFilter(first ? String(first) : "");
-                setPage(1);
-              }}
-            >
-              {roleOptions.map((r) => (
-                <SelectItem key={r}>{r}</SelectItem>
-              ))}
-            </Select>
+            {mounted ? (
+              <Select
+                isDisabled={!isAdmin}
+                label="Rol"
+                selectedKeys={roleFilter ? [roleFilter] : []}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
+                  setRoleFilter(first ? String(first) : "");
+                  setPage(1);
+                }}
+              >
+                {roleOptions.map((r) => (
+                  <SelectItem key={r}>{r}</SelectItem>
+                ))}
+              </Select>
+            ) : (
+              <Input isDisabled label="Rol" value={roleFilter} />
+            )}
           </div>
         </CardBody>
       </Card>

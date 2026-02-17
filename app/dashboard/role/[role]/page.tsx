@@ -103,7 +103,7 @@ const roleConfigs: Record<string, RoleConfig> = {
     title: "Dashboard Disenador",
     description: "Organiza diseños y pedidos pendientes.",
     metrics: [
-      { label: "Disenos en cola", value: "8" },
+      { label: "Diseños en cola", value: "8" },
       { label: "En revision", value: "4" },
       { label: "Cambios solicitados", value: "2" },
       { label: "Aprobados hoy", value: "5" },

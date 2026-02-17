@@ -3,6 +3,7 @@ import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { notifications } from "@/src/db/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
+import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -63,38 +64,51 @@ export async function GET(request: Request) {
 
   const where = filters.length ? and(...filters) : undefined;
 
-  const totalQuery = db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(notifications);
+  try {
+    const totalQuery = db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(notifications);
 
-  const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
 
-  const itemsQuery = db
-    .select({
-      id: notifications.id,
-      title: notifications.title,
-      message: notifications.message,
-      role: notifications.role,
-      href: notifications.href,
-      isRead: notifications.isRead,
-      createdAt: notifications.createdAt,
-    })
-    .from(notifications)
-    .orderBy(desc(notifications.createdAt))
-    .limit(pageSize)
-    .offset(offset);
+    const itemsQuery = db
+      .select({
+        id: notifications.id,
+        title: notifications.title,
+        message: notifications.message,
+        role: notifications.role,
+        href: notifications.href,
+        isRead: notifications.isRead,
+        createdAt: notifications.createdAt,
+      })
+      .from(notifications)
+      .orderBy(desc(notifications.createdAt))
+      .limit(pageSize)
+      .offset(offset);
 
-  const items = where ? await itemsQuery.where(where) : await itemsQuery;
-  const hasNextPage = offset + items.length < total;
+    const items = where ? await itemsQuery.where(where) : await itemsQuery;
+    const hasNextPage = offset + items.length < total;
 
-  const [{ total: unreadTotal }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(notifications)
-    .where(and(eq(notifications.role, role), eq(notifications.isRead, false)));
+    const [{ total: unreadTotal }] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(notifications)
+      .where(and(eq(notifications.role, role), eq(notifications.isRead, false)));
 
-  const unreadCount = unreadTotal ?? 0;
+    const unreadCount = unreadTotal ?? 0;
 
-  return Response.json({ items, page, pageSize, total, hasNextPage, unreadCount });
+    return Response.json({
+      items,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+      unreadCount,
+    });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo consultar notificaciones", { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request) {

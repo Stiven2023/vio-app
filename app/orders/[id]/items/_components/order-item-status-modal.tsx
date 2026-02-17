@@ -125,11 +125,11 @@ export function OrderItemStatusModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>Estado del diseno</ModalHeader>
+        <ModalHeader>Estado del Diseño</ModalHeader>
         <ModalBody>
           <div className="text-sm text-default-600">
             <div>
-              <span className="font-medium">Diseno:</span> {orderItem?.name ?? "-"}
+              <span className="font-medium">Diseño:</span> {orderItem?.name ?? "-"}
             </div>
             <div>
               <span className="font-medium">Cantidad:</span> {orderItem?.quantity ?? "-"}

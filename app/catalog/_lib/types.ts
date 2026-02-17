@@ -37,6 +37,13 @@ export type InventoryItem = {
   id: string;
   name: string;
   unit: string | null;
+  description?: string | null;
+  price?: string | null;
+  supplierId?: string | null;
+  minStock?: string | null;
+  isActive?: boolean | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 export type InventoryEntry = {
