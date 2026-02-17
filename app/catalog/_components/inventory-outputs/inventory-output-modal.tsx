@@ -18,6 +18,11 @@ import { Select, SelectItem } from "@heroui/select";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryOutputSchema } from "../../_lib/schemas";
 
+const LOCATION_OPTIONS = [
+  { id: "BODEGA_PRINCIPAL", name: "Bodega principal" },
+  { id: "TIENDA", name: "Tienda" },
+] as const;
+
 export function InventoryOutputModal({
   output,
   items,
@@ -40,6 +45,9 @@ export function InventoryOutputModal({
   >([]);
   const [orderItemsLoading, setOrderItemsLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
+  const [location, setLocation] = useState<"BODEGA_PRINCIPAL" | "TIENDA">(
+    "BODEGA_PRINCIPAL",
+  );
   const [reason, setReason] = useState("");
   const [available, setAvailable] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +61,7 @@ export function InventoryOutputModal({
     setError(null);
     setInventoryItemId(output?.inventoryItemId ?? "");
     setOrderItemId(output?.orderItemId ?? "");
+    setLocation(output?.location ?? "BODEGA_PRINCIPAL");
     setQuantity(output?.quantity ? String(output.quantity) : "");
     setReason(output?.reason ?? "");
   }, [output, isOpen]);
@@ -91,18 +100,28 @@ export function InventoryOutputModal({
       return;
     }
 
-    apiJson<{ stock: number }>(`/api/inventory-stock?inventoryItemId=${id}`)
+    apiJson<{ stock: number }>(
+      `/api/inventory-stock?inventoryItemId=${id}&location=${location}`,
+    )
       .then((res) => {
         const base = res.stock ?? 0;
         const current =
-          output?.inventoryItemId === id && output?.quantity
+          output?.inventoryItemId === id &&
+          output?.location === location &&
+          output?.quantity
             ? Number(output.quantity)
             : 0;
 
         setAvailable(base + (Number.isFinite(current) ? current : 0));
       })
       .catch(() => setAvailable(null));
-  }, [inventoryItemId, output?.inventoryItemId, output?.quantity]);
+  }, [
+    inventoryItemId,
+    location,
+    output?.inventoryItemId,
+    output?.location,
+    output?.quantity,
+  ]);
 
   const submit = async () => {
     if (submitting) return;
@@ -110,6 +129,7 @@ export function InventoryOutputModal({
     const parsed = createInventoryOutputSchema.safeParse({
       inventoryItemId,
       orderItemId: orderItemId || undefined,
+      location,
       quantity,
       reason,
     });
@@ -171,6 +191,30 @@ export function InventoryOutputModal({
             value={quantity}
             onValueChange={setQuantity}
           />
+
+          <Select
+            isDisabled={submitting}
+            label="Ubicación"
+            selectedKeys={new Set([location])}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              const value = String(first ?? "").trim().toUpperCase();
+
+              if (value === "TIENDA") {
+                setLocation("TIENDA");
+                return;
+              }
+
+              setLocation("BODEGA_PRINCIPAL");
+            }}
+            items={LOCATION_OPTIONS}
+          >
+            {(loc) => (
+              <SelectItem key={loc.id} textValue={loc.name}>
+                {loc.name}
+              </SelectItem>
+            )}
+          </Select>
 
           <Textarea
             errorMessage={error ?? undefined}

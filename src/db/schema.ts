@@ -153,6 +153,11 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "ANULADO",
 ]);
 
+export const inventoryLocationEnum = pgEnum("inventory_location", [
+  "BODEGA_PRINCIPAL",
+  "TIENDA",
+]);
+
 /* =========================
 	 USERS (AUTH)
 ========================= */
@@ -489,6 +494,7 @@ export const inventoryEntries = pgTable("inventory_entries", {
     () => inventoryItems.id,
   ),
   supplierId: uuid("supplier_id").references(() => suppliers.id),
+  location: inventoryLocationEnum("location").default("BODEGA_PRINCIPAL"),
   quantity: numeric("quantity", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -502,6 +508,7 @@ export const inventoryOutputs = pgTable("inventory_outputs", {
     () => inventoryItems.id,
   ),
   orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  location: inventoryLocationEnum("location").default("BODEGA_PRINCIPAL"),
   quantity: numeric("quantity", { precision: 12, scale: 2 }),
   reason: varchar("reason", { length: 100 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

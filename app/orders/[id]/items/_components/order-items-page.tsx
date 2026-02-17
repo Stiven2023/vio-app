@@ -159,7 +159,8 @@ export function OrderItemsPage({
 
   const orderKind: OrderKind = order?.kind ?? "NUEVO";
   const canAccessOrder =
-    !isAdvisor || (advisorEmployeeId && order?.createdBy === advisorEmployeeId);
+    !isAdvisor ||
+    (Boolean(advisorEmployeeId) && order?.createdBy === advisorEmployeeId);
   const effectiveCanEdit = canEdit && canAccessOrder;
   const effectiveCanAssign = canAssign && canAccessOrder;
   const effectiveCanChangeStatus = canChangeStatus && canAccessOrder;

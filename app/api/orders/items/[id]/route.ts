@@ -231,13 +231,6 @@ async function assertAdvisorOrderAccess(request: Request, orderId: string) {
   return null;
 }
 
-  const advisorForbidden = await assertAdvisorOrderAccess(
-    request,
-    String(itemRow.item.orderId ?? ""),
-  );
-
-  if (advisorForbidden) return advisorForbidden;
-
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -283,13 +276,6 @@ export async function PUT(
     .limit(1);
 
   if (!existing) return new Response("Not found", { status: 404 });
-
-  const advisorForbidden = await assertAdvisorOrderAccess(
-    request,
-    String(existing.orderId ?? ""),
-  );
-
-  if (advisorForbidden) return advisorForbidden;
 
   const advisorForbidden = await assertAdvisorOrderAccess(
     request,

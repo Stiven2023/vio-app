@@ -15,6 +15,14 @@ function toPositiveNumber(v: unknown) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
+  const location = String(v ?? "BODEGA_PRINCIPAL").trim().toUpperCase();
+
+  return location === "BODEGA_PRINCIPAL" || location === "TIENDA"
+    ? (location as "BODEGA_PRINCIPAL" | "TIENDA")
+    : null;
+}
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "inventory-entries:get",
@@ -52,6 +60,7 @@ export async function GET(request: Request) {
         itemName: inventoryItems.name,
         supplierId: inventoryEntries.supplierId,
         supplierName: suppliers.name,
+        location: inventoryEntries.location,
         quantity: inventoryEntries.quantity,
         createdAt: inventoryEntries.createdAt,
       })
@@ -89,13 +98,15 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, supplierId, quantity } = await request.json();
+  const { inventoryItemId, supplierId, location, quantity } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
   const supId = String(supplierId ?? "").trim();
+  const loc = toLocation(location);
   const qty = toPositiveNumber(quantity);
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!loc) return new Response("location invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
   const created = await db.transaction(async (tx) => {
@@ -104,6 +115,7 @@ export async function POST(request: Request) {
       .values({
         inventoryItemId: itemId,
         supplierId: supId ? supId : null,
+        location: loc,
         quantity: String(qty),
       })
       .returning();
@@ -140,15 +152,17 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, inventoryItemId, supplierId, quantity } = await request.json();
+  const { id, inventoryItemId, supplierId, location, quantity } = await request.json();
 
   if (!id) return new Response("Inventory entry ID required", { status: 400 });
 
   const itemId = String(inventoryItemId ?? "").trim();
   const supId = String(supplierId ?? "").trim();
+  const loc = toLocation(location);
   const qty = toPositiveNumber(quantity);
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!loc) return new Response("location invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
   const updated = await db.transaction(async (tx) => {
@@ -165,6 +179,7 @@ export async function PUT(request: Request) {
       .set({
         inventoryItemId: itemId,
         supplierId: supId ? supId : null,
+        location: loc,
         quantity: String(qty),
       })
       .where(eq(inventoryEntries.id, String(id)))

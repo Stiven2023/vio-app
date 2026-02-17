@@ -52,6 +52,7 @@ export type InventoryEntry = {
   itemName: string | null;
   supplierId: string | null;
   supplierName: string | null;
+  location: "BODEGA_PRINCIPAL" | "TIENDA" | null;
   quantity: string | null;
   createdAt: string | null;
 };
@@ -62,6 +63,7 @@ export type InventoryOutput = {
   itemName: string | null;
   orderItemId: string | null;
   orderItemName: string | null;
+  location: "BODEGA_PRINCIPAL" | "TIENDA" | null;
   quantity: string | null;
   reason: string | null;
   createdAt: string | null;

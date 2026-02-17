@@ -70,6 +70,7 @@ export const createInventoryItemSchema = z.object({
 export const createInventoryEntrySchema = z.object({
   inventoryItemId: z.string().uuid("Selecciona un item"),
   supplierId: z.string().uuid().optional(),
+  location: z.enum(["BODEGA_PRINCIPAL", "TIENDA"]),
   quantity: z
     .string()
     .trim()
@@ -80,6 +81,7 @@ export const createInventoryEntrySchema = z.object({
 export const createInventoryOutputSchema = z.object({
   inventoryItemId: z.string().uuid("Selecciona un item"),
   orderItemId: z.string().uuid().optional(),
+  location: z.enum(["BODEGA_PRINCIPAL", "TIENDA"]),
   reason: z.string().trim().min(1, "Motivo requerido").max(100, "Máximo 100"),
   quantity: z
     .string()

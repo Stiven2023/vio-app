@@ -20,6 +20,11 @@ import type { InventoryEntry, InventoryItem } from "../../_lib/types";
 
 type SupplierRow = { id: string; name: string };
 
+const LOCATION_OPTIONS = [
+  { id: "BODEGA_PRINCIPAL", name: "Bodega principal" },
+  { id: "TIENDA", name: "Tienda" },
+] as const;
+
 export function InventoryEntryModal({
   entry,
   items,
@@ -41,6 +46,9 @@ export function InventoryEntryModal({
 }) {
   const [inventoryItemId, setInventoryItemId] = useState("");
   const [supplierId, setSupplierId] = useState("");
+  const [location, setLocation] = useState<"BODEGA_PRINCIPAL" | "TIENDA">(
+    "BODEGA_PRINCIPAL",
+  );
   const [quantity, setQuantity] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +65,7 @@ export function InventoryEntryModal({
     setError(null);
     setInventoryItemId(entry?.inventoryItemId ?? "");
     setSupplierId(entry?.supplierId ?? "");
+    setLocation(entry?.location ?? "BODEGA_PRINCIPAL");
     setQuantity(entry?.quantity ? String(entry.quantity) : "");
   }, [entry, isOpen]);
 
@@ -66,6 +75,7 @@ export function InventoryEntryModal({
     const parsed = createInventoryEntrySchema.safeParse({
       inventoryItemId,
       supplierId: supplierId || undefined,
+      location,
       quantity,
     });
 
@@ -114,6 +124,30 @@ export function InventoryEntryModal({
             {(it) => (
               <SelectItem key={it.id} textValue={it.name}>
                 {it.name}
+              </SelectItem>
+            )}
+          </Select>
+
+          <Select
+            isDisabled={submitting}
+            label="Ubicación"
+            selectedKeys={new Set([location])}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              const value = String(first ?? "").trim().toUpperCase();
+
+              if (value === "TIENDA") {
+                setLocation("TIENDA");
+                return;
+              }
+
+              setLocation("BODEGA_PRINCIPAL");
+            }}
+            items={LOCATION_OPTIONS}
+          >
+            {(loc) => (
+              <SelectItem key={loc.id} textValue={loc.name}>
+                {loc.name}
               </SelectItem>
             )}
           </Select>

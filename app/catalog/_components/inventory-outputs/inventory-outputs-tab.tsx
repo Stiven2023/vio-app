@@ -31,6 +31,10 @@ import { InventoryOutputModal } from "./inventory-output-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
+function locationLabel(value: InventoryOutput["location"]) {
+  return value === "TIENDA" ? "Tienda" : "Bodega principal";
+}
+
 export function InventoryOutputsTab({
   canCreate,
   canEdit,
@@ -148,13 +152,22 @@ export function InventoryOutputsTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Salidas"
-          headers={["Item", "Motivo", "Cantidad", "Orden", "Fecha", "Acciones"]}
+          headers={[
+            "Item",
+            "Motivo",
+            "Ubicación",
+            "Cantidad",
+            "Orden",
+            "Fecha",
+            "Acciones",
+          ]}
         />
       ) : (
         <Table aria-label="Salidas">
           <TableHeader>
             <TableColumn>Item</TableColumn>
             <TableColumn>Motivo</TableColumn>
+            <TableColumn>Ubicación</TableColumn>
             <TableColumn>Cantidad</TableColumn>
             <TableColumn>Orden</TableColumn>
             <TableColumn>Fecha</TableColumn>
@@ -165,6 +178,7 @@ export function InventoryOutputsTab({
               <TableRow key={output.id}>
                 <TableCell>{output.itemName ?? output.inventoryItemId ?? "-"}</TableCell>
                 <TableCell>{output.reason ?? "-"}</TableCell>
+                <TableCell>{locationLabel(output.location)}</TableCell>
                 <TableCell>{output.quantity ?? "-"}</TableCell>
                 <TableCell>{output.orderItemName ?? output.orderItemId ?? "-"}</TableCell>
                 <TableCell>

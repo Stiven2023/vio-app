@@ -33,6 +33,10 @@ import type { InventoryEntry, InventoryItem } from "../../_lib/types";
 
 type SupplierRow = { id: string; name: string };
 
+function locationLabel(value: InventoryEntry["location"]) {
+  return value === "TIENDA" ? "Tienda" : "Bodega principal";
+}
+
 export function InventoryEntriesTab({
   canCreate,
   canEdit,
@@ -166,13 +170,21 @@ export function InventoryEntriesTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Entradas"
-          headers={["Item", "Proveedor", "Cantidad", "Fecha", "Acciones"]}
+          headers={[
+            "Item",
+            "Proveedor",
+            "Ubicación",
+            "Cantidad",
+            "Fecha",
+            "Acciones",
+          ]}
         />
       ) : (
         <Table aria-label="Entradas">
           <TableHeader>
             <TableColumn>Item</TableColumn>
             <TableColumn>Proveedor</TableColumn>
+            <TableColumn>Ubicación</TableColumn>
             <TableColumn>Cantidad</TableColumn>
             <TableColumn>Fecha</TableColumn>
             <TableColumn>Acciones</TableColumn>
@@ -182,6 +194,7 @@ export function InventoryEntriesTab({
               <TableRow key={entry.id}>
                 <TableCell>{entry.itemName ?? entry.inventoryItemId ?? "-"}</TableCell>
                 <TableCell>{entry.supplierName ?? "-"}</TableCell>
+                <TableCell>{locationLabel(entry.location)}</TableCell>
                 <TableCell>{entry.quantity ?? "-"}</TableCell>
                 <TableCell>
                   {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-"}

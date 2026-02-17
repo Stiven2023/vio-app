@@ -25,6 +25,14 @@ function asNumber(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
+  const location = String(v ?? "BODEGA_PRINCIPAL").trim().toUpperCase();
+
+  return location === "BODEGA_PRINCIPAL" || location === "TIENDA"
+    ? (location as "BODEGA_PRINCIPAL" | "TIENDA")
+    : null;
+}
+
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -63,6 +71,7 @@ export async function GET(request: Request) {
         itemName: inventoryItems.name,
         orderItemId: inventoryOutputs.orderItemId,
         orderItemName: orderItems.name,
+        location: inventoryOutputs.location,
         quantity: inventoryOutputs.quantity,
         reason: inventoryOutputs.reason,
         createdAt: inventoryOutputs.createdAt,
@@ -101,18 +110,20 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, orderItemId, quantity, reason } = await request.json();
+  const { inventoryItemId, orderItemId, location, quantity, reason } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
   const ordId = String(orderItemId ?? "").trim();
+  const loc = toLocation(location);
   const qty = toPositiveNumber(quantity);
   const r = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!loc) return new Response("location invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!r) return new Response("reason required", { status: 400 });
 
-  const stock = await computeStockForItem(db, itemId);
+  const stock = await computeStockForItem(db, itemId, loc);
 
   if (qty > stock) {
     return new Response("Stock insuficiente", { status: 400 });
@@ -124,6 +135,7 @@ export async function POST(request: Request) {
       .values({
         inventoryItemId: itemId,
         orderItemId: ordId ? ordId : null,
+        location: loc,
         quantity: String(qty),
         reason: r,
       })
@@ -161,17 +173,19 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, inventoryItemId, orderItemId, quantity, reason } =
+  const { id, inventoryItemId, orderItemId, location, quantity, reason } =
     await request.json();
 
   if (!id) return new Response("Inventory output ID required", { status: 400 });
 
   const itemId = String(inventoryItemId ?? "").trim();
   const ordId = String(orderItemId ?? "").trim();
+  const loc = toLocation(location);
   const qty = toPositiveNumber(quantity);
   const r = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!loc) return new Response("location invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!r) return new Response("reason required", { status: 400 });
 
@@ -179,6 +193,7 @@ export async function PUT(request: Request) {
     .select({
       quantity: inventoryOutputs.quantity,
       inventoryItemId: inventoryOutputs.inventoryItemId,
+      location: inventoryOutputs.location,
     })
     .from(inventoryOutputs)
     .where(eq(inventoryOutputs.id, String(id)))
@@ -186,9 +201,13 @@ export async function PUT(request: Request) {
 
   if (!existing) return new Response("Not found", { status: 404 });
 
-  const stock = await computeStockForItem(db, itemId);
+  const stock = await computeStockForItem(db, itemId, loc);
   const currentQty = asNumber(existing.quantity);
-  const available = stock + (existing.inventoryItemId === itemId ? currentQty : 0);
+  const available =
+    stock +
+    (existing.inventoryItemId === itemId && existing.location === loc
+      ? currentQty
+      : 0);
 
   if (qty > available) {
     return new Response("Stock insuficiente", { status: 400 });
@@ -199,6 +218,7 @@ export async function PUT(request: Request) {
       .select({
         inventoryItemId: inventoryOutputs.inventoryItemId,
         quantity: inventoryOutputs.quantity,
+        location: inventoryOutputs.location,
       })
       .from(inventoryOutputs)
       .where(eq(inventoryOutputs.id, String(id)))
@@ -207,9 +227,13 @@ export async function PUT(request: Request) {
     if (!existing) return [];
 
     // Revalidar stock con el estado más reciente dentro de la tx
-    const stock = await computeStockForItem(tx, itemId);
+    const stock = await computeStockForItem(tx, itemId, loc);
     const currentQty = asNumber(existing.quantity);
-    const available = stock + (existing.inventoryItemId === itemId ? currentQty : 0);
+    const available =
+      stock +
+      (existing.inventoryItemId === itemId && existing.location === loc
+        ? currentQty
+        : 0);
 
     if (qty > available) {
       throw new Error("Stock insuficiente");
@@ -220,6 +244,7 @@ export async function PUT(request: Request) {
       .set({
         inventoryItemId: itemId,
         orderItemId: ordId ? ordId : null,
+        location: loc,
         quantity: String(qty),
         reason: r,
       })
