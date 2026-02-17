@@ -19,7 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import {
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+  BsEyeFill,
+} from "react-icons/bs";
+import { Chip } from "@heroui/chip";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -29,6 +35,7 @@ import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
 
 import { ClientModal } from "./client-modal";
+import { ClientDetailsModal } from "./client-details-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -48,7 +55,9 @@ export function ClientsTab({
     10,
   );
   const [modalOpen, setModalOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [viewing, setViewing] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -65,15 +74,17 @@ export function ClientsTab({
       if (!q) return true;
 
       const email = c.email ?? "";
-      const phone = c.phone ?? "";
-      const city = c.city ?? "";
+      const mobile = c.mobile ?? "";
+      const contactName = c.contactName ?? "";
+      const clientCode = c.clientCode ?? "";
 
       return (
         c.name.toLowerCase().includes(q) ||
         c.identification.toLowerCase().includes(q) ||
         email.toLowerCase().includes(q) ||
-        phone.toLowerCase().includes(q) ||
-        city.toLowerCase().includes(q)
+        mobile.toLowerCase().includes(q) ||
+        contactName.toLowerCase().includes(q) ||
+        clientCode.toLowerCase().includes(q)
       );
     });
   }, [data, search, status]);
@@ -118,7 +129,7 @@ export function ClientsTab({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
-            placeholder="Buscar por nombre, identificación, email…"
+            placeholder="Buscar por código, nombre, identificación, email, móvil…"
             value={search}
             onValueChange={setSearch}
           />
@@ -157,41 +168,93 @@ export function ClientsTab({
         <TableSkeleton
           ariaLabel="Clientes"
           headers={[
+            "Código",
             "Nombre",
+            "Tipo ID",
             "Identificación",
             "Email",
-            "Teléfono",
-            "Ciudad",
-            "Activo",
+            "Móvil",
+            "Estado",
             "Acciones",
           ]}
         />
       ) : (
         <Table aria-label="Clientes">
           <TableHeader>
-            <TableColumn>Nombre</TableColumn>
-            <TableColumn>Identificación</TableColumn>
-            <TableColumn>Email</TableColumn>
-            <TableColumn>Teléfono</TableColumn>
-            <TableColumn>Ciudad</TableColumn>
-            <TableColumn>Activo</TableColumn>
-            <TableColumn>Acciones</TableColumn>
+            <TableColumn>CÓDIGO</TableColumn>
+            <TableColumn>NOMBRE</TableColumn>
+            <TableColumn>TIPO ID</TableColumn>
+            <TableColumn>IDENTIFICACIÓN</TableColumn>
+            <TableColumn>EMAIL</TableColumn>
+            <TableColumn>MÓVIL</TableColumn>
+            <TableColumn>ESTADO</TableColumn>
+            <TableColumn>ACCIONES</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(c) => (
               <TableRow key={c.id}>
-                <TableCell>{c.name}</TableCell>
-                <TableCell className="text-default-600">
+                <TableCell>
+                  <Chip
+                    color={
+                      c.clientType === "NACIONAL"
+                        ? "primary"
+                        : c.clientType === "EXTRANJERO"
+                          ? "secondary"
+                          : "warning"
+                    }
+                    size="sm"
+                    variant="flat"
+                  >
+                    {c.clientCode}
+                  </Chip>
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-xs text-default-500">
+                      {c.contactName}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Chip size="sm" variant="flat">
+                    {c.identificationType}
+                  </Chip>
+                </TableCell>
+                <TableCell className="font-mono text-xs text-default-600">
                   {c.identification}
                 </TableCell>
-                <TableCell className="text-default-500">
-                  {c.email ?? "-"}
+                <TableCell className="text-sm text-default-500">
+                  <span className="flex items-center gap-1">
+                    <span className="text-danger" title="Campo crítico">
+                      *
+                    </span>
+                    {c.email}
+                  </span>
                 </TableCell>
-                <TableCell className="text-default-500">
-                  {c.phone ?? "-"}
+                <TableCell className="text-sm text-default-500">
+                  <span className="flex items-center gap-1">
+                    <span className="text-danger" title="Campo crítico">
+                      *
+                    </span>
+                    {c.fullMobile || c.mobile || "-"}
+                  </span>
                 </TableCell>
-                <TableCell>{c.city ?? "-"}</TableCell>
-                <TableCell>{c.isActive ? "Sí" : "No"}</TableCell>
+                <TableCell>
+                  <Chip
+                    color={
+                      c.status === "ACTIVO"
+                        ? "success"
+                        : c.status === "SUSPENDIDO"
+                          ? "warning"
+                          : "default"
+                    }
+                    size="sm"
+                    variant="flat"
+                  >
+                    {c.status || (c.isActive ? "Activo" : "Inactivo")}
+                  </Chip>
+                </TableCell>
                 <TableCell>
                   <Dropdown>
                     <DropdownTrigger>
@@ -204,6 +267,16 @@ export function ClientsTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="view"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          setViewing(c);
+                          setDetailsOpen(true);
+                        }}
+                      >
+                        Ver detalles completos
+                      </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -245,6 +318,12 @@ export function ClientsTab({
         isOpen={modalOpen}
         onOpenChange={setModalOpen}
         onSaved={onSaved}
+      />
+
+      <ClientDetailsModal
+        client={viewing}
+        isOpen={detailsOpen}
+        onOpenChange={setDetailsOpen}
       />
 
       <ConfirmActionModal

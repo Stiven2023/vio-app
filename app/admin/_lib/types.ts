@@ -31,12 +31,39 @@ export type Employee = {
 
 export type Client = {
   id: string;
+  // --- CÓDIGO Y TIPO ---
+  clientCode: string;
+  clientType: string;
+  // --- IDENTIFICACIÓN Y NOMBRE ---
   name: string;
+  identificationType: string;
   identification: string;
-  email: string | null;
-  phone: string | null;
+  dv: string | null;
+  branch: string | null;
+  // --- INFORMACIÓN FISCAL Y CONTACTO ---
+  taxRegime: string;
+  contactName: string;
+  email: string;
+  // --- UBICACIÓN GEOGRÁFICA ---
+  address: string;
+  postalCode: string | null;
+  country: string | null;
+  department: string | null;
   city: string | null;
+  // --- TELÉFONOS Y MARCACIÓN ---
+  intlDialCode: string | null;
+  mobile: string | null;
+  fullMobile: string | null;
+  localDialCode: string | null;
+  landline: string | null;
+  extension: string | null;
+  fullLandline: string | null;
+  // --- ESTADO Y CRÉDITO ---
+  status: string | null;
   isActive: boolean | null;
+  hasCredit: boolean | null;
+  promissoryNoteNumber: string | null;
+  promissoryNoteDate: string | null;
   createdAt: string | null;
 };
 

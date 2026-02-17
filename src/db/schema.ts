@@ -7,8 +7,39 @@ export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
   "FINALIZADA",
   "CANCELADA",
 ]);
+
+// Enum de tipo de cliente
+export const clientTypeEnum = pgEnum("client_type", [
+  "NACIONAL",
+  "EXTRANJERO",
+  "EMPLEADO",
+]);
+
+// Enum de tipo de identificación
+export const identificationTypeEnum = pgEnum("identification_type", [
+  "CC",
+  "NIT",
+  "CE",
+  "PAS",
+  "EMPRESA_EXTERIOR",
+]);
+
+// Enum de régimen fiscal
+export const taxRegimeEnum = pgEnum("tax_regime", [
+  "REGIMEN_COMUN",
+  "REGIMEN_SIMPLIFICADO",
+  "NO_RESPONSABLE",
+]);
+
+// Enum de estado de cliente
+export const clientStatusEnum = pgEnum("client_status", [
+  "ACTIVO",
+  "INACTIVO",
+  "SUSPENDIDO",
+]);
 import {
   boolean,
+  date,
   integer,
   numeric,
   pgEnum,
@@ -230,12 +261,46 @@ export const employees = pgTable("employees", {
 ========================= */
 export const clients = pgTable("clients", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  identification: varchar("identification", { length: 20 }).unique().notNull(),
-  email: varchar("email", { length: 255 }),
-  phone: varchar("phone", { length: 50 }),
-  city: varchar("city", { length: 100 }).default("Medellín"),
-  isActive: boolean("is_active").default(true),
+  
+  // --- CÓDIGO DE CLIENTE AUTOMÁTICO ---
+  clientCode: varchar("client_code", { length: 20 }).unique().notNull(), // "CN10001", "CE10001", "EM10001"
+  clientType: clientTypeEnum("client_type").notNull(), // NACIONAL, EXTRANJERO, EMPLEADO
+  
+  // --- IDENTIFICACIÓN Y NOMBRE (Imagen 1 y 2) ---
+  name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
+  identificationType: identificationTypeEnum("identification_type").notNull(), // CC, NIT, CE, PAS, EMPRESA_EXTERIOR
+  identification: varchar("identification", { length: 20 }).unique().notNull(), // "Identificación"
+  dv: varchar("dv", { length: 1 }), // "Digito verificación"
+  branch: varchar("branch", { length: 10 }).default("01"), // "Sucursal"
+  
+  // --- INFORMACIÓN FISCAL Y CONTACTO ---
+  taxRegime: taxRegimeEnum("tax_regime").notNull(), // REGIMEN_COMUN, REGIMEN_SIMPLIFICADO, NO_RESPONSABLE
+  contactName: varchar("contact_name", { length: 255 }).notNull(), // "NOMBRE DE CONTACTO"
+  email: varchar("email", { length: 255 }).notNull(), // "CORREO" (Crítico para facturación)
+  
+  // --- UBICACIÓN GEOGRÁFICA (Imagen 2: Medellín, Antioquia, 5001) ---
+  address: varchar("address", { length: 255 }).notNull(), // "Dirección"
+  postalCode: varchar("postal_code", { length: 20 }), // "CODIGO POSTAL"
+  country: varchar("country", { length: 100 }).default("COLOMBIA"), // "Pais"
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"), // "Departamento"
+  city: varchar("city", { length: 100 }).default("Medellín"), // "Ciudad"
+
+  // --- TELÉFONOS Y MARCACIÓN (Estructura compleja de Imagen 1) ---
+  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"), // "CÓDIGO DE MARCACIÓN INTERNACIONAL"
+  mobile: varchar("mobile", { length: 20 }), // "MOVIL"
+  fullMobile: varchar("full_mobile", { length: 25 }), // "CÓDIGO DE MARCACIÓN + MOVIL" (Calculado)
+  localDialCode: varchar("local_dial_code", { length: 5 }), // "CÓDIGO DE MARCACIÓN LOCAL"
+  landline: varchar("landline", { length: 20 }), // "FIJO"
+  extension: varchar("extension", { length: 10 }), // "EXT"
+  fullLandline: varchar("full_landline", { length: 30 }), // "CÓDIGO DE MARCACIÓN + fijo + EXT"
+
+  // --- ESTADO Y CRÉDITO ---
+  status: clientStatusEnum("status").default("ACTIVO"), // ACTIVO, INACTIVO, SUSPENDIDO
+  isActive: boolean("is_active").default(true), // "Estado" (mantener por compatibilidad)
+  hasCredit: boolean("has_credit").default(false), // "CREDITO"
+  promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
+  promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
+  
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
