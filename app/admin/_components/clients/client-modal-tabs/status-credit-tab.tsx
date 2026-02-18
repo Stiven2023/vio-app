@@ -4,7 +4,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 import { BsCreditCardFill } from "react-icons/bs";
 
-import { CLIENT_STATUSES } from "../client-modal.constants";
+import { CLIENT_PRICE_TYPES, CLIENT_STATUSES } from "../client-modal.constants";
 import type { FormState, SetFormState } from "../client-modal.types";
 
 type Props = {
@@ -15,6 +15,19 @@ type Props = {
 export function StatusCreditTab({ form, setForm }: Props) {
   return (
     <div className="space-y-4 py-4">
+      <Select
+        description="Este tipo aplica a la lista de precios en COP para prefacturas"
+        label="Tipo de cliente para precios (COP)"
+        selectedKeys={[form.priceClientType]}
+        onChange={(e) =>
+          setForm((s) => ({ ...s, priceClientType: e.target.value }))
+        }
+      >
+        {CLIENT_PRICE_TYPES.map((item) => (
+          <SelectItem key={item.value}>{item.label}</SelectItem>
+        ))}
+      </Select>
+
       <Select
         label="Estado del cliente"
         selectedKeys={[form.status]}

@@ -32,7 +32,10 @@ type PrefacturaLine = {
 };
 
 type PrefacturaResponse = {
-  order: OrderListItem & { clientNit?: string | null };
+  order: OrderListItem & {
+    clientNit?: string | null;
+    clientPriceType?: string | null;
+  };
   lines: PrefacturaLine[];
   totals: {
     subtotal: number;
@@ -156,6 +159,17 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
                 </div>
                 <div className="text-sm text-default-600">
                   NIT/ID: {(data.order as any).clientNit ?? "-"}
+                </div>
+                <div className="text-sm text-default-600">
+                  Tipo precio COP: {(data.order as any).clientPriceType === "AUTORIZADO"
+                    ? "Cliente autorizado"
+                    : (data.order as any).clientPriceType === "MAYORISTA"
+                      ? "Cliente mayorista"
+                      : (data.order as any).clientPriceType === "COLANTA"
+                        ? "Cliente Colanta"
+                        : (data.order as any).clientPriceType === "VIOMAR"
+                          ? "Cliente Viomar"
+                          : "-"}
                 </div>
               </div>
               <div>

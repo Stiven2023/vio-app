@@ -71,6 +71,18 @@ export function ClientDetailsModal({
                       : "Empleado"
                 }
               />
+                <DetailField
+                  label="Tipo de cliente para precios (COP)"
+                  value={
+                    client.priceClientType === "AUTORIZADO"
+                      ? "Cliente autorizado"
+                      : client.priceClientType === "MAYORISTA"
+                        ? "Cliente mayorista"
+                        : client.priceClientType === "COLANTA"
+                          ? "Cliente Colanta"
+                          : "Cliente Viomar"
+                  }
+                />
             </div>
           </div>
 

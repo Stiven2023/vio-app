@@ -60,6 +60,7 @@ export type Client = {
   fullLandline: string | null;
   // --- ESTADO Y CRÉDITO ---
   status: string | null;
+  priceClientType: string;
   isActive: boolean | null;
   hasCredit: boolean | null;
   promissoryNoteNumber: string | null;

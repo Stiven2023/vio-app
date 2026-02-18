@@ -37,6 +37,14 @@ export const clientStatusEnum = pgEnum("client_status", [
   "INACTIVO",
   "SUSPENDIDO",
 ]);
+
+// Enum de tipo de cliente para precios COP
+export const clientPriceTypeEnum = pgEnum("client_price_type", [
+  "AUTORIZADO",
+  "MAYORISTA",
+  "VIOMAR",
+  "COLANTA",
+]);
 import {
   boolean,
   date,
@@ -296,6 +304,9 @@ export const clients = pgTable("clients", {
 
   // --- ESTADO Y CRÉDITO ---
   status: clientStatusEnum("status").default("ACTIVO"), // ACTIVO, INACTIVO, SUSPENDIDO
+  priceClientType: clientPriceTypeEnum("price_client_type")
+    .default("VIOMAR")
+    .notNull(), // AUTORIZADO, MAYORISTA, VIOMAR, COLANTA (solo precios COP)
   isActive: boolean("is_active").default(true), // "Estado" (mantener por compatibilidad)
   hasCredit: boolean("has_credit").default(false), // "CREDITO"
   promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"

@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 export type FormState = {
   clientType: string;
+  priceClientType: string;
   name: string;
   identificationType: string;
   identification: string;

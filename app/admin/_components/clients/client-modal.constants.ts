@@ -23,3 +23,13 @@ export const CLIENT_STATUSES = [
   { value: "INACTIVO", label: "Inactivo" },
   { value: "SUSPENDIDO", label: "Suspendido" },
 ];
+
+export const CLIENT_PRICE_TYPES = [
+  {
+    value: "AUTORIZADO",
+    label: "Cliente autorizado (puede modificar precio)",
+  },
+  { value: "MAYORISTA", label: "Cliente mayorista" },
+  { value: "VIOMAR", label: "Cliente Viomar" },
+  { value: "COLANTA", label: "Cliente Colanta" },
+];

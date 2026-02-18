@@ -44,6 +44,7 @@ export function OrderItemModal(props: {
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
+  const [priceClientType, setPriceClientType] = React.useState<string>("VIOMAR");
 
   const {
     inventoryItems,
@@ -71,6 +72,26 @@ export function OrderItemModal(props: {
     setError(null);
     setIsUploadingAssets(false);
   }, [isOpen]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    (async () => {
+      try {
+        const data = await fetch(`/api/orders/${orderId}/prefactura`);
+        if (!data.ok) return;
+        const json = (await data.json()) as {
+          order?: { clientPriceType?: string | null };
+        };
+
+        setPriceClientType(String(json.order?.clientPriceType ?? "VIOMAR"));
+      } catch {
+        setPriceClientType("VIOMAR");
+      }
+    })();
+  }, [isOpen, orderId]);
+
+  const canEditUnitPrice = priceClientType === "AUTORIZADO";
 
   const title = mode === "create" ? "Nuevo diseño" : "Editar diseño";
   const uiDisabled = isSaving;
@@ -191,6 +212,7 @@ export function OrderItemModal(props: {
               {error ? <div className="text-sm text-danger">{error}</div> : null}
 
               <DesignSection
+                canEditUnitPrice={canEditUnitPrice}
                 computedTotal={computedTotal}
                 imageFile={imageFile}
                 isCreateBlocked={isCreateBlocked}

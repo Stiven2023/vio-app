@@ -46,6 +46,7 @@ export async function GET(
         clientId: orders.clientId,
         clientName: clients.name,
         clientNit: clients.identification,
+        clientPriceType: (clients as any).priceClientType,
         type: orders.type,
         status: orders.status,
         ivaEnabled: orders.ivaEnabled,

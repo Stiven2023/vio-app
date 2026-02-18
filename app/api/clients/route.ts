@@ -120,6 +120,7 @@ export async function POST(request: Request) {
 
   // TIPO DE CLIENTE (para generar código)
   const clientType = String(payload.clientType ?? "NACIONAL").trim();
+  const priceClientType = String(payload.priceClientType ?? "VIOMAR").trim();
 
   // Campos críticos requeridos
   const name = String(payload.name ?? "").trim();
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
 
   if (
     !clientType ||
+    !priceClientType ||
     !name ||
     !identificationType ||
     !identification ||
@@ -143,6 +145,16 @@ export async function POST(request: Request) {
     !mobile
   ) {
     return new Response("Campos críticos requeridos faltantes", {
+      status: 400,
+    });
+  }
+
+  if (
+    !["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"].includes(
+      priceClientType,
+    )
+  ) {
+    return new Response("Tipo de cliente para precios COP inválido", {
       status: 400,
     });
   }
@@ -307,6 +319,11 @@ export async function POST(request: Request) {
         extension,
         fullLandline,
         // CRÉDITO Y ESTADO
+        priceClientType: priceClientType as
+          | "AUTORIZADO"
+          | "MAYORISTA"
+          | "VIOMAR"
+          | "COLANTA",
         status: (payload.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO") ||
           "ACTIVO",
         hasCredit: payload.hasCredit ?? false,
@@ -355,11 +372,28 @@ export async function PUT(request: Request) {
     return new Response("Client ID required", { status: 400 });
   }
 
+  if (
+    payload.priceClientType !== undefined &&
+    !["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"].includes(
+      String(payload.priceClientType).trim(),
+    )
+  ) {
+    return new Response("Tipo de cliente para precios COP inválido", {
+      status: 400,
+    });
+  }
+
   const patch: Partial<typeof clients.$inferInsert> = {};
 
   // IDENTIFICACIÓN
   if (payload.name !== undefined)
     patch.name = String(payload.name).trim();
+  if (payload.priceClientType !== undefined)
+    patch.priceClientType = String(payload.priceClientType).trim() as
+      | "AUTORIZADO"
+      | "MAYORISTA"
+      | "VIOMAR"
+      | "COLANTA";
   if (payload.identificationType !== undefined)
     patch.identificationType = String(payload.identificationType).trim() as
       | "CC"

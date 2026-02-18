@@ -39,6 +39,7 @@ export const createClientSchema = z
 
     // --- CAMPOS CRÍTICOS REQUERIDOS ---
     name: z.string().trim().min(1, "Nombre requerido"),
+    priceClientType: z.enum(["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"]),
     identificationType: z.enum([
       "CC",
       "NIT",

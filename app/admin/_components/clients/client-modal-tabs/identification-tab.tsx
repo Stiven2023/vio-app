@@ -16,6 +16,22 @@ type Props = {
 };
 
 export function IdentificationTab({ form, errors, setForm, isEditing }: Props) {
+  const identificationHint =
+    form.identificationType === "CC"
+      ? "CC: solo números, entre 6 y 10 dígitos"
+      : form.identificationType === "NIT"
+        ? "NIT: solo números, entre 8 y 12 dígitos"
+        : form.identificationType === "CE"
+          ? "CE: alfanumérico, entre 5 y 15 caracteres"
+          : form.identificationType === "PAS"
+            ? "Pasaporte: alfanumérico, entre 5 y 20 caracteres"
+            : "Empresa exterior: mínimo 3 caracteres";
+
+  const identificationInputMode =
+    form.identificationType === "CC" || form.identificationType === "NIT"
+      ? "numeric"
+      : "text";
+
   return (
     <div className="space-y-4 py-4">
       <Select
@@ -66,9 +82,11 @@ export function IdentificationTab({ form, errors, setForm, isEditing }: Props) {
         </Select>
 
         <Input
+          description={identificationHint}
           errorMessage={errors.identification}
           isInvalid={Boolean(errors.identification)}
           isRequired
+          inputMode={identificationInputMode}
           label="Identificación"
           value={form.identification}
           onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}

@@ -53,6 +53,7 @@ export function DesignSection({
   computedTotal,
   orderKind,
   isCreateBlocked,
+  canEditUnitPrice,
   onChange,
   onSelectImageFile,
 }: {
@@ -61,6 +62,7 @@ export function DesignSection({
   computedTotal: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   isCreateBlocked: boolean;
+  canEditUnitPrice: boolean;
   onChange: (next: OrderItemInput) => void;
   onSelectImageFile: (file: File | null) => void;
 }) {
@@ -108,7 +110,12 @@ export function DesignSection({
         />
 
         <Input
-          isDisabled={locked}
+          description={
+            canEditUnitPrice
+              ? "Editable para cliente AUTORIZADO"
+              : "Bloqueado: solo cliente AUTORIZADO puede modificar precio"
+          }
+          isDisabled={locked || !canEditUnitPrice}
           label="Precio unitario"
           type="number"
           value={String(value.unitPrice ?? "0")}

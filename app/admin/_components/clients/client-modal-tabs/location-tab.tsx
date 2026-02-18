@@ -10,6 +10,9 @@ type Props = {
 };
 
 export function LocationTab({ form, errors, setForm }: Props) {
+  const departmentLabel =
+    form.clientType === "EXTRANJERO" ? "Región / Provincia" : "Departamento";
+
   return (
     <div className="space-y-4 py-4">
       <Input
@@ -37,7 +40,7 @@ export function LocationTab({ form, errors, setForm }: Props) {
         />
 
         <Input
-          label="Departamento"
+          label={departmentLabel}
           value={form.department}
           onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
         />

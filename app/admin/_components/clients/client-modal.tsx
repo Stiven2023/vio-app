@@ -7,6 +7,12 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
+  Dropdown,
+  DropdownMenu,
+  DropdownItem,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
   Modal,
   ModalBody,
   ModalContent,
@@ -36,6 +42,7 @@ export function ClientModal({
 }) {
   const [form, setForm] = useState<FormState>({
     clientType: "NACIONAL",
+    priceClientType: "VIOMAR",
     name: "",
     identificationType: "CC",
     identification: "",
@@ -62,14 +69,17 @@ export function ClientModal({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [masterChecks, setMasterChecks] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!isOpen) return;
 
     setErrors({});
     setSubmitting(false);
+    setMasterChecks(new Set());
     setForm({
       clientType: client?.clientType ?? "NACIONAL",
+      priceClientType: client?.priceClientType ?? "VIOMAR",
       name: client?.name ?? "",
       identificationType: client?.identificationType ?? "CC",
       identification: client?.identification ?? "",
@@ -102,6 +112,7 @@ export function ClientModal({
 
     const parsed = createClientSchema.safeParse({
       clientType: form.clientType,
+      priceClientType: form.priceClientType,
       name: form.name,
       identificationType: form.identificationType,
       identification: form.identification,
@@ -208,6 +219,42 @@ export function ClientModal({
           </Tabs>
         </ModalBody>
         <ModalFooter>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="flat">Maestro</Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Checklist maestro"
+              closeOnSelect={false}
+              selectedKeys={masterChecks}
+              selectionMode="multiple"
+              onSelectionChange={(keys) => {
+                if (keys === "all") {
+                  setMasterChecks(
+                    new Set([
+                      "create-supplier",
+                      "create-employee",
+                      "create-confectionist",
+                    ]),
+                  );
+                  return;
+                }
+
+                setMasterChecks(new Set(Array.from(keys as Set<string>)));
+              }}
+            >
+              <DropdownItem key="create-supplier">
+                ¿Quieres crearlo como proveedor?
+              </DropdownItem>
+              <DropdownItem key="create-employee">
+                ¿Quieres crearlo como empleado?
+              </DropdownItem>
+              <DropdownItem key="create-confectionist">
+                ¿Quieres crearlo como confeccionista?
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+
           <Button
             isDisabled={submitting}
             variant="flat"

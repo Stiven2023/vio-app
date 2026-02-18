@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  clients,
   employees,
   inventoryItems,
   inventoryOutputs,
@@ -285,8 +286,12 @@ export async function PUT(
   if (advisorForbidden) return advisorForbidden;
 
   const [orderRow] = await db
-    .select({ kind: orders.kind })
+    .select({
+      kind: orders.kind,
+      clientPriceType: clients.priceClientType,
+    })
     .from(orders)
+    .leftJoin(clients, eq(orders.clientId, clients.id))
     .where(eq(orders.id, existing.orderId!))
     .limit(1);
 
@@ -353,7 +358,10 @@ export async function PUT(
   if (body.productPriceId !== undefined)
     patch.productPriceId = toNullableString(body.productPriceId);
   if (body.name !== undefined) patch.name = toNullableString(body.name);
-  if (body.unitPrice !== undefined)
+  if (
+    body.unitPrice !== undefined &&
+    String(orderRow?.clientPriceType ?? "VIOMAR") === "AUTORIZADO"
+  )
     patch.unitPrice = toNullableNumericString(body.unitPrice);
   if (body.totalPrice !== undefined)
     patch.totalPrice = toNullableNumericString(body.totalPrice);

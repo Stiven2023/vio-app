@@ -56,6 +56,7 @@ export function OrderItemCreatePage(props: {
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
+  const [priceClientType, setPriceClientType] = React.useState<string>("VIOMAR");
 
   const {
     inventoryItems,
@@ -83,6 +84,30 @@ export function OrderItemCreatePage(props: {
   const [loadingPrices, setLoadingPrices] = React.useState(false);
 
   const isCreateBlocked = orderKind !== "NUEVO";
+
+  React.useEffect(() => {
+    let active = true;
+
+    fetch(`/api/orders/${orderId}/prefactura`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+        return (await res.json()) as {
+          order?: { clientPriceType?: string | null };
+        };
+      })
+      .then((payload) => {
+        if (!active) return;
+        setPriceClientType(String(payload.order?.clientPriceType ?? "VIOMAR"));
+      })
+      .catch(() => {
+        if (!active) return;
+        setPriceClientType("VIOMAR");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [orderId]);
 
   React.useEffect(() => {
     let active = true;
@@ -193,6 +218,7 @@ export function OrderItemCreatePage(props: {
   }, [item.quantity, item.unitPrice]);
 
   const uiDisabled = isSaving;
+  const canEditUnitPrice = priceClientType === "AUTORIZADO";
 
   async function onSubmit() {
     setError(null);
@@ -403,6 +429,7 @@ export function OrderItemCreatePage(props: {
         </CardHeader>
         <CardBody>
           <DesignSection
+            canEditUnitPrice={canEditUnitPrice}
             computedTotal={computedTotal}
             imageFile={imageFile}
             isCreateBlocked={isCreateBlocked}
