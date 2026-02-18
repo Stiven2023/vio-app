@@ -1,6 +1,6 @@
 "use client";
 
-import type { AdminUser } from "../../_lib/types";
+import type { AdminUser, Employee } from "../../_lib/types";
 
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -59,26 +59,7 @@ export function UsersTab() {
   const [detail, setDetail] = useState<
     {
       user: AdminUser;
-      employee: {
-        id: string;
-        userId: string | null;
-        name: string;
-        identificationType: string;
-        identification: string;
-        dv: string | null;
-        email: string;
-        intlDialCode: string | null;
-        mobile: string | null;
-        fullMobile: string | null;
-        landline: string | null;
-        extension: string | null;
-        address: string | null;
-        city: string | null;
-        department: string | null;
-        roleId: string | null;
-        isActive: boolean | null;
-        createdAt: string | null;
-      } | null;
+      employee: Employee | null;
       role: { id: string; name: string } | null;
     } | null
   >(null);
@@ -133,26 +114,7 @@ export function UsersTab() {
     try {
       const data = await apiJson<{
         user: AdminUser;
-        employee: {
-          id: string;
-          userId: string | null;
-          name: string;
-          identificationType: string;
-          identification: string;
-          dv: string | null;
-          email: string;
-          intlDialCode: string | null;
-          mobile: string | null;
-          fullMobile: string | null;
-          landline: string | null;
-          extension: string | null;
-          address: string | null;
-          city: string | null;
-          department: string | null;
-          roleId: string | null;
-          isActive: boolean | null;
-          createdAt: string | null;
-        } | null;
+        employee: Employee | null;
         role: { id: string; name: string } | null;
       }>(`/api/admin/users/${userId}/detail`);
 

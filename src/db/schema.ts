@@ -258,6 +258,9 @@ export const employees = pgTable("employees", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id),
   
+  // --- CÓDIGO AUTOGENERADO ---
+  employeeCode: varchar("employee_code", { length: 20 }).unique().notNull(),
+  
   // --- IDENTIFICACIÓN Y NOMBRE (Basado en Maestro) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
   identificationType: identificationTypeEnum("identification_type").notNull(), // CC, CE, etc.

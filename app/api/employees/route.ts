@@ -55,6 +55,7 @@ export async function GET(request: Request) {
     const items = await db
       .select()
       .from(employees)
+      .orderBy(employees.createdAt)
       .limit(pageSize)
       .offset(offset);
     const hasNextPage = offset + items.length < total;
@@ -147,6 +148,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Generar employeeCode autoincrementado
+    const lastEmployee = await db
+      .select({ employeeCode: employees.employeeCode })
+      .from(employees)
+      .orderBy(sql`${employees.employeeCode} DESC`)
+      .limit(1);
+
+    let nextNumber = 1001;
+    if (lastEmployee.length > 0 && lastEmployee[0]?.employeeCode) {
+      const lastCode = lastEmployee[0].employeeCode;
+      const lastNumber = parseInt(lastCode.replace(/^EMP/i, ""), 10);
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
+
+    const employeeCode = `EMP${nextNumber}`;
+
     let userId: string | null = payload.userId
       ? String(payload.userId).trim()
       : null;
@@ -199,6 +218,7 @@ export async function POST(request: Request) {
     const newEmployee = await db
       .insert(employees)
       .values({
+        employeeCode,
         userId,
         name,
         identificationType: identificationType as

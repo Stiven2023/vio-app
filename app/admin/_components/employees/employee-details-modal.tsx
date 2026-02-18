@@ -50,6 +50,7 @@ export function EmployeeDetailsModal({
               Datos del empleado
             </h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <DetailField label="Código" value={employee.employeeCode} />
               <DetailField label="ID" value={employee.id} />
               <DetailField label="Nombre" value={employee.name} />
               <DetailField

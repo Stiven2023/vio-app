@@ -21,6 +21,7 @@ export type AdminUserOption = { id: string; email: string };
 
 export type Employee = {
   id: string;
+  employeeCode: string | null;
   userId: string | null;
   name: string;
   identificationType: string;

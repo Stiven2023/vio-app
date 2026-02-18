@@ -104,6 +104,7 @@ export function EmployeesTab({
 
       return (
         e.name.toLowerCase().includes(q) ||
+        (e.employeeCode ?? "").toLowerCase().includes(q) ||
         userId.toLowerCase().includes(q) ||
         roleName.toLowerCase().includes(q) ||
         identification.toLowerCase().includes(q) ||
@@ -216,6 +217,7 @@ export function EmployeesTab({
         <TableSkeleton
           ariaLabel="Empleados"
           headers={[
+            "Código",
             "Nombre",
             "Identificación",
             "Email",
@@ -228,6 +230,7 @@ export function EmployeesTab({
       ) : (
         <Table aria-label="Empleados">
           <TableHeader>
+            <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Identificación</TableColumn>
             <TableColumn>Email</TableColumn>
@@ -239,6 +242,7 @@ export function EmployeesTab({
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(e) => (
               <TableRow key={e.id}>
+                <TableCell className="font-mono text-xs text-primary">{e.employeeCode ?? "—"}</TableCell>
                 <TableCell>{e.name}</TableCell>
                 <TableCell>{e.identificationType} {e.identification}</TableCell>
                 <TableCell className="text-default-500">{e.email ?? "-"}</TableCell>

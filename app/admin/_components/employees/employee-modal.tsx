@@ -301,8 +301,13 @@ export function EmployeeModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>
-          {employee ? "Editar empleado" : "Crear empleado"}
+        <ModalHeader className="flex flex-col gap-1">
+          <span>{employee ? "Editar empleado" : "Crear empleado"}</span>
+          {employee?.employeeCode && (
+            <span className="font-mono text-xs font-normal text-primary">
+              {employee.employeeCode}
+            </span>
+          )}
         </ModalHeader>
         <ModalBody>
           <div className="flex items-end gap-2">
