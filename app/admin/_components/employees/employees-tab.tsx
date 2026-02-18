@@ -26,6 +26,7 @@ import {
   BsThreeDotsVertical,
   BsTrash,
   BsPersonPlus,
+  BsEyeFill,
 } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
@@ -37,6 +38,7 @@ import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
 
 import { EmployeeModal } from "./employee-modal";
+import { EmployeeDetailsModal } from "./employee-details-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -71,6 +73,11 @@ export function EmployeesTab({
   const [modalPrefill, setModalPrefill] = useState<EmployeeFormPrefill | null>(
     null,
   );
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState<string | null>(null);
+  const [detail, setDetail] = useState<
+    { employee: Employee; user: { id: string; email: string; emailVerified: boolean | null; isActive: boolean | null; createdAt: string | null } | null } | null
+  >(null);
 
   useEffect(() => {
     if (!prefillCreate) return;
@@ -115,6 +122,31 @@ export function EmployeesTab({
   const onSaved = () => {
     refreshRefs();
     refresh();
+  };
+
+  const openDetails = async (employeeId: string) => {
+    if (detailsLoading) return;
+
+    setDetailsLoading(employeeId);
+    try {
+      const data = await apiJson<{
+        employee: Employee;
+        user: {
+          id: string;
+          email: string;
+          emailVerified: boolean | null;
+          isActive: boolean | null;
+          createdAt: string | null;
+        } | null;
+      }>(`/api/employees/${employeeId}/detail`);
+
+      setDetail(data);
+      setDetailsOpen(true);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setDetailsLoading(null);
+    }
   };
 
   const remove = async () => {
@@ -228,6 +260,13 @@ export function EmployeesTab({
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
                       <DropdownItem
+                        key="view"
+                        startContent={<BsEyeFill />}
+                        onPress={() => openDetails(e.id)}
+                      >
+                        Ver detalles completos
+                      </DropdownItem>
+                      <DropdownItem
                         key="edit"
                         startContent={<BsPencilSquare />}
                         onPress={() => {
@@ -297,6 +336,15 @@ export function EmployeesTab({
         users={users}
         onOpenChange={setModalOpen}
         onSaved={onSaved}
+      />
+
+      <EmployeeDetailsModal
+        detail={detail}
+        isOpen={detailsOpen}
+        onOpenChange={(open) => {
+          if (!open) setDetail(null);
+          setDetailsOpen(open);
+        }}
       />
 
       <ConfirmActionModal

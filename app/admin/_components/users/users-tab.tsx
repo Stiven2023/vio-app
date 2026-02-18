@@ -19,7 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import {
+  BsEyeFill,
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+} from "react-icons/bs";
 
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "../../_lib/api";
@@ -30,6 +35,7 @@ import { FilterSelect } from "../ui/filter-select";
 
 import { EditUserModal } from "./edit-user-modal";
 import { CreateUserModal } from "./create-user-modal";
+import { UserDetailsModal } from "./user-details-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -48,6 +54,34 @@ export function UsersTab() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState<string | null>(null);
+  const [detail, setDetail] = useState<
+    {
+      user: AdminUser;
+      employee: {
+        id: string;
+        userId: string | null;
+        name: string;
+        identificationType: string;
+        identification: string;
+        dv: string | null;
+        email: string;
+        intlDialCode: string | null;
+        mobile: string | null;
+        fullMobile: string | null;
+        landline: string | null;
+        extension: string | null;
+        address: string | null;
+        city: string | null;
+        department: string | null;
+        roleId: string | null;
+        isActive: boolean | null;
+        createdAt: string | null;
+      } | null;
+      role: { id: string; name: string } | null;
+    } | null
+  >(null);
 
   const deleteUser = async () => {
     const u = pendingDelete;
@@ -91,6 +125,45 @@ export function UsersTab() {
 
     return "Sin usuarios";
   }, [loading, search, status]);
+
+  const openDetails = async (userId: string) => {
+    if (detailsLoading) return;
+
+    setDetailsLoading(userId);
+    try {
+      const data = await apiJson<{
+        user: AdminUser;
+        employee: {
+          id: string;
+          userId: string | null;
+          name: string;
+          identificationType: string;
+          identification: string;
+          dv: string | null;
+          email: string;
+          intlDialCode: string | null;
+          mobile: string | null;
+          fullMobile: string | null;
+          landline: string | null;
+          extension: string | null;
+          address: string | null;
+          city: string | null;
+          department: string | null;
+          roleId: string | null;
+          isActive: boolean | null;
+          createdAt: string | null;
+        } | null;
+        role: { id: string; name: string } | null;
+      }>(`/api/admin/users/${userId}/detail`);
+
+      setDetail(data);
+      setDetailsOpen(true);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setDetailsLoading(null);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -157,6 +230,13 @@ export function UsersTab() {
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
                       <DropdownItem
+                        key="view"
+                        startContent={<BsEyeFill />}
+                        onPress={() => openDetails(u.id)}
+                      >
+                        Ver detalles completos
+                      </DropdownItem>
+                      <DropdownItem
                         key="edit"
                         startContent={<BsPencilSquare />}
                         onPress={() => {
@@ -198,6 +278,15 @@ export function UsersTab() {
         user={editingUser}
         onOpenChange={setEditOpen}
         onSaved={refresh}
+      />
+
+      <UserDetailsModal
+        detail={detail}
+        isOpen={detailsOpen}
+        onOpenChange={(open) => {
+          if (!open) setDetail(null);
+          setDetailsOpen(open);
+        }}
       />
 
       <ConfirmActionModal
