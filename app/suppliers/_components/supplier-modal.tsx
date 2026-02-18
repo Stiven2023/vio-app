@@ -1,11 +1,14 @@
 "use client";
 
 import type { Supplier } from "./suppliers-tab";
+import type { SupplierFormPrefill } from "@/app/api/suppliers/supplier-modal.types";
 
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
+import { Checkbox } from "@heroui/checkbox";
 import {
   Modal,
   ModalBody,
@@ -13,28 +16,75 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import { Switch } from "@heroui/switch";
 import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 
+const identificationTypes = [
+  { value: "CC", label: "Cédula de Ciudadanía" },
+  { value: "NIT", label: "NIT" },
+  { value: "CE", label: "Cédula de Extranjería" },
+  { value: "PAS", label: "Pasaporte" },
+  { value: "EMPRESA_EXTERIOR", label: "Empresa Exterior" },
+];
+
+const taxRegimes = [
+  { value: "REGIMEN_COMUN", label: "Régimen Común" },
+  { value: "REGIMEN_SIMPLIFICADO", label: "Régimen Simplificado" },
+  { value: "NO_RESPONSABLE", label: "No Responsable" },
+];
+
 const supplierSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
-  email: z
-    .string()
-    .trim()
-    .refine(
-      (v) => v === "" || z.string().email().safeParse(v).success,
-      "Email inválido",
-    ),
-  phone: z.string().trim().optional(),
+  identificationType: z.string().min(1, "Tipo de identificación requerido"),
+  identification: z.string().trim().min(1, "Identificación requerida"),
+  dv: z.string().optional(),
+  branch: z.string(),
+  taxRegime: z.string().min(1, "Régimen fiscal requerido"),
+  contactName: z.string().trim().min(1, "Nombre de contacto requerido"),
+  email: z.string().trim().email("Email inválido"),
+  address: z.string().trim().min(1, "Dirección requerida"),
+  postalCode: z.string().optional(),
+  country: z.string(),
+  department: z.string(),
+  city: z.string(),
+  intlDialCode: z.string(),
+  mobile: z.string().optional(),
+  fullMobile: z.string().optional(),
+  localDialCode: z.string().optional(),
+  landline: z.string().optional(),
+  extension: z.string().optional(),
+  fullLandline: z.string().optional(),
+  hasCredit: z.boolean().optional(),
+  promissoryNoteNumber: z.string().optional(),
+  promissoryNoteDate: z.string().optional(),
   isActive: z.boolean().optional(),
 });
 
 type FormState = {
   name: string;
+  identificationType: string;
+  identification: string;
+  dv: string;
+  branch: string;
+  taxRegime: string;
+  contactName: string;
   email: string;
-  phone: string;
+  address: string;
+  postalCode: string;
+  country: string;
+  department: string;
+  city: string;
+  intlDialCode: string;
+  mobile: string;
+  fullMobile: string;
+  localDialCode: string;
+  landline: string;
+  extension: string;
+  fullLandline: string;
+  hasCredit: boolean;
+  promissoryNoteNumber: string;
+  promissoryNoteDate: string;
   isActive: boolean;
 };
 
@@ -43,16 +93,38 @@ export function SupplierModal({
   isOpen,
   onOpenChange,
   onSaved,
+  prefill,
 }: {
   supplier: Supplier | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  prefill?: SupplierFormPrefill;
 }) {
   const [form, setForm] = useState<FormState>({
     name: "",
+    identificationType: "NIT",
+    identification: "",
+    dv: "",
+    branch: "01",
+    taxRegime: "REGIMEN_COMUN",
+    contactName: "",
     email: "",
-    phone: "",
+    address: "",
+    postalCode: "",
+    country: "COLOMBIA",
+    department: "ANTIOQUIA",
+    city: "Medellín",
+    intlDialCode: "57",
+    mobile: "",
+    fullMobile: "",
+    localDialCode: "",
+    landline: "",
+    extension: "",
+    fullLandline: "",
+    hasCredit: false,
+    promissoryNoteNumber: "",
+    promissoryNoteDate: "",
     isActive: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,21 +135,96 @@ export function SupplierModal({
 
     setErrors({});
     setSubmitting(false);
-    setForm({
-      name: supplier?.name ?? "",
-      email: supplier?.email ?? "",
-      phone: supplier?.phone ?? "",
-      isActive: Boolean(supplier?.isActive ?? true),
-    });
-  }, [supplier, isOpen]);
+
+    if (supplier) {
+      setForm({
+        name: supplier.name ?? "",
+        identificationType: supplier.identificationType ?? "NIT",
+        identification: supplier.identification ?? "",
+        dv: supplier.dv ?? "",
+        branch: supplier.branch ?? "01",
+        taxRegime: supplier.taxRegime ?? "REGIMEN_COMUN",
+        contactName: supplier.contactName ?? "",
+        email: supplier.email ?? "",
+        address: supplier.address ?? "",
+        postalCode: supplier.postalCode ?? "",
+        country: supplier.country ?? "COLOMBIA",
+        department: supplier.department ?? "ANTIOQUIA",
+        city: supplier.city ?? "Medellín",
+        intlDialCode: supplier.intlDialCode ?? "57",
+        mobile: supplier.mobile ?? "",
+        fullMobile: supplier.fullMobile ?? "",
+        localDialCode: supplier.localDialCode ?? "",
+        landline: supplier.landline ?? "",
+        extension: supplier.extension ?? "",
+        fullLandline: supplier.fullLandline ?? "",
+        hasCredit: supplier.hasCredit ?? false,
+        promissoryNoteNumber: supplier.promissoryNoteNumber ?? "",
+        promissoryNoteDate: supplier.promissoryNoteDate ?? "",
+        isActive: supplier.isActive ?? true,
+      });
+    } else if (prefill) {
+      setForm((prev) => ({
+        ...prev,
+        name: prefill.name ?? "",
+        identificationType: prefill.identificationType ?? "NIT",
+        identification: prefill.identification ?? "",
+        dv: prefill.dv ?? "",
+        branch: prefill.branch ?? "01",
+        taxRegime: prefill.taxRegime ?? "REGIMEN_COMUN",
+        contactName: prefill.contactName ?? "",
+        email: prefill.email ?? "",
+        address: prefill.address ?? "",
+        postalCode: prefill.postalCode ?? "",
+        country: prefill.country ?? "COLOMBIA",
+        department: prefill.department ?? "ANTIOQUIA",
+        city: prefill.city ?? "Medellín",
+        intlDialCode: prefill.intlDialCode ?? "57",
+        mobile: prefill.mobile ?? "",
+        fullMobile: prefill.fullMobile ?? "",
+        localDialCode: prefill.localDialCode ?? "",
+        landline: prefill.landline ?? "",
+        extension: prefill.extension ?? "",
+        fullLandline: prefill.fullLandline ?? "",
+        hasCredit: prefill.hasCredit ?? false,
+        promissoryNoteNumber: prefill.promissoryNoteNumber ?? "",
+        promissoryNoteDate: prefill.promissoryNoteDate ?? "",
+      }));
+    } else {
+      setForm({
+        name: "",
+        identificationType: "NIT",
+        identification: "",
+        dv: "",
+        branch: "01",
+        taxRegime: "REGIMEN_COMUN",
+        contactName: "",
+        email: "",
+        address: "",
+        postalCode: "",
+        country: "COLOMBIA",
+        department: "ANTIOQUIA",
+        city: "Medellín",
+        intlDialCode: "57",
+        mobile: "",
+        fullMobile: "",
+        localDialCode: "",
+        landline: "",
+        extension: "",
+        fullLandline: "",
+        hasCredit: false,
+        promissoryNoteNumber: "",
+        promissoryNoteDate: "",
+        isActive: true,
+      });
+    }
+  }, [supplier, prefill, isOpen]);
 
   const submit = async () => {
     if (submitting) return;
 
     const parsed = supplierSchema.safeParse({
       ...form,
-      phone: form.phone.trim() ? form.phone : undefined,
-      isActive: form.isActive,
     });
 
     if (!parsed.success) {
@@ -94,16 +241,38 @@ export function SupplierModal({
 
     const payload = {
       name: parsed.data.name,
-      email: parsed.data.email.trim() ? parsed.data.email.trim() : null,
-      phone: form.phone.trim() ? form.phone.trim() : null,
-      isActive: Boolean(parsed.data.isActive ?? true),
+      identificationType: parsed.data.identificationType,
+      identification: parsed.data.identification,
+      dv: parsed.data.dv || null,
+      branch: parsed.data.branch,
+      taxRegime: parsed.data.taxRegime,
+      contactName: parsed.data.contactName,
+      email: parsed.data.email,
+      address: parsed.data.address,
+      postalCode: parsed.data.postalCode || null,
+      country: parsed.data.country,
+      department: parsed.data.department,
+      city: parsed.data.city,
+      intlDialCode: parsed.data.intlDialCode,
+      mobile: parsed.data.mobile || null,
+      fullMobile: parsed.data.fullMobile || null,
+      localDialCode: parsed.data.localDialCode || null,
+      landline: parsed.data.landline || null,
+      extension: parsed.data.extension || null,
+      fullLandline: parsed.data.fullLandline || null,
+      isActive: form.isActive,
+      hasCredit: form.hasCredit,
+      promissoryNoteNumber: parsed.data.promissoryNoteNumber || null,
+      promissoryNoteDate: parsed.data.promissoryNoteDate || null,
     };
 
     try {
       setSubmitting(true);
       await apiJson(`/api/suppliers`, {
         method: supplier ? "PUT" : "POST",
-        body: JSON.stringify(supplier ? { id: supplier.id, ...payload } : payload),
+        body: JSON.stringify(
+          supplier ? { id: supplier.id, ...payload } : payload
+        ),
       });
 
       toast.success(supplier ? "Proveedor actualizado" : "Proveedor creado");
@@ -117,41 +286,244 @@ export function SupplierModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
       <ModalContent>
         <ModalHeader>
           {supplier ? "Editar proveedor" : "Crear proveedor"}
         </ModalHeader>
-        <ModalBody>
-          <Input
-            errorMessage={errors.name}
-            isInvalid={Boolean(errors.name)}
-            label="Nombre"
-            value={form.name}
-            onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-          />
+        <ModalBody className="gap-4">
+          {/* SECCIÓN: IDENTIFICACIÓN */}
+          <div className="border-b pb-4">
+            <h3 className="font-semibold text-sm mb-3">Identificación</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <Select
+                errorMessage={errors.identificationType}
+                isInvalid={Boolean(errors.identificationType)}
+                label="Tipo de Identificación"
+                selectedKeys={[form.identificationType]}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  setForm((s) => ({ ...s, identificationType: selected }));
+                }}
+              >
+                {identificationTypes.map((type) => (
+                  <SelectItem key={type.value}>
+                    {type.label}
+                  </SelectItem>
+                ))}
+              </Select>
 
-          <Input
-            errorMessage={errors.email}
-            isInvalid={Boolean(errors.email)}
-            label="Email"
-            type="email"
-            value={form.email}
-            onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-          />
+              <Input
+                errorMessage={errors.identification}
+                isInvalid={Boolean(errors.identification)}
+                label="Identificación"
+                value={form.identification}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, identification: v }))
+                }
+              />
 
-          <Input
-            label="Teléfono"
-            value={form.phone}
-            onValueChange={(v) => setForm((s) => ({ ...s, phone: v }))}
-          />
+              <Input
+                label="Dígito Verificación"
+                maxLength={1}
+                value={form.dv}
+                onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
+              />
+            </div>
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Activo</span>
-            <Switch
-              isSelected={form.isActive}
-              onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
-            />
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <Input
+                label="Sucursal"
+                value={form.branch}
+                onValueChange={(v) => setForm((s) => ({ ...s, branch: v }))}
+              />
+
+              <Select
+                errorMessage={errors.taxRegime}
+                isInvalid={Boolean(errors.taxRegime)}
+                label="Régimen Fiscal"
+                selectedKeys={[form.taxRegime]}
+                onSelectionChange={(keys) => {
+                  const selected = Array.from(keys)[0] as string;
+                  setForm((s) => ({ ...s, taxRegime: selected }));
+                }}
+              >
+                {taxRegimes.map((regime) => (
+                  <SelectItem key={regime.value}>
+                    {regime.label}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          {/* SECCIÓN: INFORMACIÓN GENERAL */}
+          <div className="border-b pb-4">
+            <h3 className="font-semibold text-sm mb-3">Información General</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                errorMessage={errors.name}
+                isInvalid={Boolean(errors.name)}
+                label="Nombre"
+                value={form.name}
+                onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
+              />
+
+              <Input
+                errorMessage={errors.contactName}
+                isInvalid={Boolean(errors.contactName)}
+                label="Nombre de Contacto"
+                value={form.contactName}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, contactName: v }))
+                }
+              />
+
+              <Input
+                errorMessage={errors.email}
+                isInvalid={Boolean(errors.email)}
+                label="Email"
+                type="email"
+                value={form.email}
+                onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
+              />
+            </div>
+          </div>
+
+          {/* SECCIÓN: UBICACIÓN */}
+          <div className="border-b pb-4">
+            <h3 className="font-semibold text-sm mb-3">Ubicación</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <Input
+                errorMessage={errors.address}
+                isInvalid={Boolean(errors.address)}
+                label="Dirección"
+                value={form.address}
+                onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-4 gap-3 mt-3">
+              <Input
+                label="Código Postal"
+                value={form.postalCode}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, postalCode: v }))
+                }
+              />
+
+              <Input
+                label="País"
+                value={form.country}
+                onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
+              />
+
+              <Input
+                label="Departamento"
+                value={form.department}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, department: v }))
+                }
+              />
+
+              <Input
+                label="Ciudad"
+                value={form.city}
+                onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
+              />
+            </div>
+          </div>
+
+          {/* SECCIÓN: TELÉFONOS */}
+          <div className="border-b pb-4">
+            <h3 className="font-semibold text-sm mb-3">Teléfonos</h3>
+            <div className="grid grid-cols-4 gap-3">
+              <Input
+                label="Código Internacional"
+                value={form.intlDialCode}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, intlDialCode: v }))
+                }
+              />
+
+              <Input
+                label="Móvil"
+                value={form.mobile}
+                onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
+              />
+
+              <Input
+                label="Móvil Completo"
+                value={form.fullMobile}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, fullMobile: v }))
+                }
+              />
+
+              <Input
+                label="Código Local"
+                value={form.localDialCode}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, localDialCode: v }))
+                }
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mt-3">
+              <Input
+                label="Fijo"
+                value={form.landline}
+                onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
+              />
+
+              <Input
+                label="Extensión"
+                value={form.extension}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, extension: v }))
+                }
+              />
+
+              <Input
+                label="Fijo Completo"
+                value={form.fullLandline}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, fullLandline: v }))
+                }
+              />
+            </div>
+          </div>
+
+          {/* SECCIÓN: CRÉDITO Y FINANZAS */}
+          <div className="pb-4">
+            <h3 className="font-semibold text-sm mb-3">Crédito y Finanzas</h3>
+            <div className="flex items-center gap-3 mb-3">
+              <Checkbox
+                isSelected={form.hasCredit}
+                onValueChange={(v) => setForm((s) => ({ ...s, hasCredit: v }))}
+              >
+                Tiene Crédito
+              </Checkbox>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Número Pagaré"
+                value={form.promissoryNoteNumber}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, promissoryNoteNumber: v }))
+                }
+              />
+
+              <Input
+                label="Fecha Firma Pagaré"
+                type="date"
+                value={form.promissoryNoteDate}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, promissoryNoteDate: v }))
+                }
+              />
+            </div>
           </div>
         </ModalBody>
         <ModalFooter>

@@ -543,15 +543,51 @@ export const orderItemConfection = pgTable("order_item_confection", {
   finishedAt: timestamp("finished_at", { withTimezone: true }),
 });
 
+
 /* =========================
-	 SUPPLIERS
+   SUPPLIERS (Proveedores)
 ========================= */
 export const suppliers = pgTable("suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  phone: varchar("phone", { length: 50 }),
-  email: varchar("email", { length: 255 }),
+  
+  // --- CÓDIGO AUTOGENERADO ---
+  supplierCode: varchar("supplier_code", { length: 20 }).unique().notNull(), // "PROV1001", "PROV1002", etc.
+  
+  // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
+  name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
+  identificationType: identificationTypeEnum("identification_type").notNull(), // NIT es el más común aquí
+  identification: varchar("identification", { length: 20 }).unique().notNull(),
+  dv: varchar("dv", { length: 1 }), // Crítico para NIT empresarial
+  branch: varchar("branch", { length: 10 }).default("01"), // "Sucursal" (ej. Sede principal del proveedor)
+
+  // --- INFORMACIÓN FISCAL Y CONTACTO ---
+  taxRegime: taxRegimeEnum("tax_regime").notNull(), // Crucial para retenciones en la fuente
+  contactName: varchar("contact_name", { length: 255 }).notNull(), // "NOMBRE DE CONTACTO"
+  email: varchar("email", { length: 255 }).notNull(), // Para envío de Órdenes de Compra
+
+  // --- UBICACIÓN (Basado en Estructura Imagen 1/2) ---
+  address: varchar("address", { length: 255 }).notNull(),
+  postalCode: varchar("postal_code", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("COLOMBIA"),
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+  city: varchar("city", { length: 100 }).default("Medellín"),
+
+  // --- TELÉFONOS Y MARCACIÓN (Estructura Compleja) ---
+  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
+  mobile: varchar("mobile", { length: 20 }),
+  fullMobile: varchar("full_mobile", { length: 25 }),
+  localDialCode: varchar("local_dial_code", { length: 5 }),
+  landline: varchar("landline", { length: 20 }),
+  extension: varchar("extension", { length: 10 }),
+  fullLandline: varchar("full_landline", { length: 30 }),
+
+  // --- CRÉDITO Y FINANZAS ---
   isActive: boolean("is_active").default(true),
+  hasCredit: boolean("has_credit").default(false), // "CREDITO"
+  promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
+  promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================

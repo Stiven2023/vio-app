@@ -19,9 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+import { Input } from "@heroui/input";
 import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
 
-import { FilterSearch } from "@/app/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/catalog/_components/ui/table-skeleton";
@@ -33,10 +33,31 @@ import { SupplierModal } from "./supplier-modal";
 
 export type Supplier = {
   id: string;
+  supplierCode: string;
   name: string;
-  email: string | null;
-  phone: string | null;
-  isActive: boolean | null;
+  identificationType: string;
+  identification: string;
+  dv?: string;
+  branch: string;
+  taxRegime: string;
+  contactName: string;
+  email: string;
+  address: string;
+  postalCode?: string;
+  country: string;
+  department: string;
+  city: string;
+  intlDialCode: string;
+  mobile?: string;
+  fullMobile?: string;
+  localDialCode?: string;
+  landline?: string;
+  extension?: string;
+  fullLandline?: string;
+  isActive?: boolean;
+  hasCredit?: boolean;
+  promissoryNoteNumber?: string;
+  promissoryNoteDate?: string;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -72,12 +93,13 @@ export function SuppliersTab({
       if (!q) return true;
 
       const email = s.email ?? "";
-      const phone = s.phone ?? "";
+      const contactName = s.contactName ?? "";
 
       return (
         s.name.toLowerCase().includes(q) ||
+        s.supplierCode.toLowerCase().includes(q) ||
         email.toLowerCase().includes(q) ||
-        phone.toLowerCase().includes(q)
+        contactName.toLowerCase().includes(q)
       );
     });
   }, [data, search, status]);
@@ -116,12 +138,14 @@ export function SuppliersTab({
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <FilterSearch
-            className="sm:w-72"
-            placeholder="Buscar por nombre, email o teléfono…"
-            value={search}
-            onValueChange={setSearch}
-          />
+        <Input
+          className="sm:w-72"
+          placeholder="Buscar por código, nombre, email o contacto…"
+          value={search}
+          onValueChange={setSearch}
+          isClearable
+          onClear={() => setSearch("")}
+        />
           <FilterSelect
             className="sm:w-56"
             label="Estado"
@@ -156,26 +180,36 @@ export function SuppliersTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Proveedores"
-          headers={["Nombre", "Email", "Teléfono", "Activo", "Acciones"]}
+          headers={["Código", "Nombre", "Email", "Contacto", "Móvil", "Ciudad", "Activo", "Acciones"]}
         />
       ) : (
         <Table aria-label="Proveedores">
           <TableHeader>
+            <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Email</TableColumn>
-            <TableColumn>Teléfono</TableColumn>
+            <TableColumn>Contacto</TableColumn>
+            <TableColumn>Móvil</TableColumn>
+            <TableColumn>Ciudad</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(s) => (
               <TableRow key={s.id}>
+                <TableCell className="font-medium">{s.supplierCode}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
                 <TableCell className="text-default-500">
                   {s.email ?? "-"}
                 </TableCell>
                 <TableCell className="text-default-500">
-                  {s.phone ?? "-"}
+                  {s.contactName ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {s.mobile ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {s.city ?? "-"}
                 </TableCell>
                 <TableCell>{s.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>

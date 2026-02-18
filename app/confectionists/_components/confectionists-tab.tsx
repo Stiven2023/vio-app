@@ -279,17 +279,15 @@ export function ConfectionistsTab({
                             city: c.city ?? "Medellín",
                             intlDialCode: c.intlDialCode ?? "57",
                             mobile: c.mobile ?? "",
-                            fullMobile: c.fullMobile ?? "",
                             localDialCode: "",
                             landline: c.landline ?? "",
                             extension: c.extension ?? "",
-                            fullLandline: "",
                             status: "ACTIVO",
                             priceClientType: "VIOMAR",
                             isActive: Boolean(c.isActive ?? true),
                             hasCredit: false,
                             promissoryNoteNumber: "",
-                            promissoryNoteDate: null,
+                            promissoryNoteDate: "",
                           });
                         }}
                       >
