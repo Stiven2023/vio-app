@@ -20,12 +20,105 @@ export const nameSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
 });
 
-export const createEmployeeSchema = z.object({
-  userId: z.string().uuid("Selecciona un usuario"),
-  name: z.string().trim().min(1, "Nombre requerido"),
-  roleId: z.string().uuid("Selecciona un rol"),
-  isActive: z.boolean().optional(),
-});
+export const createEmployeeSchema = z
+  .object({
+    userId: z.string().uuid("Usuario inválido").optional(),
+    name: z.string().trim().min(1, "Nombre requerido"),
+    identificationType: z.enum([
+      "CC",
+      "NIT",
+      "CE",
+      "PAS",
+      "EMPRESA_EXTERIOR",
+    ]),
+    identification: z
+      .string()
+      .trim()
+      .min(1, "Identificación requerida")
+      .max(20, "Máximo 20 caracteres"),
+    dv: z.string().trim().max(1).optional(),
+    email: z.string().trim().email("Email inválido"),
+    intlDialCode: z
+      .string()
+      .trim()
+      .regex(/^\+?\d{1,4}$/, "Código internacional inválido")
+      .optional(),
+    mobile: z.string().trim().optional(),
+    landline: z.string().trim().optional(),
+    extension: z
+      .string()
+      .trim()
+      .regex(/^\d{1,6}$/, "Extensión inválida")
+      .optional(),
+    address: z.string().trim().optional(),
+    city: z.string().trim().optional(),
+    department: z.string().trim().optional(),
+    roleId: z.string().uuid("Selecciona un rol").optional(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const identification = data.identification.trim();
+
+    if (data.identificationType === "CC" && !/^\d{6,10}$/.test(identification)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "La CC debe tener entre 6 y 10 dígitos",
+      });
+    }
+
+    if (
+      data.identificationType === "NIT" &&
+      !/^\d{8,12}$/.test(identification)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "El NIT debe tener entre 8 y 12 dígitos",
+      });
+    }
+
+    if (data.identificationType === "CE" && !/^[A-Za-z0-9]{5,15}$/.test(identification)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "La CE debe tener entre 5 y 15 caracteres alfanuméricos",
+      });
+    }
+
+    if (
+      data.identificationType === "PAS" &&
+      !/^[A-Za-z0-9]{5,20}$/.test(identification)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
+      });
+    }
+
+    if (
+      data.identificationType === "EMPRESA_EXTERIOR" &&
+      identification.length < 3
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["identification"],
+        message: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+      });
+    }
+
+    if (data.mobile?.trim()) {
+      const mobileDigits = data.mobile.replace(/\D/g, "");
+      if (mobileDigits.length < 7 || mobileDigits.length > 15) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["mobile"],
+          message: "El móvil debe tener entre 7 y 15 dígitos",
+        });
+      }
+    }
+  });
 
 export const createRolePermissionSchema = z.object({
   roleId: z.string().uuid("Selecciona un rol"),

@@ -252,15 +252,35 @@ export const rolePermissions = pgTable(
 );
 
 /* =========================
-	 EMPLOYEES
+   EMPLOYEES (Ajustado)
 ========================= */
 export const employees = pgTable("employees", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id),
-  name: varchar("name", { length: 255 }).notNull(),
-  phone: varchar("phone", { length: 50 }),
+  
+  // --- IDENTIFICACIÓN Y NOMBRE (Basado en Maestro) ---
+  name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
+  identificationType: identificationTypeEnum("identification_type").notNull(), // CC, CE, etc.
+  identification: varchar("identification", { length: 20 }).unique().notNull(),
+  dv: varchar("dv", { length: 1 }), // Dígito de verificación (si aplica)
+  
+  // --- CONTACTO DETALLADO (Basado en Estructura Imagen 1) ---
+  email: varchar("email", { length: 255 }).notNull(),
+  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
+  mobile: varchar("mobile", { length: 20 }),
+  fullMobile: varchar("full_mobile", { length: 25 }), // Concatenado para el programa
+  landline: varchar("landline", { length: 20 }),
+  extension: varchar("extension", { length: 10 }),
+
+  // --- UBICACIÓN (Consistencia con Clientes) ---
+  address: varchar("address", { length: 255 }),
+  city: varchar("city", { length: 100 }).default("Medellín"),
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+
+  // --- ROL Y ESTADO ---
   roleId: uuid("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(true),
+  
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

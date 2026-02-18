@@ -1,8 +1,10 @@
 "use client";
 
 import type { Employee } from "../../_lib/types";
+import type { ClientFormPrefill } from "../clients/client-modal.types";
+import type { EmployeeFormPrefill } from "./employee-modal.types";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -19,7 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import {
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+  BsPersonPlus,
+} from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -35,7 +42,15 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
 
-export function EmployeesTab() {
+export function EmployeesTab({
+  onRequestCreateClient,
+  prefillCreate,
+  onPrefillConsumed,
+}: {
+  onRequestCreateClient?: (prefill: ClientFormPrefill) => void;
+  prefillCreate?: EmployeeFormPrefill | null;
+  onPrefillConsumed?: () => void;
+} = {}) {
   const {
     roles,
     users,
@@ -53,6 +68,17 @@ export function EmployeesTab() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Employee | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [modalPrefill, setModalPrefill] = useState<EmployeeFormPrefill | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!prefillCreate) return;
+    setEditing(null);
+    setModalPrefill(prefillCreate);
+    setModalOpen(true);
+    onPrefillConsumed?.();
+  }, [onPrefillConsumed, prefillCreate]);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -65,11 +91,17 @@ export function EmployeesTab() {
 
       const roleName = e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "";
       const userId = e.userId ?? "";
+      const identification = e.identification ?? "";
+      const email = e.email ?? "";
+      const mobile = e.mobile ?? "";
 
       return (
         e.name.toLowerCase().includes(q) ||
         userId.toLowerCase().includes(q) ||
-        roleName.toLowerCase().includes(q)
+        roleName.toLowerCase().includes(q) ||
+        identification.toLowerCase().includes(q) ||
+        email.toLowerCase().includes(q) ||
+        mobile.toLowerCase().includes(q)
       );
     });
   }, [data, roleNameById, search, status]);
@@ -114,7 +146,7 @@ export function EmployeesTab() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
-            placeholder="Buscar por nombre, rol o usuario…"
+            placeholder="Buscar por nombre, identificación, email, rol o usuario…"
             value={search}
             onValueChange={setSearch}
           />
@@ -136,6 +168,7 @@ export function EmployeesTab() {
             color="primary"
             onPress={() => {
               setEditing(null);
+              setModalPrefill(null);
               setModalOpen(true);
             }}
           >
@@ -150,13 +183,23 @@ export function EmployeesTab() {
       {loading ? (
         <TableSkeleton
           ariaLabel="Empleados"
-          headers={["Nombre", "Usuario", "Rol", "Activo", "Acciones"]}
+          headers={[
+            "Nombre",
+            "Identificación",
+            "Email",
+            "Móvil",
+            "Rol",
+            "Activo",
+            "Acciones",
+          ]}
         />
       ) : (
         <Table aria-label="Empleados">
           <TableHeader>
             <TableColumn>Nombre</TableColumn>
-            <TableColumn>Usuario</TableColumn>
+            <TableColumn>Identificación</TableColumn>
+            <TableColumn>Email</TableColumn>
+            <TableColumn>Móvil</TableColumn>
             <TableColumn>Rol</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
@@ -165,9 +208,9 @@ export function EmployeesTab() {
             {(e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.name}</TableCell>
-                <TableCell className="text-default-500">
-                  {e.userId ?? "-"}
-                </TableCell>
+                <TableCell>{e.identificationType} {e.identification}</TableCell>
+                <TableCell className="text-default-500">{e.email ?? "-"}</TableCell>
+                <TableCell className="text-default-500">{e.fullMobile ?? e.mobile ?? "-"}</TableCell>
                 <TableCell>
                   {e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "-"}
                 </TableCell>
@@ -189,10 +232,39 @@ export function EmployeesTab() {
                         startContent={<BsPencilSquare />}
                         onPress={() => {
                           setEditing(e);
+                          setModalPrefill(null);
                           setModalOpen(true);
                         }}
                       >
                         Editar
+                      </DropdownItem>
+                      <DropdownItem
+                        key="to-client"
+                        startContent={<BsPersonPlus />}
+                        onPress={() => {
+                          onRequestCreateClient?.({
+                            clientType: "EMPLEADO",
+                            priceClientType: "VIOMAR",
+                            name: e.name,
+                            identificationType: e.identificationType,
+                            identification: e.identification,
+                            dv: e.dv ?? "",
+                            taxRegime: "REGIMEN_COMUN",
+                            contactName: e.name,
+                            email: e.email,
+                            address: e.address ?? "",
+                            city: e.city ?? "",
+                            department: e.department ?? "",
+                            intlDialCode: e.intlDialCode ?? "57",
+                            mobile: e.mobile ?? "",
+                            landline: e.landline ?? "",
+                            extension: e.extension ?? "",
+                            isActive: Boolean(e.isActive ?? true),
+                            status: e.isActive ? "ACTIVO" : "INACTIVO",
+                          });
+                        }}
+                      >
+                        Crear como cliente
                       </DropdownItem>
                       <DropdownItem
                         key="delete"
@@ -219,6 +291,8 @@ export function EmployeesTab() {
       <EmployeeModal
         employee={editing}
         isOpen={modalOpen}
+        onRequestCreateClient={onRequestCreateClient}
+        prefill={modalPrefill}
         roles={roles}
         users={users}
         onOpenChange={setModalOpen}

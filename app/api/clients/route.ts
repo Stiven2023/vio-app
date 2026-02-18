@@ -1,7 +1,7 @@
 import { eq, sql, desc } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients } from "@/src/db/schema";
+import { clients, employees } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -225,6 +225,32 @@ export async function POST(request: Request) {
   }
 
   try {
+    const sameClient = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(eq(clients.identification, identification))
+      .limit(1);
+
+    if (sameClient.length > 0) {
+      return new Response(
+        "La identificación ya existe en clientes. No se puede crear duplicado.",
+        { status: 409 },
+      );
+    }
+
+    const sameEmployee = await db
+      .select({ id: employees.id })
+      .from(employees)
+      .where(eq(employees.identification, identification))
+      .limit(1);
+
+    if (sameEmployee.length > 0) {
+      return new Response(
+        "La identificación ya existe en empleados. Importa los datos desde ese módulo para continuar.",
+        { status: 409 },
+      );
+    }
+
     // GENERAR CÓDIGO DE CLIENTE AUTOMÁTICO
     const prefix =
       clientType === "NACIONAL"
@@ -499,6 +525,34 @@ export async function PUT(request: Request) {
   if (payload.isActive !== undefined) patch.isActive = payload.isActive;
 
   try {
+    if (patch.identification) {
+      const duplicatedClient = await db
+        .select({ id: clients.id })
+        .from(clients)
+        .where(eq(clients.identification, patch.identification))
+        .limit(1);
+
+      if (duplicatedClient[0] && duplicatedClient[0].id !== String(id)) {
+        return new Response(
+          "La identificación ya existe en clientes. No se puede duplicar.",
+          { status: 409 },
+        );
+      }
+
+      const duplicatedEmployee = await db
+        .select({ id: employees.id })
+        .from(employees)
+        .where(eq(employees.identification, patch.identification))
+        .limit(1);
+
+      if (duplicatedEmployee.length > 0) {
+        return new Response(
+          "La identificación ya existe en empleados. Importa los datos desde ese módulo para continuar.",
+          { status: 409 },
+        );
+      }
+    }
+
     const updated = await db
       .update(clients)
       .set(patch)

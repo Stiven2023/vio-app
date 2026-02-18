@@ -13,9 +13,16 @@ type Props = {
   errors: FormErrors;
   setForm: SetFormState;
   isEditing: boolean;
+  onIdentificationBlur?: () => void;
 };
 
-export function IdentificationTab({ form, errors, setForm, isEditing }: Props) {
+export function IdentificationTab({
+  form,
+  errors,
+  setForm,
+  isEditing,
+  onIdentificationBlur,
+}: Props) {
   const identificationHint =
     form.identificationType === "CC"
       ? "CC: solo números, entre 6 y 10 dígitos"
@@ -89,6 +96,7 @@ export function IdentificationTab({ form, errors, setForm, isEditing }: Props) {
           inputMode={identificationInputMode}
           label="Identificación"
           value={form.identification}
+          onBlur={onIdentificationBlur}
           onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
         />
 

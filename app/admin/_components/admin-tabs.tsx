@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Tabs, Tab } from "@heroui/tabs";
+import type { ClientFormPrefill } from "./clients/client-modal.types";
+import type { EmployeeFormPrefill } from "./employees/employee-modal.types";
 
 import { UsersTab } from "./users/users-tab";
 import { EmployeesTab } from "./employees/employees-tab";
@@ -20,6 +22,21 @@ type AdminTabKey =
 
 export function AdminTabs() {
   const [activeTab, setActiveTab] = useState<AdminTabKey>("users");
+  const [clientPrefill, setClientPrefill] = useState<ClientFormPrefill | null>(
+    null,
+  );
+  const [employeePrefill, setEmployeePrefill] =
+    useState<EmployeeFormPrefill | null>(null);
+
+  const openClientFromEmployee = (prefill: ClientFormPrefill) => {
+    setClientPrefill(prefill);
+    setActiveTab("clients");
+  };
+
+  const openEmployeeFromClient = (prefill: EmployeeFormPrefill) => {
+    setEmployeePrefill(prefill);
+    setActiveTab("employees");
+  };
 
   return (
     <div>
@@ -38,8 +55,20 @@ export function AdminTabs() {
 
       <div className="mt-4">
         {activeTab === "users" ? <UsersTab /> : null}
-        {activeTab === "employees" ? <EmployeesTab /> : null}
-        {activeTab === "clients" ? <ClientsTab /> : null}
+        {activeTab === "employees" ? (
+          <EmployeesTab
+            onPrefillConsumed={() => setEmployeePrefill(null)}
+            onRequestCreateClient={openClientFromEmployee}
+            prefillCreate={employeePrefill}
+          />
+        ) : null}
+        {activeTab === "clients" ? (
+          <ClientsTab
+            onRequestCreateEmployee={openEmployeeFromClient}
+            prefillCreate={clientPrefill}
+            onPrefillConsumed={() => setClientPrefill(null)}
+          />
+        ) : null}
         {activeTab === "roles" ? <RolesTab /> : null}
         {activeTab === "permissions" ? <PermissionsTab /> : null}
         {activeTab === "rolePermissions" ? <RolePermissionsTab /> : null}

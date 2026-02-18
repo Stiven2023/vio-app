@@ -1,8 +1,10 @@
 "use client";
 
 import type { Client } from "../../_lib/types";
+import type { ClientFormPrefill } from "./client-modal.types";
+import type { EmployeeFormPrefill } from "../employees/employee-modal.types";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -24,6 +26,9 @@ import {
   BsThreeDotsVertical,
   BsTrash,
   BsEyeFill,
+  BsPersonPlus,
+  BsTruck,
+  BsScissors,
 } from "react-icons/bs";
 import { Chip } from "@heroui/chip";
 
@@ -45,10 +50,16 @@ export function ClientsTab({
   canCreate = true,
   canEdit = true,
   canDelete = true,
+  prefillCreate,
+  onPrefillConsumed,
+  onRequestCreateEmployee,
 }: {
   canCreate?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  prefillCreate?: ClientFormPrefill | null;
+  onPrefillConsumed?: () => void;
+  onRequestCreateEmployee?: (prefill: EmployeeFormPrefill) => void;
 } = {}) {
   const { data, loading, page, setPage, refresh } = usePaginatedApi<Client>(
     "/api/clients",
@@ -63,6 +74,17 @@ export function ClientsTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [modalPrefill, setModalPrefill] = useState<ClientFormPrefill | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!prefillCreate) return;
+    setEditing(null);
+    setModalPrefill(prefillCreate);
+    setModalOpen(true);
+    onPrefillConsumed?.();
+  }, [prefillCreate, onPrefillConsumed]);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -154,6 +176,7 @@ export function ClientsTab({
               color="primary"
               onPress={() => {
                 setEditing(null);
+                setModalPrefill(null);
                 setModalOpen(true);
               }}
             >
@@ -298,12 +321,66 @@ export function ClientsTab({
                           startContent={<BsPencilSquare />}
                           onPress={() => {
                             setEditing(c);
+                            setModalPrefill(null);
                             setModalOpen(true);
                           }}
                         >
                           Editar
                         </DropdownItem>
                       ) : null}
+                      <DropdownItem
+                        key="to-employee"
+                        startContent={<BsPersonPlus />}
+                        onPress={() => {
+                          if (!onRequestCreateEmployee) {
+                            toast("Disponible desde el módulo Admin", {
+                              icon: "ℹ️",
+                            });
+                            return;
+                          }
+
+                          onRequestCreateEmployee({
+                            name: c.name,
+                            identificationType: c.identificationType,
+                            identification: c.identification,
+                            dv: c.dv ?? "",
+                            email: c.email,
+                            intlDialCode: c.intlDialCode ?? "57",
+                            mobile: c.mobile ?? "",
+                            landline: c.landline ?? "",
+                            extension: c.extension ?? "",
+                            address: c.address ?? "",
+                            city: c.city ?? "",
+                            department: c.department ?? "",
+                            isActive: Boolean(c.isActive ?? true),
+                            createUserEmail: c.email,
+                          });
+                        }}
+                      >
+                        Crear como empleado
+                      </DropdownItem>
+                      <DropdownItem
+                        key="to-supplier"
+                        startContent={<BsTruck />}
+                        onPress={() => {
+                          toast("Próximamente: crear como proveedor", {
+                            icon: "🧩",
+                          });
+                        }}
+                      >
+                        Crear como proveedor
+                      </DropdownItem>
+                      <DropdownItem
+                        key="to-confectionist"
+                        startContent={<BsScissors />}
+                        onPress={() => {
+                          toast("Próximamente: crear como confeccionista", {
+                            icon: "🧩",
+                          });
+                        }}
+                      >
+                        Crear como confeccionista
+                      </DropdownItem>
                       {canDelete ? (
                         <DropdownItem
                           key="delete"
@@ -331,6 +408,8 @@ export function ClientsTab({
       <ClientModal
         client={editing}
         isOpen={modalOpen}
+        onRequestCreateEmployee={onRequestCreateEmployee}
+        prefill={modalPrefill}
         onOpenChange={setModalOpen}
         onSaved={onSaved}
       />

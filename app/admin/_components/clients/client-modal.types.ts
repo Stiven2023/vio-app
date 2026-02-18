@@ -30,3 +30,4 @@ export type FormState = {
 
 export type FormErrors = Record<string, string>;
 export type SetFormState = Dispatch<SetStateAction<FormState>>;
+export type ClientFormPrefill = Partial<FormState>;
