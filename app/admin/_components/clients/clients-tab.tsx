@@ -3,6 +3,7 @@
 import type { Client } from "../../_lib/types";
 import type { ClientFormPrefill } from "./client-modal.types";
 import type { EmployeeFormPrefill } from "../employees/employee-modal.types";
+import type { ConfectionistFormPrefill } from "@/app/confectionists/_components/confectionist-modal.types";
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -53,6 +54,7 @@ export function ClientsTab({
   prefillCreate,
   onPrefillConsumed,
   onRequestCreateEmployee,
+  onRequestCreateConfectionist,
 }: {
   canCreate?: boolean;
   canEdit?: boolean;
@@ -60,6 +62,7 @@ export function ClientsTab({
   prefillCreate?: ClientFormPrefill | null;
   onPrefillConsumed?: () => void;
   onRequestCreateEmployee?: (prefill: EmployeeFormPrefill) => void;
+  onRequestCreateConfectionist?: (prefill: ConfectionistFormPrefill) => void;
 } = {}) {
   const { data, loading, page, setPage, refresh } = usePaginatedApi<Client>(
     "/api/clients",
@@ -374,8 +377,33 @@ export function ClientsTab({
                         key="to-confectionist"
                         startContent={<BsScissors />}
                         onPress={() => {
-                          toast("Próximamente: crear como confeccionista", {
-                            icon: "🧩",
+                          if (!onRequestCreateConfectionist) {
+                            toast(
+                              "Navega a la página de confeccionistas para crear desde un cliente",
+                              { icon: "🚧" },
+                            );
+
+                            return;
+                          }
+
+                          onRequestCreateConfectionist({
+                            name: c.name,
+                            identificationType: c.identificationType,
+                            identification: c.identification,
+                            dv: c.dv ?? "",
+                            taxRegime: c.taxRegime,
+                            contactName: c.contactName,
+                            email: c.email,
+                            intlDialCode: c.intlDialCode ?? "57",
+                            mobile: c.mobile ?? "",
+                            landline: c.landline ?? "",
+                            extension: c.extension ?? "",
+                            address: c.address,
+                            postalCode: c.postalCode ?? "",
+                            country: c.country ?? "COLOMBIA",
+                            department: c.department ?? "ANTIOQUIA",
+                            city: c.city ?? "Medellín",
+                            isActive: Boolean(c.isActive ?? true),
                           });
                         }}
                       >

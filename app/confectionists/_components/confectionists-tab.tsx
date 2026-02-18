@@ -1,8 +1,10 @@
 "use client";
 
 import type { Paginated } from "@/app/catalog/_lib/types";
+import type { ConfectionistFormPrefill } from "./confectionist-modal.types";
+import type { ClientFormPrefill } from "@/app/admin/_components/clients/client-modal.types";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -19,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus } from "react-icons/bs";
 
 import { FilterSearch } from "@/app/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
@@ -33,10 +35,27 @@ import { ConfectionistModal } from "./confectionist-modal";
 
 export type Confectionist = {
   id: string;
+  confectionistCode: string | null;
   name: string;
+  identificationType: string;
+  identification: string;
+  dv: string | null;
   type: string | null;
-  phone: string | null;
+  taxRegime: string;
+  contactName: string | null;
+  email: string | null;
+  intlDialCode: string | null;
+  mobile: string | null;
+  fullMobile: string | null;
+  landline: string | null;
+  extension: string | null;
+  address: string;
+  postalCode: string | null;
+  country: string | null;
+  department: string | null;
+  city: string | null;
   isActive: boolean | null;
+  createdAt: string | null;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -45,10 +64,16 @@ export function ConfectionistsTab({
   canCreate,
   canEdit,
   canDelete,
+  prefillCreate,
+  onPrefillConsumed,
+  onRequestCreateClient,
 }: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  prefillCreate?: ConfectionistFormPrefill | null;
+  onPrefillConsumed?: () => void;
+  onRequestCreateClient?: (prefill: ClientFormPrefill) => void;
 }) {
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<Confectionist>("/api/confectionists", 10);
@@ -57,10 +82,21 @@ export function ConfectionistsTab({
   const [editing, setEditing] = useState<Confectionist | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [modalPrefill, setModalPrefill] = useState<ConfectionistFormPrefill | null>(
+    null,
+  );
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!prefillCreate) return;
+    setEditing(null);
+    setModalPrefill(prefillCreate);
+    setModalOpen(true);
+    onPrefillConsumed?.();
+  }, [prefillCreate, onPrefillConsumed]);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -71,12 +107,18 @@ export function ConfectionistsTab({
       if (status === "inactive" && c.isActive) return false;
       if (!q) return true;
 
-      const phone = c.phone ?? "";
+      const code = c.confectionistCode ?? "";
+      const identification = c.identification ?? "";
+      const email = c.email ?? "";
+      const mobile = c.mobile ?? "";
       const type = c.type ?? "";
 
       return (
         c.name.toLowerCase().includes(q) ||
-        phone.toLowerCase().includes(q) ||
+        code.toLowerCase().includes(q) ||
+        identification.toLowerCase().includes(q) ||
+        email.toLowerCase().includes(q) ||
+        mobile.toLowerCase().includes(q) ||
         type.toLowerCase().includes(q)
       );
     });
@@ -156,23 +198,44 @@ export function ConfectionistsTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Confeccionistas"
-          headers={["Nombre", "Tipo", "Teléfono", "Activo", "Acciones"]}
+          headers={[
+            "Código",
+            "Nombre",
+            "Identificación",
+            "Email",
+            "Móvil",
+            "Tipo",
+            "Activo",
+            "Acciones",
+          ]}
         />
       ) : (
         <Table aria-label="Confeccionistas">
           <TableHeader>
+            <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
+            <TableColumn>Identificación</TableColumn>
+            <TableColumn>Email</TableColumn>
+            <TableColumn>Móvil</TableColumn>
             <TableColumn>Tipo</TableColumn>
-            <TableColumn>Teléfono</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(c) => (
               <TableRow key={c.id}>
+                <TableCell className="font-mono text-xs text-primary">
+                  {c.confectionistCode ?? "—"}
+                </TableCell>
                 <TableCell className="font-medium">{c.name}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.identificationType} {c.identification}
+                </TableCell>
+                <TableCell className="text-default-500">{c.email ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.fullMobile ?? c.mobile ?? "-"}
+                </TableCell>
                 <TableCell className="text-default-500">{c.type ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{c.phone ?? "-"}</TableCell>
                 <TableCell>{c.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>
                   <Dropdown>
@@ -186,6 +249,53 @@ export function ConfectionistsTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="to-client"
+                        startContent={<BsPersonPlus />}
+                        onPress={() => {
+                          if (!onRequestCreateClient) {
+                            toast(
+                              "Navega a la página de administración para crear desde un confeccionista",
+                              { icon: "🚧" },
+                            );
+
+                            return;
+                          }
+
+                          onRequestCreateClient({
+                            clientType: "NACIONAL",
+                            name: c.name,
+                            identificationType: c.identificationType,
+                            identification: c.identification,
+                            dv: c.dv ?? "",
+                            branch: "01",
+                            taxRegime: c.taxRegime,
+                            contactName: c.contactName ?? c.name,
+                            email: c.email ?? "",
+                            address: c.address,
+                            postalCode: c.postalCode ?? "",
+                            country: c.country ?? "COLOMBIA",
+                            department: c.department ?? "ANTIOQUIA",
+                            city: c.city ?? "Medellín",
+                            intlDialCode: c.intlDialCode ?? "57",
+                            mobile: c.mobile ?? "",
+                            fullMobile: c.fullMobile ?? "",
+                            localDialCode: "",
+                            landline: c.landline ?? "",
+                            extension: c.extension ?? "",
+                            fullLandline: "",
+                            status: "ACTIVO",
+                            priceClientType: "VIOMAR",
+                            isActive: Boolean(c.isActive ?? true),
+                            hasCredit: false,
+                            promissoryNoteNumber: "",
+                            promissoryNoteDate: null,
+                          });
+                        }}
+                      >
+                        Crear como cliente
+                      </DropdownItem>
+
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -231,8 +341,15 @@ export function ConfectionistsTab({
 
       <ConfectionistModal
         confectionist={editing}
+        prefill={modalPrefill}
         isOpen={modalOpen}
-        onOpenChange={setModalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) {
+            setEditing(null);
+            setModalPrefill(null);
+          }
+        }}
         onSaved={refresh}
       />
 

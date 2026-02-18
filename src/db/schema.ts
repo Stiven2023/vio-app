@@ -492,14 +492,44 @@ export const orderItemStatusHistory = pgTable("order_item_status_history", {
 });
 
 /* =========================
-	 CONFECCIONISTAS
+   CONFECCIONISTAS (Proveedores/Talleres)
 ========================= */
 export const confectionists = pgTable("confectionists", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  type: varchar("type", { length: 50 }),
-  phone: varchar("phone", { length: 50 }),
+  
+  // --- CÓDIGO AUTOGENERADO ---
+  confectionistCode: varchar("confectionist_code", { length: 20 }).unique().notNull(),
+  
+  // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
+  name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
+  identificationType: identificationTypeEnum("identification_type").notNull(), // CC o NIT (común en talleres)
+  identification: varchar("identification", { length: 20 }).unique().notNull(),
+  dv: varchar("dv", { length: 1 }), // Vital si el confeccionista es una empresa (NIT)
+  
+  // --- CARACTERIZACIÓN ---
+  // Reemplazamos el type simple por uno más descriptivo si es necesario
+  type: varchar("type", { length: 50 }), // Ej: "Taller Externo", "Sastrería", "Planta Propia"
+  taxRegime: taxRegimeEnum("tax_regime").notNull(), // Necesario para pagos y retenciones
+  
+  // --- CONTACTO Y TELÉFONOS (Estructura Imagen 1) ---
+  contactName: varchar("contact_name", { length: 255 }), 
+  email: varchar("email", { length: 255 }),
+  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
+  mobile: varchar("mobile", { length: 20 }),
+  fullMobile: varchar("full_mobile", { length: 25 }),
+  landline: varchar("landline", { length: 20 }),    
+  extension: varchar("extension", { length: 10 }),
+
+  // --- UBICACIÓN (Para logística de entrega y recogida) ---
+  address: varchar("address", { length: 255 }).notNull(),
+  postalCode: varchar("postal_code", { length: 20 }),
+  country: varchar("country", { length: 100 }).default("COLOMBIA"),
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+  city: varchar("city", { length: 100 }).default("Medellín"),
+
+  // --- ESTADO ---
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================

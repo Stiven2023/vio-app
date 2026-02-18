@@ -31,6 +31,7 @@ export async function GET(request: Request) {
     const items = await db
       .select()
       .from(confectionists)
+      .orderBy(confectionists.createdAt)
       .limit(pageSize)
       .offset(offset);
 
@@ -57,25 +58,95 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { name, type, phone, isActive } = await request.json();
+  const payload = await request.json();
 
-  const n = String(name ?? "").trim();
+  const name = String(payload.name ?? "").trim();
+  const identificationType = String(payload.identificationType ?? "").trim();
+  const identification = String(payload.identification ?? "").trim();
+  const taxRegime = String(payload.taxRegime ?? "").trim();
+  const address = String(payload.address ?? "").trim();
 
-  if (!n) {
-    return new Response("name required", { status: 400 });
+  if (!name || !identificationType || !identification || !taxRegime || !address) {
+    return new Response(
+      "name, identificationType, identification, taxRegime y address son requeridos",
+      { status: 400 },
+    );
   }
 
-  const created = await db
-    .insert(confectionists)
-    .values({
-      name: n,
-      type: type ? String(type).trim() : null,
-      phone: phone ? String(phone).trim() : null,
-      isActive: isActive ?? true,
-    })
-    .returning();
+  try {
+    // Generar confectionistCode autoincrementado
+    const lastConfectionist = await db
+      .select({ confectionistCode: confectionists.confectionistCode })
+      .from(confectionists)
+      .orderBy(sql`${confectionists.confectionistCode} DESC`)
+      .limit(1);
 
-  return Response.json(created, { status: 201 });
+    let nextNumber = 1001;
+    if (
+      lastConfectionist.length > 0 &&
+      lastConfectionist[0]?.confectionistCode
+    ) {
+      const lastCode = lastConfectionist[0].confectionistCode;
+      const lastNumber = parseInt(lastCode.replace(/^CON/i, ""), 10);
+      if (!isNaN(lastNumber)) {
+        nextNumber = lastNumber + 1;
+      }
+    }
+
+    const confectionistCode = `CON${nextNumber}`;
+
+    const created = await db
+      .insert(confectionists)
+      .values({
+        confectionistCode,
+        name,
+        identificationType: identificationType as
+          | "CC"
+          | "NIT"
+          | "CE"
+          | "PAS"
+          | "EMPRESA_EXTERIOR",
+        identification,
+        dv: payload.dv ? String(payload.dv).trim() : null,
+        type: payload.type ? String(payload.type).trim() : null,
+        taxRegime: taxRegime as
+          | "REGIMEN_COMUN"
+          | "REGIMEN_SIMPLIFICADO"
+          | "NO_RESPONSABLE",
+        contactName: payload.contactName
+          ? String(payload.contactName).trim()
+          : null,
+        email: payload.email ? String(payload.email).trim() : null,
+        intlDialCode: payload.intlDialCode
+          ? String(payload.intlDialCode).trim()
+          : "57",
+        mobile: payload.mobile ? String(payload.mobile).trim() : null,
+        fullMobile: payload.fullMobile
+          ? String(payload.fullMobile).trim()
+          : null,
+        landline: payload.landline ? String(payload.landline).trim() : null,
+        extension: payload.extension ? String(payload.extension).trim() : null,
+        address,
+        postalCode: payload.postalCode
+          ? String(payload.postalCode).trim()
+          : null,
+        country: payload.country
+          ? String(payload.country).trim()
+          : "COLOMBIA",
+        department: payload.department
+          ? String(payload.department).trim()
+          : "ANTIOQUIA",
+        city: payload.city ? String(payload.city).trim() : "Medellín",
+        isActive: payload.isActive ?? true,
+      })
+      .returning();
+
+    return Response.json(created, { status: 201 });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo crear confeccionista", { status: 500 });
+  }
 }
 
 export async function PUT(request: Request) {
@@ -91,25 +162,91 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, name, type, phone, isActive } = await request.json();
+  const payload = await request.json();
+  const { id } = payload;
 
   if (!id) {
     return new Response("Confectionist ID required", { status: 400 });
   }
 
-  const patch: Partial<typeof confectionists.$inferInsert> = { isActive };
+  const patch: Partial<typeof confectionists.$inferInsert> = {};
 
-  if (name !== undefined) patch.name = String(name).trim();
-  if (type !== undefined) patch.type = type ? String(type).trim() : null;
-  if (phone !== undefined) patch.phone = phone ? String(phone).trim() : null;
+  // Campos obligatorios (.notNull()): solo actualizar si tienen valor
+  if (payload.name !== undefined && String(payload.name).trim()) 
+    patch.name = String(payload.name).trim();
+  if (payload.identificationType !== undefined && String(payload.identificationType).trim())
+    patch.identificationType = String(payload.identificationType).trim() as
+      | "CC"
+      | "NIT"
+      | "CE"
+      | "PAS"
+      | "EMPRESA_EXTERIOR";
+  if (payload.identification !== undefined && String(payload.identification).trim())
+    patch.identification = String(payload.identification).trim();
+  if (payload.taxRegime !== undefined && String(payload.taxRegime).trim())
+    patch.taxRegime = String(payload.taxRegime).trim() as
+      | "REGIMEN_COMUN"
+      | "REGIMEN_SIMPLIFICADO"
+      | "NO_RESPONSABLE";
+  if (payload.address !== undefined && String(payload.address).trim())
+    patch.address = String(payload.address).trim();
 
-  const updated = await db
-    .update(confectionists)
-    .set(patch)
-    .where(eq(confectionists.id, String(id)))
-    .returning();
+  // Campos opcionales: pueden ser null
+  if (payload.dv !== undefined)
+    patch.dv = payload.dv ? String(payload.dv).trim() : null;
+  if (payload.type !== undefined)
+    patch.type = payload.type ? String(payload.type).trim() : null;
+  if (payload.contactName !== undefined)
+    patch.contactName = payload.contactName
+      ? String(payload.contactName).trim()
+      : null;
+  if (payload.email !== undefined)
+    patch.email = payload.email ? String(payload.email).trim() : null;
+  if (payload.intlDialCode !== undefined)
+    patch.intlDialCode = payload.intlDialCode
+      ? String(payload.intlDialCode).trim()
+      : null;
+  if (payload.mobile !== undefined)
+    patch.mobile = payload.mobile ? String(payload.mobile).trim() : null;
+  if (payload.fullMobile !== undefined)
+    patch.fullMobile = payload.fullMobile
+      ? String(payload.fullMobile).trim()
+      : null;
+  if (payload.landline !== undefined)
+    patch.landline = payload.landline ? String(payload.landline).trim() : null;
+  if (payload.extension !== undefined)
+    patch.extension = payload.extension
+      ? String(payload.extension).trim()
+      : null;
+  if (payload.postalCode !== undefined)
+    patch.postalCode = payload.postalCode
+      ? String(payload.postalCode).trim()
+      : null;
+  if (payload.country !== undefined)
+    patch.country = payload.country ? String(payload.country).trim() : null;
+  if (payload.department !== undefined)
+    patch.department = payload.department
+      ? String(payload.department).trim()
+      : null;
+  if (payload.city !== undefined)
+    patch.city = payload.city ? String(payload.city).trim() : null;
+  if (payload.isActive !== undefined) patch.isActive = Boolean(payload.isActive);
 
-  return Response.json(updated);
+  try {
+    const updated = await db
+      .update(confectionists)
+      .set(patch)
+      .where(eq(confectionists.id, String(id)))
+      .returning();
+
+    return Response.json(updated);
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo actualizar confeccionista", {
+      status: 500,
+    });
+  }
 }
 
 export async function DELETE(request: Request) {

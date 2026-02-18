@@ -1,6 +1,7 @@
 "use client";
 
 import type { Confectionist } from "./confectionists-tab";
+import type { ConfectionistFormPrefill } from "./confectionist-modal.types";
 
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -13,6 +14,7 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
+import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 import { z } from "zod";
 
@@ -20,33 +22,77 @@ import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 
 const confectionistSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
+  identificationType: z.string().trim().min(1, "Tipo de identificación requerido"),
+  identification: z.string().trim().min(1, "Identificación requerida"),
+  dv: z.string().trim().optional(),
+  taxRegime: z.string().trim().min(1, "Régimen fiscal requerido"),
+  address: z.string().trim().min(1, "Dirección requerida"),
   type: z.string().trim().optional(),
-  phone: z.string().trim().optional(),
+  contactName: z.string().trim().optional(),
+  email: z.string().trim().optional(),
+  intlDialCode: z.string().trim().optional(),
+  mobile: z.string().trim().optional(),
+  landline: z.string().trim().optional(),
+  extension: z.string().trim().optional(),
+  postalCode: z.string().trim().optional(),
+  country: z.string().trim().optional(),
+  department: z.string().trim().optional(),
+  city: z.string().trim().optional(),
   isActive: z.boolean().optional(),
 });
 
 type FormState = {
   name: string;
+  identificationType: string;
+  identification: string;
+  dv: string;
+  taxRegime: string;
   type: string;
-  phone: string;
+  contactName: string;
+  email: string;
+  intlDialCode: string;
+  mobile: string;
+  landline: string;
+  extension: string;
+  address: string;
+  postalCode: string;
+  country: string;
+  department: string;
+  city: string;
   isActive: boolean;
 };
 
 export function ConfectionistModal({
   confectionist,
+  prefill,
   isOpen,
   onOpenChange,
   onSaved,
 }: {
   confectionist: Confectionist | null;
+  prefill?: ConfectionistFormPrefill | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<FormState>({
     name: "",
+    identificationType: "",
+    identification: "",
+    dv: "",
+    taxRegime: "",
     type: "",
-    phone: "",
+    contactName: "",
+    email: "",
+    intlDialCode: "57",
+    mobile: "",
+    landline: "",
+    extension: "",
+    address: "",
+    postalCode: "",
+    country: "COLOMBIA",
+    department: "ANTIOQUIA",
+    city: "Medellín",
     isActive: true,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,23 +103,57 @@ export function ConfectionistModal({
 
     setErrors({});
     setSubmitting(false);
-    setForm({
-      name: confectionist?.name ?? "",
-      type: confectionist?.type ?? "",
-      phone: confectionist?.phone ?? "",
-      isActive: Boolean(confectionist?.isActive ?? true),
-    });
-  }, [confectionist, isOpen]);
+
+    // Si hay prefill, usarlo; sino, usar confectionist existente o valores por defecto
+    if (prefill) {
+      setForm({
+        name: prefill.name,
+        identificationType: prefill.identificationType,
+        identification: prefill.identification,
+        dv: prefill.dv,
+        taxRegime: prefill.taxRegime,
+        type: "", // type no viene en prefill
+        contactName: prefill.contactName,
+        email: prefill.email,
+        intlDialCode: prefill.intlDialCode,
+        mobile: prefill.mobile,
+        landline: prefill.landline,
+        extension: prefill.extension,
+        address: prefill.address,
+        postalCode: prefill.postalCode,
+        country: prefill.country,
+        department: prefill.department,
+        city: prefill.city,
+        isActive: prefill.isActive,
+      });
+    } else {
+      setForm({
+        name: confectionist?.name ?? "",
+        identificationType: confectionist?.identificationType ?? "",
+        identification: confectionist?.identification ?? "",
+        dv: confectionist?.dv ?? "",
+        taxRegime: confectionist?.taxRegime ?? "",
+        type: confectionist?.type ?? "",
+        contactName: confectionist?.contactName ?? "",
+        email: confectionist?.email ?? "",
+        intlDialCode: confectionist?.intlDialCode ?? "57",
+        mobile: confectionist?.mobile ?? "",
+        landline: confectionist?.landline ?? "",
+        extension: confectionist?.extension ?? "",
+        address: confectionist?.address ?? "",
+        postalCode: confectionist?.postalCode ?? "",
+        country: confectionist?.country ?? "COLOMBIA",
+        department: confectionist?.department ?? "ANTIOQUIA",
+        city: confectionist?.city ?? "Medellín",
+        isActive: Boolean(confectionist?.isActive ?? true),
+      });
+    }
+  }, [confectionist, prefill, isOpen]);
 
   const submit = async () => {
     if (submitting) return;
 
-    const parsed = confectionistSchema.safeParse({
-      ...form,
-      type: form.type.trim() ? form.type : undefined,
-      phone: form.phone.trim() ? form.phone : undefined,
-      isActive: form.isActive,
-    });
+    const parsed = confectionistSchema.safeParse(form);
 
     if (!parsed.success) {
       const next: Record<string, string> = {};
@@ -89,8 +169,25 @@ export function ConfectionistModal({
 
     const payload = {
       name: parsed.data.name,
-      type: form.type.trim() ? form.type.trim() : null,
-      phone: form.phone.trim() ? form.phone.trim() : null,
+      identificationType: parsed.data.identificationType,
+      identification: parsed.data.identification,
+      dv: form.dv.trim() || null,
+      taxRegime: parsed.data.taxRegime,
+      type: form.type.trim() || null,
+      contactName: form.contactName.trim() || null,
+      email: form.email.trim() || null,
+      intlDialCode: form.intlDialCode.trim() || "57",
+      mobile: form.mobile.trim() || null,
+      fullMobile: form.mobile.trim()
+        ? `+${form.intlDialCode} ${form.mobile}`
+        : null,
+      landline: form.landline.trim() || null,
+      extension: form.extension.trim() || null,
+      address: parsed.data.address,
+      postalCode: form.postalCode.trim() || null,
+      country: form.country.trim() || "COLOMBIA",
+      department: form.department.trim() || "ANTIOQUIA",
+      city: form.city.trim() || "Medellín",
       isActive: Boolean(parsed.data.isActive ?? true),
     };
 
@@ -116,10 +213,15 @@ export function ConfectionistModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal isOpen={isOpen} scrollBehavior="inside" size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>
-          {confectionist ? "Editar confeccionista" : "Crear confeccionista"}
+        <ModalHeader className="flex flex-col gap-1">
+          <span>{confectionist ? "Editar confeccionista" : "Crear confeccionista"}</span>
+          {confectionist?.confectionistCode && (
+            <span className="font-mono text-xs font-normal text-primary">
+              {confectionist.confectionistCode}
+            </span>
+          )}
         </ModalHeader>
         <ModalBody>
           <Input
@@ -130,17 +232,137 @@ export function ConfectionistModal({
             onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
           />
 
-          <Input
-            label="Tipo"
-            value={form.type}
-            onValueChange={(v) => setForm((s) => ({ ...s, type: v }))}
-          />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Select
+              errorMessage={errors.identificationType}
+              isInvalid={Boolean(errors.identificationType)}
+              label="Tipo de identificación"
+              selectedKeys={form.identificationType ? [form.identificationType] : []}
+              onSelectionChange={(keys) => {
+                const first = Array.from(keys)[0];
+                setForm((s) => ({ ...s, identificationType: String(first ?? "") }));
+              }}
+            >
+              <SelectItem key="CC">Cédula de ciudadanía (CC)</SelectItem>
+              <SelectItem key="NIT">NIT</SelectItem>
+              <SelectItem key="CE">Cédula de extranjería (CE)</SelectItem>
+              <SelectItem key="PAS">Pasaporte (PAS)</SelectItem>
+              <SelectItem key="EMPRESA_EXTERIOR">Empresa exterior</SelectItem>
+            </Select>
+
+            <Input
+              errorMessage={errors.identification}
+              isInvalid={Boolean(errors.identification)}
+              label="Identificación"
+              value={form.identification}
+              onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
+            />
+
+            <Input
+              label="Dígito verificación"
+              maxLength={1}
+              value={form.dv}
+              onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
+            />
+
+            <Select
+              errorMessage={errors.taxRegime}
+              isInvalid={Boolean(errors.taxRegime)}
+              label="Régimen fiscal"
+              selectedKeys={form.taxRegime ? [form.taxRegime] : []}
+              onSelectionChange={(keys) => {
+                const first = Array.from(keys)[0];
+                setForm((s) => ({ ...s, taxRegime: String(first ?? "") }));
+              }}
+            >
+              <SelectItem key="REGIMEN_COMUN">Régimen común</SelectItem>
+              <SelectItem key="REGIMEN_SIMPLIFICADO">Régimen simplificado</SelectItem>
+              <SelectItem key="NO_RESPONSABLE">No responsable</SelectItem>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Input
+              label="Tipo de taller"
+              placeholder="Ej: Taller Externo, Sastrería"
+              value={form.type}
+              onValueChange={(v) => setForm((s) => ({ ...s, type: v }))}
+            />
+
+            <Input
+              label="Nombre de contacto"
+              value={form.contactName}
+              onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
+            />
+
+            <Input
+              label="Correo"
+              type="email"
+              value={form.email}
+              onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Input
+              label="Código internacional"
+              placeholder="57"
+              value={form.intlDialCode}
+              onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
+            />
+
+            <Input
+              label="Móvil"
+              value={form.mobile}
+              onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
+            />
+
+            <Input
+              label="Fijo"
+              value={form.landline}
+              onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
+            />
+
+            <Input
+              label="Extensión"
+              value={form.extension}
+              onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
+            />
+          </div>
 
           <Input
-            label="Teléfono"
-            value={form.phone}
-            onValueChange={(v) => setForm((s) => ({ ...s, phone: v }))}
+            errorMessage={errors.address}
+            isInvalid={Boolean(errors.address)}
+            label="Dirección"
+            value={form.address}
+            onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
           />
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Input
+              label="Código postal"
+              value={form.postalCode}
+              onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
+            />
+
+            <Input
+              label="País"
+              value={form.country}
+              onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
+            />
+
+            <Input
+              label="Departamento"
+              value={form.department}
+              onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
+            />
+
+            <Input
+              label="Ciudad"
+              value={form.city}
+              onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
+            />
+          </div>
 
           <div className="flex items-center justify-between">
             <span className="text-sm">Activo</span>
