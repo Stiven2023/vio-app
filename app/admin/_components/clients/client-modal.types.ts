@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 
 export type FormState = {
   clientType: string;
+  personType: string;
   priceClientType: string;
   name: string;
   identificationType: string;
@@ -26,6 +27,12 @@ export type FormState = {
   promissoryNoteDate: string;
   status: string;
   isActive: boolean;
+  identityDocumentUrl: string;
+  rutDocumentUrl: string;
+  commerceChamberDocumentUrl: string;
+  passportDocumentUrl: string;
+  taxCertificateDocumentUrl: string;
+  companyIdDocumentUrl: string;
 };
 
 export type FormErrors = Record<string, string>;

@@ -129,6 +129,58 @@ export const createClientSchema = z
   .object({
     // --- TIPO DE CLIENTE (automático según selección) ---
     clientType: z.enum(["NACIONAL", "EXTRANJERO", "EMPLEADO"]),
+    
+    // --- TIPO DE PERSONA Y DOCUMENTOS ---
+    personType: z.enum(["NATURAL", "JURIDICA"]),
+    // Aceptar URLs HTTP(s) o rutas locales (/documents/...)
+    identityDocumentUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local"
+      )
+      .optional(),
+    rutDocumentUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local"
+      )
+      .optional(),
+    commerceChamberDocumentUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local"
+      )
+      .optional(),
+    passportDocumentUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local"
+      )
+      .optional(),
+    taxCertificateDocumentUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local"
+      )
+      .optional(),
+    companyIdDocumentUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local"
+      )
+      .optional(),
 
     // --- CAMPOS CRÍTICOS REQUERIDOS ---
     name: z.string().trim().min(1, "Nombre requerido"),
@@ -151,7 +203,14 @@ export const createClientSchema = z
       "NO_RESPONSABLE",
     ]),
     contactName: z.string().trim().min(1, "Nombre de contacto requerido"),
-    email: z.string().trim().email("Email inválido"),
+    email: z
+      .string()
+      .trim()
+      .refine(
+        (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+        "Email inválido"
+      )
+      .optional(),
     address: z.string().trim().min(1, "Dirección requerida"),
 
     // --- CAMPOS OPCIONALES ---

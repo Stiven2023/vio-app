@@ -46,6 +46,14 @@ export type Client = {
   // --- CÓDIGO Y TIPO ---
   clientCode: string;
   clientType: string;
+  // --- TIPO DE PERSONA Y DOCUMENTOS ---
+  personType: string | null;
+  identityDocumentUrl: string | null;
+  rutDocumentUrl: string | null;
+  commerceChamberDocumentUrl: string | null;
+  passportDocumentUrl: string | null;
+  taxCertificateDocumentUrl: string | null;
+  companyIdDocumentUrl: string | null;
   // --- IDENTIFICACIÓN Y NOMBRE ---
   name: string;
   identificationType: string;

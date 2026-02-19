@@ -30,6 +30,7 @@ import {
   BsPersonPlus,
   BsTruck,
   BsScissors,
+  BsFileEarmarkPdf,
 } from "react-icons/bs";
 import { Chip } from "@heroui/chip";
 
@@ -42,6 +43,7 @@ import { FilterSelect } from "../ui/filter-select";
 
 import { ClientModal } from "./client-modal";
 import { ClientDetailsModal } from "./client-details-modal";
+import { ClientDocumentsModal } from "./client-documents-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -70,8 +72,10 @@ export function ClientsTab({
   );
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [viewing, setViewing] = useState<Client | null>(null);
+  const [viewingDocuments, setViewingDocuments] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -457,6 +461,16 @@ export function ClientsTab({
                       >
                         Ver detalles completos
                       </DropdownItem>
+                      <DropdownItem
+                        key="documents"
+                        startContent={<BsFileEarmarkPdf />}
+                        onPress={() => {
+                          setViewingDocuments(c);
+                          setDocumentsOpen(true);
+                        }}
+                      >
+                        Ver documentos
+                      </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -589,6 +603,12 @@ export function ClientsTab({
         onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
         onRequestCreateConfectionist={() => viewing && createAsConfectionist(viewing)}
         onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
+      />
+
+      <ClientDocumentsModal
+        client={viewingDocuments}
+        isOpen={documentsOpen}
+        onOpenChange={setDocumentsOpen}
       />
 
       <ConfirmActionModal

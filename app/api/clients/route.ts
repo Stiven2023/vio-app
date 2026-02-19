@@ -121,6 +121,26 @@ export async function POST(request: Request) {
   // TIPO DE CLIENTE (para generar código)
   const clientType = String(payload.clientType ?? "NACIONAL").trim();
   const priceClientType = String(payload.priceClientType ?? "VIOMAR").trim();
+  // Tipo de persona y documentos (para clientes nacionales y extranjeros)
+  const personType = payload.personType ? String(payload.personType).trim() : null;
+  const identityDocumentUrl = payload.identityDocumentUrl 
+    ? String(payload.identityDocumentUrl).trim() 
+    : null;
+  const rutDocumentUrl = payload.rutDocumentUrl 
+    ? String(payload.rutDocumentUrl).trim() 
+    : null;
+  const commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl 
+    ? String(payload.commerceChamberDocumentUrl).trim() 
+    : null;
+  const passportDocumentUrl = payload.passportDocumentUrl 
+    ? String(payload.passportDocumentUrl).trim() 
+    : null;
+  const taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl 
+    ? String(payload.taxCertificateDocumentUrl).trim() 
+    : null;
+  const companyIdDocumentUrl = payload.companyIdDocumentUrl 
+    ? String(payload.companyIdDocumentUrl).trim() 
+    : null;
 
   // Campos críticos requeridos
   const name = String(payload.name ?? "").trim();
@@ -209,6 +229,91 @@ export async function POST(request: Request) {
     return new Response("El móvil debe tener entre 7 y 15 dígitos", {
       status: 400,
     });
+  }
+  // Validación de documentos para clientes nacionales
+  if (clientType === "NACIONAL") {
+    if (!personType) {
+      return new Response(
+        "El tipo de persona es requerido para clientes nacionales",
+        { status: 400 }
+      );
+    }
+    
+    if (personType === "NATURAL") {
+      if (!identityDocumentUrl) {
+        return new Response(
+          "La cédula del titular es requerida para personas naturales",
+          { status: 400 }
+        );
+      }
+      if (!rutDocumentUrl) {
+        return new Response(
+          "El RUT es requerido para personas naturales",
+          { status: 400 }
+        );
+      }
+    }
+    
+    if (personType === "JURIDICA") {
+      if (!rutDocumentUrl) {
+        return new Response(
+          "El RUT es requerido para personas jurídicas",
+          { status: 400 }
+        );
+      }
+      if (!commerceChamberDocumentUrl) {
+        return new Response(
+          "La Cámara de Comercio es requerida para personas jurídicas",
+          { status: 400 }
+        );
+      }
+      if (!identityDocumentUrl) {
+        return new Response(
+          "La cédula del representante legal es requerida para personas jurídicas",
+          { status: 400 }
+        );
+      }
+    }
+  }
+  
+  // Validación de documentos para clientes extranjeros
+  if (clientType === "EXTRANJERO") {
+    if (!personType) {
+      return new Response(
+        "El tipo de persona es requerido para clientes extranjeros",
+        { status: 400 }
+      );
+    }
+    
+    if (personType === "NATURAL") {
+      if (!identityDocumentUrl) {
+        return new Response(
+          "El ID extranjero (CE/Pasaporte) es requerido para personas naturales",
+          { status: 400 }
+        );
+      }
+      if (!passportDocumentUrl) {
+        return new Response(
+          "El Pasaporte/PPT es requerido para personas naturales extranjeras",
+          { status: 400 }
+        );
+      }
+    }
+    
+    if (personType === "JURIDICA") {
+      if (!taxCertificateDocumentUrl) {
+        return new Response(
+          "El Certificado tributario es requerido para empresas extranjeras",
+          { status: 400 }
+        );
+      }
+      if (!companyIdDocumentUrl) {
+        return new Response(
+          "El ID de la empresa es requerido para empresas extranjeras",
+          { status: 400 }
+        );
+      }
+    }
   }
 
   const hasCredit = Boolean(payload.hasCredit);
@@ -306,6 +411,14 @@ export async function POST(request: Request) {
         // CÓDIGO Y TIPO
         clientCode,
         clientType: clientType as "NACIONAL" | "EXTRANJERO" | "EMPLEADO",
+        // TIPO DE PERSONA Y DOCUMENTOS
+        personType: personType as "NATURAL" | "JURIDICA" | null,
+        identityDocumentUrl,
+        rutDocumentUrl,
+        commerceChamberDocumentUrl,
+        passportDocumentUrl,
+        taxCertificateDocumentUrl,
+        companyIdDocumentUrl,
         // IDENTIFICACIÓN
         name,
         identificationType: identificationType as
@@ -433,6 +546,36 @@ export async function PUT(request: Request) {
     patch.dv = payload.dv ? String(payload.dv).trim() : null;
   if (payload.branch !== undefined)
     patch.branch = payload.branch ? String(payload.branch).trim() : null;
+  
+  // TIPO DE PERSONA Y DOCUMENTOS
+  if (payload.personType !== undefined)
+    patch.personType = payload.personType 
+      ? (String(payload.personType).trim() as "NATURAL" | "JURIDICA") 
+      : null;
+  if (payload.identityDocumentUrl !== undefined)
+    patch.identityDocumentUrl = payload.identityDocumentUrl 
+      ? String(payload.identityDocumentUrl).trim() 
+      : null;
+  if (payload.rutDocumentUrl !== undefined)
+    patch.rutDocumentUrl = payload.rutDocumentUrl 
+      ? String(payload.rutDocumentUrl).trim() 
+      : null;
+  if (payload.commerceChamberDocumentUrl !== undefined)
+    patch.commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl 
+      ? String(payload.commerceChamberDocumentUrl).trim() 
+      : null;
+  if (payload.passportDocumentUrl !== undefined)
+    patch.passportDocumentUrl = payload.passportDocumentUrl 
+      ? String(payload.passportDocumentUrl).trim() 
+      : null;
+  if (payload.taxCertificateDocumentUrl !== undefined)
+    patch.taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl 
+      ? String(payload.taxCertificateDocumentUrl).trim() 
+      : null;
+  if (payload.companyIdDocumentUrl !== undefined)
+    patch.companyIdDocumentUrl = payload.companyIdDocumentUrl 
+      ? String(payload.companyIdDocumentUrl).trim() 
+      : null;
 
   // FISCAL Y CONTACTO
   if (payload.taxRegime !== undefined)

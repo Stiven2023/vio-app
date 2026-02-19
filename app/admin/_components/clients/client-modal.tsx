@@ -19,6 +19,7 @@ import { Tabs, Tab } from "@heroui/tabs";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createClientSchema } from "../../_lib/schemas";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { uploadFileToCldinary } from "@/components/file-upload";
 import {
   ContactIcon,
   FinanceIcon,
@@ -75,6 +76,7 @@ export function ClientModal({
 
   const [form, setForm] = useState<FormState>({
     clientType: "NACIONAL",
+    personType: "",
     priceClientType: "VIOMAR",
     name: "",
     identificationType: "CC",
@@ -99,12 +101,21 @@ export function ClientModal({
     promissoryNoteDate: "",
     status: "ACTIVO",
     isActive: true,
+    identityDocumentUrl: "",
+    rutDocumentUrl: "",
+    commerceChamberDocumentUrl: "",
+    passportDocumentUrl: "",
+    taxCertificateDocumentUrl: "",
+    companyIdDocumentUrl: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [importPromptOpen, setImportPromptOpen] = useState(false);
   const [importCandidate, setImportCandidate] =
     useState<EmployeeImportData | null>(null);
+  
+  // Archivos pendientes de subir: { fieldName: File }
+  const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
 
   useEffect(() => {
     if (!isOpen) return;
@@ -115,6 +126,7 @@ export function ClientModal({
     setImportCandidate(null);
     const baseForm: FormState = {
       clientType: "NACIONAL",
+      personType: "NATURAL",
       priceClientType: "VIOMAR",
       name: "",
       identificationType: "CC",
@@ -139,12 +151,19 @@ export function ClientModal({
       promissoryNoteDate: "",
       status: "ACTIVO",
       isActive: true,
+      identityDocumentUrl: "",
+      rutDocumentUrl: "",
+      commerceChamberDocumentUrl: "",
+      passportDocumentUrl: "",
+      taxCertificateDocumentUrl: "",
+      companyIdDocumentUrl: "",
     };
 
     if (client) {
       setForm({
         ...baseForm,
         clientType: client.clientType ?? "NACIONAL",
+        personType: client.personType ?? "",
         priceClientType: client.priceClientType ?? "VIOMAR",
         name: client.name ?? "",
         identificationType: client.identificationType ?? "CC",
@@ -169,6 +188,12 @@ export function ClientModal({
         promissoryNoteDate: client.promissoryNoteDate ?? "",
         status: client.status ?? "ACTIVO",
         isActive: Boolean(client.isActive ?? true),
+        identityDocumentUrl: client.identityDocumentUrl ?? "",
+        rutDocumentUrl: client.rutDocumentUrl ?? "",
+        commerceChamberDocumentUrl: client.commerceChamberDocumentUrl ?? "",
+        passportDocumentUrl: client.passportDocumentUrl ?? "",
+        taxCertificateDocumentUrl: client.taxCertificateDocumentUrl ?? "",
+        companyIdDocumentUrl: client.companyIdDocumentUrl ?? "",
       });
       return;
     }
@@ -248,53 +273,246 @@ export function ClientModal({
     toast.success("Datos importados desde empleados");
   };
 
+  // Manejar archivos pendientes de subida
+  const handleFileSelect = (fieldName: string, file: File) => {
+    setPendingFiles((prev) => ({ ...prev, [fieldName]: file }));
+  };
+
+  // Mapa de abreviaciones para documentos
+  const documentAbbreviations: Record<string, string> = {
+    identityDocumentUrl: "ct", // cédula titular / representante
+    rutDocumentUrl: "rut",
+    commerceChamberDocumentUrl: "cc", // cámara comercio
+    passportDocumentUrl: "ppt",
+    taxCertificateDocumentUrl: "ctrib", // certificado tributario
+    companyIdDocumentUrl: "ide", // ID empresa
+  };
+
+  // Subir todos los archivos pendientes antes de guardar
+  const uploadPendingFiles = async (): Promise<Record<string, string>> => {
+    const uploadedUrls: Record<string, string> = {};
+    
+    // Si es edición, usar el clientCode del cliente existente
+    // Si es creación, usar la identification limpia
+    const fileNameBase = client 
+      ? client.clientCode 
+      : form.identification.replace(/\D/g, ""); // Solo dígitos
+
+    // En producción con Cloudinary:
+    // Los documentos se guardarán en carpeta "clients/{identification}"
+    // Ej: clients/1053123456
+    const clientIdentification = form.identification.replace(/\D/g, "");
+    const uploadFolder = `clients/${clientIdentification}`;
+
+    for (const [fieldName, file] of Object.entries(pendingFiles)) {
+      try {
+        const abbr = documentAbbreviations[fieldName] || fieldName;
+        const customFileName = `${fileNameBase}-${abbr}`; // Ejemplo: "CN10001-ct" o "1053123456-ct"
+        
+        const url = await uploadFileToCldinary(file, uploadFolder, customFileName);
+        console.log(`✅ Subido ${fieldName} (${customFileName}):`, url);
+        console.log(`📁 Guardado en carpeta: ${uploadFolder}`);
+        uploadedUrls[fieldName] = url;
+      } catch (error) {
+        console.log(`❌ Error al subir ${fieldName}:`, error);
+        throw new Error(`Error al subir ${fieldName}: ${error instanceof Error ? error.message : "Error desconocido"}`);
+      }
+    }
+
+    console.log("📦 URLs subidas totales:", uploadedUrls);
+    return uploadedUrls;
+  };
+
   const submit = async () => {
     if (submitting) return;
     setSubmitting(true);
 
-    const parsed = createClientSchema.safeParse({
-      clientType: form.clientType,
-      priceClientType: form.priceClientType,
-      name: form.name,
-      identificationType: form.identificationType,
-      identification: form.identification,
-      dv: form.dv || undefined,
-      branch: form.branch || undefined,
-      taxRegime: form.taxRegime,
-      contactName: form.contactName,
-      email: form.email,
-      address: form.address,
-      postalCode: form.postalCode || undefined,
-      country: form.country || undefined,
-      department: form.department || undefined,
-      city: form.city || undefined,
-      intlDialCode: form.intlDialCode || undefined,
-      mobile: form.mobile,
-      localDialCode: form.localDialCode || undefined,
-      landline: form.landline || undefined,
-      extension: form.extension || undefined,
-      hasCredit: form.hasCredit,
-      promissoryNoteNumber: form.promissoryNoteNumber || undefined,
-      promissoryNoteDate: form.promissoryNoteDate || undefined,
-      status: form.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO",
-      isActive: form.isActive,
-    });
-
-    if (!parsed.success) {
-      const next: Record<string, string> = {};
-
-      for (const issue of parsed.error.issues) {
-        next[String(issue.path[0] ?? "form")] = issue.message;
-      }
-      setErrors(next);
-
-      return;
-    }
-
-    setErrors({});
-
     try {
-      setSubmitting(true);
+      let updatedForm = { ...form };
+      console.log("🔄 Iniciando envío de cliente...");
+      console.log("📦 Pendientes para subir:", Object.keys(pendingFiles));
+
+      // Primero, subir archivos pendientes
+      if (Object.keys(pendingFiles).length > 0) {
+        console.log("📤 Subiendo archivos pendientes...");
+        toast.loading("Subiendo documentos...");
+        try {
+          const uploadedUrls = await uploadPendingFiles();
+          console.log("✅ Archivos subidos:", uploadedUrls);
+          
+          // Actualizar formulario con las URLs de los archivos subidos
+          updatedForm = {
+            ...updatedForm,
+            identityDocumentUrl: uploadedUrls.identityDocumentUrl || updatedForm.identityDocumentUrl,
+            rutDocumentUrl: uploadedUrls.rutDocumentUrl || updatedForm.rutDocumentUrl,
+            commerceChamberDocumentUrl: uploadedUrls.commerceChamberDocumentUrl || updatedForm.commerceChamberDocumentUrl,
+            passportDocumentUrl: uploadedUrls.passportDocumentUrl || updatedForm.passportDocumentUrl,
+            taxCertificateDocumentUrl: uploadedUrls.taxCertificateDocumentUrl || updatedForm.taxCertificateDocumentUrl,
+            companyIdDocumentUrl: uploadedUrls.companyIdDocumentUrl || updatedForm.companyIdDocumentUrl,
+          };
+          
+          console.log("📝 UpdatedForm después de URLs:", {
+            identityDocumentUrl: updatedForm.identityDocumentUrl,
+            rutDocumentUrl: updatedForm.rutDocumentUrl,
+          });
+          
+          // Limpiar archivos pendientes en state
+          setPendingFiles({});
+          toast.dismiss();
+        } catch (uploadError) {
+          console.error("❌ Error subiendo archivos:", uploadError);
+          setSubmitting(false);
+          toast.dismiss();
+          toast.error(uploadError instanceof Error ? uploadError.message : "Error al subir documentos");
+          setErrors({ documents: uploadError instanceof Error ? uploadError.message : "Error al subir documentos" });
+          return;
+        }
+      } else {
+        console.log("✅ Sin archivos pendientes, continuando...");
+      }
+
+      // Para edición, los documentos ya existen, así que no requieren validación estricta de presencia
+      // Para creación nueva, pedimos solo si se han seleccionado algunos documentos que se completen todos
+      const isCreating = !client;
+      
+      if (isCreating && Object.keys(pendingFiles).length > 0) {
+        // Si se seleccionaron documentos, validar que se hayan completado según el tipo de cliente
+        const validationErrors: Record<string, string> = {};
+      
+        if (updatedForm.clientType === "NACIONAL" && !updatedForm.personType) {
+          validationErrors.personType = "El tipo de persona es requerido para clientes nacionales";
+        }
+
+        if (updatedForm.clientType === "NACIONAL" && updatedForm.personType === "NATURAL") {
+          if (!updatedForm.identityDocumentUrl) {
+            validationErrors.identityDocumentUrl = "La cédula del titular es requerida";
+          }
+          if (!updatedForm.rutDocumentUrl) {
+            validationErrors.rutDocumentUrl = "El RUT es requerido";
+          }
+        }
+
+        if (updatedForm.clientType === "NACIONAL" && updatedForm.personType === "JURIDICA") {
+          if (!updatedForm.rutDocumentUrl) {
+            validationErrors.rutDocumentUrl = "El RUT de la empresa es requerido";
+          }
+          if (!updatedForm.commerceChamberDocumentUrl) {
+            validationErrors.commerceChamberDocumentUrl = "La Cámara de Comercio es requerida";
+          }
+          if (!updatedForm.identityDocumentUrl) {
+            validationErrors.identityDocumentUrl = "La cédula del representante legal es requerida";
+          }
+        }
+        
+        if (updatedForm.clientType === "EXTRANJERO" && !updatedForm.personType) {
+          validationErrors.personType = "El tipo de persona es requerido para clientes extranjeros";
+        }
+        
+        if (updatedForm.clientType === "EXTRANJERO" && updatedForm.personType === "NATURAL") {
+          if (!updatedForm.identityDocumentUrl) {
+            validationErrors.identityDocumentUrl = "El ID extranjero (CE/Pasaporte) es requerido";
+          }
+          if (!updatedForm.passportDocumentUrl) {
+            validationErrors.passportDocumentUrl = "El Pasaporte/PPT es requerido";
+          }
+        }
+        
+        if (updatedForm.clientType === "EXTRANJERO" && updatedForm.personType === "JURIDICA") {
+          if (!updatedForm.taxCertificateDocumentUrl) {
+            validationErrors.taxCertificateDocumentUrl = "El Certificado tributario es requerido";
+          }
+          if (!updatedForm.companyIdDocumentUrl) {
+            validationErrors.companyIdDocumentUrl = "El ID de la empresa es requerido";
+          }
+        }
+
+        if (Object.keys(validationErrors).length > 0) {
+          console.error("❌ Errores de validación de documentos:", validationErrors);
+          setErrors(validationErrors);
+          setSubmitting(false);
+          toast.error("Por favor complete los documentos requeridos");
+          return;
+        }
+      }
+
+      console.log("✅ Validación de documentos completada");
+      console.log("📋 Datos para crear cliente:", {
+        name: updatedForm.name,
+        identification: updatedForm.identification,
+        personType: updatedForm.personType,
+        email: updatedForm.email,
+        mobile: updatedForm.mobile,
+      });
+
+      const parseData = {
+        clientType: updatedForm.clientType,
+        personType: updatedForm.personType,
+        priceClientType: updatedForm.priceClientType,
+        name: updatedForm.name,
+        identificationType: updatedForm.identificationType,
+        identification: updatedForm.identification,
+        dv: updatedForm.dv || undefined,
+        branch: updatedForm.branch || undefined,
+        taxRegime: updatedForm.taxRegime,
+        contactName: updatedForm.contactName,
+        email: updatedForm.email?.trim() || undefined,
+        address: updatedForm.address,
+        postalCode: updatedForm.postalCode || undefined,
+        country: updatedForm.country || undefined,
+        department: updatedForm.department || undefined,
+        city: updatedForm.city || undefined,
+        intlDialCode: updatedForm.intlDialCode || undefined,
+        mobile: updatedForm.mobile,
+        localDialCode: updatedForm.localDialCode || undefined,
+        landline: updatedForm.landline || undefined,
+        extension: updatedForm.extension || undefined,
+        hasCredit: updatedForm.hasCredit,
+        promissoryNoteNumber: updatedForm.promissoryNoteNumber || undefined,
+        promissoryNoteDate: updatedForm.promissoryNoteDate || undefined,
+        status: updatedForm.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO",
+        isActive: updatedForm.isActive,
+        identityDocumentUrl: updatedForm.identityDocumentUrl?.trim() || undefined,
+        rutDocumentUrl: updatedForm.rutDocumentUrl?.trim() || undefined,
+        commerceChamberDocumentUrl: updatedForm.commerceChamberDocumentUrl?.trim() || undefined,
+        passportDocumentUrl: updatedForm.passportDocumentUrl?.trim() || undefined,
+        taxCertificateDocumentUrl: updatedForm.taxCertificateDocumentUrl?.trim() || undefined,
+        companyIdDocumentUrl: updatedForm.companyIdDocumentUrl?.trim() || undefined,
+      };
+
+      console.log("📝 Datos a parsear:", parseData);
+
+      const parsed = createClientSchema.safeParse(parseData);
+
+      if (!parsed.success) {
+        const next: Record<string, string> = {};
+
+        for (const issue of parsed.error.issues) {
+          next[String(issue.path[0] ?? "form")] = issue.message;
+        }
+        
+        console.error("❌ Error de validación del esquema:", next);
+        console.error("Issues:", parsed.error.issues);
+        
+        setErrors(next);
+        setSubmitting(false);
+        toast.error("Por favor revisa los campos requeridos");
+        return;
+      }
+
+      setErrors({});
+
+      console.log("✅ Esquema validado correctamente");
+      console.log("Enviando cliente con URLs:", {
+        identityDocumentUrl: updatedForm.identityDocumentUrl,
+        rutDocumentUrl: updatedForm.rutDocumentUrl,
+        commerceChamberDocumentUrl: updatedForm.commerceChamberDocumentUrl,
+        passportDocumentUrl: updatedForm.passportDocumentUrl,
+        taxCertificateDocumentUrl: updatedForm.taxCertificateDocumentUrl,
+        companyIdDocumentUrl: updatedForm.companyIdDocumentUrl,
+      });
+
+      console.log("📤 Enviando POST/PUT a /api/clients...");
+      
       await apiJson(`/api/clients`, {
         method: client ? "PUT" : "POST",
         body: JSON.stringify(
@@ -302,10 +520,15 @@ export function ClientModal({
         ),
       });
 
+      console.log("✅ Cliente guardado correctamente");
+
+      // Actualizar el form state con el formulario actualizado
+      setForm(updatedForm);
       toast.success(client ? "Cliente actualizado" : "Cliente creado");
       onOpenChange(false);
       onSaved();
     } catch (e) {
+      console.error("❌ Error al guardar cliente:", e);
       toast.error(getErrorMessage(e));
     } finally {
       setSubmitting(false);
@@ -343,6 +566,7 @@ export function ClientModal({
                 errors={errors}
                 form={form}
                 isEditing={Boolean(client)}
+                onFileSelect={handleFileSelect}
                 onIdentificationBlur={checkIdentification}
                 setForm={setForm}
               />

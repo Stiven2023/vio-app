@@ -46,6 +46,12 @@ export const clientPriceTypeEnum = pgEnum("client_price_type", [
   "COLANTA",
 ]);
 
+// Enum de tipo de persona (natural o jurídica)
+export const personTypeEnum = pgEnum("person_type", [
+  "NATURAL",
+  "JURIDICA",
+]);
+
 // Enum de tipo de tercero (para módulo jurídico)
 export const thirdPartyTypeEnum = pgEnum("third_party_type", [
   "EMPLEADO",
@@ -317,6 +323,21 @@ export const clients = pgTable("clients", {
   // --- CÓDIGO DE CLIENTE AUTOMÁTICO ---
   clientCode: varchar("client_code", { length: 20 }).unique().notNull(), // "CN10001", "CE10001", "EM10001"
   clientType: clientTypeEnum("client_type").notNull(), // NACIONAL, EXTRANJERO, EMPLEADO
+  
+  // --- TIPO DE PERSONA Y DOCUMENTOS ---
+  personType: personTypeEnum("person_type"), // NATURAL o JURIDICA (null para empleados)
+  
+  // Documentos NACIONAL NATURAL: identityDocumentUrl + rutDocumentUrl
+  // Documentos NACIONAL JURIDICA: rutDocumentUrl + commerceChamberDocumentUrl + identityDocumentUrl (rep. legal)
+  // Documentos EXTRANJERO NATURAL: identityDocumentUrl + passportDocumentUrl
+  // Documentos EXTRANJERO JURIDICA: taxCertificateDocumentUrl + companyIdDocumentUrl
+  
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula titular (nacional natural) / Cédula rep. legal (nacional jurídica) / ID extranjero (extranjero natural)
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT (solo nacionales)
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de Comercio (nacional jurídica)
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte/PPT (extranjero natural)
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario (extranjero jurídica)
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa (extranjero jurídica)
   
   // --- IDENTIFICACIÓN Y NOMBRE (Imagen 1 y 2) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
