@@ -5,7 +5,6 @@ import {
   NavbarContent,
   NavbarMenu,
   NavbarMenuToggle,
-  NavbarBrand,
   NavbarItem,
   NavbarMenuItem,
 } from "@heroui/navbar";
@@ -36,7 +35,6 @@ import {
 } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
-import { ViomarLogo } from "@/components/viomar-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useSessionStore } from "@/store/session";
 import { isOperarioRole } from "@/src/utils/role-status";
@@ -86,6 +84,7 @@ export const Navbar = () => {
   const canOverrideRole =
     isAuthenticated && isAdmin && process.env.NODE_ENV !== "production";
   const effectiveRole = canOverrideRole && roleOverride ? roleOverride : role ?? null;
+  const displayedRole = roleOverride || user?.role || "Sin rol";
   const operarioOnly = isOperarioRole(effectiveRole);
 
   const applyPermissions = (permissions?: Record<string, boolean>) => {
@@ -302,13 +301,18 @@ export const Navbar = () => {
 
   return (
     <HeroUINavbar maxWidth="xl" position="sticky">
-      <NavbarContent className="basis-1/5 sm:basis-full" justify="start">
-        <NavbarBrand as="li" className="gap-3 max-w-fit">
-          <NextLink className="flex justify-start items-center gap-1" href="/">
-            <ViomarLogo className="h-7" />
-          </NextLink>
-        </NavbarBrand>
-        <ul className="hidden lg:flex gap-2 justify-start ml-2">
+      <NavbarContent className="hidden sm:flex basis-1/4 pl-2" justify="start">
+        {isAuthenticated ? (
+          <NavbarItem>
+            <span className="rounded-medium border border-default-200 px-3 py-1 text-xs font-semibold text-default-700">
+              {displayedRole}
+            </span>
+          </NavbarItem>
+        ) : null}
+      </NavbarContent>
+
+      <NavbarContent className="hidden lg:flex basis-2/4" justify="center">
+        <ul className="flex gap-2 justify-center">
           {isAuthenticated ? (
             <NavbarItem key="nav-dashboard">
               <Tooltip content="Dashboard">
@@ -500,7 +504,7 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent
-        className="hidden sm:flex basis-1/5 sm:basis-full"
+        className="hidden sm:flex basis-1/4 pr-2 lg:pr-4"
         justify="end"
       >
         <NavbarItem className="hidden sm:flex gap-2 items-center">
@@ -508,7 +512,7 @@ export const Navbar = () => {
             <Dropdown>
               <DropdownTrigger>
                 <Button size="sm" variant="flat">
-                  Rol: {roleOverride || user?.role || "Sin rol"}
+                  Rol: {displayedRole}
                 </Button>
               </DropdownTrigger>
               <DropdownMenu
@@ -533,19 +537,8 @@ export const Navbar = () => {
         {isAuthenticated ? (
           <NavbarItem className="hidden sm:flex gap-3 items-center">
             <div className="flex items-center gap-2">
-              <Avatar
-                name={user?.name ?? "VIOMAR"}
-                size="sm"
-                src="/STICKER%20VIOMAR.png"
-              />
-              <div className="leading-tight">
-                <div className="text-sm font-medium">
-                  {user?.name ?? "Usuario"}
-                </div>
-                <div className="text-xs text-default-500">
-                  {user?.role ?? "Sin rol"}
-                </div>
-              </div>
+              <Avatar name={user?.name ?? "VIOMAR"} size="sm" />
+              <div className="text-sm font-medium">{user?.name ?? "Usuario"}</div>
             </div>
 
             <Button

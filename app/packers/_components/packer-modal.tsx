@@ -20,6 +20,13 @@ import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  ContactIcon,
+  FormTabTitle,
+  IdentificationIcon,
+  LocationIcon,
+  PhoneIcon,
+} from "@/components/form-tab-title";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -294,7 +301,10 @@ export function PackerModal({
         <ModalHeader>{packer ? "Editar empaque" : "Crear empaque"}</ModalHeader>
         <ModalBody>
           <Tabs aria-label="Formulario de empaque" variant="underlined">
-            <Tab key="identificacion" title="Identificación">
+            <Tab
+              key="identificacion"
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
+            >
               <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-3">
                 <Select
                   errorMessage={errors.identificationType}
@@ -329,7 +339,10 @@ export function PackerModal({
               </div>
             </Tab>
 
-            <Tab key="contacto" title="Contacto">
+            <Tab
+              key="contacto"
+              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
+            >
               <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
                   errorMessage={errors.name}
@@ -378,7 +391,10 @@ export function PackerModal({
               </div>
             </Tab>
 
-            <Tab key="telefonos" title="Teléfonos">
+            <Tab
+              key="telefonos"
+              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+            >
               <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
                   label="Código internacional"
@@ -406,7 +422,10 @@ export function PackerModal({
               </div>
             </Tab>
 
-            <Tab key="ubicacion" title="Ubicación">
+            <Tab
+              key="ubicacion"
+              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+            >
               <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
                   errorMessage={errors.address}

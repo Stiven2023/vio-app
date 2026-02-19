@@ -9,6 +9,7 @@ import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Checkbox } from "@heroui/checkbox";
+import { Switch } from "@heroui/switch";
 import {
   Modal,
   ModalBody,
@@ -16,10 +17,19 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
+import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  ContactIcon,
+  FinanceIcon,
+  FormTabTitle,
+  IdentificationIcon,
+  LocationIcon,
+  PhoneIcon,
+} from "@/components/form-tab-title";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -390,244 +400,234 @@ export function SupplierModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
       <ModalContent>
-        <ModalHeader>
-          {supplier ? "Editar proveedor" : "Crear proveedor"}
+        <ModalHeader className="flex flex-col gap-1">
+          <span>{supplier ? "Editar proveedor" : "Crear proveedor"}</span>
+          {supplier?.supplierCode && (
+            <span className="font-mono text-xs font-normal text-primary">
+              {supplier.supplierCode}
+            </span>
+          )}
         </ModalHeader>
-        <ModalBody className="gap-4">
-          {/* SECCIÓN: IDENTIFICACIÓN */}
-          <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Identificación</h3>
-            <div className="grid grid-cols-3 gap-3">
-              <Select
-                errorMessage={errors.identificationType}
-                isInvalid={Boolean(errors.identificationType)}
-                label="Tipo de Identificación"
-                selectedKeys={[form.identificationType]}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as string;
-                  setForm((s) => ({ ...s, identificationType: selected }));
-                }}
-              >
-                {identificationTypes.map((type) => (
-                  <SelectItem key={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </Select>
+        <ModalBody>
+          <Tabs aria-label="Formulario de proveedor" variant="underlined">
+            <Tab
+              key="identificacion"
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
+            >
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-3">
+                <Select
+                  errorMessage={errors.identificationType}
+                  isInvalid={Boolean(errors.identificationType)}
+                  label="Tipo de Identificación"
+                  selectedKeys={[form.identificationType]}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setForm((s) => ({ ...s, identificationType: selected }));
+                  }}
+                >
+                  {identificationTypes.map((type) => (
+                    <SelectItem key={type.value}>{type.label}</SelectItem>
+                  ))}
+                </Select>
 
-              <Input
-                errorMessage={errors.identification}
-                isInvalid={Boolean(errors.identification)}
-                label="Identificación"
-                value={form.identification}
-                onBlur={checkIdentification}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, identification: v }))
-                }
-              />
+                <Input
+                  errorMessage={errors.identification}
+                  isInvalid={Boolean(errors.identification)}
+                  label="Identificación"
+                  value={form.identification}
+                  onBlur={checkIdentification}
+                  onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
+                />
 
-              <Input
-                label="Dígito Verificación"
-                maxLength={1}
-                value={form.dv}
-                onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
-              />
-            </div>
+                <Input
+                  label="Dígito Verificación"
+                  maxLength={1}
+                  value={form.dv}
+                  onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
+                />
 
-            <div className="grid grid-cols-3 gap-3 mt-3">
-              <Input
-                label="Sucursal"
-                value={form.branch}
-                onValueChange={(v) => setForm((s) => ({ ...s, branch: v }))}
-              />
+                <Input
+                  label="Sucursal"
+                  value={form.branch}
+                  onValueChange={(v) => setForm((s) => ({ ...s, branch: v }))}
+                />
 
-              <Select
-                errorMessage={errors.taxRegime}
-                isInvalid={Boolean(errors.taxRegime)}
-                label="Régimen Fiscal"
-                selectedKeys={[form.taxRegime]}
-                onSelectionChange={(keys) => {
-                  const selected = Array.from(keys)[0] as string;
-                  setForm((s) => ({ ...s, taxRegime: selected }));
-                }}
-              >
-                {taxRegimes.map((regime) => (
-                  <SelectItem key={regime.value}>
-                    {regime.label}
-                  </SelectItem>
-                ))}
-              </Select>
-            </div>
-          </div>
+                <Select
+                  errorMessage={errors.taxRegime}
+                  isInvalid={Boolean(errors.taxRegime)}
+                  label="Régimen Fiscal"
+                  selectedKeys={[form.taxRegime]}
+                  onSelectionChange={(keys) => {
+                    const selected = Array.from(keys)[0] as string;
+                    setForm((s) => ({ ...s, taxRegime: selected }));
+                  }}
+                >
+                  {taxRegimes.map((regime) => (
+                    <SelectItem key={regime.value}>{regime.label}</SelectItem>
+                  ))}
+                </Select>
+              </div>
+            </Tab>
 
-          {/* SECCIÓN: INFORMACIÓN GENERAL */}
-          <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Información General</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                errorMessage={errors.name}
-                isInvalid={Boolean(errors.name)}
-                label="Nombre"
-                value={form.name}
-                onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-              />
+            <Tab
+              key="contacto"
+              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
+            >
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+                <Input
+                  errorMessage={errors.name}
+                  isInvalid={Boolean(errors.name)}
+                  label="Nombre"
+                  value={form.name}
+                  onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
+                />
 
-              <Input
-                errorMessage={errors.contactName}
-                isInvalid={Boolean(errors.contactName)}
-                label="Nombre de Contacto"
-                value={form.contactName}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, contactName: v }))
-                }
-              />
+                <Input
+                  errorMessage={errors.contactName}
+                  isInvalid={Boolean(errors.contactName)}
+                  label="Nombre de Contacto"
+                  value={form.contactName}
+                  onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
+                />
 
-              <Input
-                errorMessage={errors.email}
-                isInvalid={Boolean(errors.email)}
-                label="Email"
-                type="email"
-                value={form.email}
-                onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-              />
-            </div>
-          </div>
+                <Input
+                  errorMessage={errors.email}
+                  isInvalid={Boolean(errors.email)}
+                  label="Email"
+                  type="email"
+                  value={form.email}
+                  onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
+                />
+              </div>
+            </Tab>
 
-          {/* SECCIÓN: UBICACIÓN */}
-          <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Ubicación</h3>
-            <div className="grid grid-cols-1 gap-3">
-              <Input
-                errorMessage={errors.address}
-                isInvalid={Boolean(errors.address)}
-                label="Dirección"
-                value={form.address}
-                onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
-              />
-            </div>
+            <Tab
+              key="ubicacion"
+              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+            >
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+                <Input
+                  errorMessage={errors.address}
+                  isInvalid={Boolean(errors.address)}
+                  label="Dirección"
+                  value={form.address}
+                  onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
+                />
 
-            <div className="grid grid-cols-4 gap-3 mt-3">
-              <Input
-                label="Código Postal"
-                value={form.postalCode}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, postalCode: v }))
-                }
-              />
+                <Input
+                  label="Código Postal"
+                  value={form.postalCode}
+                  onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
+                />
 
-              <Input
-                label="País"
-                value={form.country}
-                onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
-              />
+                <Input
+                  label="País"
+                  value={form.country}
+                  onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
+                />
 
-              <Input
-                label="Departamento"
-                value={form.department}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, department: v }))
-                }
-              />
+                <Input
+                  label="Departamento"
+                  value={form.department}
+                  onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
+                />
 
-              <Input
-                label="Ciudad"
-                value={form.city}
-                onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-              />
-            </div>
-          </div>
+                <Input
+                  label="Ciudad"
+                  value={form.city}
+                  onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
+                />
+              </div>
+            </Tab>
 
-          {/* SECCIÓN: TELÉFONOS */}
-          <div className="border-b pb-4">
-            <h3 className="font-semibold text-sm mb-3">Teléfonos</h3>
-            <div className="grid grid-cols-4 gap-3">
-              <Input
-                label="Código Internacional"
-                value={form.intlDialCode}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, intlDialCode: v }))
-                }
-              />
+            <Tab
+              key="telefonos"
+              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+            >
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+                <Input
+                  label="Código Internacional"
+                  value={form.intlDialCode}
+                  onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
+                />
 
-              <Input
-                label="Móvil"
-                value={form.mobile}
-                onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
-              />
+                <Input
+                  label="Móvil"
+                  value={form.mobile}
+                  onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
+                />
 
-              <Input
-                label="Móvil Completo"
-                value={form.fullMobile}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, fullMobile: v }))
-                }
-              />
+                <Input
+                  label="Móvil Completo"
+                  value={form.fullMobile}
+                  onValueChange={(v) => setForm((s) => ({ ...s, fullMobile: v }))}
+                />
 
-              <Input
-                label="Código Local"
-                value={form.localDialCode}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, localDialCode: v }))
-                }
-              />
-            </div>
+                <Input
+                  label="Código Local"
+                  value={form.localDialCode}
+                  onValueChange={(v) => setForm((s) => ({ ...s, localDialCode: v }))}
+                />
 
-            <div className="grid grid-cols-3 gap-3 mt-3">
-              <Input
-                label="Fijo"
-                value={form.landline}
-                onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
-              />
+                <Input
+                  label="Fijo"
+                  value={form.landline}
+                  onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
+                />
 
-              <Input
-                label="Extensión"
-                value={form.extension}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, extension: v }))
-                }
-              />
+                <Input
+                  label="Extensión"
+                  value={form.extension}
+                  onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
+                />
 
-              <Input
-                label="Fijo Completo"
-                value={form.fullLandline}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, fullLandline: v }))
-                }
-              />
-            </div>
-          </div>
+                <Input
+                  label="Fijo Completo"
+                  value={form.fullLandline}
+                  onValueChange={(v) => setForm((s) => ({ ...s, fullLandline: v }))}
+                />
+              </div>
+            </Tab>
 
-          {/* SECCIÓN: CRÉDITO Y FINANZAS */}
-          <div className="pb-4">
-            <h3 className="font-semibold text-sm mb-3">Crédito y Finanzas</h3>
-            <div className="flex items-center gap-3 mb-3">
-              <Checkbox
-                isSelected={form.hasCredit}
-                onValueChange={(v) => setForm((s) => ({ ...s, hasCredit: v }))}
-              >
-                Tiene Crédito
-              </Checkbox>
-            </div>
+            <Tab
+              key="credito"
+              title={<FormTabTitle icon={<FinanceIcon />} label="Crédito y estado" />}
+            >
+              <div className="space-y-4 pt-3">
+                <div className="flex items-center justify-between">
+                  <Checkbox
+                    isSelected={form.hasCredit}
+                    onValueChange={(v) => setForm((s) => ({ ...s, hasCredit: v }))}
+                  >
+                    Tiene Crédito
+                  </Checkbox>
 
-            <div className="grid grid-cols-2 gap-3">
-              <Input
-                label="Número Pagaré"
-                value={form.promissoryNoteNumber}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, promissoryNoteNumber: v }))
-                }
-              />
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-default-500">Activo</span>
+                    <Switch
+                      isSelected={form.isActive}
+                      onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
+                    />
+                  </div>
+                </div>
 
-              <Input
-                label="Fecha Firma Pagaré"
-                type="date"
-                value={form.promissoryNoteDate}
-                onValueChange={(v) =>
-                  setForm((s) => ({ ...s, promissoryNoteDate: v }))
-                }
-              />
-            </div>
-          </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <Input
+                    label="Número Pagaré"
+                    value={form.promissoryNoteNumber}
+                    onValueChange={(v) => setForm((s) => ({ ...s, promissoryNoteNumber: v }))}
+                  />
+
+                  <Input
+                    label="Fecha Firma Pagaré"
+                    type="date"
+                    value={form.promissoryNoteDate}
+                    onValueChange={(v) => setForm((s) => ({ ...s, promissoryNoteDate: v }))}
+                  />
+                </div>
+              </div>
+            </Tab>
+          </Tabs>
         </ModalBody>
         <ModalFooter>
           <Button

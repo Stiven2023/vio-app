@@ -16,10 +16,17 @@ import {
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
+import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  ContactIcon,
+  FormTabTitle,
+  IdentificationIcon,
+  LocationIcon,
+} from "@/components/form-tab-title";
 
 const confectionistSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
@@ -326,154 +333,171 @@ export function ConfectionistModal({
           )}
         </ModalHeader>
         <ModalBody>
-          <Input
-            errorMessage={errors.name}
-            isInvalid={Boolean(errors.name)}
-            label="Nombre"
-            value={form.name}
-            onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-          />
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Select
-              errorMessage={errors.identificationType}
-              isInvalid={Boolean(errors.identificationType)}
-              label="Tipo de identificación"
-              selectedKeys={form.identificationType ? [form.identificationType] : []}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
-                setForm((s) => ({ ...s, identificationType: String(first ?? "") }));
-              }}
+          <Tabs aria-label="Formulario de confeccionista" variant="underlined">
+            <Tab
+              key="identificacion"
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
             >
-              <SelectItem key="CC">Cédula de ciudadanía (CC)</SelectItem>
-              <SelectItem key="NIT">NIT</SelectItem>
-              <SelectItem key="CE">Cédula de extranjería (CE)</SelectItem>
-              <SelectItem key="PAS">Pasaporte (PAS)</SelectItem>
-              <SelectItem key="EMPRESA_EXTERIOR">Empresa exterior</SelectItem>
-            </Select>
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+                <Input
+                  errorMessage={errors.name}
+                  isInvalid={Boolean(errors.name)}
+                  label="Nombre"
+                  value={form.name}
+                  onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
+                />
 
-            <Input
-              errorMessage={errors.identification}
-              isInvalid={Boolean(errors.identification)}
-              label="Identificación"
-              value={form.identification}
-              onBlur={checkIdentification}
-              onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
-            />
+                <Select
+                  errorMessage={errors.identificationType}
+                  isInvalid={Boolean(errors.identificationType)}
+                  label="Tipo de identificación"
+                  selectedKeys={form.identificationType ? [form.identificationType] : []}
+                  onSelectionChange={(keys) => {
+                    const first = Array.from(keys)[0];
+                    setForm((s) => ({ ...s, identificationType: String(first ?? "") }));
+                  }}
+                >
+                  <SelectItem key="CC">Cédula de ciudadanía (CC)</SelectItem>
+                  <SelectItem key="NIT">NIT</SelectItem>
+                  <SelectItem key="CE">Cédula de extranjería (CE)</SelectItem>
+                  <SelectItem key="PAS">Pasaporte (PAS)</SelectItem>
+                  <SelectItem key="EMPRESA_EXTERIOR">Empresa exterior</SelectItem>
+                </Select>
 
-            <Input
-              label="Dígito verificación"
-              maxLength={1}
-              value={form.dv}
-              onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
-            />
+                <Input
+                  errorMessage={errors.identification}
+                  isInvalid={Boolean(errors.identification)}
+                  label="Identificación"
+                  value={form.identification}
+                  onBlur={checkIdentification}
+                  onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
+                />
 
-            <Select
-              errorMessage={errors.taxRegime}
-              isInvalid={Boolean(errors.taxRegime)}
-              label="Régimen fiscal"
-              selectedKeys={form.taxRegime ? [form.taxRegime] : []}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
-                setForm((s) => ({ ...s, taxRegime: String(first ?? "") }));
-              }}
+                <Input
+                  label="Dígito verificación"
+                  maxLength={1}
+                  value={form.dv}
+                  onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
+                />
+
+                <Select
+                  errorMessage={errors.taxRegime}
+                  isInvalid={Boolean(errors.taxRegime)}
+                  label="Régimen fiscal"
+                  selectedKeys={form.taxRegime ? [form.taxRegime] : []}
+                  onSelectionChange={(keys) => {
+                    const first = Array.from(keys)[0];
+                    setForm((s) => ({ ...s, taxRegime: String(first ?? "") }));
+                  }}
+                >
+                  <SelectItem key="REGIMEN_COMUN">Régimen común</SelectItem>
+                  <SelectItem key="REGIMEN_SIMPLIFICADO">Régimen simplificado</SelectItem>
+                  <SelectItem key="NO_RESPONSABLE">No responsable</SelectItem>
+                </Select>
+
+                <Input
+                  label="Tipo de taller"
+                  placeholder="Ej: Taller Externo, Sastrería"
+                  value={form.type}
+                  onValueChange={(v) => setForm((s) => ({ ...s, type: v }))}
+                />
+              </div>
+            </Tab>
+
+            <Tab
+              key="contacto"
+              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
             >
-              <SelectItem key="REGIMEN_COMUN">Régimen común</SelectItem>
-              <SelectItem key="REGIMEN_SIMPLIFICADO">Régimen simplificado</SelectItem>
-              <SelectItem key="NO_RESPONSABLE">No responsable</SelectItem>
-            </Select>
-          </div>
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+                <Input
+                  label="Nombre de contacto"
+                  value={form.contactName}
+                  onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
+                />
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Input
-              label="Tipo de taller"
-              placeholder="Ej: Taller Externo, Sastrería"
-              value={form.type}
-              onValueChange={(v) => setForm((s) => ({ ...s, type: v }))}
-            />
+                <Input
+                  label="Correo"
+                  type="email"
+                  value={form.email}
+                  onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
+                />
 
-            <Input
-              label="Nombre de contacto"
-              value={form.contactName}
-              onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
-            />
+                <Input
+                  label="Código internacional"
+                  placeholder="57"
+                  value={form.intlDialCode}
+                  onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
+                />
 
-            <Input
-              label="Correo"
-              type="email"
-              value={form.email}
-              onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-            />
-          </div>
+                <Input
+                  label="Móvil"
+                  value={form.mobile}
+                  onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
+                />
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Input
-              label="Código internacional"
-              placeholder="57"
-              value={form.intlDialCode}
-              onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
-            />
+                <Input
+                  label="Fijo"
+                  value={form.landline}
+                  onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
+                />
 
-            <Input
-              label="Móvil"
-              value={form.mobile}
-              onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
-            />
+                <Input
+                  label="Extensión"
+                  value={form.extension}
+                  onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
+                />
+              </div>
+            </Tab>
 
-            <Input
-              label="Fijo"
-              value={form.landline}
-              onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
-            />
+            <Tab
+              key="ubicacion"
+              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación y estado" />}
+            >
+              <div className="space-y-4 pt-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <Input
+                    errorMessage={errors.address}
+                    isInvalid={Boolean(errors.address)}
+                    label="Dirección"
+                    value={form.address}
+                    onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
+                  />
 
-            <Input
-              label="Extensión"
-              value={form.extension}
-              onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
-            />
-          </div>
+                  <Input
+                    label="Código postal"
+                    value={form.postalCode}
+                    onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
+                  />
 
-          <Input
-            errorMessage={errors.address}
-            isInvalid={Boolean(errors.address)}
-            label="Dirección"
-            value={form.address}
-            onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
-          />
+                  <Input
+                    label="País"
+                    value={form.country}
+                    onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
+                  />
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Input
-              label="Código postal"
-              value={form.postalCode}
-              onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
-            />
+                  <Input
+                    label="Departamento"
+                    value={form.department}
+                    onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
+                  />
 
-            <Input
-              label="País"
-              value={form.country}
-              onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
-            />
+                  <Input
+                    label="Ciudad"
+                    value={form.city}
+                    onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
+                  />
+                </div>
 
-            <Input
-              label="Departamento"
-              value={form.department}
-              onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
-            />
-
-            <Input
-              label="Ciudad"
-              value={form.city}
-              onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Activo</span>
-            <Switch
-              isSelected={form.isActive}
-              onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
-            />
-          </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-default-500">Activo</span>
+                  <Switch
+                    isSelected={form.isActive}
+                    onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
+                  />
+                </div>
+              </div>
+            </Tab>
+          </Tabs>
         </ModalBody>
         <ModalFooter>
           <Button

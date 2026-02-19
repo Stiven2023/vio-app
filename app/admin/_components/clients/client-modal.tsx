@@ -19,6 +19,14 @@ import { Tabs, Tab } from "@heroui/tabs";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createClientSchema } from "../../_lib/schemas";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  ContactIcon,
+  FinanceIcon,
+  FormTabTitle,
+  IdentificationIcon,
+  LocationIcon,
+  PhoneIcon,
+} from "@/components/form-tab-title";
 import { IdentificationTab } from "./client-modal-tabs/identification-tab";
 import { ContactTab } from "./client-modal-tabs/contact-tab";
 import { LocationTab } from "./client-modal-tabs/location-tab";
@@ -322,7 +330,15 @@ export function ClientModal({
         <ModalBody>
           <Tabs aria-label="Secciones del formulario" variant="underlined">
             {/* TAB 1: IDENTIFICACIÓN */}
-            <Tab key="identification" title="Identificación">
+            <Tab
+              key="identification"
+              title={
+                <FormTabTitle
+                  icon={<IdentificationIcon />}
+                  label="Identificación"
+                />
+              }
+            >
               <IdentificationTab
                 errors={errors}
                 form={form}
@@ -333,22 +349,41 @@ export function ClientModal({
             </Tab>
 
             {/* TAB 2: CONTACTO Y FISCAL */}
-            <Tab key="contact" title="Contacto y fiscal">
+            <Tab
+              key="contact"
+              title={
+                <FormTabTitle icon={<ContactIcon />} label="Contacto y fiscal" />
+              }
+            >
               <ContactTab errors={errors} form={form} setForm={setForm} />
             </Tab>
 
             {/* TAB 3: UBICACIÓN */}
-            <Tab key="location" title="Ubicación">
+            <Tab
+              key="location"
+              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+            >
               <LocationTab errors={errors} form={form} setForm={setForm} />
             </Tab>
 
             {/* TAB 4: TELÉFONOS */}
-            <Tab key="phones" title="Teléfonos">
+            <Tab
+              key="phones"
+              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+            >
               <PhonesTab errors={errors} form={form} setForm={setForm} />
             </Tab>
 
             {/* TAB 5: ESTADO Y CRÉDITO */}
-            <Tab key="status-credit" title="Estado y crédito">
+            <Tab
+              key="status-credit"
+              title={
+                <FormTabTitle
+                  icon={<FinanceIcon />}
+                  label="Estado y crédito"
+                />
+              }
+            >
               <StatusCreditTab form={form} setForm={setForm} />
             </Tab>
           </Tabs>

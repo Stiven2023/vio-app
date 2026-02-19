@@ -23,11 +23,18 @@ import {
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
-import { BsPersonFill } from "react-icons/bs";
+import { Tab, Tabs } from "@heroui/tabs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createEmployeeSchema } from "../../_lib/schemas";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  ContactIcon,
+  FormTabTitle,
+  IdentificationIcon,
+  LocationIcon,
+  UserRoleIcon,
+} from "@/components/form-tab-title";
 
 type FormState = {
   userId: string;
@@ -300,7 +307,7 @@ export function EmployeeModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal isOpen={isOpen} scrollBehavior="inside" size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <span>{employee ? "Editar empleado" : "Crear empleado"}</span>
@@ -311,75 +318,20 @@ export function EmployeeModal({
           )}
         </ModalHeader>
         <ModalBody>
-          <div className="flex items-end gap-2">
-            <Select
-              errorMessage={errors.userId}
-              isDisabled={!canPickUser}
-              isInvalid={Boolean(errors.userId)}
-              label="Usuario"
-              selectedKeys={form.userId ? [form.userId] : []}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
-
-                setForm((s) => ({ ...s, userId: String(first ?? "") }));
-              }}
+          <Tabs aria-label="Formulario de empleado" variant="underlined">
+            <Tab
+              key="identificacion"
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
             >
-              {users.map((u) => (
-                <SelectItem key={u.id}>{u.email}</SelectItem>
-              ))}
-            </Select>
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+                <Input
+                  errorMessage={errors.name}
+                  isInvalid={Boolean(errors.name)}
+                  label="Nombre"
+                  value={form.name}
+                  onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
+                />
 
-            <Dropdown>
-              <DropdownTrigger>
-                <Button isDisabled={!canPickUser || Boolean(form.userId)} variant="flat">
-                  Crear usuario
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="Creador de usuario" closeOnSelect={false}>
-                <DropdownItem key="creator" textValue="Creador de usuario">
-                  <div className="w-[280px] space-y-2 py-1">
-                    <Input
-                      errorMessage={errors.createUserEmail}
-                      isInvalid={Boolean(errors.createUserEmail)}
-                      label="Email usuario"
-                      placeholder="usuario@dominio.com"
-                      type="email"
-                      value={form.createUserEmail}
-                      onValueChange={(v) =>
-                        setForm((s) => ({ ...s, createUserEmail: v }))
-                      }
-                    />
-                    <Input
-                      errorMessage={errors.createUserPassword}
-                      isInvalid={Boolean(errors.createUserPassword)}
-                      label="Contraseña"
-                      placeholder="Mínimo 7, 1 mayúscula"
-                      type="password"
-                      value={form.createUserPassword}
-                      onValueChange={(v) =>
-                        setForm((s) => ({ ...s, createUserPassword: v }))
-                      }
-                    />
-                    <p className="text-xs text-default-500">
-                      Opcional. Si completas estos campos, se crea y asocia el
-                      usuario sin exigir verificación de email.
-                    </p>
-                  </div>
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-          </div>
-
-          <Input
-            errorMessage={errors.name}
-            isInvalid={Boolean(errors.name)}
-            label="Nombre"
-            startContent={<BsPersonFill className="text-xl text-default-500" />}
-            value={form.name}
-            onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-          />
-
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <Select
                   errorMessage={errors.identificationType}
                   isInvalid={Boolean(errors.identificationType)}
@@ -416,7 +368,14 @@ export function EmployeeModal({
                   value={form.dv}
                   onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
                 />
+              </div>
+            </Tab>
 
+            <Tab
+              key="contacto"
+              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
+            >
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
                   errorMessage={errors.email}
                   isInvalid={Boolean(errors.email)}
@@ -431,9 +390,7 @@ export function EmployeeModal({
                     }))
                   }
                 />
-              </div>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <Input
                   errorMessage={errors.intlDialCode}
                   isInvalid={Boolean(errors.intlDialCode)}
@@ -466,8 +423,13 @@ export function EmployeeModal({
                   onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
                 />
               </div>
+            </Tab>
 
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Tab
+              key="ubicacion"
+              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+            >
+              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
                   label="Dirección"
                   value={form.address}
@@ -488,30 +450,98 @@ export function EmployeeModal({
                   }
                 />
               </div>
+            </Tab>
 
-          <Select
-            errorMessage={errors.roleId}
-            isInvalid={Boolean(errors.roleId)}
-            label="Rol"
-            selectedKeys={form.roleId ? [form.roleId] : []}
-            onSelectionChange={(keys) => {
-              const first = Array.from(keys)[0];
+            <Tab
+              key="usuario-rol"
+              title={<FormTabTitle icon={<UserRoleIcon />} label="Usuario y rol" />}
+            >
+              <div className="space-y-4 pt-3">
+                <div className="flex items-end gap-2">
+                  <Select
+                    errorMessage={errors.userId}
+                    isDisabled={!canPickUser}
+                    isInvalid={Boolean(errors.userId)}
+                    label="Usuario"
+                    selectedKeys={form.userId ? [form.userId] : []}
+                    onSelectionChange={(keys) => {
+                      const first = Array.from(keys)[0];
 
-              setForm((s) => ({ ...s, roleId: String(first ?? "") }));
-            }}
-          >
-            {roles.map((r) => (
-              <SelectItem key={r.id}>{r.name}</SelectItem>
-            ))}
-          </Select>
+                      setForm((s) => ({ ...s, userId: String(first ?? "") }));
+                    }}
+                  >
+                    {users.map((u) => (
+                      <SelectItem key={u.id}>{u.email}</SelectItem>
+                    ))}
+                  </Select>
 
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Activo</span>
-            <Switch
-              isSelected={form.isActive}
-              onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
-            />
-          </div>
+                  <Dropdown>
+                    <DropdownTrigger>
+                      <Button isDisabled={!canPickUser || Boolean(form.userId)} variant="flat">
+                        Crear usuario
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Creador de usuario" closeOnSelect={false}>
+                      <DropdownItem key="creator" textValue="Creador de usuario">
+                        <div className="w-[280px] space-y-2 py-1">
+                          <Input
+                            errorMessage={errors.createUserEmail}
+                            isInvalid={Boolean(errors.createUserEmail)}
+                            label="Email usuario"
+                            placeholder="usuario@dominio.com"
+                            type="email"
+                            value={form.createUserEmail}
+                            onValueChange={(v) =>
+                              setForm((s) => ({ ...s, createUserEmail: v }))
+                            }
+                          />
+                          <Input
+                            errorMessage={errors.createUserPassword}
+                            isInvalid={Boolean(errors.createUserPassword)}
+                            label="Contraseña"
+                            placeholder="Mínimo 7, 1 mayúscula"
+                            type="password"
+                            value={form.createUserPassword}
+                            onValueChange={(v) =>
+                              setForm((s) => ({ ...s, createUserPassword: v }))
+                            }
+                          />
+                          <p className="text-xs text-default-500">
+                            Opcional. Si completas estos campos, se crea y asocia el
+                            usuario sin exigir verificación de email.
+                          </p>
+                        </div>
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                </div>
+
+                <Select
+                  errorMessage={errors.roleId}
+                  isInvalid={Boolean(errors.roleId)}
+                  label="Rol"
+                  selectedKeys={form.roleId ? [form.roleId] : []}
+                  onSelectionChange={(keys) => {
+                    const first = Array.from(keys)[0];
+
+                    setForm((s) => ({ ...s, roleId: String(first ?? "") }));
+                  }}
+                >
+                  {roles.map((r) => (
+                    <SelectItem key={r.id}>{r.name}</SelectItem>
+                  ))}
+                </Select>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-default-500">Activo</span>
+                  <Switch
+                    isSelected={form.isActive}
+                    onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
+                  />
+                </div>
+              </div>
+            </Tab>
+          </Tabs>
         </ModalBody>
         <ModalFooter>
           <Button
