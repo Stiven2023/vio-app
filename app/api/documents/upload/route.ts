@@ -29,8 +29,7 @@ export async function POST(request: Request) {
     // ============================================
     // MODO CLOUDINARY (PRODUCCIÓN - ACTIVO)
     // ============================================
-    // Usar Cloudinary en producción
-    
+
     const cloudName = process.env.CLOUD_USER;
     const apiKey = process.env.API_KEY;
     const apiSecret = process.env.API_SECRET;
@@ -44,7 +43,7 @@ export async function POST(request: Request) {
 
       const filePath = path.join(documentsDir, `${fileName}.pdf`);
       const bytes = await file.arrayBuffer();
-      await writeFile(filePath, Buffer.from(bytes));
+      await writeFile(filePath, new Uint8Array(bytes));
 
       console.log("✅ Documento guardado localmente:", filePath);
 
