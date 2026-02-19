@@ -315,7 +315,7 @@ export const Navbar = () => {
         <ul className="flex gap-2 justify-center">
           {isAuthenticated ? (
             <NavbarItem key="nav-dashboard">
-              <Tooltip content="Dashboard">
+              <Tooltip content="Dashboard" placement="bottom">
                 <NextLink
                   className={clsx(
                     iconBase,
@@ -332,23 +332,22 @@ export const Navbar = () => {
           {!operarioOnly && isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
             <NavbarItem key="nav-orders">
               <Dropdown onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}>
-                <Tooltip content="Pedidos">
-                  <DropdownTrigger>
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      className={clsx(
-                        iconBase,
-                        isActive("/orders") || isActive("/status-history")
-                          ? activeClass
-                          : idleClass,
-                        openGroup === "orders" ? activeClass : null,
-                      )}
-                    >
-                      <BsClipboardData />
-                    </Button>
-                  </DropdownTrigger>
-                </Tooltip>
+                <DropdownTrigger>
+                  <Button
+                    isIconOnly
+                    variant="light"
+                    title="Pedidos"
+                    className={clsx(
+                      iconBase,
+                      isActive("/orders") || isActive("/status-history")
+                        ? activeClass
+                        : idleClass,
+                      openGroup === "orders" ? activeClass : null,
+                    )}
+                  >
+                    <BsClipboardData />
+                  </Button>
+                </DropdownTrigger>
                 <DropdownMenu aria-label="Pedidos">
                   {canSeeOrders ? (
                     <DropdownItem
@@ -382,25 +381,23 @@ export const Navbar = () => {
               <Dropdown
                 onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
               >
-                <Tooltip content="Inventario">
-                  <DropdownTrigger>
-                    <Button
-                      isIconOnly
-                      variant="light"
-                      className={clsx(
-                        iconBase,
-                        isActive("/catalog") ||
-                          isActive("/purchase-orders") ||
-                          isActive("/suppliers")
-                          ? activeClass
-                          : idleClass,
-                        openGroup === "inventory" ? activeClass : null,
-                      )}
-                    >
-                      <BsBoxSeam />
-                    </Button>
-                  </DropdownTrigger>
-                </Tooltip>
+                <DropdownTrigger>
+                  <Button
+                    isIconOnly
+                    variant="light"
+                    className={clsx(
+                      iconBase,
+                      isActive("/catalog") ||
+                        isActive("/purchase-orders") ||
+                        isActive("/suppliers")
+                        ? activeClass
+                        : idleClass,
+                      openGroup === "inventory" ? activeClass : null,
+                    )}
+                  >
+                    <BsBoxSeam />
+                  </Button>
+                </DropdownTrigger>
                 <DropdownMenu aria-label="Inventario">
                   {canSeeCatalog ? (
                     <DropdownItem
@@ -439,7 +436,7 @@ export const Navbar = () => {
 
           {!operarioOnly && isAuthenticated && canSeeClients ? (
             <NavbarItem key="/clients">
-              <Tooltip content="Clientes">
+              <Tooltip content="Clientes" placement="bottom">
                 <NextLink
                   className={clsx(
                     iconBase,
@@ -455,7 +452,7 @@ export const Navbar = () => {
 
           {!operarioOnly && isAuthenticated && canSeeConfectionists ? (
             <NavbarItem key="/confectionists">
-              <Tooltip content="Confeccionistas">
+              <Tooltip content="Confeccionistas" placement="bottom">
                 <NextLink
                   className={clsx(
                     iconBase,
@@ -471,7 +468,7 @@ export const Navbar = () => {
 
           {!operarioOnly && isAuthenticated && canSeePackers ? (
             <NavbarItem key="/packers">
-              <Tooltip content="Empaque">
+              <Tooltip content="Empaque" placement="bottom">
                 <NextLink
                   className={clsx(
                     iconBase,
@@ -487,7 +484,7 @@ export const Navbar = () => {
 
           {!operarioOnly && isAdmin ? (
             <NavbarItem key="/admin">
-              <Tooltip content="Administración">
+              <Tooltip content="Administración" placement="bottom">
                 <NextLink
                   className={clsx(
                     iconBase,
