@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus } from "react-icons/bs";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus, BsEyeFill } from "react-icons/bs";
 
 import { FilterSearch } from "@/app/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
@@ -32,6 +32,7 @@ import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 import { ConfectionistModal } from "./confectionist-modal";
+import { ConfectionistDetailsModal } from "./confectionist-details-modal";
 
 export type Confectionist = {
   id: string;
@@ -85,6 +86,9 @@ export function ConfectionistsTab({
   const [modalPrefill, setModalPrefill] = useState<ConfectionistFormPrefill | null>(
     null,
   );
+
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewing, setViewing] = useState<Confectionist | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(null);
@@ -151,6 +155,112 @@ export function ConfectionistsTab({
       toast.error(getErrorMessage(err));
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const createAsEmployee = async (confectionist: Confectionist) => {
+    if (!confectionist.email) {
+      toast.error("Para crear como empleado, el confeccionista debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/employees", {
+        method: "POST",
+        body: JSON.stringify({
+          name: confectionist.name,
+          identificationType: confectionist.identificationType,
+          identification: confectionist.identification,
+          dv: confectionist.dv ?? "",
+          email: confectionist.email,
+          intlDialCode: confectionist.intlDialCode ?? "57",
+          mobile: confectionist.mobile ?? "",
+          landline: confectionist.landline ?? "",
+          extension: confectionist.extension ?? "",
+          address: confectionist.address,
+          city: confectionist.city ?? "Medellín",
+          department: confectionist.department ?? "ANTIOQUIA",
+          isActive: Boolean(confectionist.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empleado creado desde confeccionista");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsSupplier = async (confectionist: Confectionist) => {
+    if (!confectionist.email) {
+      toast.error("Para crear como proveedor, el confeccionista debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/suppliers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: confectionist.name,
+          identificationType: confectionist.identificationType,
+          identification: confectionist.identification,
+          dv: confectionist.dv ?? "",
+          branch: "01",
+          taxRegime: confectionist.taxRegime,
+          contactName: confectionist.contactName ?? confectionist.name,
+          email: confectionist.email,
+          address: confectionist.address,
+          postalCode: confectionist.postalCode ?? "",
+          country: confectionist.country ?? "COLOMBIA",
+          department: confectionist.department ?? "ANTIOQUIA",
+          city: confectionist.city ?? "Medellín",
+          intlDialCode: confectionist.intlDialCode ?? "57",
+          mobile: confectionist.mobile ?? "",
+          fullMobile: confectionist.fullMobile ?? "",
+          localDialCode: "",
+          landline: confectionist.landline ?? "",
+          extension: confectionist.extension ?? "",
+          fullLandline: "",
+          hasCredit: false,
+          promissoryNoteNumber: "",
+          promissoryNoteDate: "",
+        }),
+      });
+
+      toast.success("Proveedor creado desde confeccionista");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsPacker = async (confectionist: Confectionist) => {
+    try {
+      await apiJson("/api/packers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: confectionist.name,
+          identificationType: confectionist.identificationType,
+          identification: confectionist.identification,
+          dv: confectionist.dv ?? "",
+          packerType: "EXTERNO",
+          specialty: "",
+          dailyCapacity: null,
+          contactName: confectionist.contactName ?? confectionist.name,
+          email: confectionist.email ?? "",
+          intlDialCode: confectionist.intlDialCode ?? "57",
+          mobile: confectionist.mobile ?? "",
+          fullMobile: confectionist.fullMobile ?? "",
+          landline: confectionist.landline ?? "",
+          address: confectionist.address,
+          postalCode: confectionist.postalCode ?? "",
+          city: confectionist.city ?? "Medellín",
+          department: confectionist.department ?? "ANTIOQUIA",
+          isActive: Boolean(confectionist.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empaque creado desde confeccionista");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -249,6 +359,17 @@ export function ConfectionistsTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="view"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          setViewing(c);
+                          setDetailsOpen(true);
+                        }}
+                      >
+                        Ver información completa
+                      </DropdownItem>
+
                       <DropdownItem
                         key="to-client"
                         startContent={<BsPersonPlus />}
@@ -349,6 +470,53 @@ export function ConfectionistsTab({
           }
         }}
         onSaved={refresh}
+      />
+
+      <ConfectionistDetailsModal
+        confectionist={viewing}
+        isOpen={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open);
+          if (!open) setViewing(null);
+        }}
+        onRequestCreateClient={
+          onRequestCreateClient
+            ? () => {
+                if (!viewing) return;
+                onRequestCreateClient({
+                  clientType: "NACIONAL",
+                  name: viewing.name,
+                  identificationType: viewing.identificationType,
+                  identification: viewing.identification,
+                  dv: viewing.dv ?? "",
+                  branch: "01",
+                  taxRegime: viewing.taxRegime,
+                  contactName: viewing.contactName ?? viewing.name,
+                  email: viewing.email ?? "",
+                  address: viewing.address,
+                  postalCode: viewing.postalCode ?? "",
+                  country: viewing.country ?? "COLOMBIA",
+                  department: viewing.department ?? "ANTIOQUIA",
+                  city: viewing.city ?? "Medellín",
+                  intlDialCode: viewing.intlDialCode ?? "57",
+                  mobile: viewing.mobile ?? "",
+                  localDialCode: "",
+                  landline: viewing.landline ?? "",
+                  extension: viewing.extension ?? "",
+                  status: "ACTIVO",
+                  priceClientType: "VIOMAR",
+                  isActive: Boolean(viewing.isActive ?? true),
+                  hasCredit: false,
+                  promissoryNoteNumber: "",
+                  promissoryNoteDate: "",
+                });
+                setDetailsOpen(false);
+              }
+            : undefined
+        }
+        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
+        onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
+        onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
       />
 
       <ConfirmActionModal

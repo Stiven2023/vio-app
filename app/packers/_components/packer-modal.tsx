@@ -296,7 +296,12 @@ export function PackerModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen && !importPromptOpen}
+      onOpenChange={onOpenChange}
+      size="3xl"
+      scrollBehavior="inside"
+    >
       <ModalContent>
         <ModalHeader>{packer ? "Editar empaque" : "Crear empaque"}</ModalHeader>
         <ModalBody>
@@ -362,7 +367,9 @@ export function PackerModal({
                   errorMessage={errors.email}
                   isInvalid={Boolean(errors.email)}
                   label="Email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
                   value={form.email}
                   onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
                 />

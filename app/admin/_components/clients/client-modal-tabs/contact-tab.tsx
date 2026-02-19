@@ -47,7 +47,9 @@ export function ContactTab({ form, errors, setForm }: Props) {
         isRequired
         label="Correo electrónico"
         startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
-        type="email"
+        type="text"
+        inputMode="email"
+        autoComplete="email"
         value={form.email}
         onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
       />

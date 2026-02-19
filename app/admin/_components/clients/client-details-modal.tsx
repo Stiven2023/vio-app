@@ -17,10 +17,18 @@ export function ClientDetailsModal({
   client,
   isOpen,
   onOpenChange,
+  onRequestCreateEmployee,
+  onRequestCreateSupplier,
+  onRequestCreateConfectionist,
+  onRequestCreatePacker,
 }: {
   client: Client | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onRequestCreateEmployee?: () => void;
+  onRequestCreateSupplier?: () => void;
+  onRequestCreateConfectionist?: () => void;
+  onRequestCreatePacker?: () => void;
 }) {
   if (!client) return null;
 
@@ -219,7 +227,27 @@ export function ClientDetailsModal({
             </div>
           </div>
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter className="flex flex-wrap gap-2">
+          {onRequestCreateEmployee && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateEmployee}>
+              Crear como empleado
+            </Button>
+          )}
+          {onRequestCreateSupplier && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateSupplier}>
+              Crear como proveedor
+            </Button>
+          )}
+          {onRequestCreateConfectionist && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateConfectionist}>
+              Crear como confeccionista
+            </Button>
+          )}
+          {onRequestCreatePacker && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreatePacker}>
+              Crear como empaque
+            </Button>
+          )}
           <Button variant="flat" onPress={() => onOpenChange(false)}>
             Cerrar
           </Button>

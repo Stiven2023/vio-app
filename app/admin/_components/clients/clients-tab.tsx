@@ -150,6 +150,145 @@ export function ClientsTab({
     }
   };
 
+  const createAsEmployee = async (client: Client) => {
+    if (!client.email) {
+      toast.error("Para crear como empleado, el cliente debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/employees", {
+        method: "POST",
+        body: JSON.stringify({
+          name: client.name,
+          identificationType: client.identificationType,
+          identification: client.identification,
+          dv: client.dv ?? "",
+          email: client.email,
+          intlDialCode: client.intlDialCode,
+          mobile: client.mobile ?? "",
+          landline: client.landline ?? "",
+          extension: client.extension ?? "",
+          address: client.address,
+          city: client.city,
+          department: client.department,
+          isActive: Boolean(client.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empleado creado desde cliente");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsSupplier = async (client: Client) => {
+    if (!client.email) {
+      toast.error("Para crear como proveedor, el cliente debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/suppliers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: client.name,
+          identificationType: client.identificationType,
+          identification: client.identification,
+          dv: client.dv ?? "",
+          branch: client.branch,
+          taxRegime: client.taxRegime,
+          contactName: client.contactName,
+          email: client.email,
+          address: client.address,
+          postalCode: client.postalCode ?? "",
+          country: client.country,
+          department: client.department,
+          city: client.city,
+          intlDialCode: client.intlDialCode,
+          mobile: client.mobile ?? "",
+          fullMobile: client.fullMobile ?? "",
+          localDialCode: client.localDialCode ?? "",
+          landline: client.landline ?? "",
+          extension: client.extension ?? "",
+          fullLandline: client.fullLandline ?? "",
+          hasCredit: client.hasCredit ?? false,
+          promissoryNoteNumber: client.promissoryNoteNumber ?? "",
+          promissoryNoteDate: client.promissoryNoteDate ?? "",
+        }),
+      });
+
+      toast.success("Proveedor creado desde cliente");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsConfectionist = async (client: Client) => {
+    try {
+      await apiJson("/api/confectionists", {
+        method: "POST",
+        body: JSON.stringify({
+          name: client.name,
+          identificationType: client.identificationType,
+          identification: client.identification,
+          dv: client.dv ?? "",
+          type: "NACIONAL",
+          taxRegime: client.taxRegime,
+          contactName: client.contactName,
+          email: client.email ?? "",
+          intlDialCode: client.intlDialCode,
+          mobile: client.mobile ?? "",
+          fullMobile: client.fullMobile ?? "",
+          landline: client.landline ?? "",
+          extension: client.extension ?? "",
+          address: client.address,
+          postalCode: client.postalCode ?? "",
+          country: client.country,
+          department: client.department,
+          city: client.city,
+          isActive: Boolean(client.isActive ?? true),
+        }),
+      });
+
+      toast.success("Confeccionista creado desde cliente");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsPacker = async (client: Client) => {
+    try {
+      await apiJson("/api/packers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: client.name,
+          identificationType: client.identificationType,
+          identification: client.identification,
+          dv: client.dv ?? "",
+          packerType: "EXTERNO",
+          specialty: "",
+          dailyCapacity: null,
+          contactName: client.contactName,
+          email: client.email ?? "",
+          intlDialCode: client.intlDialCode,
+          mobile: client.mobile ?? "",
+          fullMobile: client.fullMobile ?? "",
+          landline: client.landline ?? "",
+          address: client.address,
+          postalCode: client.postalCode ?? "",
+          city: client.city,
+          department: client.department,
+          isActive: Boolean(client.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empaque creado desde cliente");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -446,6 +585,10 @@ export function ClientsTab({
         client={viewing}
         isOpen={detailsOpen}
         onOpenChange={setDetailsOpen}
+        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
+        onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
+        onRequestCreateConfectionist={() => viewing && createAsConfectionist(viewing)}
+        onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
       />
 
       <ConfirmActionModal

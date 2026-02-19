@@ -430,6 +430,9 @@ export function PackersTab({
         packer={viewing}
         isOpen={detailsOpen}
         onOpenChange={setDetailsOpen}
+        onRequestCreateClient={() => viewing && createAsClient(viewing)}
+        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
+        onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
       />
 
       <ConfirmActionModal

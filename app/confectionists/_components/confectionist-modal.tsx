@@ -417,7 +417,9 @@ export function ConfectionistModal({
 
                 <Input
                   label="Correo"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
                   value={form.email}
                   onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
                 />

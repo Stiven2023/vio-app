@@ -307,7 +307,12 @@ export function EmployeeModal({
   };
 
   return (
-    <Modal isOpen={isOpen} scrollBehavior="inside" size="3xl" onOpenChange={onOpenChange}>
+    <Modal
+      isOpen={isOpen && !importPromptOpen}
+      scrollBehavior="inside"
+      size="3xl"
+      onOpenChange={onOpenChange}
+    >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <span>{employee ? "Editar empleado" : "Crear empleado"}</span>
@@ -380,7 +385,9 @@ export function EmployeeModal({
                   errorMessage={errors.email}
                   isInvalid={Boolean(errors.email)}
                   label="Correo"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
                   value={form.email}
                   onValueChange={(v) =>
                     setForm((s) => ({
@@ -489,7 +496,9 @@ export function EmployeeModal({
                             isInvalid={Boolean(errors.createUserEmail)}
                             label="Email usuario"
                             placeholder="usuario@dominio.com"
-                            type="email"
+                            type="text"
+                            inputMode="email"
+                            autoComplete="email"
                             value={form.createUserEmail}
                             onValueChange={(v) =>
                               setForm((s) => ({ ...s, createUserEmail: v }))

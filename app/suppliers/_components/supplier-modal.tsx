@@ -398,7 +398,12 @@ export function SupplierModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen && !importPromptOpen}
+      onOpenChange={onOpenChange}
+      size="3xl"
+      scrollBehavior="inside"
+    >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           <span>{supplier ? "Editar proveedor" : "Crear proveedor"}</span>
@@ -494,7 +499,9 @@ export function SupplierModal({
                   errorMessage={errors.email}
                   isInvalid={Boolean(errors.email)}
                   label="Email"
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="email"
                   value={form.email}
                   onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
                 />

@@ -314,7 +314,7 @@ export function ClientModal({
 
   return (
     <Modal
-      isOpen={isOpen}
+      isOpen={isOpen && !importPromptOpen}
       scrollBehavior="inside"
       size="3xl"
       onOpenChange={onOpenChange}

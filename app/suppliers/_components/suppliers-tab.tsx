@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@heroui/table";
 import { Input } from "@heroui/input";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsEyeFill } from "react-icons/bs";
 
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/catalog/_components/ui/pager";
@@ -30,6 +30,7 @@ import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 import { SupplierModal } from "./supplier-modal";
+import { SupplierDetailsModal } from "./supplier-details-modal";
 
 export type Supplier = {
   id: string;
@@ -78,6 +79,9 @@ export function SuppliersTab({
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [viewing, setViewing] = useState<Supplier | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Supplier | null>(null);
@@ -131,6 +135,147 @@ export function SuppliersTab({
       toast.error(getErrorMessage(err));
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const createAsClient = async (supplier: Supplier) => {
+    if (!supplier.email) {
+      toast.error("Para crear como cliente, el proveedor debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/clients", {
+        method: "POST",
+        body: JSON.stringify({
+          clientType: "NACIONAL",
+          priceClientType: "VIOMAR",
+          name: supplier.name,
+          identificationType: supplier.identificationType,
+          identification: supplier.identification,
+          dv: supplier.dv ?? "",
+          branch: supplier.branch,
+          taxRegime: supplier.taxRegime,
+          contactName: supplier.contactName,
+          email: supplier.email,
+          address: supplier.address,
+          postalCode: supplier.postalCode ?? "",
+          country: supplier.country,
+          department: supplier.department,
+          city: supplier.city,
+          intlDialCode: supplier.intlDialCode,
+          mobile: supplier.mobile ?? "",
+          localDialCode: supplier.localDialCode ?? "",
+          landline: supplier.landline ?? "",
+          extension: supplier.extension ?? "",
+          status: "ACTIVO",
+          isActive: Boolean(supplier.isActive ?? true),
+          hasCredit: Boolean(supplier.hasCredit ?? false),
+          promissoryNoteNumber: supplier.promissoryNoteNumber ?? "",
+          promissoryNoteDate: supplier.promissoryNoteDate ?? "",
+        }),
+      });
+
+      toast.success("Cliente creado desde proveedor");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsEmployee = async (supplier: Supplier) => {
+    if (!supplier.email) {
+      toast.error("Para crear como empleado, el proveedor debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/employees", {
+        method: "POST",
+        body: JSON.stringify({
+          name: supplier.name,
+          identificationType: supplier.identificationType,
+          identification: supplier.identification,
+          dv: supplier.dv ?? "",
+          email: supplier.email,
+          intlDialCode: supplier.intlDialCode,
+          mobile: supplier.mobile ?? "",
+          landline: supplier.landline ?? "",
+          extension: supplier.extension ?? "",
+          address: supplier.address,
+          city: supplier.city,
+          department: supplier.department,
+          isActive: Boolean(supplier.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empleado creado desde proveedor");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsConfectionist = async (supplier: Supplier) => {
+    try {
+      await apiJson("/api/confectionists", {
+        method: "POST",
+        body: JSON.stringify({
+          name: supplier.name,
+          identificationType: supplier.identificationType,
+          identification: supplier.identification,
+          dv: supplier.dv ?? "",
+          type: "NACIONAL",
+          taxRegime: supplier.taxRegime,
+          contactName: supplier.contactName,
+          email: supplier.email ?? "",
+          intlDialCode: supplier.intlDialCode,
+          mobile: supplier.mobile ?? "",
+          fullMobile: supplier.fullMobile ?? "",
+          landline: supplier.landline ?? "",
+          extension: supplier.extension ?? "",
+          address: supplier.address,
+          postalCode: supplier.postalCode ?? "",
+          country: supplier.country,
+          department: supplier.department,
+          city: supplier.city,
+          isActive: Boolean(supplier.isActive ?? true),
+        }),
+      });
+
+      toast.success("Confeccionista creado desde proveedor");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsPacker = async (supplier: Supplier) => {
+    try {
+      await apiJson("/api/packers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: supplier.name,
+          identificationType: supplier.identificationType,
+          identification: supplier.identification,
+          dv: supplier.dv ?? "",
+          packerType: "EXTERNO",
+          specialty: "",
+          dailyCapacity: null,
+          contactName: supplier.contactName,
+          email: supplier.email ?? "",
+          intlDialCode: supplier.intlDialCode,
+          mobile: supplier.mobile ?? "",
+          fullMobile: supplier.fullMobile ?? "",
+          landline: supplier.landline ?? "",
+          address: supplier.address,
+          postalCode: supplier.postalCode ?? "",
+          city: supplier.city,
+          department: supplier.department,
+          isActive: Boolean(supplier.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empaque creado desde proveedor");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
     }
   };
 
@@ -224,6 +369,16 @@ export function SuppliersTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="view"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          setViewing(s);
+                          setDetailsOpen(true);
+                        }}
+                      >
+                        Ver información completa
+                      </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -268,6 +423,19 @@ export function SuppliersTab({
         isOpen={modalOpen}
         onOpenChange={setModalOpen}
         onSaved={refresh}
+      />
+
+      <SupplierDetailsModal
+        supplier={viewing}
+        isOpen={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open);
+          if (!open) setViewing(null);
+        }}
+        onRequestCreateClient={() => viewing && createAsClient(viewing)}
+        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
+        onRequestCreateConfectionist={() => viewing && createAsConfectionist(viewing)}
+        onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
       />
 
       <ConfirmActionModal

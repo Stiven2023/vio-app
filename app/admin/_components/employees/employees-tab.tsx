@@ -173,6 +173,167 @@ export function EmployeesTab({
     }
   };
 
+  const createAsClient = async (employee: Employee) => {
+    if (!employee.email) {
+      toast.error("Para crear como cliente, el empleado debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/clients", {
+        method: "POST",
+        body: JSON.stringify({
+          clientType: "EMPLEADO",
+          priceClientType: "VIOMAR",
+          name: employee.name,
+          identificationType: employee.identificationType,
+          identification: employee.identification,
+          dv: employee.dv ?? "",
+          branch: "01",
+          taxRegime: "REGIMEN_COMUN",
+          contactName: employee.name,
+          email: employee.email,
+          address: employee.address,
+          postalCode: "",
+          country: "COLOMBIA",
+          department: employee.department,
+          city: employee.city,
+          intlDialCode: employee.intlDialCode,
+          mobile: employee.mobile ?? "",
+          localDialCode: "",
+          landline: employee.landline ?? "",
+          extension: employee.extension ?? "",
+          status: "ACTIVO",
+          isActive: Boolean(employee.isActive ?? true),
+          hasCredit: false,
+          promissoryNoteNumber: "",
+          promissoryNoteDate: "",
+        }),
+      });
+
+      toast.success("Cliente creado desde empleado");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsSupplier = async (employee: Employee) => {
+    if (!employee.email) {
+      toast.error("Para crear como proveedor, el empleado debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/suppliers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: employee.name,
+          identificationType: employee.identificationType,
+          identification: employee.identification,
+          dv: employee.dv ?? "",
+          branch: "01",
+          taxRegime: "REGIMEN_COMUN",
+          contactName: employee.name,
+          email: employee.email,
+          address: employee.address,
+          postalCode: "",
+          country: "COLOMBIA",
+          department: employee.department,
+          city: employee.city,
+          intlDialCode: employee.intlDialCode,
+          mobile: employee.mobile ?? "",
+          fullMobile: "",
+          localDialCode: "",
+          landline: employee.landline ?? "",
+          extension: employee.extension ?? "",
+          fullLandline: "",
+          hasCredit: false,
+          promissoryNoteNumber: "",
+          promissoryNoteDate: "",
+        }),
+      });
+
+      toast.success("Proveedor creado desde empleado");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsConfectionist = async (employee: Employee) => {
+    if (!employee.email) {
+      toast.error("Para crear como confeccionista, el empleado debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/confectionists", {
+        method: "POST",
+        body: JSON.stringify({
+          name: employee.name,
+          identificationType: employee.identificationType,
+          identification: employee.identification,
+          dv: employee.dv ?? "",
+          type: "NACIONAL",
+          taxRegime: "REGIMEN_COMUN",
+          contactName: employee.name,
+          email: employee.email,
+          intlDialCode: employee.intlDialCode,
+          mobile: employee.mobile ?? "",
+          fullMobile: "",
+          landline: employee.landline ?? "",
+          extension: employee.extension ?? "",
+          address: employee.address,
+          postalCode: "",
+          country: "COLOMBIA",
+          department: employee.department,
+          city: employee.city,
+          isActive: Boolean(employee.isActive ?? true),
+        }),
+      });
+
+      toast.success("Confeccionista creado desde empleado");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
+  const createAsPacker = async (employee: Employee) => {
+    if (!employee.email) {
+      toast.error("Para crear como empaque, el empleado debe tener email.");
+      return;
+    }
+
+    try {
+      await apiJson("/api/packers", {
+        method: "POST",
+        body: JSON.stringify({
+          name: employee.name,
+          identificationType: employee.identificationType,
+          identification: employee.identification,
+          dv: employee.dv ?? "",
+          packerType: "INTERNO",
+          specialty: "",
+          dailyCapacity: null,
+          contactName: employee.name,
+          email: employee.email,
+          intlDialCode: employee.intlDialCode,
+          mobile: employee.mobile ?? "",
+          fullMobile: "",
+          landline: employee.landline ?? "",
+          address: employee.address,
+          postalCode: "",
+          city: employee.city,
+          department: employee.department,
+          isActive: Boolean(employee.isActive ?? true),
+        }),
+      });
+
+      toast.success("Empaque creado desde empleado");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -349,6 +510,10 @@ export function EmployeesTab({
           if (!open) setDetail(null);
           setDetailsOpen(open);
         }}
+        onRequestCreateClient={() => detail?.employee && createAsClient(detail.employee)}
+        onRequestCreateSupplier={() => detail?.employee && createAsSupplier(detail.employee)}
+        onRequestCreateConfectionist={() => detail?.employee && createAsConfectionist(detail.employee)}
+        onRequestCreatePacker={() => detail?.employee && createAsPacker(detail.employee)}
       />
 
       <ConfirmActionModal

@@ -21,10 +21,18 @@ export function PackerDetailsModal({
   packer,
   isOpen,
   onOpenChange,
+  onRequestCreateClient,
+  onRequestCreateEmployee,
+  onRequestCreateSupplier,
+  onRequestCreateConfectionist,
 }: {
   packer: Packer | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onRequestCreateClient?: () => void;
+  onRequestCreateEmployee?: () => void;
+  onRequestCreateSupplier?: () => void;
+  onRequestCreateConfectionist?: () => void;
 }) {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
@@ -68,7 +76,27 @@ export function PackerDetailsModal({
             </>
           )}
         </ModalBody>
-        <ModalFooter>
+        <ModalFooter className="flex flex-wrap gap-2">
+          {onRequestCreateClient && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateClient}>
+              Crear como cliente
+            </Button>
+          )}
+          {onRequestCreateEmployee && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateEmployee}>
+              Crear como empleado
+            </Button>
+          )}
+          {onRequestCreateSupplier && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateSupplier}>
+              Crear como proveedor
+            </Button>
+          )}
+          {onRequestCreateConfectionist && (
+            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateConfectionist}>
+              Crear como confeccionista
+            </Button>
+          )}
           <Button variant="flat" onPress={() => onOpenChange(false)}>
             Cerrar
           </Button>
