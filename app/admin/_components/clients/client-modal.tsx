@@ -178,6 +178,7 @@ export function ClientModal({
     try {
       const params = new URLSearchParams({
         identification,
+        identificationType: form.identificationType,
         module: "client",
       });
 

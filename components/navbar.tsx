@@ -78,6 +78,7 @@ export const Navbar = () => {
   const [canSeeSuppliers, setCanSeeSuppliers] = useState(false);
   const [canSeePurchaseOrders, setCanSeePurchaseOrders] = useState(false);
   const [canSeeConfectionists, setCanSeeConfectionists] = useState(false);
+  const [canSeePackers, setCanSeePackers] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [roleOverride, setRoleOverride] = useState("");
@@ -94,6 +95,7 @@ export const Navbar = () => {
     setCanSeeSuppliers(Boolean(permissions?.VER_PROVEEDOR));
     setCanSeePurchaseOrders(Boolean(permissions?.CREAR_ORDEN_COMPRA));
     setCanSeeConfectionists(Boolean(permissions?.VER_CONFECCIONISTA));
+    setCanSeePackers(Boolean(permissions?.VER_EMPAQUE));
     setCanSeeStatusHistory(Boolean(permissions?.VER_HISTORIAL_ESTADO));
   };
 
@@ -137,7 +139,7 @@ export const Navbar = () => {
     }
 
     fetch(
-      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_HISTORIAL_ESTADO`,
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_EMPAQUE,VER_HISTORIAL_ESTADO`,
       {
         credentials: "include",
       },
@@ -152,6 +154,7 @@ export const Navbar = () => {
               VER_PROVEEDOR: false,
               CREAR_ORDEN_COMPRA: false,
               VER_CONFECCIONISTA: false,
+              VER_EMPAQUE: false,
               VER_HISTORIAL_ESTADO: false,
             },
           };
@@ -261,6 +264,9 @@ export const Navbar = () => {
     if (isAuthenticated && canSeeConfectionists) {
       extra.push({ name: "Confeccionistas", href: "/confectionists" });
     }
+    if (isAuthenticated && canSeePackers) {
+      extra.push({ name: "Empaque", href: "/packers" });
+    }
     if (isAuthenticated && canSeeStatusHistory) {
       extra.push({ name: "Historial", href: "/status-history" });
     }
@@ -276,6 +282,7 @@ export const Navbar = () => {
     canSeeCatalog,
     canSeeClients,
     canSeeConfectionists,
+    canSeePackers,
     canSeeOrders,
     canSeePurchaseOrders,
     canSeeStatusHistory,
@@ -453,6 +460,22 @@ export const Navbar = () => {
                   href="/confectionists"
                 >
                   <BsPerson />
+                </NextLink>
+              </Tooltip>
+            </NavbarItem>
+          ) : null}
+
+          {!operarioOnly && isAuthenticated && canSeePackers ? (
+            <NavbarItem key="/packers">
+              <Tooltip content="Empaque">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/packers") ? activeClass : idleClass,
+                  )}
+                  href="/packers"
+                >
+                  <BsTruck />
                 </NextLink>
               </Tooltip>
             </NavbarItem>

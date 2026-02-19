@@ -21,6 +21,11 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
 
   // Si puedes ver inventario, puedes ver el catálogo de items
   VER_ITEM_INVENTARIO: ["VER_INVENTARIO"],
+
+  // Empaque: mantener compatibilidad con permiso previo MARCAR_EMPAQUE
+  CREAR_EMPAQUE: ["MARCAR_EMPAQUE"],
+  EDITAR_EMPAQUE: ["MARCAR_EMPAQUE"],
+  ELIMINAR_EMPAQUE: ["MARCAR_EMPAQUE"],
 };
 
 export async function requirePermission(

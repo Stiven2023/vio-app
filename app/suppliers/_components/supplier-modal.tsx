@@ -19,6 +19,7 @@ import {
 import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -101,6 +102,33 @@ export function SupplierModal({
   onSaved: () => void;
   prefill?: SupplierFormPrefill;
 }) {
+  type ImportData = {
+    module: "client" | "employee" | "confectionist" | "supplier" | "packer";
+    name: string;
+    identificationType: string;
+    identification: string;
+    dv: string | null;
+    email: string | null;
+    contactName: string | null;
+    intlDialCode: string | null;
+    mobile: string | null;
+    landline: string | null;
+    extension: string | null;
+    address: string | null;
+    city: string | null;
+    department: string | null;
+    isActive: boolean | null;
+  };
+
+  type IdentificationCheckResponse = {
+    sameModule: { message: string } | null;
+    otherModule: {
+      module: "client" | "employee" | "confectionist" | "supplier" | "packer";
+      message: string;
+      data: ImportData;
+    } | null;
+  };
+
   const [form, setForm] = useState<FormState>({
     name: "",
     identificationType: "NIT",
@@ -129,12 +157,18 @@ export function SupplierModal({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [importPromptOpen, setImportPromptOpen] = useState(false);
+  const [importCandidate, setImportCandidate] = useState<ImportData | null>(null);
+  const [importMessage, setImportMessage] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
 
     setErrors({});
     setSubmitting(false);
+    setImportPromptOpen(false);
+    setImportCandidate(null);
+    setImportMessage("");
 
     if (supplier) {
       setForm({
@@ -219,6 +253,74 @@ export function SupplierModal({
       });
     }
   }, [supplier, prefill, isOpen]);
+
+  const checkIdentification = async () => {
+    const identification = form.identification.trim();
+    if (!identification) return;
+
+    try {
+      const params = new URLSearchParams({
+        identification,
+        identificationType: form.identificationType,
+        module: "supplier",
+      });
+
+      if (supplier?.id) params.set("excludeId", supplier.id);
+
+      const result = await apiJson<IdentificationCheckResponse>(
+        `/api/registry/identification-check?${params.toString()}`,
+      );
+
+      if (result.sameModule) {
+        setErrors((prev) => ({
+          ...prev,
+          identification: result.sameModule?.message ?? "Identificación duplicada",
+        }));
+        return;
+      }
+
+      setErrors((prev) => {
+        if (!prev.identification) return prev;
+        const { identification: _identification, ...rest } = prev;
+        return rest;
+      });
+
+      if (!supplier && result.otherModule) {
+        setImportCandidate(result.otherModule.data);
+        setImportMessage(result.otherModule.message);
+        setImportPromptOpen(true);
+      }
+    } catch {
+      // El backend valida nuevamente al guardar.
+    }
+  };
+
+  const importFromOtherModule = () => {
+    if (!importCandidate) return;
+
+    setForm((s) => ({
+      ...s,
+      name: importCandidate.name ?? s.name,
+      identificationType: importCandidate.identificationType ?? s.identificationType,
+      identification: importCandidate.identification ?? s.identification,
+      dv: importCandidate.dv ?? s.dv,
+      contactName: importCandidate.contactName ?? importCandidate.name ?? s.contactName,
+      email: importCandidate.email ?? s.email,
+      intlDialCode: importCandidate.intlDialCode ?? s.intlDialCode,
+      mobile: importCandidate.mobile ?? s.mobile,
+      landline: importCandidate.landline ?? s.landline,
+      extension: importCandidate.extension ?? s.extension,
+      address: importCandidate.address ?? s.address,
+      city: importCandidate.city ?? s.city,
+      department: importCandidate.department ?? s.department,
+      isActive: Boolean(importCandidate.isActive ?? s.isActive),
+    }));
+
+    setImportPromptOpen(false);
+    setImportCandidate(null);
+    setImportMessage("");
+    toast.success("Datos importados desde otro módulo");
+  };
 
   const submit = async () => {
     if (submitting) return;
@@ -318,6 +420,7 @@ export function SupplierModal({
                 isInvalid={Boolean(errors.identification)}
                 label="Identificación"
                 value={form.identification}
+                onBlur={checkIdentification}
                 onValueChange={(v) =>
                   setForm((s) => ({ ...s, identification: v }))
                 }
@@ -539,6 +642,26 @@ export function SupplierModal({
           </Button>
         </ModalFooter>
       </ModalContent>
+
+      <ConfirmActionModal
+        cancelLabel="No importar"
+        confirmColor="primary"
+        confirmLabel="Importar datos"
+        description={
+          importMessage ||
+          "Esta identificación ya existe en otro módulo. ¿Deseas importar esos datos?"
+        }
+        isOpen={importPromptOpen}
+        title="Identificación encontrada"
+        onConfirm={importFromOtherModule}
+        onOpenChange={(open) => {
+          if (!open) {
+            setImportCandidate(null);
+            setImportMessage("");
+          }
+          setImportPromptOpen(open);
+        }}
+      />
     </Modal>
   );
 }

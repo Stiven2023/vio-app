@@ -45,6 +45,24 @@ export const clientPriceTypeEnum = pgEnum("client_price_type", [
   "VIOMAR",
   "COLANTA",
 ]);
+
+// Enum de tipo de tercero (para módulo jurídico)
+export const thirdPartyTypeEnum = pgEnum("third_party_type", [
+  "EMPLEADO",
+  "CLIENTE",
+  "CONFECCIONISTA",
+  "PROVEEDOR",
+  "EMPAQUE",
+]);
+
+// Enum de estado jurídico
+export const legalStatusEnum = pgEnum("legal_status_status", [
+  "VIGENTE",           // Sin problemas, puede operar
+  "EN_REVISION",       // Bajo revisión, operación pendiente
+  "RESTRICCION",       // Con restricciones, operación limitada
+  "BLOQUEADO",         // Bloqueado, no puede operar
+]);
+
 import {
   boolean,
   date,
@@ -108,6 +126,9 @@ export const permissionEnum = pgEnum("permission", [
   "REGISTRAR_SALIDA",
   "VER_INVENTARIO",
   // Empaque
+  "CREAR_EMPAQUE",
+  "EDITAR_EMPAQUE",
+  "ELIMINAR_EMPAQUE",
   "MARCAR_EMPAQUE",
   "VER_EMPAQUE",
   // Compras
@@ -591,6 +612,57 @@ export const suppliers = pgTable("suppliers", {
 });
 
 /* =========================
+   PACKERS (Empaque / Empacadores)
+========================= */
+export const packers = pgTable("packers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  // --- CÓDIGO AUTOGENERADO ---
+  packerCode: varchar("packer_code", { length: 20 }).unique().notNull(), // "EMPA1001", "EMPA1002", etc.
+
+  // --- IDENTIFICACIÓN Y NOMBRE ---
+  name: varchar("name", { length: 255 }).notNull(),
+  identificationType: identificationTypeEnum("identification_type").notNull(),
+  identification: varchar("identification", { length: 20 }).unique().notNull(),
+  dv: varchar("dv", { length: 1 }),
+
+  // --- ESPECIFICACIONES DE OPERACIÓN ---
+  packerType: varchar("packer_type", { length: 50 }), // Interno, Satélite, Distribuidora
+  specialty: varchar("specialty", { length: 100 }), // Prenda colgada, Caja master, Etiquetado
+
+  // --- CONTACTO Y TELÉFONOS ---
+  contactName: varchar("contact_name", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
+  mobile: varchar("mobile", { length: 20 }),
+  fullMobile: varchar("full_mobile", { length: 25 }),
+  landline: varchar("landline", { length: 20 }),
+
+  // --- UBICACIÓN ---
+  address: varchar("address", { length: 255 }).notNull(),
+  postalCode: varchar("postal_code", { length: 20 }),
+  city: varchar("city", { length: 100 }).default("Medellín"),
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+
+  // --- ESTADO Y CAPACIDAD ---
+  isActive: boolean("is_active").default(true),
+  dailyCapacity: integer("daily_capacity"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   ORDER ITEM ↔ PACKER
+========================= */
+export const orderItemPacker = pgTable("order_item_packer", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  packerId: uuid("packer_id").references(() => packers.id),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+});
+
+/* =========================
 	 INVENTORY ITEMS
 ========================= */
 export const inventoryItems = pgTable("inventory_items", {
@@ -728,4 +800,26 @@ export const notifications = pgTable("notifications", {
   href: text("href"),
   isRead: boolean("is_read").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   ESTADO JURÍDICO (Legal Status)
+========================= */
+export const legalStatusRecords = pgTable("legal_status_records", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  // --- VINCULACIÓN A TERCEROS ---
+  thirdPartyId: uuid("third_party_id").notNull(), // ID del empleado/cliente/confeccionista/proveedor/empaque
+  thirdPartyType: thirdPartyTypeEnum("third_party_type").notNull(), // Tipo de tercero
+  thirdPartyName: varchar("third_party_name", { length: 255 }).notNull(), // Nombre del tercero para búsqueda
+
+  // --- ESTADO JURÍDICO ---
+  status: legalStatusEnum("status").default("VIGENTE").notNull(), // Estado actual
+  notes: text("notes"), // Notas/observaciones
+
+  // --- AUDITORÍA ---
+  reviewedBy: uuid("reviewed_by").references(() => users.id), // Usuario que hizo la revisión
+  lastReviewDate: timestamp("last_review_date", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

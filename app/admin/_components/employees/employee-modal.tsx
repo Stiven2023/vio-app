@@ -157,6 +157,7 @@ export function EmployeeModal({
     try {
       const params = new URLSearchParams({
         identification,
+        identificationType: form.identificationType,
         module: "employee",
       });
 
