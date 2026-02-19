@@ -206,11 +206,16 @@ export const createClientSchema = z
     email: z
       .string()
       .trim()
-      .refine(
-        (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-        "Email inválido"
-      )
-      .optional(),
+      .transform((val) => val || undefined)
+      .pipe(
+        z
+          .string()
+          .refine(
+            (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+            "Email inválido"
+          )
+          .optional()
+      ),
     address: z.string().trim().min(1, "Dirección requerida"),
 
     // --- CAMPOS OPCIONALES ---
