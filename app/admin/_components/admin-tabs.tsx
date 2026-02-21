@@ -5,6 +5,7 @@ import { Tabs, Tab } from "@heroui/tabs";
 import type { ClientFormPrefill } from "./clients/client-modal.types";
 import type { EmployeeFormPrefill } from "./employees/employee-modal.types";
 import type { ConfectionistFormPrefill } from "@/app/confectionists/_components/confectionist-modal.types";
+import { useRouter } from "next/navigation";
 
 import { UsersTab } from "./users/users-tab";
 import { EmployeesTab } from "./employees/employees-tab";
@@ -24,12 +25,11 @@ type AdminTabKey =
   | "rolePermissions";
 
 export function AdminTabs() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<AdminTabKey>("users");
   const [clientPrefill, setClientPrefill] = useState<ClientFormPrefill | null>(
     null,
   );
-  const [employeePrefill, setEmployeePrefill] =
-    useState<EmployeeFormPrefill | null>(null);
   const [confectionistPrefill, setConfectionistPrefill] =
     useState<ConfectionistFormPrefill | null>(null);
 
@@ -38,9 +38,8 @@ export function AdminTabs() {
     setActiveTab("clients");
   };
 
-  const openEmployeeFromClient = (prefill: EmployeeFormPrefill) => {
-    setEmployeePrefill(prefill);
-    setActiveTab("employees");
+  const openEmployeeFromClient = (_prefill: EmployeeFormPrefill) => {
+    router.push("/employee-register");
   };
 
   const openConfectionistFromClient = (prefill: ConfectionistFormPrefill) => {
@@ -72,11 +71,7 @@ export function AdminTabs() {
       <div className="mt-4">
         {activeTab === "users" ? <UsersTab /> : null}
         {activeTab === "employees" ? (
-          <EmployeesTab
-            onPrefillConsumed={() => setEmployeePrefill(null)}
-            onRequestCreateClient={openClientFromEmployee}
-            prefillCreate={employeePrefill}
-          />
+          <EmployeesTab onRequestCreateClient={openClientFromEmployee} />
         ) : null}
         {activeTab === "clients" ? (
           <ClientsTab

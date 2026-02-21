@@ -2,7 +2,8 @@ import { Input } from "@heroui/input";
 import { Divider } from "@heroui/divider";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
-import { BsCreditCardFill } from "react-icons/bs";
+import { Card, CardBody } from "@heroui/card";
+import { BsCreditCardFill, BsInfoCircle } from "react-icons/bs";
 
 import { CLIENT_PRICE_TYPES, CLIENT_STATUSES } from "../client-modal.constants";
 import type { FormState, SetFormState } from "../client-modal.types";
@@ -45,6 +46,24 @@ export function StatusCreditTab({ form, setForm }: Props) {
           onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
         />
       </div>
+
+      {!form.isActive && (
+        <Card className="bg-info-50 border border-info-200">
+          <CardBody className="gap-2 p-3">
+            <div className="flex items-start gap-2">
+              <BsInfoCircle className="text-lg text-info-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-info-900">
+                  ℹ️ Cliente inactivo por defecto
+                </p>
+                <p className="text-xs text-info-800 mt-1">
+                  Clientes nuevos comienzan inactivos hasta que tengan un estado jurídico definido como VIGENTE.
+                </p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       <Divider className="my-4" />
 

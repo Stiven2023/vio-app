@@ -61,6 +61,12 @@ export type Packer = {
   department: string | null;
   isActive: boolean | null;
   dailyCapacity: number | null;
+  identityDocumentUrl?: string | null;
+  rutDocumentUrl?: string | null;
+  commerceChamberDocumentUrl?: string | null;
+  passportDocumentUrl?: string | null;
+  taxCertificateDocumentUrl?: string | null;
+  companyIdDocumentUrl?: string | null;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -256,6 +262,18 @@ export function PackersTab({
     }
   };
 
+  const getFirstDocumentUrl = (packer: Packer) => {
+    return (
+      packer.identityDocumentUrl ||
+      packer.rutDocumentUrl ||
+      packer.commerceChamberDocumentUrl ||
+      packer.passportDocumentUrl ||
+      packer.taxCertificateDocumentUrl ||
+      packer.companyIdDocumentUrl ||
+      null
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -305,6 +323,7 @@ export function PackersTab({
           headers={[
             "Código",
             "Nombre",
+            "Tipo ID",
             "Email",
             "Tipo",
             "Especialidad",
@@ -318,6 +337,7 @@ export function PackersTab({
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
+            <TableColumn>Tipo ID</TableColumn>
             <TableColumn>Email</TableColumn>
             <TableColumn>Tipo</TableColumn>
             <TableColumn>Especialidad</TableColumn>
@@ -330,6 +350,7 @@ export function PackersTab({
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.packerCode}</TableCell>
                 <TableCell className="font-medium">{p.name}</TableCell>
+                <TableCell className="text-default-500">{p.identificationType}</TableCell>
                 <TableCell className="text-default-500">{p.email ?? "-"}</TableCell>
                 <TableCell className="text-default-500">{p.packerType ?? "-"}</TableCell>
                 <TableCell className="text-default-500">{p.specialty ?? "-"}</TableCell>
@@ -356,6 +377,21 @@ export function PackersTab({
                         }}
                       >
                         Ver información completa
+                      </DropdownItem>
+
+                      <DropdownItem
+                        key="view-docs"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          const url = getFirstDocumentUrl(p);
+                          if (!url) {
+                            toast.error("Este empaque no tiene documentos cargados.");
+                            return;
+                          }
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        Ver documentos
                       </DropdownItem>
 
                       <DropdownItem

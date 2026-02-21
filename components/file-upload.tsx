@@ -2,7 +2,7 @@
 
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { BsCheckCircleFill, BsFileEarmarkPdf, BsTrash, BsUpload } from "react-icons/bs";
 import toast from "react-hot-toast";
 
@@ -73,6 +73,14 @@ export function FileUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sincronizar el estado visual cuando value cambia (por cambio de tab o re-render)
+  useEffect(() => {
+    if (value && selectedFileName === "") {
+      // Si hay un value pero no hay selectedFileName, establecer un nombre para indicar que está cargado
+      setSelectedFileName("archivo-cargado");
+    }
+  }, [value]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

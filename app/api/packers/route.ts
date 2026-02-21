@@ -1,8 +1,9 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { packers } from "@/src/db/schema";
+import { packers, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -52,9 +53,42 @@ export async function GET(request: Request) {
       .limit(pageSize)
       .offset(offset);
 
+    // Obtener el estado jurídico más reciente para cada empaquetador
+    const itemsWithStatus = await Promise.all(
+      items.map(async (packer) => {
+        const legalStatus = await db.query.legalStatusRecords.findFirst({
+          where: (record, { eq, and }) =>
+            and(
+              eq(record.thirdPartyId, packer.id),
+              eq(record.thirdPartyType, "EMPAQUE"),
+            ),
+          orderBy: (record, { desc }) => desc(record.createdAt),
+        });
+
+        const isActiveByLegalStatus =
+          legalStatus?.status === "VIGENTE"
+            ? true
+            : legalStatus?.status
+              ? false
+              : packer.isActive;
+
+        return {
+          ...packer,
+          isActive: isActiveByLegalStatus,
+          legalStatus: legalStatus?.status ?? null,
+        };
+      }),
+    );
+
     const hasNextPage = offset + items.length < total;
 
-    return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({
+      items: itemsWithStatus,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
@@ -92,6 +126,69 @@ export async function POST(request: Request) {
   try {
     const packerCode = await generatePackerCode();
 
+    // Obtener documentos del cliente si se proporciona clientId (para conversiones)
+    let sourceClientDocuments: {
+      identityDocumentUrl: string | null;
+      rutDocumentUrl: string | null;
+      commerceChamberDocumentUrl: string | null;
+      passportDocumentUrl: string | null;
+      taxCertificateDocumentUrl: string | null;
+      companyIdDocumentUrl: string | null;
+    } = {
+      identityDocumentUrl: null,
+      rutDocumentUrl: null,
+      commerceChamberDocumentUrl: null,
+      passportDocumentUrl: null,
+      taxCertificateDocumentUrl: null,
+      companyIdDocumentUrl: null,
+    };
+
+    if (payload.clientId) {
+      const sourceClient = await db
+        .select()
+        .from(clients)
+        .where(eq(clients.id, String(payload.clientId)))
+        .limit(1);
+
+      if (sourceClient.length > 0) {
+        const client = sourceClient[0];
+        sourceClientDocuments = {
+          identityDocumentUrl: client.identityDocumentUrl,
+          rutDocumentUrl: client.rutDocumentUrl,
+          commerceChamberDocumentUrl: client.commerceChamberDocumentUrl,
+          passportDocumentUrl: client.passportDocumentUrl,
+          taxCertificateDocumentUrl: client.taxCertificateDocumentUrl,
+          companyIdDocumentUrl: client.companyIdDocumentUrl,
+        };
+      }
+    }
+
+    const mergedPayload = {
+      ...payload,
+      identityDocumentUrl:
+        payload.identityDocumentUrl || sourceClientDocuments.identityDocumentUrl,
+      rutDocumentUrl: payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+      commerceChamberDocumentUrl:
+        payload.commerceChamberDocumentUrl ||
+        sourceClientDocuments.commerceChamberDocumentUrl,
+      passportDocumentUrl:
+        payload.passportDocumentUrl || sourceClientDocuments.passportDocumentUrl,
+      taxCertificateDocumentUrl:
+        payload.taxCertificateDocumentUrl ||
+        sourceClientDocuments.taxCertificateDocumentUrl,
+      companyIdDocumentUrl:
+        payload.companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+    };
+
+    const missingDocumentError = getMissingRequiredDocumentMessage(
+      String(mergedPayload.identificationType ?? ""),
+      mergedPayload as Record<string, unknown>,
+    );
+
+    if (missingDocumentError) {
+      return new Response(missingDocumentError, { status: 400 });
+    }
+
     const created = await db
       .insert(packers)
       .values({
@@ -123,13 +220,33 @@ export async function POST(request: Request) {
         department: payload.department
           ? String(payload.department).trim()
           : "ANTIOQUIA",
-        isActive: payload.isActive ?? true,
+        isActive: false,
         dailyCapacity:
           payload.dailyCapacity === "" || payload.dailyCapacity === null
             ? null
             : Number(payload.dailyCapacity),
+        // Documentos del formulario o copiados del cliente
+        identityDocumentUrl: mergedPayload.identityDocumentUrl,
+        rutDocumentUrl: mergedPayload.rutDocumentUrl,
+        commerceChamberDocumentUrl: mergedPayload.commerceChamberDocumentUrl,
+        passportDocumentUrl: mergedPayload.passportDocumentUrl,
+        taxCertificateDocumentUrl: mergedPayload.taxCertificateDocumentUrl,
+        companyIdDocumentUrl: mergedPayload.companyIdDocumentUrl,
       })
       .returning();
+
+    const newPackerId = created[0]?.id;
+
+    // Crear registro de estado jurídico iniciando con EN_REVISION
+    if (newPackerId) {
+      await db.insert(legalStatusRecords).values({
+        thirdPartyId: newPackerId,
+        thirdPartyType: "EMPAQUE",
+        thirdPartyName: name,
+        status: "EN_REVISION",
+        notes: "Estado inicial al crear empaquetador",
+      });
+    }
 
     return Response.json(created, { status: 201 });
   } catch (error) {
@@ -212,7 +329,82 @@ export async function PUT(request: Request) {
         ? null
         : Number(payload.dailyCapacity);
 
+  // Manejar campos de documentos
+  if (payload.identityDocumentUrl !== undefined)
+    patch.identityDocumentUrl = payload.identityDocumentUrl
+      ? String(payload.identityDocumentUrl).trim()
+      : null;
+  if (payload.rutDocumentUrl !== undefined)
+    patch.rutDocumentUrl = payload.rutDocumentUrl
+      ? String(payload.rutDocumentUrl).trim()
+      : null;
+  if (payload.commerceChamberDocumentUrl !== undefined)
+    patch.commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl
+      ? String(payload.commerceChamberDocumentUrl).trim()
+      : null;
+  if (payload.passportDocumentUrl !== undefined)
+    patch.passportDocumentUrl = payload.passportDocumentUrl
+      ? String(payload.passportDocumentUrl).trim()
+      : null;
+  if (payload.taxCertificateDocumentUrl !== undefined)
+    patch.taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl
+      ? String(payload.taxCertificateDocumentUrl).trim()
+      : null;
+  if (payload.companyIdDocumentUrl !== undefined)
+    patch.companyIdDocumentUrl = payload.companyIdDocumentUrl
+      ? String(payload.companyIdDocumentUrl).trim()
+      : null;
+
   try {
+    const currentPacker = await db
+      .select()
+      .from(packers)
+      .where(eq(packers.id, String(id)))
+      .limit(1);
+
+    if (currentPacker.length === 0) {
+      return new Response("Empaquetador no encontrado", { status: 404 });
+    }
+
+    const packer = currentPacker[0];
+
+    // Detectar cambios críticos
+    const criticalFields = [
+      "name",
+      "identification",
+      "identificationType",
+      "identityDocumentUrl",
+      "rutDocumentUrl",
+      "commerceChamberDocumentUrl",
+      "passportDocumentUrl",
+      "taxCertificateDocumentUrl",
+      "companyIdDocumentUrl",
+    ];
+
+    const changedFields: string[] = [];
+    for (const field of criticalFields) {
+      const key = field as keyof typeof packer;
+      const patchValue = patch[key as keyof Partial<typeof packers.$inferInsert>];
+
+      if (patchValue !== undefined && packer[key] !== patchValue) {
+        changedFields.push(field);
+      }
+    }
+
+    // Si hay cambios críticos, crear EN_REVISION automáticamente
+    if (changedFields.length > 0) {
+      patch.isActive = false;
+
+      // Crear registro de estado jurídico EN_REVISION
+      await db.insert(legalStatusRecords).values({
+        thirdPartyId: String(id),
+        thirdPartyType: "EMPAQUE",
+        thirdPartyName: packer.name,
+        status: "EN_REVISION",
+        notes: `Cambios detectados: ${changedFields.join(", ")}`,
+      });
+    }
+
     const updated = await db
       .update(packers)
       .set(patch)

@@ -37,24 +37,23 @@ export function ClientDocumentsModal({
   
   if (!client) return null;
 
-  const isForeign = client.clientType === "EXTRANJERO";
-  const isLegalPerson = client.personType === "JURIDICA";
-
-  // Matriz de documentos según cliente type + person type
+  // Matriz de documentos según identificationType
   const documents: Array<{
     label: string;
     url: string | null | undefined;
     required: boolean;
   }> = [];
 
-  if (client.clientType === "NACIONAL" && client.personType === "NATURAL") {
+  // CC - Persona Natural Nacional
+  if (client.identificationType === "CC") {
     documents.push(
       { label: "Cédula del titular", url: client.identityDocumentUrl, required: true },
       { label: "RUT", url: client.rutDocumentUrl, required: true }
     );
   }
 
-  if (client.clientType === "NACIONAL" && client.personType === "JURIDICA") {
+  // NIT - Empresa Nacional
+  if (client.identificationType === "NIT") {
     documents.push(
       { label: "RUT empresa", url: client.rutDocumentUrl, required: true },
       { label: "Cámara de Comercio", url: client.commerceChamberDocumentUrl, required: true },
@@ -62,15 +61,26 @@ export function ClientDocumentsModal({
     );
   }
 
-  if (client.clientType === "EXTRANJERO" && client.personType === "NATURAL") {
+  // CE - Persona Natural Extranjera (Cédula de Extranjería)
+  if (client.identificationType === "CE") {
     documents.push(
-      { label: "ID extranjero", url: client.identityDocumentUrl, required: true },
-      { label: "Pasaporte/PPT", url: client.passportDocumentUrl, required: true }
+      { label: "Cédula de extranjería", url: client.identityDocumentUrl, required: true },
+      { label: "Pasaporte", url: client.passportDocumentUrl, required: true }
     );
   }
 
-  if (client.clientType === "EXTRANJERO" && client.personType === "JURIDICA") {
+  // PAS - Persona Natural Extranjera (Pasaporte)
+  if (client.identificationType === "PAS") {
     documents.push(
+      { label: "Documento de identidad", url: client.identityDocumentUrl, required: true },
+      { label: "Pasaporte", url: client.passportDocumentUrl, required: true }
+    );
+  }
+
+  // EMPRESA_EXTERIOR - Empresa Extranjera
+  if (client.identificationType === "EMPRESA_EXTERIOR") {
+    documents.push(
+      { label: "Pasaporte del representante", url: client.passportDocumentUrl, required: true },
       { label: "Certificado tributario", url: client.taxCertificateDocumentUrl, required: true },
       { label: "ID de la empresa", url: client.companyIdDocumentUrl, required: true }
     );
@@ -87,6 +97,24 @@ export function ClientDocumentsModal({
     setPreviewOpen(true);
   };
 
+  // Obtener descripción del tipo de identificación
+  const getIdentificationTypeDescription = () => {
+    switch (client.identificationType) {
+      case "CC":
+        return "Persona Natural Nacional (CC)";
+      case "NIT":
+        return "Empresa Nacional (NIT)";
+      case "CE":
+        return "Persona Natural Extranjera (CE)";
+      case "PAS":
+        return "Persona Natural Extranjera (Pasaporte)";
+      case "EMPRESA_EXTERIOR":
+        return "Empresa Extranjera";
+      default:
+        return client.identificationType || "Tipo desconocido";
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -98,8 +126,7 @@ export function ClientDocumentsModal({
         <ModalHeader className="flex flex-col gap-1">
           Documentos de {client.name}
           <p className="text-sm font-normal text-default-500">
-            {client.clientType === "NACIONAL" ? "Nacional" : "Extranjero"} •{" "}
-            {client.personType === "NATURAL" ? "Persona Natural" : "Persona Jurídica"}
+            {getIdentificationTypeDescription()}
           </p>
         </ModalHeader>
         <Divider />

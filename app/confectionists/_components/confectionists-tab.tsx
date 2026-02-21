@@ -57,6 +57,12 @@ export type Confectionist = {
   city: string | null;
   isActive: boolean | null;
   createdAt: string | null;
+  identityDocumentUrl?: string | null;
+  rutDocumentUrl?: string | null;
+  commerceChamberDocumentUrl?: string | null;
+  passportDocumentUrl?: string | null;
+  taxCertificateDocumentUrl?: string | null;
+  companyIdDocumentUrl?: string | null;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -264,6 +270,18 @@ export function ConfectionistsTab({
     }
   };
 
+  const getFirstDocumentUrl = (confectionist: Confectionist) => {
+    return (
+      confectionist.identityDocumentUrl ||
+      confectionist.rutDocumentUrl ||
+      confectionist.commerceChamberDocumentUrl ||
+      confectionist.passportDocumentUrl ||
+      confectionist.taxCertificateDocumentUrl ||
+      confectionist.companyIdDocumentUrl ||
+      null
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -311,7 +329,7 @@ export function ConfectionistsTab({
           headers={[
             "Código",
             "Nombre",
-            "Identificación",
+            "Tipo ID",
             "Email",
             "Móvil",
             "Tipo",
@@ -324,7 +342,7 @@ export function ConfectionistsTab({
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
-            <TableColumn>Identificación</TableColumn>
+            <TableColumn>Tipo ID</TableColumn>
             <TableColumn>Email</TableColumn>
             <TableColumn>Móvil</TableColumn>
             <TableColumn>Tipo</TableColumn>
@@ -339,7 +357,7 @@ export function ConfectionistsTab({
                 </TableCell>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell className="text-default-500">
-                  {c.identificationType} {c.identification}
+                  {c.identificationType}
                 </TableCell>
                 <TableCell className="text-default-500">{c.email ?? "-"}</TableCell>
                 <TableCell className="text-default-500">
@@ -368,6 +386,21 @@ export function ConfectionistsTab({
                         }}
                       >
                         Ver información completa
+                      </DropdownItem>
+
+                      <DropdownItem
+                        key="view-docs"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          const url = getFirstDocumentUrl(c);
+                          if (!url) {
+                            toast.error("Este confeccionista no tiene documentos cargados.");
+                            return;
+                          }
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        Ver documentos
                       </DropdownItem>
 
                       <DropdownItem

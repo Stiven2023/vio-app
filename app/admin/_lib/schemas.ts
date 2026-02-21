@@ -130,8 +130,7 @@ export const createClientSchema = z
     // --- TIPO DE CLIENTE (automático según selección) ---
     clientType: z.enum(["NACIONAL", "EXTRANJERO", "EMPLEADO"]),
     
-    // --- TIPO DE PERSONA Y DOCUMENTOS ---
-    personType: z.enum(["NATURAL", "JURIDICA"]),
+    // --- IDENTIFICACIÓN Y DOCUMENTOS (tipo de documento determina documentos requeridos) ---
     // Aceptar URLs HTTP(s) o rutas locales (/documents/...)
     identityDocumentUrl: z
       .string()

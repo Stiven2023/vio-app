@@ -59,6 +59,12 @@ export type Supplier = {
   hasCredit?: boolean;
   promissoryNoteNumber?: string;
   promissoryNoteDate?: string;
+  identityDocumentUrl?: string | null;
+  rutDocumentUrl?: string | null;
+  commerceChamberDocumentUrl?: string | null;
+  passportDocumentUrl?: string | null;
+  taxCertificateDocumentUrl?: string | null;
+  companyIdDocumentUrl?: string | null;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -279,6 +285,18 @@ export function SuppliersTab({
     }
   };
 
+  const getFirstDocumentUrl = (supplier: Supplier) => {
+    return (
+      supplier.identityDocumentUrl ||
+      supplier.rutDocumentUrl ||
+      supplier.commerceChamberDocumentUrl ||
+      supplier.passportDocumentUrl ||
+      supplier.taxCertificateDocumentUrl ||
+      supplier.companyIdDocumentUrl ||
+      null
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -325,13 +343,14 @@ export function SuppliersTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Proveedores"
-          headers={["Código", "Nombre", "Email", "Contacto", "Móvil", "Ciudad", "Activo", "Acciones"]}
+          headers={["Código", "Nombre", "Tipo ID", "Email", "Contacto", "Móvil", "Ciudad", "Activo", "Acciones"]}
         />
       ) : (
         <Table aria-label="Proveedores">
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
+            <TableColumn>Tipo ID</TableColumn>
             <TableColumn>Email</TableColumn>
             <TableColumn>Contacto</TableColumn>
             <TableColumn>Móvil</TableColumn>
@@ -344,6 +363,7 @@ export function SuppliersTab({
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.supplierCode}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell className="text-default-500">{s.identificationType}</TableCell>
                 <TableCell className="text-default-500">
                   {s.email ?? "-"}
                 </TableCell>
@@ -378,6 +398,20 @@ export function SuppliersTab({
                         }}
                       >
                         Ver información completa
+                      </DropdownItem>
+                      <DropdownItem
+                        key="view-docs"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          const url = getFirstDocumentUrl(s);
+                          if (!url) {
+                            toast.error("Este proveedor no tiene documentos cargados.");
+                            return;
+                          }
+                          window.open(url, "_blank", "noopener,noreferrer");
+                        }}
+                      >
+                        Ver documentos
                       </DropdownItem>
                       {canEdit ? (
                         <DropdownItem

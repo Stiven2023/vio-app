@@ -190,13 +190,7 @@ export function ClientDetailsModal({
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <DetailField
                 label="Estado"
-                value={
-                  client.status || (client.isActive ? "Activo" : "Inactivo")
-                }
-              />
-              <DetailField
-                label="Activo (interno)"
-                value={client.isActive ? "Sí" : "No"}
+                value={client.isActive ? "Activo" : "Inactivo"}
               />
               <DetailField
                 label="Tiene crédito"
@@ -222,6 +216,29 @@ export function ClientDetailsModal({
                   client.createdAt
                     ? new Date(client.createdAt).toLocaleDateString("es-CO")
                     : null
+                }
+              />
+            </div>
+          </div>
+
+          <Divider />
+
+          {/* ESTADO JURÍDICO */}
+          <div>
+            <h3 className="mb-3 text-sm font-semibold text-default-700">
+              Estado jurídico
+            </h3>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <DetailField
+                label="Estado jurídico"
+                value={
+                  client.legalStatus === "VIGENTE"
+                    ? "Vigente"
+                    : client.legalStatus === "EN_REVISION"
+                      ? "En Revisión"
+                      : client.legalStatus === "BLOQUEADO"
+                        ? "Bloqueado"
+                        : "Sin definir"
                 }
               />
             </div>

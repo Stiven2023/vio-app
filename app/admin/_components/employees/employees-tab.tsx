@@ -2,9 +2,8 @@
 
 import type { Employee } from "../../_lib/types";
 import type { ClientFormPrefill } from "../clients/client-modal.types";
-import type { EmployeeFormPrefill } from "./employee-modal.types";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -28,6 +27,7 @@ import {
   BsPersonPlus,
   BsEyeFill,
 } from "react-icons/bs";
+import { Chip } from "@heroui/chip";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -37,8 +37,9 @@ import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
 
-import { EmployeeModal } from "./employee-modal";
 import { EmployeeDetailsModal } from "./employee-details-modal";
+import { EmployeeDocumentsModal } from "./employee-documents-modal";
+import { EmployeeLegalStatusModal } from "./employee-legal-status-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -46,46 +47,28 @@ type StatusFilter = "all" | "active" | "inactive";
 
 export function EmployeesTab({
   onRequestCreateClient,
-  prefillCreate,
-  onPrefillConsumed,
 }: {
   onRequestCreateClient?: (prefill: ClientFormPrefill) => void;
-  prefillCreate?: EmployeeFormPrefill | null;
-  onPrefillConsumed?: () => void;
 } = {}) {
-  const {
-    roles,
-    users,
-    roleNameById,
-    refresh: refreshRefs,
-  } = useReferenceData();
+  const { roleNameById, refresh: refreshRefs } = useReferenceData();
   const { data, loading, page, setPage, refresh } = usePaginatedApi<Employee>(
     "/api/employees",
     10,
   );
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Employee | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Employee | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [modalPrefill, setModalPrefill] = useState<EmployeeFormPrefill | null>(
-    null,
-  );
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState<string | null>(null);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [viewingDocuments, setViewingDocuments] = useState<Employee | null>(null);
+  const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Employee | null>(null);
   const [detail, setDetail] = useState<
     { employee: Employee; user: { id: string; email: string; emailVerified: boolean | null; isActive: boolean | null; createdAt: string | null } | null } | null
   >(null);
-
-  useEffect(() => {
-    if (!prefillCreate) return;
-    setEditing(null);
-    setModalPrefill(prefillCreate);
-    setModalOpen(true);
-    onPrefillConsumed?.();
-  }, [onPrefillConsumed, prefillCreate]);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -361,9 +344,7 @@ export function EmployeesTab({
           <Button
             color="primary"
             onPress={() => {
-              setEditing(null);
-              setModalPrefill(null);
-              setModalOpen(true);
+              window.location.href = "/employee-register";
             }}
           >
             Crear empleado
@@ -380,7 +361,7 @@ export function EmployeesTab({
           headers={[
             "Código",
             "Nombre",
-            "Identificación",
+            "Tipo ID",
             "Email",
             "Móvil",
             "Rol",
@@ -393,7 +374,7 @@ export function EmployeesTab({
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
-            <TableColumn>Identificación</TableColumn>
+            <TableColumn>Tipo ID</TableColumn>
             <TableColumn>Email</TableColumn>
             <TableColumn>Móvil</TableColumn>
             <TableColumn>Rol</TableColumn>
@@ -405,7 +386,11 @@ export function EmployeesTab({
               <TableRow key={e.id}>
                 <TableCell className="font-mono text-xs text-primary">{e.employeeCode ?? "—"}</TableCell>
                 <TableCell>{e.name}</TableCell>
-                <TableCell>{e.identificationType} {e.identification}</TableCell>
+                <TableCell>
+                  <Chip size="sm" variant="flat">
+                    {e.identificationType}
+                  </Chip>
+                </TableCell>
                 <TableCell className="text-default-500">{e.email ?? "-"}</TableCell>
                 <TableCell className="text-default-500">{e.fullMobile ?? e.mobile ?? "-"}</TableCell>
                 <TableCell>
@@ -435,12 +420,30 @@ export function EmployeesTab({
                         key="edit"
                         startContent={<BsPencilSquare />}
                         onPress={() => {
-                          setEditing(e);
-                          setModalPrefill(null);
-                          setModalOpen(true);
+                          window.location.href = `/employee-register?id=${e.id}`;
                         }}
                       >
                         Editar
+                      </DropdownItem>
+                      <DropdownItem
+                        key="view-docs"
+                        startContent={<BsEyeFill />}
+                        onPress={() => {
+                          setViewingDocuments(e);
+                          setDocumentsOpen(true);
+                        }}
+                      >
+                        Ver documentos
+                      </DropdownItem>
+                      <DropdownItem
+                        key={`legal-status-${e.id}`}
+                        startContent={<span>⚖️</span>}
+                        onPress={() => {
+                          setViewingLegalStatus(e);
+                          setLegalStatusModalOpen(true);
+                        }}
+                      >
+                        Ver estado jurídico
                       </DropdownItem>
                       <DropdownItem
                         key="to-client"
@@ -492,17 +495,6 @@ export function EmployeesTab({
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <EmployeeModal
-        employee={editing}
-        isOpen={modalOpen}
-        onRequestCreateClient={onRequestCreateClient}
-        prefill={modalPrefill}
-        roles={roles}
-        users={users}
-        onOpenChange={setModalOpen}
-        onSaved={onSaved}
-      />
-
       <EmployeeDetailsModal
         detail={detail}
         isOpen={detailsOpen}
@@ -514,6 +506,21 @@ export function EmployeesTab({
         onRequestCreateSupplier={() => detail?.employee && createAsSupplier(detail.employee)}
         onRequestCreateConfectionist={() => detail?.employee && createAsConfectionist(detail.employee)}
         onRequestCreatePacker={() => detail?.employee && createAsPacker(detail.employee)}
+      />
+
+      <EmployeeDocumentsModal
+        employee={viewingDocuments}
+        isOpen={documentsOpen}
+        onOpenChange={(open) => {
+          if (!open) setViewingDocuments(null);
+          setDocumentsOpen(open);
+        }}
+      />
+
+      <EmployeeLegalStatusModal
+        employee={viewingLegalStatus}
+        isOpen={legalStatusModalOpen}
+        onOpenChange={setLegalStatusModalOpen}
       />
 
       <ConfirmActionModal

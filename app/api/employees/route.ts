@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 import { db } from "@/src/db";
-import { clients, employees, users } from "@/src/db/schema";
+import { clients, employees, users, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -58,9 +58,43 @@ export async function GET(request: Request) {
       .orderBy(employees.createdAt)
       .limit(pageSize)
       .offset(offset);
+
+    // Obtener el estado jurídico más reciente para cada empleado
+    const itemsWithStatus = await Promise.all(
+      items.map(async (employee) => {
+        const legalStatus = await db.query.legalStatusRecords.findFirst({
+          where: (record, { eq, and }) =>
+            and(
+              eq(record.thirdPartyId, employee.id),
+              eq(record.thirdPartyType, "EMPLEADO"),
+            ),
+          orderBy: (record, { desc }) => desc(record.createdAt),
+        });
+
+        const isActiveByLegalStatus =
+          legalStatus?.status === "VIGENTE"
+            ? true
+            : legalStatus?.status
+              ? false
+              : employee.isActive;
+
+        return {
+          ...employee,
+          isActive: isActiveByLegalStatus,
+          legalStatus: legalStatus?.status ?? null,
+        };
+      }),
+    );
+
     const hasNextPage = offset + items.length < total;
 
-    return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({
+      items: itemsWithStatus,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
@@ -215,6 +249,43 @@ export async function POST(request: Request) {
       userId = createdUser[0]?.id ?? null;
     }
 
+    // Obtener documentos del cliente si se proporciona clientId (para conversiones)
+    let sourceClientDocuments: {
+      identityDocumentUrl: string | null;
+      rutDocumentUrl: string | null;
+      commerceChamberDocumentUrl: string | null;
+      passportDocumentUrl: string | null;
+      taxCertificateDocumentUrl: string | null;
+      companyIdDocumentUrl: string | null;
+    } = {
+      identityDocumentUrl: null,
+      rutDocumentUrl: null,
+      commerceChamberDocumentUrl: null,
+      passportDocumentUrl: null,
+      taxCertificateDocumentUrl: null,
+      companyIdDocumentUrl: null,
+    };
+
+    if (payload.clientId) {
+      const sourceClient = await db
+        .select()
+        .from(clients)
+        .where(eq(clients.id, String(payload.clientId)))
+        .limit(1);
+
+      if (sourceClient.length > 0) {
+        const client = sourceClient[0];
+        sourceClientDocuments = {
+          identityDocumentUrl: client.identityDocumentUrl,
+          rutDocumentUrl: client.rutDocumentUrl,
+          commerceChamberDocumentUrl: client.commerceChamberDocumentUrl,
+          passportDocumentUrl: client.passportDocumentUrl,
+          taxCertificateDocumentUrl: client.taxCertificateDocumentUrl,
+          companyIdDocumentUrl: client.companyIdDocumentUrl,
+        };
+      }
+    }
+
     const newEmployee = await db
       .insert(employees)
       .values({
@@ -241,9 +312,57 @@ export async function POST(request: Request) {
           ? String(payload.department).trim()
           : "ANTIOQUIA",
         roleId: payload.roleId ? String(payload.roleId).trim() : null,
-        isActive: payload.isActive ?? true,
+        isActive: false,
+        // Documentos del formulario o copiados del cliente
+        identityDocumentUrl:
+          payload.identityDocumentUrl ||
+          sourceClientDocuments.identityDocumentUrl,
+        rutDocumentUrl: payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+        commerceChamberDocumentUrl:
+          payload.commerceChamberDocumentUrl ||
+          sourceClientDocuments.commerceChamberDocumentUrl,
+        passportDocumentUrl:
+          payload.passportDocumentUrl ||
+          sourceClientDocuments.passportDocumentUrl,
+        taxCertificateDocumentUrl:
+          payload.taxCertificateDocumentUrl ||
+          sourceClientDocuments.taxCertificateDocumentUrl,
+        companyIdDocumentUrl:
+          payload.companyIdDocumentUrl ||
+          sourceClientDocuments.companyIdDocumentUrl,
+        hojaDeVidaUrl: payload.hojaDeVidaUrl
+          ? String(payload.hojaDeVidaUrl).trim()
+          : null,
+        certificadoLaboralUrl: payload.certificadoLaboralUrl
+          ? String(payload.certificadoLaboralUrl).trim()
+          : null,
+        certificadoEstudiosUrl: payload.certificadoEstudiosUrl
+          ? String(payload.certificadoEstudiosUrl).trim()
+          : null,
+        epsCertificateUrl: payload.epsCertificateUrl
+          ? String(payload.epsCertificateUrl).trim()
+          : null,
+        pensionCertificateUrl: payload.pensionCertificateUrl
+          ? String(payload.pensionCertificateUrl).trim()
+          : null,
+        bankCertificateUrl: payload.bankCertificateUrl
+          ? String(payload.bankCertificateUrl).trim()
+          : null,
       })
       .returning();
+
+    const newEmployeeId = newEmployee[0]?.id;
+
+    // Crear registro de estado jurídico iniciando con EN_REVISION
+    if (newEmployeeId) {
+      await db.insert(legalStatusRecords).values({
+        thirdPartyId: newEmployeeId,
+        thirdPartyType: "EMPLEADO",
+        thirdPartyName: name,
+        status: "EN_REVISION",
+        notes: "Estado inicial al crear empleado",
+      });
+    }
 
     return Response.json(newEmployee);
   } catch (e: unknown) {
@@ -329,7 +448,92 @@ export async function PUT(request: Request) {
     patch.roleId = payload.roleId ? String(payload.roleId).trim() : null;
   if (payload.isActive !== undefined) patch.isActive = Boolean(payload.isActive);
 
+  // Manejar campos de documentos
+  if (payload.identityDocumentUrl !== undefined)
+    patch.identityDocumentUrl = payload.identityDocumentUrl
+      ? String(payload.identityDocumentUrl).trim()
+      : null;
+  if (payload.rutDocumentUrl !== undefined)
+    patch.rutDocumentUrl = payload.rutDocumentUrl
+      ? String(payload.rutDocumentUrl).trim()
+      : null;
+  if (payload.commerceChamberDocumentUrl !== undefined)
+    patch.commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl
+      ? String(payload.commerceChamberDocumentUrl).trim()
+      : null;
+  if (payload.passportDocumentUrl !== undefined)
+    patch.passportDocumentUrl = payload.passportDocumentUrl
+      ? String(payload.passportDocumentUrl).trim()
+      : null;
+  if (payload.taxCertificateDocumentUrl !== undefined)
+    patch.taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl
+      ? String(payload.taxCertificateDocumentUrl).trim()
+      : null;
+  if (payload.companyIdDocumentUrl !== undefined)
+    patch.companyIdDocumentUrl = payload.companyIdDocumentUrl
+      ? String(payload.companyIdDocumentUrl).trim()
+      : null;
+  if (payload.hojaDeVidaUrl !== undefined)
+    patch.hojaDeVidaUrl = payload.hojaDeVidaUrl
+      ? String(payload.hojaDeVidaUrl).trim()
+      : null;
+  if (payload.certificadoLaboralUrl !== undefined)
+    patch.certificadoLaboralUrl = payload.certificadoLaboralUrl
+      ? String(payload.certificadoLaboralUrl).trim()
+      : null;
+  if (payload.certificadoEstudiosUrl !== undefined)
+    patch.certificadoEstudiosUrl = payload.certificadoEstudiosUrl
+      ? String(payload.certificadoEstudiosUrl).trim()
+      : null;
+  if (payload.epsCertificateUrl !== undefined)
+    patch.epsCertificateUrl = payload.epsCertificateUrl
+      ? String(payload.epsCertificateUrl).trim()
+      : null;
+  if (payload.pensionCertificateUrl !== undefined)
+    patch.pensionCertificateUrl = payload.pensionCertificateUrl
+      ? String(payload.pensionCertificateUrl).trim()
+      : null;
+  if (payload.bankCertificateUrl !== undefined)
+    patch.bankCertificateUrl = payload.bankCertificateUrl
+      ? String(payload.bankCertificateUrl).trim()
+      : null;
+
   try {
+    const currentEmployee = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.id, String(id)))
+      .limit(1);
+
+    if (currentEmployee.length === 0) {
+      return new Response("Empleado no encontrado", { status: 404 });
+    }
+
+    const employee = currentEmployee[0];
+
+    // Detectar cambios críticos
+    const criticalFields = [
+      "name",
+      "identification",
+      "identificationType",
+      "identityDocumentUrl",
+      "rutDocumentUrl",
+      "commerceChamberDocumentUrl",
+      "passportDocumentUrl",
+      "taxCertificateDocumentUrl",
+      "companyIdDocumentUrl",
+    ];
+
+    const changedFields: string[] = [];
+    for (const field of criticalFields) {
+      const key = field as keyof typeof employee;
+      const patchValue =
+        patch[key as keyof Partial<typeof employees.$inferInsert>];
+
+      if (patchValue !== undefined && employee[key] !== patchValue) {
+        changedFields.push(field);
+      }
+    }
     if (patch.identification) {
       const duplicatedEmployee = await db
         .select({ id: employees.id })
@@ -356,6 +560,20 @@ export async function PUT(request: Request) {
           { status: 409 },
         );
       }
+    }
+
+    // Si hay cambios críticos, crear EN_REVISION automáticamente
+    if (changedFields.length > 0) {
+      patch.isActive = false;
+
+      // Crear registro de estado jurídico EN_REVISION
+      await db.insert(legalStatusRecords).values({
+        thirdPartyId: String(id),
+        thirdPartyType: "EMPLEADO",
+        thirdPartyName: employee.name,
+        status: "EN_REVISION",
+        notes: `Cambios detectados: ${changedFields.join(", ")}`,
+      });
     }
 
     const updated = await db

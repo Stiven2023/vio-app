@@ -1,8 +1,9 @@
 import { eq, sql, desc } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { suppliers } from "@/src/db/schema";
+import { suppliers, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -34,9 +35,43 @@ export async function GET(request: Request) {
       .from(suppliers)
       .limit(pageSize)
       .offset(offset);
+
+    // Obtener el estado jurídico más reciente para cada proveedor
+    const itemsWithStatus = await Promise.all(
+      items.map(async (supplier) => {
+        const legalStatus = await db.query.legalStatusRecords.findFirst({
+          where: (record, { eq, and }) =>
+            and(
+              eq(record.thirdPartyId, supplier.id),
+              eq(record.thirdPartyType, "PROVEEDOR"),
+            ),
+          orderBy: (record, { desc }) => desc(record.createdAt),
+        });
+
+        const isActiveByLegalStatus =
+          legalStatus?.status === "VIGENTE"
+            ? true
+            : legalStatus?.status
+              ? false
+              : supplier.isActive;
+
+        return {
+          ...supplier,
+          isActive: isActiveByLegalStatus,
+          legalStatus: legalStatus?.status ?? null,
+        };
+      }),
+    );
+
     const hasNextPage = offset + items.length < total;
 
-    return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({
+      items: itemsWithStatus,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
@@ -102,6 +137,69 @@ export async function POST(request: Request) {
   // Generate supplier code
   const supplierCode = await generateSupplierCode();
 
+  // Obtener documentos del cliente si se proporciona clientId (para conversiones)
+  let sourceClientDocuments: {
+    identityDocumentUrl: string | null;
+    rutDocumentUrl: string | null;
+    commerceChamberDocumentUrl: string | null;
+    passportDocumentUrl: string | null;
+    taxCertificateDocumentUrl: string | null;
+    companyIdDocumentUrl: string | null;
+  } = {
+    identityDocumentUrl: null,
+    rutDocumentUrl: null,
+    commerceChamberDocumentUrl: null,
+    passportDocumentUrl: null,
+    taxCertificateDocumentUrl: null,
+    companyIdDocumentUrl: null,
+  };
+
+  if ((body as any).clientId) {
+    const sourceClient = await db
+      .select()
+      .from(clients)
+      .where(eq(clients.id, String((body as any).clientId)))
+      .limit(1);
+
+    if (sourceClient.length > 0) {
+      const client = sourceClient[0];
+      sourceClientDocuments = {
+        identityDocumentUrl: client.identityDocumentUrl,
+        rutDocumentUrl: client.rutDocumentUrl,
+        commerceChamberDocumentUrl: client.commerceChamberDocumentUrl,
+        passportDocumentUrl: client.passportDocumentUrl,
+        taxCertificateDocumentUrl: client.taxCertificateDocumentUrl,
+        companyIdDocumentUrl: client.companyIdDocumentUrl,
+      };
+    }
+  }
+
+  const mergedPayload = {
+    ...body,
+    identityDocumentUrl:
+      (body as any).identityDocumentUrl || sourceClientDocuments.identityDocumentUrl,
+    rutDocumentUrl: (body as any).rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+    commerceChamberDocumentUrl:
+      (body as any).commerceChamberDocumentUrl ||
+      sourceClientDocuments.commerceChamberDocumentUrl,
+    passportDocumentUrl:
+      (body as any).passportDocumentUrl || sourceClientDocuments.passportDocumentUrl,
+    taxCertificateDocumentUrl:
+      (body as any).taxCertificateDocumentUrl ||
+      sourceClientDocuments.taxCertificateDocumentUrl,
+    companyIdDocumentUrl:
+      (body as any).companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+  };
+
+  const missingDocumentError = getMissingRequiredDocumentMessage(
+    String(mergedPayload.identificationType ?? ""),
+    mergedPayload as Record<string, unknown>,
+  );
+
+  if (missingDocumentError) {
+    return new Response(missingDocumentError, { status: 400 });
+  }
+
   const created = await db
     .insert(suppliers)
     .values({
@@ -126,14 +224,34 @@ export async function POST(request: Request) {
       landline: body.landline,
       extension: body.extension,
       fullLandline: body.fullLandline,
-      isActive: true,
+      isActive: false,
       hasCredit: body.hasCredit || false,
       promissoryNoteNumber: body.promissoryNoteNumber,
       promissoryNoteDate: body.promissoryNoteDate
         ? new Date(body.promissoryNoteDate).toISOString()
         : undefined,
+      // Documentos del formulario o copiados del cliente
+      identityDocumentUrl: mergedPayload.identityDocumentUrl,
+      rutDocumentUrl: mergedPayload.rutDocumentUrl,
+      commerceChamberDocumentUrl: mergedPayload.commerceChamberDocumentUrl,
+      passportDocumentUrl: mergedPayload.passportDocumentUrl,
+      taxCertificateDocumentUrl: mergedPayload.taxCertificateDocumentUrl,
+      companyIdDocumentUrl: mergedPayload.companyIdDocumentUrl,
     })
     .returning();
+
+  const newSupplierId = created[0]?.id;
+
+  // Crear registro de estado jurídico iniciando con EN_REVISION
+  if (typeof newSupplierId === "string") {
+    await db.insert(legalStatusRecords).values({
+      thirdPartyId: newSupplierId,
+      thirdPartyType: "PROVEEDOR",
+      thirdPartyName: body.name ?? "",
+      status: "EN_REVISION",
+      notes: "Estado inicial al crear proveedor",
+    });
+  }
 
   return Response.json(created, { status: 201 });
 }
@@ -218,6 +336,82 @@ export async function PUT(request: Request) {
     patch.promissoryNoteDate = data.promissoryNoteDate
       ? new Date(data.promissoryNoteDate).toISOString()
       : null;
+
+  // Manejar campos de documentos
+  if (data.identityDocumentUrl !== undefined)
+    patch.identityDocumentUrl = data.identityDocumentUrl
+      ? String(data.identityDocumentUrl).trim()
+      : null;
+  if (data.rutDocumentUrl !== undefined)
+    patch.rutDocumentUrl = data.rutDocumentUrl
+      ? String(data.rutDocumentUrl).trim()
+      : null;
+  if (data.commerceChamberDocumentUrl !== undefined)
+    patch.commerceChamberDocumentUrl = data.commerceChamberDocumentUrl
+      ? String(data.commerceChamberDocumentUrl).trim()
+      : null;
+  if (data.passportDocumentUrl !== undefined)
+    patch.passportDocumentUrl = data.passportDocumentUrl
+      ? String(data.passportDocumentUrl).trim()
+      : null;
+  if (data.taxCertificateDocumentUrl !== undefined)
+    patch.taxCertificateDocumentUrl = data.taxCertificateDocumentUrl
+      ? String(data.taxCertificateDocumentUrl).trim()
+      : null;
+  if (data.companyIdDocumentUrl !== undefined)
+    patch.companyIdDocumentUrl = data.companyIdDocumentUrl
+      ? String(data.companyIdDocumentUrl).trim()
+      : null;
+
+  // Obtener supplier actual para detectar cambios críticos
+  const currentSupplier = await db
+    .select()
+    .from(suppliers)
+    .where(eq(suppliers.id, String(id)))
+    .limit(1);
+
+  if (currentSupplier.length === 0) {
+    return new Response("Proveedor no encontrado", { status: 404 });
+  }
+
+  const supplier = currentSupplier[0];
+
+  // Detectar cambios críticos
+  const criticalFields = [
+    "name",
+    "identification",
+    "identificationType",
+    "identityDocumentUrl",
+    "rutDocumentUrl",
+    "commerceChamberDocumentUrl",
+    "passportDocumentUrl",
+    "taxCertificateDocumentUrl",
+    "companyIdDocumentUrl",
+  ];
+
+  const changedFields: string[] = [];
+  for (const field of criticalFields) {
+    const key = field as keyof typeof supplier;
+    const patchValue = patch[key as keyof Partial<typeof suppliers.$inferInsert>];
+
+    if (patchValue !== undefined && supplier[key] !== patchValue) {
+      changedFields.push(field);
+    }
+  }
+
+  // Si hay cambios críticos, crear EN_REVISION automáticamente
+  if (changedFields.length > 0) {
+    patch.isActive = false;
+
+    // Crear registro de estado jurídico EN_REVISION
+    await db.insert(legalStatusRecords).values({
+      thirdPartyId: String(id),
+      thirdPartyType: "PROVEEDOR",
+      thirdPartyName: supplier.name,
+      status: "EN_REVISION",
+      notes: `Cambios detectados: ${changedFields.join(", ")}`,
+    });
+  }
 
   const updated = await db
     .update(suppliers)

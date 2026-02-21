@@ -4,11 +4,6 @@ export const CLIENT_TYPES = [
   { value: "EMPLEADO", label: "Empleado (EM)" },
 ];
 
-export const PERSON_TYPES = [
-  { value: "NATURAL", label: "Persona Natural" },
-  { value: "JURIDICA", label: "Persona Jurídica" },
-];
-
 export const IDENTIFICATION_TYPES = [
   { value: "CC", label: "Cédula de ciudadanía (CC)" },
   { value: "NIT", label: "NIT" },

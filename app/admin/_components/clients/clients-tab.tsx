@@ -31,6 +31,7 @@ import {
   BsTruck,
   BsScissors,
   BsFileEarmarkPdf,
+  BsShieldCheck,
 } from "react-icons/bs";
 import { Chip } from "@heroui/chip";
 
@@ -44,6 +45,7 @@ import { FilterSelect } from "../ui/filter-select";
 import { ClientModal } from "./client-modal";
 import { ClientDetailsModal } from "./client-details-modal";
 import { ClientDocumentsModal } from "./client-documents-modal";
+import { ClientLegalStatusModal } from "./client-legal-status-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -73,9 +75,11 @@ export function ClientsTab({
   const [modalOpen, setModalOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
   const [viewing, setViewing] = useState<Client | null>(null);
   const [viewingDocuments, setViewingDocuments] = useState<Client | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -342,7 +346,6 @@ export function ClientsTab({
             "Código",
             "Nombre",
             "Tipo ID",
-            "Identificación",
             "Tipo precio COP",
             "Email",
             "Móvil",
@@ -356,11 +359,11 @@ export function ClientsTab({
             <TableColumn>CÓDIGO</TableColumn>
             <TableColumn>NOMBRE</TableColumn>
             <TableColumn>TIPO ID</TableColumn>
-            <TableColumn>IDENTIFICACIÓN</TableColumn>
             <TableColumn>TIPO PRECIO COP</TableColumn>
             <TableColumn>EMAIL</TableColumn>
             <TableColumn>MÓVIL</TableColumn>
             <TableColumn>ESTADO</TableColumn>
+            <TableColumn>ESTADO JURÍDICO</TableColumn>
             <TableColumn>ACCIONES</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
@@ -393,9 +396,6 @@ export function ClientsTab({
                   <Chip size="sm" variant="flat">
                     {c.identificationType}
                   </Chip>
-                </TableCell>
-                <TableCell className="font-mono text-xs text-default-600">
-                  {c.identification}
                 </TableCell>
                 <TableCell>
                   <Chip size="sm" variant="flat">
@@ -440,6 +440,31 @@ export function ClientsTab({
                   </Chip>
                 </TableCell>
                 <TableCell>
+                  {c.legalStatus ? (
+                    <Chip
+                      color={
+                        c.legalStatus === "VIGENTE"
+                          ? "success"
+                          : c.legalStatus === "EN_REVISION"
+                            ? "warning"
+                            : "danger"
+                      }
+                      size="sm"
+                      variant="flat"
+                    >
+                      {c.legalStatus === "VIGENTE"
+                        ? "Vigente"
+                        : c.legalStatus === "EN_REVISION"
+                          ? "En Revisión"
+                          : "Bloqueado"}
+                    </Chip>
+                  ) : (
+                    <Chip color="default" size="sm" variant="flat">
+                      Sin definir
+                    </Chip>
+                  )}
+                </TableCell>
+                <TableCell>
                   <Dropdown>
                     <DropdownTrigger>
                       <Button
@@ -470,6 +495,16 @@ export function ClientsTab({
                         }}
                       >
                         Ver documentos
+                      </DropdownItem>
+                      <DropdownItem
+                        key={`legal-status-${c.id}`}
+                        startContent={<span>⚖️</span>}
+                        onPress={() => {
+                          setViewingLegalStatus(c);
+                          setLegalStatusModalOpen(true);
+                        }}
+                      >
+                        Ver estado jurídico
                       </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
@@ -562,6 +597,16 @@ export function ClientsTab({
                       >
                         Crear como confeccionista
                       </DropdownItem>
+                      <DropdownItem
+                        key="legal-status"
+                        startContent={<BsShieldCheck />}
+                        onPress={() => {
+                          setViewingLegalStatus(c);
+                          setLegalStatusModalOpen(true);
+                        }}
+                      >
+                        Ver estado jurídico
+                      </DropdownItem>
                       {canDelete ? (
                         <DropdownItem
                           key="delete"
@@ -609,6 +654,12 @@ export function ClientsTab({
         client={viewingDocuments}
         isOpen={documentsOpen}
         onOpenChange={setDocumentsOpen}
+      />
+
+      <ClientLegalStatusModal
+        client={viewingLegalStatus}
+        isOpen={legalStatusModalOpen}
+        onOpenChange={setLegalStatusModalOpen}
       />
 
       <ConfirmActionModal

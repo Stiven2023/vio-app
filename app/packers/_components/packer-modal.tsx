@@ -2,7 +2,7 @@
 
 import type { Packer } from "./packers-tab";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
@@ -27,6 +27,8 @@ import {
   LocationIcon,
   PhoneIcon,
 } from "@/components/form-tab-title";
+import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
+import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -67,6 +69,12 @@ type FormState = {
   department: string;
   dailyCapacity: string;
   isActive: boolean;
+  identityDocumentUrl: string;
+  rutDocumentUrl: string;
+  commerceChamberDocumentUrl: string;
+  passportDocumentUrl: string;
+  taxCertificateDocumentUrl: string;
+  companyIdDocumentUrl: string;
 };
 
 export function PackerModal({
@@ -126,12 +134,19 @@ export function PackerModal({
     department: "ANTIOQUIA",
     dailyCapacity: "",
     isActive: true,
+    identityDocumentUrl: "",
+    rutDocumentUrl: "",
+    commerceChamberDocumentUrl: "",
+    passportDocumentUrl: "",
+    taxCertificateDocumentUrl: "",
+    companyIdDocumentUrl: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [importPromptOpen, setImportPromptOpen] = useState(false);
   const [importCandidate, setImportCandidate] = useState<ImportData | null>(null);
   const [importMessage, setImportMessage] = useState("");
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -163,6 +178,12 @@ export function PackerModal({
           ? ""
           : String(packer.dailyCapacity),
       isActive: Boolean(packer?.isActive ?? true),
+      identityDocumentUrl: packer?.identityDocumentUrl ?? "",
+      rutDocumentUrl: packer?.rutDocumentUrl ?? "",
+      commerceChamberDocumentUrl: packer?.commerceChamberDocumentUrl ?? "",
+      passportDocumentUrl: packer?.passportDocumentUrl ?? "",
+      taxCertificateDocumentUrl: packer?.taxCertificateDocumentUrl ?? "",
+      companyIdDocumentUrl: packer?.companyIdDocumentUrl ?? "",
     });
   }, [packer, isOpen]);
 
@@ -233,8 +254,44 @@ export function PackerModal({
     toast.success("Datos importados desde otro módulo");
   };
 
+  const isIdentificationValidByType = (identificationType: string, identification: string) => {
+    const value = identification.trim();
+    if (!value) return false;
+
+    switch (identificationType) {
+      case "CC":
+        return /^\d{6,10}$/.test(value);
+      case "NIT":
+        return /^\d{8,12}$/.test(value);
+      case "CE":
+        return /^[A-Za-z0-9]{5,15}$/.test(value);
+      case "PAS":
+        return /^[A-Za-z0-9]{5,20}$/.test(value);
+      case "EMPRESA_EXTERIOR":
+        return value.length >= 3;
+      default:
+        return false;
+    }
+  };
+
   const submit = async () => {
     if (submitting) return;
+
+    // Validar formato de identificación por tipo
+    if (!isIdentificationValidByType(form.identificationType, form.identification)) {
+      const typeLabel = identificationTypes.find((t) => t.value === form.identificationType)?.label || form.identificationType;
+      const formatMessages: Record<string, string> = {
+        CC: "La Cédula debe tener entre 6 y 10 dígitos",
+        NIT: "El NIT debe tener entre 8 y 12 dígitos",
+        CE: "La Cédula de Extranjería debe tener entre 5 y 15 caracteres alfanuméricos",
+        PAS: "El Pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
+        EMPRESA_EXTERIOR: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+      };
+      const message = formatMessages[form.identificationType] || `Formato inválido para ${typeLabel}`;
+      setErrors((prev) => ({ ...prev, identification: message }));
+      toast.error(message);
+      return;
+    }
 
     const parsed = packerSchema.safeParse({
       name: form.name,
@@ -252,6 +309,17 @@ export function PackerModal({
         next[String(issue.path[0] ?? "form")] = issue.message;
       setErrors(next);
 
+      return;
+    }
+
+    const missingDocumentError = getMissingRequiredDocumentMessage(
+      form.identificationType,
+      form as unknown as Record<string, unknown>,
+    );
+
+    if (missingDocumentError) {
+      setErrors((prev) => ({ ...prev, documents: missingDocumentError }));
+      toast.error(missingDocumentError);
       return;
     }
 
@@ -276,6 +344,12 @@ export function PackerModal({
       department: form.department.trim() ? form.department.trim() : "ANTIOQUIA",
       dailyCapacity: form.dailyCapacity.trim() ? Number(form.dailyCapacity) : null,
       isActive: form.isActive,
+      identityDocumentUrl: form.identityDocumentUrl || null,
+      rutDocumentUrl: form.rutDocumentUrl || null,
+      commerceChamberDocumentUrl: form.commerceChamberDocumentUrl || null,
+      passportDocumentUrl: form.passportDocumentUrl || null,
+      taxCertificateDocumentUrl: form.taxCertificateDocumentUrl || null,
+      companyIdDocumentUrl: form.companyIdDocumentUrl || null,
     };
 
     try {
@@ -331,8 +405,13 @@ export function PackerModal({
                   isInvalid={Boolean(errors.identification)}
                   label="Identificación"
                   value={form.identification}
-                  onBlur={checkIdentification}
-                  onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
+                  onValueChange={(v) => {
+                    setForm((s) => ({ ...s, identification: v }));
+                    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+                    debounceTimerRef.current = setTimeout(() => {
+                      checkIdentification();
+                    }, 500);
+                  }}
                 />
 
                 <Input
@@ -468,6 +547,23 @@ export function PackerModal({
                   onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
                 />
               </div>
+            </Tab>
+
+            <Tab
+              key="documentos"
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Documentos" />}
+            >
+              <IdentificationDocumentsSection
+                disabled={!form.identificationType}
+                errors={errors}
+                identificationType={form.identificationType}
+                uploadFolder="packers/documents"
+                values={form}
+                onChange={(field, url) =>
+                  setForm((s) => ({ ...s, [field]: url }))
+                }
+                onClear={(field) => setForm((s) => ({ ...s, [field]: "" }))}
+              />
             </Tab>
           </Tabs>
         </ModalBody>

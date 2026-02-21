@@ -1,11 +1,14 @@
 import { eq, sql, desc } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, employees } from "@/src/db/schema";
+import { clients, employees, clientLegalStatusHistory } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { syncClientLegalStatusWithIsActive } from "@/app/admin/_lib/sync-client-legal-status";
+import { detectCriticalFieldChanges, registerAutoRevisionOnClientChange } from "@/app/admin/_lib/sync-client-legal-status";
+import { validateRequiredDocuments } from "@/app/admin/_lib/client-document-requirements";
 
 /**
  * Formatea un número de teléfono móvil con código internacional
@@ -88,14 +91,39 @@ export async function GET(request: Request) {
       .select({ total: sql<number>`count(*)::int` })
       .from(clients);
 
-    const items = await db
+    // Obtener todos los clientes
+    const allClients = await db
       .select()
       .from(clients)
-      .limit(pageSize)
-      .offset(offset);
-    const hasNextPage = offset + items.length < total;
+      .orderBy(desc(clients.createdAt));
 
-    return Response.json({ items, page, pageSize, total, hasNextPage });
+    // Para cada cliente, obtener su estado jurídico más reciente
+    const itemsWithStatus = await Promise.all(
+      allClients.slice(offset, offset + pageSize).map(async (client) => {
+        const latestStatus = await db.query.clientLegalStatusHistory.findFirst({
+          where: eq(clientLegalStatusHistory.clientId, client.id),
+          orderBy: desc(clientLegalStatusHistory.createdAt),
+          columns: { status: true },
+        });
+
+        const isActiveByLegalStatus =
+          latestStatus?.status === "VIGENTE"
+            ? true
+            : latestStatus?.status
+              ? false
+              : client.isActive;
+
+        return {
+          ...client,
+          isActive: isActiveByLegalStatus,
+          legalStatus: latestStatus?.status || null,
+        };
+      })
+    );
+
+    const hasNextPage = offset + itemsWithStatus.length < total;
+
+    return Response.json({ items: itemsWithStatus, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
@@ -121,8 +149,8 @@ export async function POST(request: Request) {
   // TIPO DE CLIENTE (para generar código)
   const clientType = String(payload.clientType ?? "NACIONAL").trim();
   const priceClientType = String(payload.priceClientType ?? "VIOMAR").trim();
-  // Tipo de persona y documentos (para clientes nacionales y extranjeros)
-  const personType = payload.personType ? String(payload.personType).trim() : null;
+  
+  // Documentos requeridos según identificationType
   const identityDocumentUrl = payload.identityDocumentUrl 
     ? String(payload.identityDocumentUrl).trim() 
     : null;
@@ -230,90 +258,25 @@ export async function POST(request: Request) {
       status: 400,
     });
   }
-  // Validación de documentos para clientes nacionales
-  if (clientType === "NACIONAL") {
-    if (!personType) {
-      return new Response(
-        "El tipo de persona es requerido para clientes nacionales",
-        { status: 400 }
-      );
+
+  // Validación de documentos basada en identificationType
+  const docsValidation = validateRequiredDocuments(
+    identificationType as any,
+    {
+      identityDocumentUrl,
+      rutDocumentUrl,
+      commerceChamberDocumentUrl,
+      passportDocumentUrl,
+      taxCertificateDocumentUrl,
+      companyIdDocumentUrl,
     }
-    
-    if (personType === "NATURAL") {
-      if (!identityDocumentUrl) {
-        return new Response(
-          "La cédula del titular es requerida para personas naturales",
-          { status: 400 }
-        );
-      }
-      if (!rutDocumentUrl) {
-        return new Response(
-          "El RUT es requerido para personas naturales",
-          { status: 400 }
-        );
-      }
-    }
-    
-    if (personType === "JURIDICA") {
-      if (!rutDocumentUrl) {
-        return new Response(
-          "El RUT es requerido para personas jurídicas",
-          { status: 400 }
-        );
-      }
-      if (!commerceChamberDocumentUrl) {
-        return new Response(
-          "La Cámara de Comercio es requerida para personas jurídicas",
-          { status: 400 }
-        );
-      }
-      if (!identityDocumentUrl) {
-        return new Response(
-          "La cédula del representante legal es requerida para personas jurídicas",
-          { status: 400 }
-        );
-      }
-    }
-  }
-  
-  // Validación de documentos para clientes extranjeros
-  if (clientType === "EXTRANJERO") {
-    if (!personType) {
-      return new Response(
-        "El tipo de persona es requerido para clientes extranjeros",
-        { status: 400 }
-      );
-    }
-    
-    if (personType === "NATURAL") {
-      if (!identityDocumentUrl) {
-        return new Response(
-          "El ID extranjero (CE/Pasaporte) es requerido para personas naturales",
-          { status: 400 }
-        );
-      }
-      if (!passportDocumentUrl) {
-        return new Response(
-          "El Pasaporte/PPT es requerido para personas naturales extranjeras",
-          { status: 400 }
-        );
-      }
-    }
-    
-    if (personType === "JURIDICA") {
-      if (!taxCertificateDocumentUrl) {
-        return new Response(
-          "El Certificado tributario es requerido para empresas extranjeras",
-          { status: 400 }
-        );
-      }
-      if (!companyIdDocumentUrl) {
-        return new Response(
-          "El ID de la empresa es requerido para empresas extranjeras",
-          { status: 400 }
-        );
-      }
-    }
+  );
+
+  if (!docsValidation.isValid) {
+    return new Response(
+      `Documentos faltantes para ${identificationType}: ${docsValidation.missingDocuments.join(", ")}`,
+      { status: 400 }
+    );
   }
 
   const hasCredit = Boolean(payload.hasCredit);
@@ -405,14 +368,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const created = await db
+    const [newClient] = await db
       .insert(clients)
       .values({
         // CÓDIGO Y TIPO
         clientCode,
         clientType: clientType as "NACIONAL" | "EXTRANJERO" | "EMPLEADO",
-        // TIPO DE PERSONA Y DOCUMENTOS
-        personType: personType as "NATURAL" | "JURIDICA" | null,
+        // DOCUMENTOS (determinados por identificationType)
         identityDocumentUrl,
         rutDocumentUrl,
         commerceChamberDocumentUrl,
@@ -463,18 +425,29 @@ export async function POST(request: Request) {
           | "MAYORISTA"
           | "VIOMAR"
           | "COLANTA",
-        status: (payload.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO") ||
-          "ACTIVO",
+        status: "INACTIVO",
         hasCredit: payload.hasCredit ?? false,
         promissoryNoteNumber: payload.promissoryNoteNumber
           ? String(payload.promissoryNoteNumber).trim()
           : null,
         promissoryNoteDate: payload.promissoryNoteDate || null,
-        isActive: payload.isActive ?? true,
+        // Clientes nuevos inician inactivos hasta revisión jurídica
+        isActive: false,
       })
       .returning();
 
-    return Response.json(created, { status: 201 });
+    // Crear estado jurídico inicial "EN_REVISION" para clientes nuevos
+    await db.insert(clientLegalStatusHistory).values({
+      clientId: newClient.id,
+      clientName: newClient.name,
+      status: "EN_REVISION",
+      notes: "Cliente nuevo - requiere revisión jurídica inicial",
+      createdAt: new Date(),
+    });
+
+    console.log(`📋 Cliente ${newClient.clientCode} creado en estado EN_REVISION`);
+
+    return Response.json(newClient, { status: 201 });
   } catch (e: unknown) {
     const code =
       typeof e === "object" && e && "code" in e
@@ -509,6 +482,21 @@ export async function PUT(request: Request) {
 
   if (!id) {
     return new Response("Client ID required", { status: 400 });
+  }
+
+  // Obtener cliente actual para detectar cambios
+  let currentClient;
+  try {
+    currentClient = await db.query.clients.findFirst({
+      where: eq(clients.id, String(id)),
+    });
+
+    if (!currentClient) {
+      return new Response("Cliente no encontrado", { status: 404 });
+    }
+  } catch (error) {
+    console.error("Error obteniendo cliente actual:", error);
+    return new Response("Error al obtener datos del cliente", { status: 500 });
   }
 
   if (
@@ -547,11 +535,7 @@ export async function PUT(request: Request) {
   if (payload.branch !== undefined)
     patch.branch = payload.branch ? String(payload.branch).trim() : null;
   
-  // TIPO DE PERSONA Y DOCUMENTOS
-  if (payload.personType !== undefined)
-    patch.personType = payload.personType 
-      ? (String(payload.personType).trim() as "NATURAL" | "JURIDICA") 
-      : null;
+  // DOCUMENTOS (determinados por identificationType)
   if (payload.identityDocumentUrl !== undefined)
     patch.identityDocumentUrl = payload.identityDocumentUrl 
       ? String(payload.identityDocumentUrl).trim() 
@@ -668,6 +652,16 @@ export async function PUT(request: Request) {
   if (payload.isActive !== undefined) patch.isActive = payload.isActive;
 
   try {
+    // Verificar isActive contra estado jurídico del cliente
+    // Si no tiene estado jurídico o está bloqueado/en revisión, debe estar inactivo
+    if (payload.isActive !== undefined || !patch.isActive) {
+      const finalIsActive = await syncClientLegalStatusWithIsActive(
+        String(id),
+        payload.isActive
+      );
+      patch.isActive = finalIsActive;
+    }
+
     if (patch.identification) {
       const duplicatedClient = await db
         .select({ id: clients.id })
@@ -701,6 +695,38 @@ export async function PUT(request: Request) {
       .set(patch)
       .where(eq(clients.id, String(id)))
       .returning();
+
+    // Detectar cambios en campos críticos y registrar automáticamente revisión
+    if (updated.length > 0) {
+      const changedFields = detectCriticalFieldChanges(currentClient, patch);
+
+      if (changedFields.length > 0) {
+        try {
+          // Registrar automáticamente EN_REVISION y establecer isActive = false, status = INACTIVO
+          await registerAutoRevisionOnClientChange(
+            String(id),
+            updated[0].name,
+            changedFields
+          );
+
+          // Actualizar isActive a false y status a INACTIVO por el cambio automático
+          await db
+            .update(clients)
+            .set({ isActive: false, status: "INACTIVO" })
+            .where(eq(clients.id, String(id)));
+
+          console.log(
+            `⚠️ Cliente ${id} enviado a revisión automáticamente. Campos modificados: ${changedFields.join(", ")}`
+          );
+        } catch (revisionError) {
+          console.error(
+            "Advertencia: No se pudo registrar revisión automática:",
+            revisionError
+          );
+          // No lanzar error, solo registrar la advertencia
+        }
+      }
+    }
 
     return Response.json(updated);
   } catch (e: unknown) {

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Confectionist } from "./confectionists-tab";
+import { useState } from "react";
 
 import {
   Modal,
@@ -10,6 +11,7 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
+import { ClientDocumentsPreviewModal } from "@/app/admin/_components/clients/client-documents-preview-modal";
 
 function showValue(value: string | number | boolean | null | undefined) {
   if (value === null || value === undefined || value === "") return "—";
@@ -34,6 +36,18 @@ export function ConfectionistDetailsModal({
   onRequestCreateSupplier?: () => void;
   onRequestCreatePacker?: () => void;
 }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<{
+    label: string;
+    url: string | null;
+  }>({ label: "", url: null });
+
+  const openDocument = (label: string, url: string | null | undefined) => {
+    if (!url) return;
+    setSelectedDocument({ label, url });
+    setPreviewOpen(true);
+  };
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
       <ModalContent>
@@ -77,6 +91,76 @@ export function ConfectionistDetailsModal({
                   <div><span className="font-semibold">Creado:</span> {new Date(confectionist.createdAt).toLocaleString("es-CO")}</div>
                 </div>
               )}
+
+              <div className="border-t pt-3 space-y-2">
+                <h4 className="font-semibold">Documentos</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <Button
+                    isDisabled={!confectionist.identityDocumentUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() =>
+                      openDocument("Documento de identidad", confectionist.identityDocumentUrl)
+                    }
+                  >
+                    Ver documento de identidad
+                  </Button>
+                  <Button
+                    isDisabled={!confectionist.rutDocumentUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() => openDocument("RUT", confectionist.rutDocumentUrl)}
+                  >
+                    Ver RUT
+                  </Button>
+                  <Button
+                    isDisabled={!confectionist.commerceChamberDocumentUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() =>
+                      openDocument(
+                        "Cámara de comercio",
+                        confectionist.commerceChamberDocumentUrl,
+                      )
+                    }
+                  >
+                    Ver cámara de comercio
+                  </Button>
+                  <Button
+                    isDisabled={!confectionist.passportDocumentUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() =>
+                      openDocument("Pasaporte", confectionist.passportDocumentUrl)
+                    }
+                  >
+                    Ver pasaporte
+                  </Button>
+                  <Button
+                    isDisabled={!confectionist.taxCertificateDocumentUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() =>
+                      openDocument(
+                        "Certificado tributario",
+                        confectionist.taxCertificateDocumentUrl,
+                      )
+                    }
+                  >
+                    Ver certificado tributario
+                  </Button>
+                  <Button
+                    isDisabled={!confectionist.companyIdDocumentUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() =>
+                      openDocument("ID de empresa", confectionist.companyIdDocumentUrl)
+                    }
+                  >
+                    Ver ID empresa
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </ModalBody>
@@ -106,6 +190,13 @@ export function ConfectionistDetailsModal({
           </Button>
         </ModalFooter>
       </ModalContent>
+
+      <ClientDocumentsPreviewModal
+        documentLabel={selectedDocument.label}
+        documentUrl={selectedDocument.url}
+        isOpen={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </Modal>
   );
 }

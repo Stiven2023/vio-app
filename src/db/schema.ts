@@ -46,12 +46,6 @@ export const clientPriceTypeEnum = pgEnum("client_price_type", [
   "COLANTA",
 ]);
 
-// Enum de tipo de persona (natural o jurídica)
-export const personTypeEnum = pgEnum("person_type", [
-  "NATURAL",
-  "JURIDICA",
-]);
-
 // Enum de tipo de tercero (para módulo jurídico)
 export const thirdPartyTypeEnum = pgEnum("third_party_type", [
   "EMPLEADO",
@@ -65,7 +59,6 @@ export const thirdPartyTypeEnum = pgEnum("third_party_type", [
 export const legalStatusEnum = pgEnum("legal_status_status", [
   "VIGENTE",           // Sin problemas, puede operar
   "EN_REVISION",       // Bajo revisión, operación pendiente
-  "RESTRICCION",       // Con restricciones, operación limitada
   "BLOQUEADO",         // Bloqueado, no puede operar
 ]);
 
@@ -150,6 +143,9 @@ export const permissionEnum = pgEnum("permission", [
   "EDITAR_CLIENTE",
   "ELIMINAR_CLIENTE",
   "VER_CLIENTE",
+  "VER_ESTADO_JURIDICO_CLIENTE",
+  "CAMBIAR_ESTADO_JURIDICO_CLIENTE",
+  "VER_HISTORIAL_ESTADO_JURIDICO",
   // Confeccionistas
   "CREAR_CONFECCIONISTA",
   "EDITAR_CONFECCIONISTA",
@@ -288,28 +284,44 @@ export const employees = pgTable("employees", {
   // --- CÓDIGO AUTOGENERADO ---
   employeeCode: varchar("employee_code", { length: 20 }).unique().notNull(),
   
-  // --- IDENTIFICACIÓN Y NOMBRE (Basado en Maestro) ---
-  name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
-  identificationType: identificationTypeEnum("identification_type").notNull(), // CC, CE, etc.
-  identification: varchar("identification", { length: 20 }).unique().notNull(),
-  dv: varchar("dv", { length: 1 }), // Dígito de verificación (si aplica)
+  // --- DOCUMENTOS (Igual que clientes) ---
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de comercio
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa
+
+  // --- DOCUMENTOS DEL EMPLEADO ---
+  hojaDeVidaUrl: varchar("hoja_de_vida_url", { length: 500 }),
+  certificadoLaboralUrl: varchar("certificado_laboral_url", { length: 500 }),
+  certificadoEstudiosUrl: varchar("certificado_estudios_url", { length: 500 }),
+  epsCertificateUrl: varchar("eps_certificate_url", { length: 500 }),
+  pensionCertificateUrl: varchar("pension_certificate_url", { length: 500 }),
+  bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
   
-  // --- CONTACTO DETALLADO (Basado en Estructura Imagen 1) ---
+  // --- IDENTIFICACIÓN Y NOMBRE ---
+  name: varchar("name", { length: 255 }).notNull(),
+  identificationType: identificationTypeEnum("identification_type").notNull(),
+  identification: varchar("identification", { length: 20 }).unique().notNull(),
+  dv: varchar("dv", { length: 1 }),
+  
+  // --- CONTACTO DETALLADO ---
   email: varchar("email", { length: 255 }).notNull(),
   intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
   mobile: varchar("mobile", { length: 20 }),
-  fullMobile: varchar("full_mobile", { length: 25 }), // Concatenado para el programa
+  fullMobile: varchar("full_mobile", { length: 25 }),
   landline: varchar("landline", { length: 20 }),
   extension: varchar("extension", { length: 10 }),
 
-  // --- UBICACIÓN (Consistencia con Clientes) ---
+  // --- UBICACIÓN ---
   address: varchar("address", { length: 255 }),
   city: varchar("city", { length: 100 }).default("Medellín"),
   department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
 
   // --- ROL Y ESTADO ---
   roleId: uuid("role_id").references(() => roles.id),
-  isActive: boolean("is_active").default(true),
+  isActive: boolean("is_active").default(false),
   
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -324,20 +336,20 @@ export const clients = pgTable("clients", {
   clientCode: varchar("client_code", { length: 20 }).unique().notNull(), // "CN10001", "CE10001", "EM10001"
   clientType: clientTypeEnum("client_type").notNull(), // NACIONAL, EXTRANJERO, EMPLEADO
   
-  // --- TIPO DE PERSONA Y DOCUMENTOS ---
-  personType: personTypeEnum("person_type"), // NATURAL o JURIDICA (null para empleados)
+  // --- DOCUMENTOS ---
+  // El tipo de persona se deduce del identificationType:
+  // CC → Persona Natural Nacional
+  // NIT → Empresa Nacional
+  // CE → Persona Natural Extranjera
+  // PAS → Persona Natural Extranjera (Venezolano)
+  // EMPRESA_EXTERIOR → Empresa Extranjera
   
-  // Documentos NACIONAL NATURAL: identityDocumentUrl + rutDocumentUrl
-  // Documentos NACIONAL JURIDICA: rutDocumentUrl + commerceChamberDocumentUrl + identityDocumentUrl (rep. legal)
-  // Documentos EXTRANJERO NATURAL: identityDocumentUrl + passportDocumentUrl
-  // Documentos EXTRANJERO JURIDICA: taxCertificateDocumentUrl + companyIdDocumentUrl
-  
-  identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula titular (nacional natural) / Cédula rep. legal (nacional jurídica) / ID extranjero (extranjero natural)
-  rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT (solo nacionales)
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de Comercio (nacional jurídica)
-  passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte/PPT (extranjero natural)
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario (extranjero jurídica)
-  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa (extranjero jurídica)
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE / Cédula rep. legal (NIT)
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT (CC, NIT)
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de Comercio (NIT)
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte/PPT (CE, PAS, EMPRESA_EXTERIOR)
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario (EMPRESA_EXTERIOR)
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa (EMPRESA_EXTERIOR)
   
   // --- IDENTIFICACIÓN Y NOMBRE (Imagen 1 y 2) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
@@ -377,6 +389,24 @@ export const clients = pgTable("clients", {
   promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
   promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
   
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+	 ESTADO JURÍDICO DE CLIENTES
+========================= */
+
+export const clientLegalStatusHistory = pgTable("client_legal_status_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  clientName: varchar("client_name", { length: 255 }).notNull(), // Denormalizado para búsqueda
+  status: legalStatusEnum("status").notNull(), // VIGENTE, EN_REVISION, BLOQUEADO
+  notes: text("notes"), // Notas/observaciones del estado
+  reviewedBy: varchar("reviewed_by", { length: 255 }), // Usuario que realizó la revisión
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }).defaultNow(), // Fecha de la revisión
+  changedFields: text("changed_fields"), // Campos modificados (JSON serializado) cuando es cambio automático
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -542,6 +572,14 @@ export const confectionists = pgTable("confectionists", {
   // --- CÓDIGO AUTOGENERADO ---
   confectionistCode: varchar("confectionist_code", { length: 20 }).unique().notNull(),
   
+  // --- DOCUMENTOS ---
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }),
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
+  
   // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
   identificationType: identificationTypeEnum("identification_type").notNull(), // CC o NIT (común en talleres)
@@ -570,7 +608,7 @@ export const confectionists = pgTable("confectionists", {
   city: varchar("city", { length: 100 }).default("Medellín"),
 
   // --- ESTADO ---
-  isActive: boolean("is_active").default(true),
+  isActive: boolean("is_active").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -594,6 +632,14 @@ export const suppliers = pgTable("suppliers", {
   
   // --- CÓDIGO AUTOGENERADO ---
   supplierCode: varchar("supplier_code", { length: 20 }).unique().notNull(), // "PROV1001", "PROV1002", etc.
+  
+  // --- DOCUMENTOS ---
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }),
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
   
   // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
@@ -624,7 +670,7 @@ export const suppliers = pgTable("suppliers", {
   fullLandline: varchar("full_landline", { length: 30 }),
 
   // --- CRÉDITO Y FINANZAS ---
-  isActive: boolean("is_active").default(true),
+  isActive: boolean("is_active").default(false),
   hasCredit: boolean("has_credit").default(false), // "CREDITO"
   promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
   promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
@@ -640,6 +686,14 @@ export const packers = pgTable("packers", {
 
   // --- CÓDIGO AUTOGENERADO ---
   packerCode: varchar("packer_code", { length: 20 }).unique().notNull(), // "EMPA1001", "EMPA1002", etc.
+
+  // --- DOCUMENTOS ---
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }),
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
 
   // --- IDENTIFICACIÓN Y NOMBRE ---
   name: varchar("name", { length: 255 }).notNull(),
@@ -666,7 +720,7 @@ export const packers = pgTable("packers", {
   department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
 
   // --- ESTADO Y CAPACIDAD ---
-  isActive: boolean("is_active").default(true),
+  isActive: boolean("is_active").default(false),
   dailyCapacity: integer("daily_capacity"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -824,23 +878,16 @@ export const notifications = pgTable("notifications", {
 });
 
 /* =========================
-   ESTADO JURÍDICO (Legal Status)
+   LEGAL STATUS (Genérico para todos los terceros)
 ========================= */
 export const legalStatusRecords = pgTable("legal_status_records", {
   id: uuid("id").defaultRandom().primaryKey(),
-
-  // --- VINCULACIÓN A TERCEROS ---
-  thirdPartyId: uuid("third_party_id").notNull(), // ID del empleado/cliente/confeccionista/proveedor/empaque
-  thirdPartyType: thirdPartyTypeEnum("third_party_type").notNull(), // Tipo de tercero
-  thirdPartyName: varchar("third_party_name", { length: 255 }).notNull(), // Nombre del tercero para búsqueda
-
-  // --- ESTADO JURÍDICO ---
-  status: legalStatusEnum("status").default("VIGENTE").notNull(), // Estado actual
-  notes: text("notes"), // Notas/observaciones
-
-  // --- AUDITORÍA ---
-  reviewedBy: uuid("reviewed_by").references(() => users.id), // Usuario que hizo la revisión
-  lastReviewDate: timestamp("last_review_date", { withTimezone: true }),
+  thirdPartyId: uuid("third_party_id").notNull(),
+  thirdPartyType: thirdPartyTypeEnum("third_party_type").notNull(),
+  thirdPartyName: varchar("third_party_name", { length: 255 }).notNull(),
+  status: legalStatusEnum("status").notNull().default("EN_REVISION"),
+  notes: text("notes"),
+  reviewedBy: varchar("reviewed_by", { length: 255 }),
+  changedFields: text("changed_fields"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

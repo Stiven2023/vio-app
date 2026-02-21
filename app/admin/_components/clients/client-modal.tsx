@@ -33,6 +33,7 @@ import { ContactTab } from "./client-modal-tabs/contact-tab";
 import { LocationTab } from "./client-modal-tabs/location-tab";
 import { PhonesTab } from "./client-modal-tabs/phones-tab";
 import { StatusCreditTab } from "./client-modal-tabs/status-credit-tab";
+import { ClientLegalStatusModal } from "./client-legal-status-modal";
 
 export function ClientModal({
   client,
@@ -76,7 +77,6 @@ export function ClientModal({
 
   const [form, setForm] = useState<FormState>({
     clientType: "NACIONAL",
-    personType: "",
     priceClientType: "VIOMAR",
     name: "",
     identificationType: "CC",
@@ -113,6 +113,7 @@ export function ClientModal({
   const [importPromptOpen, setImportPromptOpen] = useState(false);
   const [importCandidate, setImportCandidate] =
     useState<EmployeeImportData | null>(null);
+  const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
   
   // Archivos pendientes de subir: { fieldName: File }
   const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
@@ -126,7 +127,6 @@ export function ClientModal({
     setImportCandidate(null);
     const baseForm: FormState = {
       clientType: "NACIONAL",
-      personType: "NATURAL",
       priceClientType: "VIOMAR",
       name: "",
       identificationType: "CC",
@@ -163,7 +163,6 @@ export function ClientModal({
       setForm({
         ...baseForm,
         clientType: client.clientType ?? "NACIONAL",
-        personType: client.personType ?? "",
         priceClientType: client.priceClientType ?? "VIOMAR",
         name: client.name ?? "",
         identificationType: client.identificationType ?? "CC",
@@ -372,58 +371,65 @@ export function ClientModal({
       }
 
       // Para edición, los documentos ya existen, así que no requieren validación estricta de presencia
-      // Para creación nueva, pedimos solo si se han seleccionado algunos documentos que se completen todos
+      // Para creación nueva, los documentos se requieren según el identificationType
       const isCreating = !client;
       
       if (isCreating && Object.keys(pendingFiles).length > 0) {
-        // Si se seleccionaron documentos, validar que se hayan completado según el tipo de cliente
+        // Si se seleccionaron documentos, validar que se hayan completado según el tipo de identificación
         const validationErrors: Record<string, string> = {};
       
-        if (updatedForm.clientType === "NACIONAL" && !updatedForm.personType) {
-          validationErrors.personType = "El tipo de persona es requerido para clientes nacionales";
-        }
+        // Validar documentos basado en identificationType (no en personType + clientType)
+        switch (updatedForm.identificationType) {
+          case "CC": // Persona Natural Nacional
+            if (!updatedForm.identityDocumentUrl) {
+              validationErrors.identityDocumentUrl = "La cédula del titular es requerida";
+            }
+            if (!updatedForm.rutDocumentUrl) {
+              validationErrors.rutDocumentUrl = "El RUT es requerido";
+            }
+            break;
 
-        if (updatedForm.clientType === "NACIONAL" && updatedForm.personType === "NATURAL") {
-          if (!updatedForm.identityDocumentUrl) {
-            validationErrors.identityDocumentUrl = "La cédula del titular es requerida";
-          }
-          if (!updatedForm.rutDocumentUrl) {
-            validationErrors.rutDocumentUrl = "El RUT es requerido";
-          }
-        }
+          case "NIT": // Empresa Nacional
+            if (!updatedForm.rutDocumentUrl) {
+              validationErrors.rutDocumentUrl = "El RUT de la empresa es requerido";
+            }
+            if (!updatedForm.commerceChamberDocumentUrl) {
+              validationErrors.commerceChamberDocumentUrl = "La Cámara de Comercio es requerida";
+            }
+            if (!updatedForm.identityDocumentUrl) {
+              validationErrors.identityDocumentUrl = "La cédula del representante legal es requerida";
+            }
+            break;
 
-        if (updatedForm.clientType === "NACIONAL" && updatedForm.personType === "JURIDICA") {
-          if (!updatedForm.rutDocumentUrl) {
-            validationErrors.rutDocumentUrl = "El RUT de la empresa es requerido";
-          }
-          if (!updatedForm.commerceChamberDocumentUrl) {
-            validationErrors.commerceChamberDocumentUrl = "La Cámara de Comercio es requerida";
-          }
-          if (!updatedForm.identityDocumentUrl) {
-            validationErrors.identityDocumentUrl = "La cédula del representante legal es requerida";
-          }
-        }
-        
-        if (updatedForm.clientType === "EXTRANJERO" && !updatedForm.personType) {
-          validationErrors.personType = "El tipo de persona es requerido para clientes extranjeros";
-        }
-        
-        if (updatedForm.clientType === "EXTRANJERO" && updatedForm.personType === "NATURAL") {
-          if (!updatedForm.identityDocumentUrl) {
-            validationErrors.identityDocumentUrl = "El ID extranjero (CE/Pasaporte) es requerido";
-          }
-          if (!updatedForm.passportDocumentUrl) {
-            validationErrors.passportDocumentUrl = "El Pasaporte/PPT es requerido";
-          }
-        }
-        
-        if (updatedForm.clientType === "EXTRANJERO" && updatedForm.personType === "JURIDICA") {
-          if (!updatedForm.taxCertificateDocumentUrl) {
-            validationErrors.taxCertificateDocumentUrl = "El Certificado tributario es requerido";
-          }
-          if (!updatedForm.companyIdDocumentUrl) {
-            validationErrors.companyIdDocumentUrl = "El ID de la empresa es requerido";
-          }
+          case "CE": // Persona Natural Extranjera (Cédula de Extranjería)
+            if (!updatedForm.identityDocumentUrl) {
+              validationErrors.identityDocumentUrl = "La cédula de extranjería es requerida";
+            }
+            if (!updatedForm.passportDocumentUrl) {
+              validationErrors.passportDocumentUrl = "El pasaporte es requerido";
+            }
+            break;
+
+          case "PAS": // Persona Natural Extranjera (Pasaporte)
+            if (!updatedForm.identityDocumentUrl) {
+              validationErrors.identityDocumentUrl = "El documento de identidad es requerido";
+            }
+            if (!updatedForm.passportDocumentUrl) {
+              validationErrors.passportDocumentUrl = "El pasaporte es requerido";
+            }
+            break;
+
+          case "EMPRESA_EXTERIOR": // Empresa Extranjera
+            if (!updatedForm.passportDocumentUrl) {
+              validationErrors.passportDocumentUrl = "El pasaporte del representante es requerido";
+            }
+            if (!updatedForm.taxCertificateDocumentUrl) {
+              validationErrors.taxCertificateDocumentUrl = "El certificado tributario es requerido";
+            }
+            if (!updatedForm.companyIdDocumentUrl) {
+              validationErrors.companyIdDocumentUrl = "El ID de la empresa es requerido";
+            }
+            break;
         }
 
         if (Object.keys(validationErrors).length > 0) {
@@ -439,14 +445,13 @@ export function ClientModal({
       console.log("📋 Datos para crear cliente:", {
         name: updatedForm.name,
         identification: updatedForm.identification,
-        personType: updatedForm.personType,
+        identificationType: updatedForm.identificationType,
         email: updatedForm.email,
         mobile: updatedForm.mobile,
       });
 
       const parseData = {
         clientType: updatedForm.clientType,
-        personType: updatedForm.personType,
         priceClientType: updatedForm.priceClientType,
         name: updatedForm.name,
         identificationType: updatedForm.identificationType,
@@ -543,12 +548,26 @@ export function ClientModal({
       onOpenChange={onOpenChange}
     >
       <ModalContent>
-        <ModalHeader>
-          {client ? "Editar cliente" : "Crear cliente"}
-          <p className="mt-1 text-xs font-normal text-default-500">
-            Los campos marcados con <span className="text-danger">*</span> son
-            críticos
-          </p>
+        <ModalHeader className="flex justify-between items-start">
+          <div>
+            <div>{client ? "Editar cliente" : "Crear cliente"}</div>
+            <p className="mt-1 text-xs font-normal text-default-500">
+              Los campos marcados con <span className="text-danger">*</span> son
+              críticos
+            </p>
+          </div>
+          {client && (
+            <Button
+              isIconOnly
+              color="default"
+              variant="flat"
+              size="sm"
+              onPress={() => setLegalStatusModalOpen(true)}
+              title="Ver estado jurídico"
+            >
+              ⚖️
+            </Button>
+          )}
         </ModalHeader>
         <ModalBody>
           <Tabs aria-label="Secciones del formulario" variant="underlined">
@@ -638,6 +657,12 @@ export function ClientModal({
           if (!open) setImportCandidate(null);
           setImportPromptOpen(open);
         }}
+      />
+
+      <ClientLegalStatusModal
+        client={client}
+        isOpen={legalStatusModalOpen}
+        onOpenChange={setLegalStatusModalOpen}
       />
     </Modal>
   );

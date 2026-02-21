@@ -1,8 +1,9 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { confectionists } from "@/src/db/schema";
+import { confectionists, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -35,9 +36,42 @@ export async function GET(request: Request) {
       .limit(pageSize)
       .offset(offset);
 
+    // Obtener el estado jurídico más reciente para cada confeccionista
+    const itemsWithStatus = await Promise.all(
+      items.map(async (confectionist) => {
+        const legalStatus = await db.query.legalStatusRecords.findFirst({
+          where: (record, { eq, and }) =>
+            and(
+              eq(record.thirdPartyId, confectionist.id),
+              eq(record.thirdPartyType, "CONFECCIONISTA"),
+            ),
+          orderBy: (record, { desc }) => desc(record.createdAt),
+        });
+
+        const isActiveByLegalStatus =
+          legalStatus?.status === "VIGENTE"
+            ? true
+            : legalStatus?.status
+              ? false
+              : confectionist.isActive;
+
+        return {
+          ...confectionist,
+          isActive: isActiveByLegalStatus,
+          legalStatus: legalStatus?.status ?? null,
+        };
+      }),
+    );
+
     const hasNextPage = offset + items.length < total;
 
-    return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({
+      items: itemsWithStatus,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
@@ -95,6 +129,69 @@ export async function POST(request: Request) {
 
     const confectionistCode = `CON${nextNumber}`;
 
+    // Obtener documentos del cliente si se proporciona clientId (para conversiones)
+    let sourceClientDocuments: {
+      identityDocumentUrl: string | null;
+      rutDocumentUrl: string | null;
+      commerceChamberDocumentUrl: string | null;
+      passportDocumentUrl: string | null;
+      taxCertificateDocumentUrl: string | null;
+      companyIdDocumentUrl: string | null;
+    } = {
+      identityDocumentUrl: null,
+      rutDocumentUrl: null,
+      commerceChamberDocumentUrl: null,
+      passportDocumentUrl: null,
+      taxCertificateDocumentUrl: null,
+      companyIdDocumentUrl: null,
+    };
+
+    if (payload.clientId) {
+      const sourceClient = await db
+        .select()
+        .from(clients)
+        .where(eq(clients.id, String(payload.clientId)))
+        .limit(1);
+
+      if (sourceClient.length > 0) {
+        const client = sourceClient[0];
+        sourceClientDocuments = {
+          identityDocumentUrl: client.identityDocumentUrl,
+          rutDocumentUrl: client.rutDocumentUrl,
+          commerceChamberDocumentUrl: client.commerceChamberDocumentUrl,
+          passportDocumentUrl: client.passportDocumentUrl,
+          taxCertificateDocumentUrl: client.taxCertificateDocumentUrl,
+          companyIdDocumentUrl: client.companyIdDocumentUrl,
+        };
+      }
+    }
+
+    const mergedPayload = {
+      ...payload,
+      identityDocumentUrl:
+        payload.identityDocumentUrl || sourceClientDocuments.identityDocumentUrl,
+      rutDocumentUrl: payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+      commerceChamberDocumentUrl:
+        payload.commerceChamberDocumentUrl ||
+        sourceClientDocuments.commerceChamberDocumentUrl,
+      passportDocumentUrl:
+        payload.passportDocumentUrl || sourceClientDocuments.passportDocumentUrl,
+      taxCertificateDocumentUrl:
+        payload.taxCertificateDocumentUrl ||
+        sourceClientDocuments.taxCertificateDocumentUrl,
+      companyIdDocumentUrl:
+        payload.companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+    };
+
+    const missingDocumentError = getMissingRequiredDocumentMessage(
+      String(mergedPayload.identificationType ?? ""),
+      mergedPayload as Record<string, unknown>,
+    );
+
+    if (missingDocumentError) {
+      return new Response(missingDocumentError, { status: 400 });
+    }
+
     const created = await db
       .insert(confectionists)
       .values({
@@ -137,9 +234,29 @@ export async function POST(request: Request) {
           ? String(payload.department).trim()
           : "ANTIOQUIA",
         city: payload.city ? String(payload.city).trim() : "Medellín",
-        isActive: payload.isActive ?? true,
+        isActive: false,
+        // Documentos del formulario o copiados del cliente
+        identityDocumentUrl: mergedPayload.identityDocumentUrl,
+        rutDocumentUrl: mergedPayload.rutDocumentUrl,
+        commerceChamberDocumentUrl: mergedPayload.commerceChamberDocumentUrl,
+        passportDocumentUrl: mergedPayload.passportDocumentUrl,
+        taxCertificateDocumentUrl: mergedPayload.taxCertificateDocumentUrl,
+        companyIdDocumentUrl: mergedPayload.companyIdDocumentUrl,
       })
       .returning();
+
+    const newConfectionistId = created[0]?.id;
+
+    // Crear registro de estado jurídico iniciando con EN_REVISION
+    if (newConfectionistId) {
+      await db.insert(legalStatusRecords).values({
+        thirdPartyId: newConfectionistId,
+        thirdPartyType: "CONFECCIONISTA",
+        thirdPartyName: name,
+        status: "EN_REVISION",
+        notes: "Estado inicial al crear confeccionista",
+      });
+    }
 
     return Response.json(created, { status: 201 });
   } catch (error) {
@@ -232,7 +349,83 @@ export async function PUT(request: Request) {
     patch.city = payload.city ? String(payload.city).trim() : null;
   if (payload.isActive !== undefined) patch.isActive = Boolean(payload.isActive);
 
+  // Manejar campos de documentos
+  if (payload.identityDocumentUrl !== undefined)
+    patch.identityDocumentUrl = payload.identityDocumentUrl
+      ? String(payload.identityDocumentUrl).trim()
+      : null;
+  if (payload.rutDocumentUrl !== undefined)
+    patch.rutDocumentUrl = payload.rutDocumentUrl
+      ? String(payload.rutDocumentUrl).trim()
+      : null;
+  if (payload.commerceChamberDocumentUrl !== undefined)
+    patch.commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl
+      ? String(payload.commerceChamberDocumentUrl).trim()
+      : null;
+  if (payload.passportDocumentUrl !== undefined)
+    patch.passportDocumentUrl = payload.passportDocumentUrl
+      ? String(payload.passportDocumentUrl).trim()
+      : null;
+  if (payload.taxCertificateDocumentUrl !== undefined)
+    patch.taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl
+      ? String(payload.taxCertificateDocumentUrl).trim()
+      : null;
+  if (payload.companyIdDocumentUrl !== undefined)
+    patch.companyIdDocumentUrl = payload.companyIdDocumentUrl
+      ? String(payload.companyIdDocumentUrl).trim()
+      : null;
+
   try {
+    const currentConfectionist = await db
+      .select()
+      .from(confectionists)
+      .where(eq(confectionists.id, String(id)))
+      .limit(1);
+
+    if (currentConfectionist.length === 0) {
+      return new Response("Confeccionista no encontrado", { status: 404 });
+    }
+
+    const confectionist = currentConfectionist[0];
+
+    // Detectar cambios críticos
+    const criticalFields = [
+      "name",
+      "identification",
+      "identificationType",
+      "identityDocumentUrl",
+      "rutDocumentUrl",
+      "commerceChamberDocumentUrl",
+      "passportDocumentUrl",
+      "taxCertificateDocumentUrl",
+      "companyIdDocumentUrl",
+    ];
+
+    const changedFields: string[] = [];
+    for (const field of criticalFields) {
+      const key = field as keyof typeof confectionist;
+      const patchValue =
+        patch[key as keyof Partial<typeof confectionists.$inferInsert>];
+
+      if (patchValue !== undefined && confectionist[key] !== patchValue) {
+        changedFields.push(field);
+      }
+    }
+
+    // Si hay cambios críticos, crear EN_REVISION automáticamente
+    if (changedFields.length > 0) {
+      patch.isActive = false;
+
+      // Crear registro de estado jurídico EN_REVISION
+      await db.insert(legalStatusRecords).values({
+        thirdPartyId: String(id),
+        thirdPartyType: "CONFECCIONISTA",
+        thirdPartyName: confectionist.name,
+        status: "EN_REVISION",
+        notes: `Cambios detectados: ${changedFields.join(", ")}`,
+      });
+    }
+
     const updated = await db
       .update(confectionists)
       .set(patch)
