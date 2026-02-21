@@ -27,102 +27,81 @@ export async function POST(request: Request) {
     }
 
     // ============================================
-    // MODO LOCAL (DESARROLLO - ACTIVO)
+    // MODO CLOUDINARY (PRODUCCIÓN - ACTIVO)
     // ============================================
-    
-    const documentsDir = path.join(process.cwd(), "public/documents");
-    await mkdir(documentsDir, { recursive: true });
+    const cloudName = process.env.CLOUD_USER;
+    const apiKey = process.env.API_KEY;
+    const apiSecret = process.env.API_SECRET;
 
-    const filePath = path.join(documentsDir, `${fileName}.pdf`);
-    const bytes = await file.arrayBuffer();
-    await writeFile(filePath, new Uint8Array(bytes));
+    if (!cloudName || !apiKey || !apiSecret) {
+      console.warn("⚠️ Cloudinary no configurado, usando almacenamiento local");
+      
+      const documentsDir = path.join(process.cwd(), "public/documents");
+      await mkdir(documentsDir, { recursive: true });
 
-    console.log("✅ Documento guardado localmente:", filePath);
-    console.log("📁 Carpeta especificada (para Cloudinary):", uploadFolder);
+      const filePath = path.join(documentsDir, `${fileName}.pdf`);
+      const bytes = await file.arrayBuffer();
+      await writeFile(filePath, new Uint8Array(bytes));
 
-    const publicUrl = `/documents/${fileName}.pdf`;
-    console.log("📤 URL devuelta:", publicUrl);
-    
-    return Response.json({ url: publicUrl });
+      console.log("✅ Documento guardado localmente:", filePath);
 
-    // ============================================
-    // MODO CLOUDINARY (PRODUCCIÓN - COMENTADO)
-    // ============================================
-    // Para cambiar a Cloudinary, descomenta esto y comenta la sección LOCAL arriba:
-    //
-    // const cloudName = process.env.CLOUD_USER;
-    // const apiKey = process.env.API_KEY;
-    // const apiSecret = process.env.API_SECRET;
-    //
-    // if (!cloudName || !apiKey || !apiSecret) {
-    //   console.warn("⚠️ Cloudinary no configurado, usando almacenamiento local");
-    //   
-    //   const documentsDir = path.join(process.cwd(), "public/documents");
-    //   await mkdir(documentsDir, { recursive: true });
-    //
-    //   const filePath = path.join(documentsDir, `${fileName}.pdf`);
-    //   const bytes = await file.arrayBuffer();
-    //   await writeFile(filePath, new Uint8Array(bytes));
-    //
-    //   console.log("✅ Documento guardado localmente:", filePath);
-    //
-    //   const publicUrl = `/documents/${fileName}.pdf`;
-    //   return Response.json({ url: publicUrl });
-    // }
-    //
-    // const timestamp = Math.floor(Date.now() / 1000);
-    // const params: Record<string, string> = {
-    //   timestamp: String(timestamp),
-    //   folder: uploadFolder,
-    //   public_id: fileName,
-    // };
-    //
-    // const toSign = Object.keys(params)
-    //   .sort()
-    //   .map((k) => `${k}=${params[k]}`)
-    //   .join("&");
-    //
-    // const signature = crypto
-    //   .createHash("sha1")
-    //   .update(toSign + apiSecret)
-    //   .digest("hex");
-    //
-    // const formDataCloudinary = new FormData();
-    // formDataCloudinary.append("file", file);
-    // formDataCloudinary.append("api_key", apiKey);
-    // Object.entries(params).forEach(([k, v]) => formDataCloudinary.append(k, v));
-    // formDataCloudinary.append("signature", signature);
-    //
-    // console.log("📤 Enviando a Cloudinary...");
-    // console.log("📁 Carpeta:", uploadFolder);
-    // console.log("📝 Archivo:", fileName);
-    //
-    // const uploadRes = await fetch(
-    //   `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
-    //   {
-    //     method: "POST",
-    //     body: formDataCloudinary,
-    //   }
-    // );
-    //
-    // if (!uploadRes.ok) {
-    //   const errorText = await uploadRes.text();
-    //   console.error("❌ Cloudinary error:", { status: uploadRes.status, errorText });
-    //   return new Response(`Error al subir a Cloudinary: ${uploadRes.status}`, {
-    //     status: 500,
-    //   });
-    // }
-    //
-    // const json = (await uploadRes.json()) as { secure_url?: string };
-    //
-    // if (!json.secure_url) {
-    //   return new Response("Cloudinary no devolvió URL", { status: 500 });
-    // }
-    //
-    // console.log("✅ Documento subido a Cloudinary:", json.secure_url);
-    // console.log("📁 Carpeta:", uploadFolder);
-    //
-    // return Response.json({ url: json.secure_url });
+      const publicUrl = `/documents/${fileName}.pdf`;
+      return Response.json({ url: publicUrl });
+    }
+
+    const timestamp = Math.floor(Date.now() / 1000);
+    const params: Record<string, string> = {
+      timestamp: String(timestamp),
+      folder: uploadFolder,
+      public_id: fileName,
+    };
+
+    const toSign = Object.keys(params)
+      .sort()
+      .map((k) => `${k}=${params[k]}`)
+      .join("&");
+
+    const signature = crypto
+      .createHash("sha1")
+      .update(toSign + apiSecret)
+      .digest("hex");
+
+    const formDataCloudinary = new FormData();
+    formDataCloudinary.append("file", file);
+    formDataCloudinary.append("api_key", apiKey);
+    Object.entries(params).forEach(([k, v]) => formDataCloudinary.append(k, v));
+    formDataCloudinary.append("signature", signature);
+
+    console.log("📤 Enviando a Cloudinary...");
+    console.log("📁 Carpeta:", uploadFolder);
+    console.log("📝 Archivo:", fileName);
+
+    const uploadRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
+      {
+        method: "POST",
+        body: formDataCloudinary,
+      }
+    );
+
+    if (!uploadRes.ok) {
+      const errorText = await uploadRes.text();
+      console.error("❌ Cloudinary error:", { status: uploadRes.status, errorText });
+      return new Response(`Error al subir a Cloudinary: ${uploadRes.status}`, {
+        status: 500,
+      });
+    }
+
+    const json = (await uploadRes.json()) as { secure_url?: string };
+
+    if (!json.secure_url) {
+      return new Response("Cloudinary no devolvió URL", { status: 500 });
+    }
+
+    console.log("✅ Documento subido a Cloudinary:", json.secure_url);
+    console.log("📁 Carpeta:", uploadFolder);
+
+    return Response.json({ url: json.secure_url });
   } catch (error) {
     console.error("❌ Error guardando documento:", error);
     return new Response(
