@@ -124,7 +124,7 @@ export function RoleCharts({ role }: { role: string }) {
     };
   }, [month, role, year]);
 
-  if (role !== "ASESOR" && role !== "LIDER_DE_PROCESOS" && role !== "ADMINISTRADOR") {
+  if (role !== "ASESOR" && role !== "LIDER_OPERACIONAL" && role !== "ADMINISTRADOR") {
     return null;
   }
 

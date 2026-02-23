@@ -18,7 +18,11 @@ export async function GET(request: Request) {
   const role = getRoleFromRequest(request);
   if (!role) return new Response("Unauthorized", { status: 401 });
 
-  if (role !== "OPERARIO_INTEGRACION" && role !== "ADMINISTRADOR" && role !== "LIDER_DE_PROCESOS") {
+  if (
+    role !== "OPERARIO_INTEGRACION_CALIDAD" &&
+    role !== "ADMINISTRADOR" &&
+    role !== "LIDER_OPERACIONAL"
+  ) {
     return new Response("Forbidden", { status: 403 });
   }
 

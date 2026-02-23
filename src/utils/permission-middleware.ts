@@ -5,7 +5,9 @@ import { roles, permissions, rolePermissions } from "@/src/db/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 
 const ROLE_PERMISSION_OVERRIDES: Record<string, string[]> = {
-  COMPRAS: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
+  LIDER_SUMINISTROS: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
+  COMPRA_NACIONAL: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
+  COMPRA_INTERNACIONAL: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
 };
 
 const PERMISSION_ALIASES: Record<string, string[]> = {

@@ -103,7 +103,7 @@ export function OperarioDashboard({ role }: { role: string }) {
   useEffect(() => {
     let active = true;
 
-    if (role !== "OPERARIO_INTEGRACION") return;
+    if (role !== "OPERARIO_INTEGRACION_CALIDAD") return;
 
     setLoadingLoad(true);
     apiJson<{ items: ConfectionistLoad[] }>("/api/dashboard/confectionist-load")
@@ -123,7 +123,7 @@ export function OperarioDashboard({ role }: { role: string }) {
   useEffect(() => {
     let active = true;
 
-    if (role !== "OPERARIO_INVENTARIO") return;
+    if (role !== "OPERARIO_BODEGA") return;
 
     setLoadingInventory(true);
     Promise.all([
@@ -330,7 +330,7 @@ export function OperarioDashboard({ role }: { role: string }) {
         </CardBody>
       </Card>
 
-      {role === "OPERARIO_INTEGRACION" ? (
+      {role === "OPERARIO_INTEGRACION_CALIDAD" ? (
         <Card>
           <CardHeader className="flex items-center justify-between">
             <div>
@@ -368,7 +368,7 @@ export function OperarioDashboard({ role }: { role: string }) {
         </Card>
       ) : null}
 
-      {role === "OPERARIO_INVENTARIO" ? (
+      {role === "OPERARIO_BODEGA" ? (
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader className="flex items-center justify-between">

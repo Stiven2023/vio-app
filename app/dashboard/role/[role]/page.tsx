@@ -27,8 +27,8 @@ type RoleConfig = {
 };
 
 const roleConfigs: Record<string, RoleConfig> = {
-  LIDER_DE_PROCESOS: {
-    title: "Dashboard Lider de Procesos",
+  LIDER_OPERACIONAL: {
+    title: "Dashboard Lider Operacional",
     description: "Seguimiento general de pedidos y estados.",
     metrics: [
       { label: "Pedidos en cola", value: "18" },
@@ -75,8 +75,8 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  COMPRAS: {
-    title: "Dashboard Compras",
+  LIDER_SUMINISTROS: {
+    title: "Dashboard Lider de Suministros",
     description: "Control de proveedores y abastecimiento.",
     metrics: [
       { label: "Ordenes abiertas", value: "6" },
@@ -117,8 +117,8 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  OPERARIO_EMPAQUE: {
-    title: "Dashboard Operario Empaque",
+  EMPAQUE: {
+    title: "Dashboard Empaque",
     description: "Tareas de empaque y seguimiento.",
     metrics: [
       { label: "Pendientes de empaque", value: "14" },
@@ -135,8 +135,8 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  OPERARIO_INVENTARIO: {
-    title: "Dashboard Operario Inventario",
+  OPERARIO_BODEGA: {
+    title: "Dashboard Operario Bodega",
     description: "Control de entradas y salidas.",
     metrics: [
       { label: "Entradas hoy", value: "5" },
@@ -153,8 +153,8 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  OPERARIO_INTEGRACION: {
-    title: "Dashboard Operario Integracion",
+  OPERARIO_INTEGRACION_CALIDAD: {
+    title: "Dashboard Operario Integración y Calidad",
     description: "Integracion de pedidos y procesos.",
     metrics: [
       { label: "Ordenes en integracion", value: "6" },
@@ -207,8 +207,8 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  OPERARIO_IMPRESION: {
-    title: "Dashboard Operario Impresion",
+  OPERARIO_FLOTER: {
+    title: "Dashboard Operario Floter",
     description: "Pedidos en impresion.",
     metrics: [
       { label: "Impresiones en cola", value: "11" },
@@ -225,8 +225,8 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  OPERARIO_ESTAMPACION: {
-    title: "Dashboard Operario Estampacion",
+  OPERARIO_DESPACHO: {
+    title: "Dashboard Operario Despacho",
     description: "Pedidos en estampacion.",
     metrics: [
       { label: "Estampacion en cola", value: "8" },
@@ -309,11 +309,26 @@ export default async function RoleDashboardPage({
     redirect("/unauthorized");
   }
 
-  const config = roleConfigs[requestedRole];
-
-  if (!config) {
-    redirect("/unauthorized");
-  }
+  const config =
+    roleConfigs[requestedRole] ??
+    {
+      title: `Dashboard ${requestedRole.replace(/_/g, " ")}`,
+      description: "Resumen operativo por rol.",
+      metrics: [
+        { label: "Pendientes", value: "0" },
+        { label: "En proceso", value: "0" },
+        { label: "Completados", value: "0" },
+        { label: "Novedades", value: "0" },
+      ],
+      quickActions: [
+        {
+          title: "Pedidos",
+          description: "Seguimiento de pedidos.",
+          href: "/orders",
+          icon: <BsClipboardData className="text-lg" />,
+        },
+      ],
+    };
 
   const useOperarioDashboard = isOperarioRole(requestedRole);
 
@@ -330,7 +345,7 @@ export default async function RoleDashboardPage({
         </div>
       ) : (
         <>
-          {(requestedRole === "ASESOR" || requestedRole === "LIDER_DE_PROCESOS") ? (
+          {(requestedRole === "ASESOR" || requestedRole === "LIDER_OPERACIONAL") ? (
             <section className="mt-6">
               <h2 className="text-lg font-semibold">Reportes visuales</h2>
               <div className="mt-4">

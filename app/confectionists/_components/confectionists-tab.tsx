@@ -32,6 +32,7 @@ import { TableSkeleton } from "@/app/catalog/_components/ui/table-skeleton";
 import { usePaginatedApi } from "@/app/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
 
 import { ConfectionistModal } from "./confectionist-modal";
 import { ConfectionistDetailsModal } from "./confectionist-details-modal";
@@ -73,6 +74,8 @@ export function ConfectionistsTab({
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Confectionist | null>(null);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [viewingDocuments, setViewingDocuments] = useState<Confectionist | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
   const [viewingLegalStatus, setViewingLegalStatus] = useState<Confectionist | null>(null);
 
@@ -258,18 +261,6 @@ export function ConfectionistsTab({
     }
   };
 
-  const getFirstDocumentUrl = (confectionist: Confectionist) => {
-    return (
-      confectionist.identityDocumentUrl ||
-      confectionist.rutDocumentUrl ||
-      confectionist.commerceChamberDocumentUrl ||
-      confectionist.passportDocumentUrl ||
-      confectionist.taxCertificateDocumentUrl ||
-      confectionist.companyIdDocumentUrl ||
-      null
-    );
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -415,12 +406,8 @@ export function ConfectionistsTab({
                         key="view-docs"
                         startContent={<BsEyeFill />}
                         onPress={() => {
-                          const url = getFirstDocumentUrl(c);
-                          if (!url) {
-                            toast.error("Este confeccionista no tiene documentos cargados.");
-                            return;
-                          }
-                          window.open(url, "_blank", "noopener,noreferrer");
+                          setViewingDocuments(c);
+                          setDocumentsOpen(true);
                         }}
                       >
                         Ver documentos
@@ -590,6 +577,33 @@ export function ConfectionistsTab({
         confectionist={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
         onOpenChange={setLegalStatusModalOpen}
+      />
+
+      <ThirdPartyDocumentsModal
+        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        subtitle={
+          viewingDocuments
+            ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
+            : undefined
+        }
+        emptyMessage="Este confeccionista no tiene documentos cargados."
+        documents={
+          viewingDocuments
+            ? [
+                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
+                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
+                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
+                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
+              ]
+            : []
+        }
+        isOpen={documentsOpen}
+        onOpenChange={(open) => {
+          setDocumentsOpen(open);
+          if (!open) setViewingDocuments(null);
+        }}
       />
 
       <ConfirmActionModal

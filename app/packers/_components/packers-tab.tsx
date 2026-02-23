@@ -38,6 +38,7 @@ import { TableSkeleton } from "@/app/catalog/_components/ui/table-skeleton";
 import { usePaginatedApi } from "@/app/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
 import { PackerDetailsModal } from "@/app/packers/_components/packer-details-modal";
 
 import { PackerModal } from "./packer-modal";
@@ -71,6 +72,8 @@ export function PackersTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Packer | null>(null);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [viewingDocuments, setViewingDocuments] = useState<Packer | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
   const [viewingLegalStatus, setViewingLegalStatus] = useState<Packer | null>(null);
 
@@ -242,18 +245,6 @@ export function PackersTab({
     }
   };
 
-  const getFirstDocumentUrl = (packer: Packer) => {
-    return (
-      packer.identityDocumentUrl ||
-      packer.rutDocumentUrl ||
-      packer.commerceChamberDocumentUrl ||
-      packer.passportDocumentUrl ||
-      packer.taxCertificateDocumentUrl ||
-      packer.companyIdDocumentUrl ||
-      null
-    );
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -401,12 +392,8 @@ export function PackersTab({
                         key="view-docs"
                         startContent={<BsEyeFill />}
                         onPress={() => {
-                          const url = getFirstDocumentUrl(p);
-                          if (!url) {
-                            toast.error("Este empaque no tiene documentos cargados.");
-                            return;
-                          }
-                          window.open(url, "_blank", "noopener,noreferrer");
+                          setViewingDocuments(p);
+                          setDocumentsOpen(true);
                         }}
                       >
                         Ver documentos
@@ -493,6 +480,33 @@ export function PackersTab({
         packer={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
         onOpenChange={setLegalStatusModalOpen}
+      />
+
+      <ThirdPartyDocumentsModal
+        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        subtitle={
+          viewingDocuments
+            ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
+            : undefined
+        }
+        emptyMessage="Este empaque no tiene documentos cargados."
+        documents={
+          viewingDocuments
+            ? [
+                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
+                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
+                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
+                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
+              ]
+            : []
+        }
+        isOpen={documentsOpen}
+        onOpenChange={(open) => {
+          setDocumentsOpen(open);
+          if (!open) setViewingDocuments(null);
+        }}
       />
 
       <ConfirmActionModal

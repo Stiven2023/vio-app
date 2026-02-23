@@ -86,6 +86,8 @@ export function ClientDocumentsModal({
     );
   }
 
+  const hasDocuments = documents.some((doc) => Boolean(doc.url));
+
   const handlePreview = (url: string | null | undefined, label: string) => {
     if (!url) {
       toast.error("El documento no tiene URL válida");
@@ -136,6 +138,13 @@ export function ClientDocumentsModal({
               <BsExclamationCircle className="text-4xl text-warning" />
               <p className="text-center text-default-600">
                 No hay documentos configurados para este tipo de cliente
+              </p>
+            </div>
+          ) : !hasDocuments ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-10">
+              <BsExclamationCircle className="text-4xl text-warning" />
+              <p className="text-center text-default-600">
+                Este cliente no tiene documentos cargados.
               </p>
             </div>
           ) : (

@@ -29,6 +29,7 @@ import { TableSkeleton } from "@/app/catalog/_components/ui/table-skeleton";
 import { usePaginatedApi } from "@/app/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
 
 import { SupplierModal } from "./supplier-modal";
 import { SupplierDetailsModal } from "./supplier-details-modal";
@@ -93,6 +94,8 @@ export function SuppliersTab({
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Supplier | null>(null);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [viewingDocuments, setViewingDocuments] = useState<Supplier | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
   const [viewingLegalStatus, setViewingLegalStatus] = useState<Supplier | null>(null);
 
@@ -292,18 +295,6 @@ export function SuppliersTab({
     }
   };
 
-  const getFirstDocumentUrl = (supplier: Supplier) => {
-    return (
-      supplier.identityDocumentUrl ||
-      supplier.rutDocumentUrl ||
-      supplier.commerceChamberDocumentUrl ||
-      supplier.passportDocumentUrl ||
-      supplier.taxCertificateDocumentUrl ||
-      supplier.companyIdDocumentUrl ||
-      null
-    );
-  };
-
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -457,12 +448,8 @@ export function SuppliersTab({
                         key="view-docs"
                         startContent={<BsEyeFill />}
                         onPress={() => {
-                          const url = getFirstDocumentUrl(s);
-                          if (!url) {
-                            toast.error("Este proveedor no tiene documentos cargados.");
-                            return;
-                          }
-                          window.open(url, "_blank", "noopener,noreferrer");
+                          setViewingDocuments(s);
+                          setDocumentsOpen(true);
                         }}
                       >
                         Ver documentos
@@ -530,6 +517,34 @@ export function SuppliersTab({
         supplier={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
         onOpenChange={setLegalStatusModalOpen}
+      />
+
+      <ThirdPartyDocumentsModal
+        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        subtitle={
+          viewingDocuments
+            ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
+            : undefined
+        }
+        emptyMessage="Este proveedor no tiene documentos cargados."
+        documents={
+          viewingDocuments
+            ? [
+                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
+                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
+                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
+                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
+                { label: "Comprobante bancario", url: viewingDocuments.bankCertificateUrl },
+              ]
+            : []
+        }
+        isOpen={documentsOpen}
+        onOpenChange={(open) => {
+          setDocumentsOpen(open);
+          if (!open) setViewingDocuments(null);
+        }}
       />
 
       <ConfirmActionModal
