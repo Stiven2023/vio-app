@@ -21,16 +21,20 @@ type Currency = "COP" | "USD";
 type ProductRow = {
   id: string;
   name: string;
-  isSet?: boolean | null;
-  productionType?: string | null;
   isActive?: boolean | null;
 };
 
 type ProductPriceRow = {
   id: string;
   referenceCode: string;
-  priceCOP: string | null;
+  priceCopR1: string | null;
+  priceCopR2: string | null;
+  priceCopR3: string | null;
+  priceViomar: string | null;
+  priceColanta: string | null;
+  priceMayorista: string | null;
   priceUSD: string | null;
+  isEditable: boolean | null;
   startDate: string | null;
   endDate: string | null;
   isActive: boolean | null;
@@ -42,8 +46,34 @@ function asNumber(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function pickUnitPrice(currency: Currency, row: ProductPriceRow) {
-  return currency === "USD" ? row.priceUSD : row.priceCOP;
+function pickCopScaleByQuantity(row: ProductPriceRow, quantity: number) {
+  if (quantity <= 500) return row.priceCopR1;
+  if (quantity <= 1000) return row.priceCopR2;
+
+  return row.priceCopR3;
+}
+
+function resolveUnitPrice(args: {
+  currency: Currency;
+  clientPriceType: string;
+  quantity: number;
+  row: ProductPriceRow;
+  manualUnitPrice?: string | null;
+}) {
+  const { currency, clientPriceType, quantity, row, manualUnitPrice } = args;
+
+  if (currency === "USD") return row.priceUSD;
+  if (clientPriceType === "VIOMAR") return row.priceViomar;
+  if (clientPriceType === "COLANTA") return row.priceColanta;
+  if (clientPriceType === "MAYORISTA") return row.priceMayorista;
+
+  if (clientPriceType === "AUTORIZADO") {
+    const manual = String(manualUnitPrice ?? "").trim();
+
+    return manual || pickCopScaleByQuantity(row, quantity);
+  }
+
+  return pickCopScaleByQuantity(row, quantity);
 }
 
 export function OrderItemCreatePage(props: {
@@ -164,7 +194,12 @@ export function OrderItemCreatePage(props: {
         // si solo hay 1, autoseleccionar
         if (list.length === 1) {
           const only = list[0];
-          const p = pickUnitPrice(orderCurrency, only);
+          const p = resolveUnitPrice({
+            currency: orderCurrency,
+            clientPriceType: priceClientType,
+            quantity: Math.max(1, Math.floor(asNumber(item.quantity))),
+            row: only,
+          });
 
           setItem((s) => ({
             ...s,
@@ -186,7 +221,13 @@ export function OrderItemCreatePage(props: {
     return () => {
       active = false;
     };
-  }, [item.productId, orderCurrency]);
+  }, [item.productId, item.quantity, orderCurrency, priceClientType, setItem]);
+
+  const selectedPrice = React.useMemo(() => {
+    const id = String(item.productPriceId ?? "").trim();
+
+    return prices.find((p) => p.id === id) ?? null;
+  }, [prices, item.productPriceId]);
 
   const selectedProduct = React.useMemo(() => {
     const id = String(item.productId ?? "").trim();
@@ -200,13 +241,6 @@ export function OrderItemCreatePage(props: {
     setItem((s) => ({
       ...s,
       name: String(s.name ?? "").trim() ? s.name : selectedProduct.name,
-      requiresSocks: Boolean(selectedProduct.isSet ?? false),
-      process:
-        selectedProduct.productionType === "SUBLIMADO"
-          ? "SUBLIMADO"
-          : selectedProduct.productionType === "CORTE_MANUAL"
-            ? "CORTE_MANUAL"
-            : s.process,
     }));
   }, [selectedProduct, setItem]);
 
@@ -219,6 +253,33 @@ export function OrderItemCreatePage(props: {
 
   const uiDisabled = isSaving;
   const canEditUnitPrice = priceClientType === "AUTORIZADO";
+
+  React.useEffect(() => {
+    if (!selectedPrice) return;
+    if (canEditUnitPrice) return;
+
+    const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
+    const price = resolveUnitPrice({
+      currency: orderCurrency,
+      clientPriceType: priceClientType,
+      quantity,
+      row: selectedPrice,
+    });
+
+    if (!price) return;
+
+    setItem((s) => ({
+      ...s,
+      unitPrice: price,
+    }));
+  }, [
+    canEditUnitPrice,
+    item.quantity,
+    orderCurrency,
+    priceClientType,
+    selectedPrice,
+    setItem,
+  ]);
 
   async function onSubmit() {
     setError(null);
@@ -259,8 +320,17 @@ export function OrderItemCreatePage(props: {
       return;
     }
 
+    const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
     const selectedPrice = prices.find((p) => p.id === productPriceId) ?? null;
-    const picked = selectedPrice ? pickUnitPrice(orderCurrency, selectedPrice) : null;
+    const picked = selectedPrice
+      ? resolveUnitPrice({
+          currency: orderCurrency,
+          clientPriceType: priceClientType,
+          quantity,
+          row: selectedPrice,
+          manualUnitPrice: canEditUnitPrice ? String(item.unitPrice ?? "") : null,
+        })
+      : null;
 
     if (!picked) {
       setError(`El precio seleccionado no tiene valor en ${orderCurrency}.`);
@@ -268,7 +338,6 @@ export function OrderItemCreatePage(props: {
       return;
     }
 
-    const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
     const unitPrice = Math.max(0, asNumber(picked));
 
     setIsSaving(true);
@@ -392,7 +461,14 @@ export function OrderItemCreatePage(props: {
                 const k = Array.from(keys as any)[0];
                 const id = k ? String(k) : "";
                 const row = prices.find((p) => p.id === id) ?? null;
-                const price = row ? pickUnitPrice(orderCurrency, row) : null;
+                const price = row
+                  ? resolveUnitPrice({
+                      currency: orderCurrency,
+                      clientPriceType: priceClientType,
+                      quantity: Math.max(1, Math.floor(asNumber(item.quantity))),
+                      row,
+                    })
+                  : null;
 
                 setItem((s) => ({
                   ...s,
@@ -402,10 +478,15 @@ export function OrderItemCreatePage(props: {
               }}
             >
               {prices.map((pp) => {
-                const price = pickUnitPrice(orderCurrency, pp);
+                const price = resolveUnitPrice({
+                  currency: orderCurrency,
+                  clientPriceType: priceClientType,
+                  quantity: Math.max(1, Math.floor(asNumber(item.quantity))),
+                  row: pp,
+                });
                 const label = price
                   ? `${pp.referenceCode} — ${price}`
-                  : `${pp.referenceCode} — (sin ${orderCurrency})`;
+                  : `${pp.referenceCode} — (sin precio aplicable)`;
 
                 return <SelectItem key={pp.id}>{label}</SelectItem>;
               })}
@@ -414,10 +495,7 @@ export function OrderItemCreatePage(props: {
 
           {selectedProduct ? (
             <div className="text-sm text-default-600">
-              Características: {selectedProduct.isSet ? "Conjunto (lleva medias)" : "No conjunto"}
-              {selectedProduct.productionType
-                ? ` · Producción: ${selectedProduct.productionType}`
-                : null}
+              Producto seleccionado: {selectedProduct.name}
             </div>
           ) : null}
         </CardBody>

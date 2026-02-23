@@ -119,7 +119,7 @@ export function AdminCharts() {
         />
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-      <Card className="border border-default-200">
+      <Card className="min-w-0 border border-default-200">
         <CardHeader className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold">Ventas vs abonos</div>
@@ -127,7 +127,7 @@ export function AdminCharts() {
           </div>
           {loading ? <Spinner size="sm" /> : null}
         </CardHeader>
-        <CardBody className="h-72">
+        <CardBody className="h-72 min-w-0">
           <ResponsiveContainerBase width="100%" height="100%">
             <LineChartBase data={data?.series ?? []} margin={{ left: 8, right: 8 }}>
               <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
@@ -163,7 +163,7 @@ export function AdminCharts() {
           </ResponsiveContainerBase>
         </CardBody>
       </Card>
-      <Card className="border border-default-200">
+      <Card className="min-w-0 border border-default-200">
         <CardHeader className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold">Pedidos del mes</div>
@@ -171,7 +171,7 @@ export function AdminCharts() {
           </div>
           {loading ? <Spinner size="sm" /> : null}
         </CardHeader>
-        <CardBody className="h-72">
+        <CardBody className="h-72 min-w-0">
           <ResponsiveContainerBase width="100%" height="100%">
             <BarChartBase data={data?.series ?? []} margin={{ left: 8, right: 8 }}>
               <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />

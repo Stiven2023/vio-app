@@ -5,6 +5,7 @@ import type { Paginated } from "@/app/catalog/_lib/types";
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
 import {
   Dropdown,
   DropdownItem,
@@ -31,6 +32,7 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 import { SupplierModal } from "./supplier-modal";
 import { SupplierDetailsModal } from "./supplier-details-modal";
+import { SupplierLegalStatusModal } from "@/app/admin/_components/suppliers/supplier-legal-status-modal";
 
 export type Supplier = {
   id: string;
@@ -38,33 +40,36 @@ export type Supplier = {
   name: string;
   identificationType: string;
   identification: string;
-  dv?: string;
+  dv: string | null;
   branch: string;
   taxRegime: string;
   contactName: string;
   email: string;
   address: string;
-  postalCode?: string;
+  postalCode: string | null;
   country: string;
   department: string;
   city: string;
   intlDialCode: string;
-  mobile?: string;
-  fullMobile?: string;
-  localDialCode?: string;
-  landline?: string;
-  extension?: string;
-  fullLandline?: string;
-  isActive?: boolean;
-  hasCredit?: boolean;
-  promissoryNoteNumber?: string;
-  promissoryNoteDate?: string;
-  identityDocumentUrl?: string | null;
-  rutDocumentUrl?: string | null;
-  commerceChamberDocumentUrl?: string | null;
-  passportDocumentUrl?: string | null;
-  taxCertificateDocumentUrl?: string | null;
-  companyIdDocumentUrl?: string | null;
+  mobile: string | null;
+  fullMobile: string | null;
+  localDialCode: string | null;
+  landline: string | null;
+  extension: string | null;
+  fullLandline: string | null;
+  isActive: boolean | null;
+  hasCredit: boolean | null;
+  promissoryNoteNumber: string | null;
+  promissoryNoteDate: string | null;
+  legalStatus?: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null;
+  identityDocumentUrl: string | null;
+  rutDocumentUrl: string | null;
+  commerceChamberDocumentUrl: string | null;
+  passportDocumentUrl: string | null;
+  taxCertificateDocumentUrl: string | null;
+  companyIdDocumentUrl: string | null;
+  bankCertificateUrl: string | null;
+  createdAt: string;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -88,6 +93,8 @@ export function SuppliersTab({
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Supplier | null>(null);
+  const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Supplier | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Supplier | null>(null);
@@ -343,7 +350,18 @@ export function SuppliersTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Proveedores"
-          headers={["Código", "Nombre", "Tipo ID", "Email", "Contacto", "Móvil", "Ciudad", "Activo", "Acciones"]}
+          headers={[
+            "Código",
+            "Nombre",
+            "Tipo ID",
+            "Email",
+            "Contacto",
+            "Móvil",
+            "Ciudad",
+            "Activo",
+            "Estado jurídico",
+            "Acciones",
+          ]}
         />
       ) : (
         <Table aria-label="Proveedores">
@@ -356,6 +374,7 @@ export function SuppliersTab({
             <TableColumn>Móvil</TableColumn>
             <TableColumn>Ciudad</TableColumn>
             <TableColumn>Activo</TableColumn>
+            <TableColumn>Estado jurídico</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
@@ -378,6 +397,31 @@ export function SuppliersTab({
                 </TableCell>
                 <TableCell>{s.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>
+                  {s.legalStatus ? (
+                    <Chip
+                      color={
+                        s.legalStatus === "VIGENTE"
+                          ? "success"
+                          : s.legalStatus === "EN_REVISION"
+                            ? "warning"
+                            : "danger"
+                      }
+                      size="sm"
+                      variant="flat"
+                    >
+                      {s.legalStatus === "VIGENTE"
+                        ? "Vigente"
+                        : s.legalStatus === "EN_REVISION"
+                          ? "En Revisión"
+                          : "Bloqueado"}
+                    </Chip>
+                  ) : (
+                    <Chip color="default" size="sm" variant="flat">
+                      Sin definir
+                    </Chip>
+                  )}
+                </TableCell>
+                <TableCell>
                   <Dropdown>
                     <DropdownTrigger>
                       <Button
@@ -398,6 +442,16 @@ export function SuppliersTab({
                         }}
                       >
                         Ver información completa
+                      </DropdownItem>
+                      <DropdownItem
+                        key={`legal-status-${s.id}`}
+                        startContent={<span>⚖️</span>}
+                        onPress={() => {
+                          setViewingLegalStatus(s);
+                          setLegalStatusModalOpen(true);
+                        }}
+                      >
+                        Ver estado jurídico
                       </DropdownItem>
                       <DropdownItem
                         key="view-docs"
@@ -470,6 +524,12 @@ export function SuppliersTab({
         onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
         onRequestCreateConfectionist={() => viewing && createAsConfectionist(viewing)}
         onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
+      />
+
+      <SupplierLegalStatusModal
+        supplier={viewingLegalStatus}
+        isOpen={legalStatusModalOpen}
+        onOpenChange={setLegalStatusModalOpen}
       />
 
       <ConfirmActionModal

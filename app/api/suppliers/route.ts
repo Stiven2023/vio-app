@@ -145,6 +145,7 @@ export async function POST(request: Request) {
     passportDocumentUrl: string | null;
     taxCertificateDocumentUrl: string | null;
     companyIdDocumentUrl: string | null;
+    bankCertificateUrl: string | null;
   } = {
     identityDocumentUrl: null,
     rutDocumentUrl: null,
@@ -152,6 +153,7 @@ export async function POST(request: Request) {
     passportDocumentUrl: null,
     taxCertificateDocumentUrl: null,
     companyIdDocumentUrl: null,
+    bankCertificateUrl: null,
   };
 
   if ((body as any).clientId) {
@@ -170,6 +172,7 @@ export async function POST(request: Request) {
         passportDocumentUrl: client.passportDocumentUrl,
         taxCertificateDocumentUrl: client.taxCertificateDocumentUrl,
         companyIdDocumentUrl: client.companyIdDocumentUrl,
+        bankCertificateUrl: null,
       };
     }
   }
@@ -189,6 +192,8 @@ export async function POST(request: Request) {
       sourceClientDocuments.taxCertificateDocumentUrl,
     companyIdDocumentUrl:
       (body as any).companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+    bankCertificateUrl:
+      (body as any).bankCertificateUrl || sourceClientDocuments.bankCertificateUrl,
   };
 
   const missingDocumentError = getMissingRequiredDocumentMessage(
@@ -198,6 +203,10 @@ export async function POST(request: Request) {
 
   if (missingDocumentError) {
     return new Response(missingDocumentError, { status: 400 });
+  }
+
+  if (!String(mergedPayload.bankCertificateUrl ?? "").trim()) {
+    return new Response("Comprobante bancario requerido", { status: 400 });
   }
 
   const created = await db
@@ -237,6 +246,7 @@ export async function POST(request: Request) {
       passportDocumentUrl: mergedPayload.passportDocumentUrl,
       taxCertificateDocumentUrl: mergedPayload.taxCertificateDocumentUrl,
       companyIdDocumentUrl: mergedPayload.companyIdDocumentUrl,
+      bankCertificateUrl: mergedPayload.bankCertificateUrl,
     })
     .returning();
 
@@ -362,6 +372,10 @@ export async function PUT(request: Request) {
     patch.companyIdDocumentUrl = data.companyIdDocumentUrl
       ? String(data.companyIdDocumentUrl).trim()
       : null;
+  if (data.bankCertificateUrl !== undefined)
+    patch.bankCertificateUrl = data.bankCertificateUrl
+      ? String(data.bankCertificateUrl).trim()
+      : null;
 
   // Obtener supplier actual para detectar cambios críticos
   const currentSupplier = await db
@@ -376,6 +390,15 @@ export async function PUT(request: Request) {
 
   const supplier = currentSupplier[0];
 
+  const nextBankCertificateUrl =
+    patch.bankCertificateUrl !== undefined
+      ? patch.bankCertificateUrl
+      : supplier.bankCertificateUrl;
+
+  if (!String(nextBankCertificateUrl ?? "").trim()) {
+    return new Response("Comprobante bancario requerido", { status: 400 });
+  }
+
   // Detectar cambios críticos
   const criticalFields = [
     "name",
@@ -387,6 +410,7 @@ export async function PUT(request: Request) {
     "passportDocumentUrl",
     "taxCertificateDocumentUrl",
     "companyIdDocumentUrl",
+    "bankCertificateUrl",
   ];
 
   const changedFields: string[] = [];

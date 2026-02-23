@@ -96,8 +96,8 @@ export function ConfectionistIdentificationSection({
         />
 
         <Input
-          label="Tipo de empaque"
-          placeholder="Interno, Satélite, Distribuidora"
+          label="Tipo de servicio"
+          placeholder="Confección, Bordado, Corte"
           value={form.type}
           onValueChange={(value) => onStringFieldChange("type", value)}
         />

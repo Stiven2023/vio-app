@@ -123,6 +123,7 @@ export function ProductsTab({
 
       return (
         p.name.toLowerCase().includes(q) ||
+        String(p.productCode ?? "").toLowerCase().includes(q) ||
         (p.description ?? "").toLowerCase().includes(q) ||
         catName.toLowerCase().includes(q)
       );
@@ -255,11 +256,12 @@ export function ProductsTab({
       {productsLoading ? (
         <TableSkeleton
           ariaLabel="Productos"
-          headers={["Nombre", "Categoría", "Activo", "Acciones"]}
+          headers={["Código", "Nombre", "Categoría", "Activo", "Acciones"]}
         />
       ) : (
         <Table aria-label="Productos">
           <TableHeader>
+            <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Categoría</TableColumn>
             <TableColumn>Activo</TableColumn>
@@ -268,6 +270,9 @@ export function ProductsTab({
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(p) => (
               <TableRow key={p.id}>
+                <TableCell className="font-medium text-default-700">
+                  {p.productCode ?? "-"}
+                </TableCell>
                 <TableCell>
                   <div>
                     <div className="font-medium">{p.name}</div>
@@ -410,7 +415,12 @@ export function ProductsTab({
               headers={[
                 "Código",
                 "Producto",
-                "COP",
+                "R1",
+                "R2",
+                "R3",
+                "Viomar",
+                "Colanta",
+                "Mayorista",
                 "USD",
                 "Activo",
                 "Acciones",
@@ -421,7 +431,12 @@ export function ProductsTab({
               <TableHeader>
                 <TableColumn>Código</TableColumn>
                 <TableColumn>Producto</TableColumn>
-                <TableColumn>COP</TableColumn>
+                <TableColumn>R1</TableColumn>
+                <TableColumn>R2</TableColumn>
+                <TableColumn>R3</TableColumn>
+                <TableColumn>Viomar</TableColumn>
+                <TableColumn>Colanta</TableColumn>
+                <TableColumn>Mayorista</TableColumn>
                 <TableColumn>USD</TableColumn>
                 <TableColumn>Activo</TableColumn>
                 <TableColumn>Acciones</TableColumn>
@@ -441,7 +456,22 @@ export function ProductsTab({
                         : "-"}
                     </TableCell>
                     <TableCell className="text-default-600">
-                      {pp.priceCOP ?? "-"}
+                      {pp.priceCopR1 ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-default-600">
+                      {pp.priceCopR2 ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-default-600">
+                      {pp.priceCopR3 ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-default-600">
+                      {pp.priceViomar ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-default-600">
+                      {pp.priceColanta ?? "-"}
+                    </TableCell>
+                    <TableCell className="text-default-600">
+                      {pp.priceMayorista ?? "-"}
                     </TableCell>
                     <TableCell className="text-default-600">
                       {pp.priceUSD ?? "-"}

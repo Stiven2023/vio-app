@@ -6,10 +6,6 @@ import type { SupplierFormPrefill } from "@/app/api/suppliers/supplier-modal.typ
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
-import { Select, SelectItem } from "@heroui/select";
-import { Checkbox } from "@heroui/checkbox";
-import { Switch } from "@heroui/switch";
 import {
   Modal,
   ModalBody,
@@ -31,7 +27,15 @@ import {
   PhoneIcon,
 } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
+import { FileUpload } from "@/components/file-upload";
 import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
+import {
+  SupplierContactSection,
+  SupplierCreditSection,
+  SupplierIdentificationSection,
+  SupplierLocationSection,
+  SupplierPhonesSection,
+} from "./supplier-modal-sections";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -72,6 +76,10 @@ const supplierSchema = z.object({
   promissoryNoteNumber: z.string().optional(),
   promissoryNoteDate: z.string().optional(),
   isActive: z.boolean().optional(),
+  bankCertificateUrl: z
+    .string()
+    .trim()
+    .min(1, "Comprobante bancario requerido"),
 });
 
 type FormState = {
@@ -105,6 +113,7 @@ type FormState = {
   passportDocumentUrl: string;
   taxCertificateDocumentUrl: string;
   companyIdDocumentUrl: string;
+  bankCertificateUrl: string;
 };
 
 export function SupplierModal({
@@ -178,6 +187,7 @@ export function SupplierModal({
     passportDocumentUrl: "",
     taxCertificateDocumentUrl: "",
     companyIdDocumentUrl: "",
+    bankCertificateUrl: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -227,6 +237,7 @@ export function SupplierModal({
         passportDocumentUrl: supplier.passportDocumentUrl ?? "",
         taxCertificateDocumentUrl: supplier.taxCertificateDocumentUrl ?? "",
         companyIdDocumentUrl: supplier.companyIdDocumentUrl ?? "",
+        bankCertificateUrl: supplier.bankCertificateUrl ?? "",
       });
     } else if (prefill) {
       setForm((prev) => ({
@@ -260,6 +271,7 @@ export function SupplierModal({
         passportDocumentUrl: "",
         taxCertificateDocumentUrl: "",
         companyIdDocumentUrl: "",
+        bankCertificateUrl: "",
       }));
     } else {
       setForm({
@@ -293,6 +305,7 @@ export function SupplierModal({
         passportDocumentUrl: "",
         taxCertificateDocumentUrl: "",
         companyIdDocumentUrl: "",
+        bankCertificateUrl: "",
       });
     }
   }, [supplier, prefill, isOpen]);
@@ -429,6 +442,13 @@ export function SupplierModal({
       return;
     }
 
+    if (!form.bankCertificateUrl.trim()) {
+      const msg = "Comprobante bancario requerido";
+      setErrors((prev) => ({ ...prev, bankCertificateUrl: msg }));
+      toast.error(msg);
+      return;
+    }
+
     setErrors({});
 
     const payload = {
@@ -462,6 +482,7 @@ export function SupplierModal({
       passportDocumentUrl: form.passportDocumentUrl || null,
       taxCertificateDocumentUrl: form.taxCertificateDocumentUrl || null,
       companyIdDocumentUrl: form.companyIdDocumentUrl || null,
+      bankCertificateUrl: form.bankCertificateUrl || null,
     };
 
     try {
@@ -481,6 +502,26 @@ export function SupplierModal({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const onStringFieldChange = (field: keyof FormState, value: string) => {
+    setForm((state) => ({ ...state, [field]: value }));
+  };
+
+  const onBooleanFieldChange = (field: keyof FormState, value: boolean) => {
+    setForm((state) => ({ ...state, [field]: value }));
+  };
+
+  const onIdentificationInputChange = (value: string) => {
+    setForm((state) => ({ ...state, identification: value }));
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      checkIdentification();
+    }, 500);
   };
 
   return (
@@ -505,230 +546,59 @@ export function SupplierModal({
               key="identificacion"
               title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-3">
-                <Select
-                  errorMessage={errors.identificationType}
-                  isInvalid={Boolean(errors.identificationType)}
-                  label="Tipo de Identificación"
-                  selectedKeys={[form.identificationType]}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
-                    setForm((s) => ({ ...s, identificationType: selected }));
-                  }}
-                >
-                  {identificationTypes.map((type) => (
-                    <SelectItem key={type.value}>{type.label}</SelectItem>
-                  ))}
-                </Select>
-
-                <Input
-                  errorMessage={errors.identification}
-                  isInvalid={Boolean(errors.identification)}
-                  label="Identificación"
-                  value={form.identification}
-                  onValueChange={(v) => {
-                    setForm((s) => ({ ...s, identification: v }));
-                    
-                    // Debounce: buscar duplicados mientras escribe
-                    if (debounceTimerRef.current) {
-                      clearTimeout(debounceTimerRef.current);
-                    }
-                    
-                    debounceTimerRef.current = setTimeout(() => {
-                      checkIdentification();
-                    }, 500);
-                  }}
-                />
-
-                <Input
-                  label="Dígito Verificación"
-                  maxLength={1}
-                  value={form.dv}
-                  onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
-                />
-
-                <Input
-                  label="Sucursal"
-                  value={form.branch}
-                  onValueChange={(v) => setForm((s) => ({ ...s, branch: v }))}
-                />
-
-                <Select
-                  errorMessage={errors.taxRegime}
-                  isInvalid={Boolean(errors.taxRegime)}
-                  label="Régimen Fiscal"
-                  selectedKeys={[form.taxRegime]}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
-                    setForm((s) => ({ ...s, taxRegime: selected }));
-                  }}
-                >
-                  {taxRegimes.map((regime) => (
-                    <SelectItem key={regime.value}>{regime.label}</SelectItem>
-                  ))}
-                </Select>
-              </div>
+              <SupplierIdentificationSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                taxRegimes={taxRegimes}
+                onIdentificationInputChange={onIdentificationInputChange}
+                onStringFieldChange={onStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="contacto"
               title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  errorMessage={errors.name}
-                  isInvalid={Boolean(errors.name)}
-                  label="Nombre"
-                  value={form.name}
-                  onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-                />
-
-                <Input
-                  errorMessage={errors.contactName}
-                  isInvalid={Boolean(errors.contactName)}
-                  label="Nombre de Contacto"
-                  value={form.contactName}
-                  onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
-                />
-
-                <Input
-                  errorMessage={errors.email}
-                  isInvalid={Boolean(errors.email)}
-                  label="Email"
-                  type="text"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={form.email}
-                  onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-                />
-              </div>
+              <SupplierContactSection
+                errors={errors}
+                form={form}
+                onStringFieldChange={onStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="ubicacion"
               title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  errorMessage={errors.address}
-                  isInvalid={Boolean(errors.address)}
-                  label="Dirección"
-                  value={form.address}
-                  onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
-                />
-
-                <Input
-                  label="Código Postal"
-                  value={form.postalCode}
-                  onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
-                />
-
-                <Input
-                  label="País"
-                  value={form.country}
-                  onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
-                />
-
-                <Input
-                  label="Departamento"
-                  value={form.department}
-                  onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
-                />
-
-                <Input
-                  label="Ciudad"
-                  value={form.city}
-                  onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-                />
-              </div>
+              <SupplierLocationSection
+                errors={errors}
+                form={form}
+                onStringFieldChange={onStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="telefonos"
               title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  label="Código Internacional"
-                  value={form.intlDialCode}
-                  onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
-                />
-
-                <Input
-                  label="Móvil"
-                  value={form.mobile}
-                  onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
-                />
-
-                <Input
-                  label="Móvil Completo"
-                  value={form.fullMobile}
-                  onValueChange={(v) => setForm((s) => ({ ...s, fullMobile: v }))}
-                />
-
-                <Input
-                  label="Código Local"
-                  value={form.localDialCode}
-                  onValueChange={(v) => setForm((s) => ({ ...s, localDialCode: v }))}
-                />
-
-                <Input
-                  label="Fijo"
-                  value={form.landline}
-                  onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
-                />
-
-                <Input
-                  label="Extensión"
-                  value={form.extension}
-                  onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
-                />
-
-                <Input
-                  label="Fijo Completo"
-                  value={form.fullLandline}
-                  onValueChange={(v) => setForm((s) => ({ ...s, fullLandline: v }))}
-                />
-              </div>
+              <SupplierPhonesSection
+                errors={errors}
+                form={form}
+                onStringFieldChange={onStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="credito"
               title={<FormTabTitle icon={<FinanceIcon />} label="Crédito y estado" />}
             >
-              <div className="space-y-4 pt-3">
-                <div className="flex items-center justify-between">
-                  <Checkbox
-                    isSelected={form.hasCredit}
-                    onValueChange={(v) => setForm((s) => ({ ...s, hasCredit: v }))}
-                  >
-                    Tiene Crédito
-                  </Checkbox>
-
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-default-500">Activo</span>
-                    <Switch
-                      isSelected={form.isActive}
-                      onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <Input
-                    label="Número Pagaré"
-                    value={form.promissoryNoteNumber}
-                    onValueChange={(v) => setForm((s) => ({ ...s, promissoryNoteNumber: v }))}
-                  />
-
-                  <Input
-                    label="Fecha Firma Pagaré"
-                    type="date"
-                    value={form.promissoryNoteDate}
-                    onValueChange={(v) => setForm((s) => ({ ...s, promissoryNoteDate: v }))}
-                  />
-                </div>
-              </div>
+              <SupplierCreditSection
+                errors={errors}
+                form={form}
+                onBooleanFieldChange={onBooleanFieldChange}
+                onStringFieldChange={onStringFieldChange}
+              />
             </Tab>
 
             <Tab
@@ -746,6 +616,23 @@ export function SupplierModal({
                 }
                 onClear={(field) => setForm((s) => ({ ...s, [field]: "" }))}
               />
+              <div className="pt-4">
+                <FileUpload
+                  acceptedFileTypes=".pdf"
+                  errorMessage={errors.bankCertificateUrl}
+                  isRequired
+                  label="Comprobante bancario"
+                  maxSizeMB={10}
+                  uploadFolder="suppliers/documents"
+                  value={form.bankCertificateUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, bankCertificateUrl: url }))
+                  }
+                  onClear={() =>
+                    setForm((s) => ({ ...s, bankCertificateUrl: "" }))
+                  }
+                />
+              </div>
             </Tab>
           </Tabs>
         </ModalBody>

@@ -80,19 +80,32 @@ import {
 // Enum de roles
 export const roleEnum = pgEnum("role", [
   "ADMINISTRADOR",
-  "LIDER_DE_PROCESOS",
+  "LIDER_JURIDICA",
+  "RH",
+  "AUXILIAR_RH",
+  "LIDER_FINANCIERA",
+  "AUXILIAR_CONTABLE",
+  "TESORERIA_Y_CARTERA",
+  "LIDER_COMERCIAL",
   "ASESOR",
-  "COMPRAS",
+  "LIDER_SUMINISTROS",
+  "COMPRA_NACIONAL",
+  "COMPRA_INTERNACIONAL",
+  "LIDER_DISEÑO",
   "DISEÑADOR",
-  "OPERARIO_EMPAQUE",
-  "OPERARIO_INVENTARIO",
-  "OPERARIO_INTEGRACION",
-  "OPERARIO_CORTE_LASER",
-  "OPERARIO_CORTE_MANUAL",
-  "OPERARIO_IMPRESION",
-  "OPERARIO_ESTAMPACION",
-  "OPERARIO_MONTAJE",
+  "LIDER_OPERACIONAL",
+  "PROGRAMACION",
+  "OPERARIO_DESPACHO",
+  "OPERARIO_BODEGA",
+  "OPERARIO_FLOTER",
   "OPERARIO_SUBLIMACION",
+  "OPERARIO_CORTE_MANUAL",
+  "OPERARIO_CORTE_LASER",
+  "OPERARIO_INTEGRACION_CALIDAD",
+  "OPERARIO_MONTAJE",
+  "MENSAJERO",
+  "CONFECCIONISTA",
+  "EMPAQUE",
 ]);
 
 // Enum de permisos
@@ -421,11 +434,10 @@ export const categories = pgTable("categories", {
 
 export const products = pgTable("products", {
   id: uuid("id").defaultRandom().primaryKey(),
+  productCode: varchar("product_code", { length: 10 }).unique().notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   categoryId: uuid("category_id").references(() => categories.id),
-  isSet: boolean("is_set").default(false),
-  productionType: varchar("production_type", { length: 30 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -434,11 +446,18 @@ export const productPrices = pgTable("product_prices", {
   id: uuid("id").defaultRandom().primaryKey(),
   productId: uuid("product_id").references(() => products.id),
   referenceCode: varchar("reference_code", { length: 50 }).unique().notNull(),
-  priceCOP: numeric("price_cop", { precision: 14, scale: 2 }),
+  priceCopR1: numeric("price_cop_r1", { precision: 14, scale: 2 }),
+  priceCopR2: numeric("price_cop_r2", { precision: 14, scale: 2 }),
+  priceCopR3: numeric("price_cop_r3", { precision: 14, scale: 2 }),
+  priceViomar: numeric("price_viomar", { precision: 14, scale: 2 }),
+  priceColanta: numeric("price_colanta", { precision: 14, scale: 2 }),
+  priceMayorista: numeric("price_mayorista", { precision: 14, scale: 2 }),
   priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
+  isEditable: boolean("is_editable").default(false),
   startDate: timestamp("start_date"),
   endDate: timestamp("end_date"),
   isActive: boolean("is_active").default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================
@@ -579,6 +598,7 @@ export const confectionists = pgTable("confectionists", {
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
   taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
+  bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
   
   // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
@@ -642,6 +662,7 @@ export const suppliers = pgTable("suppliers", {
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
   taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
+  bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
   
   // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
@@ -876,6 +897,23 @@ export const notifications = pgTable("notifications", {
   role: varchar("role", { length: 150 }),
   href: text("href"),
   isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   EXCHANGE RATES (USD -> COP)
+========================= */
+export const exchangeRates = pgTable("exchange_rates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  provider: varchar("provider", { length: 100 }).notNull(),
+  baseCurrency: varchar("base_currency", { length: 3 }).notNull().default("USD"),
+  targetCurrency: varchar("target_currency", { length: 3 }).notNull().default("COP"),
+  sourceRate: numeric("source_rate", { precision: 14, scale: 4 }).notNull(),
+  floorRate: numeric("floor_rate", { precision: 14, scale: 4 }).notNull().default("3600"),
+  effectiveRate: numeric("effective_rate", { precision: 14, scale: 4 }).notNull(),
+  adjustmentApplied: numeric("adjustment_applied", { precision: 14, scale: 4 }).notNull().default("0"),
+  sourceDate: timestamp("source_date", { withTimezone: true }),
+  rawPayload: text("raw_payload"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

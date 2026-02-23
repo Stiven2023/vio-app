@@ -149,6 +149,16 @@ export function SupplierDetailsModal({
                   >
                     Ver ID empresa
                   </Button>
+                  <Button
+                    isDisabled={!supplier.bankCertificateUrl}
+                    size="sm"
+                    variant="flat"
+                    onPress={() =>
+                      openDocument("Comprobante bancario", supplier.bankCertificateUrl)
+                    }
+                  >
+                    Ver comprobante bancario
+                  </Button>
                 </div>
               </div>
             </>

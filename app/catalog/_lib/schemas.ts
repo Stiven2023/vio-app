@@ -7,13 +7,8 @@ export const createCategorySchema = z.object({
 export const createProductSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
   description: z.string().optional(),
-  categoryId: z.string().uuid("Selecciona una categoría").optional(),
+  categoryId: z.string().uuid("Selecciona una categoría"),
   isActive: z.boolean().optional(),
-  isSet: z.boolean().optional(),
-  productionType: z
-    .enum(["SUBLIMADO", "CORTE_MANUAL"])
-    .optional()
-    .or(z.literal("" as any).transform(() => undefined)),
 });
 
 export const createProductPriceSchema = z.object({
@@ -23,16 +18,42 @@ export const createProductPriceSchema = z.object({
     .trim()
     .min(1, "Código requerido")
     .max(50, "Máximo 50"),
-  priceCOP: z
+  priceCopR1: z
     .string()
     .trim()
     .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio COP inválido"),
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio R1 inválido"),
+  priceCopR2: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio R2 inválido"),
+  priceCopR3: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio R3 inválido"),
+  priceViomar: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio Viomar inválido"),
+  priceColanta: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio Colanta inválido"),
+  priceMayorista: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio Mayorista inválido"),
   priceUSD: z
     .string()
     .trim()
     .optional()
     .refine((v) => !v || !Number.isNaN(Number(v)), "Precio USD inválido"),
+  isEditable: z.boolean().optional(),
   startDate: z.string().trim().optional(),
   endDate: z.string().trim().optional(),
   isActive: z.boolean().optional(),

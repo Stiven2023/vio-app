@@ -13,11 +13,10 @@ export type Category = {
 
 export type Product = {
   id: string;
+  productCode: string;
   name: string;
   description: string | null;
   categoryId: string | null;
-  isSet?: boolean | null;
-  productionType?: string | null;
   isActive: boolean | null;
   createdAt: string | null;
 };
@@ -26,11 +25,18 @@ export type ProductPrice = {
   id: string;
   productId: string | null;
   referenceCode: string;
-  priceCOP: string | null;
+  priceCopR1: string | null;
+  priceCopR2: string | null;
+  priceCopR3: string | null;
+  priceViomar: string | null;
+  priceColanta: string | null;
+  priceMayorista: string | null;
   priceUSD: string | null;
+  isEditable: boolean | null;
   startDate: string | null;
   endDate: string | null;
   isActive: boolean | null;
+  updatedAt: string | null;
 };
 
 export type InventoryItem = {

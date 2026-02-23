@@ -99,8 +99,8 @@ export function PackerIdentificationSection({
         />
 
         <Input
-          label="Especialidad"
-          placeholder="Prenda colgada, Caja master, Etiquetado"
+          label="Nombre del taller"
+          placeholder="Taller ABC, Taller principal"
           value={form.specialty}
           onValueChange={(value) => onStringFieldChange("specialty", value)}
         />

@@ -24,8 +24,6 @@ type FormState = {
   description: string;
   categoryId: string;
   isActive: boolean;
-  isSet: boolean;
-  productionType: "SUBLIMADO" | "CORTE_MANUAL" | "";
 };
 
 export function ProductModal({
@@ -46,8 +44,6 @@ export function ProductModal({
     description: "",
     categoryId: "",
     isActive: true,
-    isSet: false,
-    productionType: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -64,8 +60,6 @@ export function ProductModal({
       description: product?.description ?? "",
       categoryId: product?.categoryId ?? "",
       isActive: Boolean(product?.isActive ?? true),
-      isSet: Boolean((product as any)?.isSet ?? false),
-      productionType: ((product as any)?.productionType as any) ?? "",
     });
   }, [isOpen, product]);
 
@@ -77,8 +71,6 @@ export function ProductModal({
       description: form.description.trim() ? form.description : undefined,
       categoryId: form.categoryId ? form.categoryId : undefined,
       isActive: form.isActive,
-      isSet: form.isSet,
-      productionType: form.productionType ? form.productionType : undefined,
     });
 
     if (!parsed.success) {
@@ -125,6 +117,13 @@ export function ProductModal({
         </ModalHeader>
         <ModalBody>
           <Input
+            isReadOnly
+            label="Código de producto"
+            placeholder="Se genera al guardar"
+            value={product?.productCode ?? ""}
+          />
+
+          <Input
             errorMessage={errors.name}
             isInvalid={Boolean(errors.name)}
             label="Nombre"
@@ -140,6 +139,8 @@ export function ProductModal({
 
           <Select
             isDisabled={!canPickCategory}
+            errorMessage={errors.categoryId}
+            isInvalid={Boolean(errors.categoryId)}
             label="Categoría"
             selectedKeys={form.categoryId ? [form.categoryId] : []}
             onSelectionChange={(keys) => {
@@ -151,30 +152,6 @@ export function ProductModal({
             {categories.map((c) => (
               <SelectItem key={c.id}>{c.name}</SelectItem>
             ))}
-          </Select>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Es conjunto (lleva medias)</span>
-            <Switch
-              isSelected={form.isSet}
-              onValueChange={(v) => setForm((s) => ({ ...s, isSet: v }))}
-            />
-          </div>
-
-          <Select
-            label="Tipo de producción"
-            selectedKeys={form.productionType ? [form.productionType] : []}
-            onSelectionChange={(keys) => {
-              const first = Array.from(keys)[0];
-
-              setForm((s) => ({
-                ...s,
-                productionType: String(first ?? "") as any,
-              }));
-            }}
-          >
-            <SelectItem key="SUBLIMADO">Sublimado</SelectItem>
-            <SelectItem key="CORTE_MANUAL">Corte manual</SelectItem>
           </Select>
 
           <div className="flex items-center justify-between">

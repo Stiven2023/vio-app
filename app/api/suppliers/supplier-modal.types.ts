@@ -25,4 +25,5 @@ export type SupplierFormPrefill = {
   hasCredit?: boolean;
   promissoryNoteNumber?: string;
   promissoryNoteDate?: string;
+  bankCertificateUrl?: string;
 };

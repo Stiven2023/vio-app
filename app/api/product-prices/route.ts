@@ -73,8 +73,14 @@ export async function POST(request: Request) {
   const {
     productId,
     referenceCode,
-    priceCOP,
+    priceCopR1,
+    priceCopR2,
+    priceCopR3,
+    priceViomar,
+    priceColanta,
+    priceMayorista,
     priceUSD,
+    isEditable,
     startDate,
     endDate,
     isActive,
@@ -95,11 +101,18 @@ export async function POST(request: Request) {
       .values({
         productId: pid,
         referenceCode: ref,
-        priceCOP: toNullableNumericString(priceCOP),
+        priceCopR1: toNullableNumericString(priceCopR1),
+        priceCopR2: toNullableNumericString(priceCopR2),
+        priceCopR3: toNullableNumericString(priceCopR3),
+        priceViomar: toNullableNumericString(priceViomar),
+        priceColanta: toNullableNumericString(priceColanta),
+        priceMayorista: toNullableNumericString(priceMayorista),
         priceUSD: toNullableNumericString(priceUSD),
+        isEditable: Boolean(isEditable ?? false),
         startDate: startDate ? new Date(String(startDate)) : null,
         endDate: endDate ? new Date(String(endDate)) : null,
         isActive: isActive ?? true,
+        updatedAt: new Date(),
       })
       .returning();
 
@@ -135,8 +148,14 @@ export async function PUT(request: Request) {
     id,
     productId,
     referenceCode,
-    priceCOP,
+    priceCopR1,
+    priceCopR2,
+    priceCopR3,
+    priceViomar,
+    priceColanta,
+    priceMayorista,
     priceUSD,
+    isEditable,
     startDate,
     endDate,
     isActive,
@@ -153,14 +172,26 @@ export async function PUT(request: Request) {
   if (productId !== undefined) patch.productId = toNullableString(productId);
   if (referenceCode !== undefined)
     patch.referenceCode = String(referenceCode ?? "").trim();
-  if (priceCOP !== undefined)
-    patch.priceCOP = toNullableNumericString(priceCOP);
+  if (priceCopR1 !== undefined)
+    patch.priceCopR1 = toNullableNumericString(priceCopR1);
+  if (priceCopR2 !== undefined)
+    patch.priceCopR2 = toNullableNumericString(priceCopR2);
+  if (priceCopR3 !== undefined)
+    patch.priceCopR3 = toNullableNumericString(priceCopR3);
+  if (priceViomar !== undefined)
+    patch.priceViomar = toNullableNumericString(priceViomar);
+  if (priceColanta !== undefined)
+    patch.priceColanta = toNullableNumericString(priceColanta);
+  if (priceMayorista !== undefined)
+    patch.priceMayorista = toNullableNumericString(priceMayorista);
   if (priceUSD !== undefined)
     patch.priceUSD = toNullableNumericString(priceUSD);
+  if (isEditable !== undefined) patch.isEditable = Boolean(isEditable);
   if (startDate !== undefined)
     patch.startDate = startDate ? new Date(String(startDate)) : null;
   if (endDate !== undefined)
     patch.endDate = endDate ? new Date(String(endDate)) : null;
+  patch.updatedAt = new Date();
 
   try {
     const updated = await db

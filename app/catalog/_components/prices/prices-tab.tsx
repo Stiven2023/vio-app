@@ -160,14 +160,31 @@ export function PricesTab({
       {loading ? (
         <TableSkeleton
           ariaLabel="Precios"
-          headers={["Código", "Producto", "COP", "USD", "Activo", "Acciones"]}
+          headers={[
+            "Código",
+            "Producto",
+            "R1",
+            "R2",
+            "R3",
+            "Viomar",
+            "Colanta",
+            "Mayorista",
+            "USD",
+            "Activo",
+            "Acciones",
+          ]}
         />
       ) : (
         <Table aria-label="Precios">
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Producto</TableColumn>
-            <TableColumn>COP</TableColumn>
+            <TableColumn>R1</TableColumn>
+            <TableColumn>R2</TableColumn>
+            <TableColumn>R3</TableColumn>
+            <TableColumn>Viomar</TableColumn>
+            <TableColumn>Colanta</TableColumn>
+            <TableColumn>Mayorista</TableColumn>
             <TableColumn>USD</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
@@ -183,9 +200,12 @@ export function PricesTab({
                     ? (productNameById.get(pp.productId) ?? "-")
                     : "-"}
                 </TableCell>
-                <TableCell className="text-default-600">
-                  {pp.priceCOP ?? "-"}
-                </TableCell>
+                <TableCell className="text-default-600">{pp.priceCopR1 ?? "-"}</TableCell>
+                <TableCell className="text-default-600">{pp.priceCopR2 ?? "-"}</TableCell>
+                <TableCell className="text-default-600">{pp.priceCopR3 ?? "-"}</TableCell>
+                <TableCell className="text-default-600">{pp.priceViomar ?? "-"}</TableCell>
+                <TableCell className="text-default-600">{pp.priceColanta ?? "-"}</TableCell>
+                <TableCell className="text-default-600">{pp.priceMayorista ?? "-"}</TableCell>
                 <TableCell className="text-default-600">
                   {pp.priceUSD ?? "-"}
                 </TableCell>

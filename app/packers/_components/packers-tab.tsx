@@ -1,10 +1,12 @@
 "use client";
 
 import type { Paginated } from "@/app/catalog/_lib/types";
+import type { Packer as AdminPacker } from "@/app/admin/_lib/types";
 
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
 import {
   Dropdown,
   DropdownItem,
@@ -39,34 +41,10 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { PackerDetailsModal } from "@/app/packers/_components/packer-details-modal";
 
 import { PackerModal } from "./packer-modal";
+import { PackerLegalStatusModal } from "@/app/admin/_components/packers/packer-legal-status-modal";
 
-export type Packer = {
-  id: string;
-  packerCode: string;
-  name: string;
-  identificationType: string;
-  identification: string;
-  dv: string | null;
-  packerType: string | null;
-  specialty: string | null;
-  contactName: string | null;
-  email: string | null;
-  intlDialCode: string | null;
-  mobile: string | null;
-  fullMobile: string | null;
-  landline: string | null;
-  address: string;
-  postalCode: string | null;
-  city: string | null;
-  department: string | null;
-  isActive: boolean | null;
-  dailyCapacity: number | null;
-  identityDocumentUrl?: string | null;
-  rutDocumentUrl?: string | null;
-  commerceChamberDocumentUrl?: string | null;
-  passportDocumentUrl?: string | null;
-  taxCertificateDocumentUrl?: string | null;
-  companyIdDocumentUrl?: string | null;
+export type Packer = AdminPacker & {
+  legalStatus: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -93,6 +71,8 @@ export function PackersTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Packer | null>(null);
+  const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Packer | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -326,9 +306,10 @@ export function PackersTab({
             "Tipo ID",
             "Email",
             "Tipo",
-            "Especialidad",
+            "Nombre del taller",
             "Ciudad",
             "Activo",
+            "Estado jurídico",
             "Acciones",
           ]}
         />
@@ -340,9 +321,10 @@ export function PackersTab({
             <TableColumn>Tipo ID</TableColumn>
             <TableColumn>Email</TableColumn>
             <TableColumn>Tipo</TableColumn>
-            <TableColumn>Especialidad</TableColumn>
+            <TableColumn>Nombre del taller</TableColumn>
             <TableColumn>Ciudad</TableColumn>
             <TableColumn>Activo</TableColumn>
+            <TableColumn>Estado jurídico</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
@@ -356,6 +338,31 @@ export function PackersTab({
                 <TableCell className="text-default-500">{p.specialty ?? "-"}</TableCell>
                 <TableCell className="text-default-500">{p.city ?? "-"}</TableCell>
                 <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
+                <TableCell>
+                  {p.legalStatus ? (
+                    <Chip
+                      color={
+                        p.legalStatus === "VIGENTE"
+                          ? "success"
+                          : p.legalStatus === "EN_REVISION"
+                            ? "warning"
+                            : "danger"
+                      }
+                      size="sm"
+                      variant="flat"
+                    >
+                      {p.legalStatus === "VIGENTE"
+                        ? "Vigente"
+                        : p.legalStatus === "EN_REVISION"
+                          ? "En Revisión"
+                          : "Bloqueado"}
+                    </Chip>
+                  ) : (
+                    <Chip color="default" size="sm" variant="flat">
+                      Sin definir
+                    </Chip>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Dropdown>
                     <DropdownTrigger>
@@ -377,6 +384,17 @@ export function PackersTab({
                         }}
                       >
                         Ver información completa
+                      </DropdownItem>
+
+                      <DropdownItem
+                        key={`legal-status-${p.id}`}
+                        startContent={<span>⚖️</span>}
+                        onPress={() => {
+                          setViewingLegalStatus(p);
+                          setLegalStatusModalOpen(true);
+                        }}
+                      >
+                        Ver estado jurídico
                       </DropdownItem>
 
                       <DropdownItem
@@ -469,6 +487,12 @@ export function PackersTab({
         onRequestCreateClient={() => viewing && createAsClient(viewing)}
         onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
         onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
+      />
+
+      <PackerLegalStatusModal
+        packer={viewingLegalStatus}
+        isOpen={legalStatusModalOpen}
+        onOpenChange={setLegalStatusModalOpen}
       />
 
       <ConfirmActionModal

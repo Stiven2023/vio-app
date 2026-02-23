@@ -68,7 +68,7 @@ export function PackerDetailsModal({
 
               <div className="border-t pt-3 grid grid-cols-2 gap-3">
                 <div><span className="font-semibold">Tipo de empaque:</span> {showValue(packer.packerType)}</div>
-                <div><span className="font-semibold">Especialidad:</span> {showValue(packer.specialty)}</div>
+                <div><span className="font-semibold">Nombre del taller:</span> {showValue(packer.specialty)}</div>
                 <div><span className="font-semibold">Capacidad diaria:</span> {showValue(packer.dailyCapacity)}</div>
               </div>
 

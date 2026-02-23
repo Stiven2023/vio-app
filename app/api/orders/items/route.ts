@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  clients,
   employees,
   inventoryItems,
   orderItemMaterials,
@@ -10,6 +11,7 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
+  productPrices,
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
@@ -20,6 +22,7 @@ import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -73,6 +76,72 @@ function toPositiveInt(v: unknown) {
   const i = Math.floor(n);
 
   return i > 0 ? i : null;
+}
+
+function isValidPriceRowNow(row: {
+  isActive: boolean | null;
+  startDate: Date | null;
+  endDate: Date | null;
+}) {
+  if (row.isActive === false) return false;
+
+  const now = new Date();
+  if (row.startDate && now < row.startDate) return false;
+  if (row.endDate && now > row.endDate) return false;
+
+  return true;
+}
+
+function pickCopScaleByQuantity(
+  row: typeof productPrices.$inferSelect,
+  quantity: number,
+) {
+  if (quantity <= 500) return row.priceCopR1;
+  if (quantity <= 1000) return row.priceCopR2;
+
+  return row.priceCopR3;
+}
+
+function resolveUnitPriceByRule(args: {
+  currency: string | null | undefined;
+  clientPriceType: string | null | undefined;
+  quantity: number;
+  row: typeof productPrices.$inferSelect;
+  manualUnitPrice?: unknown;
+  usdCopEffectiveRate?: number | null;
+}) {
+  const {
+    currency,
+    clientPriceType,
+    quantity,
+    row,
+    manualUnitPrice,
+    usdCopEffectiveRate,
+  } = args;
+
+  if (String(currency ?? "COP").toUpperCase() === "USD") {
+    return row.priceUSD;
+  }
+
+  if (clientPriceType === "VIOMAR") return row.priceViomar;
+  if (clientPriceType === "COLANTA") return row.priceColanta;
+  if (clientPriceType === "MAYORISTA") return row.priceMayorista;
+
+  if (clientPriceType === "AUTORIZADO") {
+    const manual = toNullableNumericString(manualUnitPrice);
+
+    return manual ?? pickCopScaleByQuantity(row, quantity);
+  }
+
+  const copByScale = pickCopScaleByQuantity(row, quantity);
+
+  if (copByScale) return copByScale;
+
+  if (row.priceUSD && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
+    return String(asNumber(row.priceUSD) * usdCopEffectiveRate);
+  }
+
+  return null;
 }
 
 async function resolveEmployeeId(request: Request) {
@@ -224,11 +293,20 @@ export async function POST(request: Request) {
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
   const employeeId = await resolveEmployeeId(request);
+  const latestUsdCopRate = await getLatestUsdCopRate();
 
-  const created = await db.transaction(async (tx) => {
+  let created: typeof orderItems.$inferSelect | undefined;
+
+  try {
+    created = await db.transaction(async (tx) => {
     const [orderRow] = await tx
-      .select({ kind: orders.kind })
+      .select({
+        kind: orders.kind,
+        currency: orders.currency,
+        clientPriceType: clients.priceClientType,
+      })
       .from(orders)
+      .leftJoin(clients, eq(orders.clientId, clients.id))
       .where(eq(orders.id, orderId))
       .limit(1);
 
@@ -241,16 +319,47 @@ export async function POST(request: Request) {
       );
     }
 
+    const productPriceId = toNullableString(body.productPriceId);
+
+    if (!productPriceId) {
+      throw new Error("productPriceId required");
+    }
+
+    const [priceRow] = await tx
+      .select()
+      .from(productPrices)
+      .where(eq(productPrices.id, productPriceId))
+      .limit(1);
+
+    if (!priceRow || !isValidPriceRowNow(priceRow)) {
+      throw new Error("precio vigente requerido");
+    }
+
+    const resolvedUnitPrice = resolveUnitPriceByRule({
+      currency: orderRow.currency,
+      clientPriceType: orderRow.clientPriceType,
+      quantity: qty,
+      row: priceRow,
+      manualUnitPrice: body.unitPrice,
+      usdCopEffectiveRate: latestUsdCopRate?.effectiveRate ?? null,
+    });
+
+    if (!resolvedUnitPrice) {
+      throw new Error("No hay precio aplicable para este cliente y cantidad");
+    }
+
+    const unitPrice = Math.max(0, asNumber(resolvedUnitPrice));
+
     const [oi] = await tx
       .insert(orderItems)
       .values({
         orderId,
         productId: toNullableString(body.productId),
-        productPriceId: toNullableString(body.productPriceId),
+        productPriceId,
         name: toNullableString(body.name),
         quantity: qty,
-        unitPrice: toNullableNumericString(body.unitPrice),
-        totalPrice: toNullableNumericString(body.totalPrice),
+        unitPrice: String(unitPrice),
+        totalPrice: String(unitPrice * qty),
         observations: toNullableString(body.observations),
         fabric: toNullableString(body.fabric),
         imageUrl: toNullableString(body.imageUrl),
@@ -342,6 +451,21 @@ export async function POST(request: Request) {
 
     return oi;
   });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "No se pudo crear el diseño";
+
+    if (
+      message.includes("required") ||
+      message.includes("vigente") ||
+      message.includes("aplicable") ||
+      message.includes("completación")
+    ) {
+      return new Response(message, { status: 400 });
+    }
+
+    return new Response("No se pudo crear el diseño", { status: 500 });
+  }
 
   await createNotificationsForPermission("VER_DISEÑO", {
     title: "Diseño creado",

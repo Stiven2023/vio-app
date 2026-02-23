@@ -3,10 +3,12 @@
 import type { Paginated } from "@/app/catalog/_lib/types";
 import type { ConfectionistFormPrefill } from "./confectionist-modal.types";
 import type { ClientFormPrefill } from "@/app/admin/_components/clients/client-modal.types";
+import type { Confectionist as AdminConfectionist } from "@/app/admin/_lib/types";
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
 import {
   Dropdown,
   DropdownItem,
@@ -33,38 +35,12 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 import { ConfectionistModal } from "./confectionist-modal";
 import { ConfectionistDetailsModal } from "./confectionist-details-modal";
+import { ConfectionistLegalStatusModal } from "@/app/admin/_components/confectionists/confectionist-legal-status-modal";
 
-export type Confectionist = {
-  id: string;
-  confectionistCode: string | null;
-  name: string;
-  identificationType: string;
-  identification: string;
-  dv: string | null;
-  type: string | null;
+export type Confectionist = AdminConfectionist & {
   specialty: string | null;
-  taxRegime: string;
-  contactName: string | null;
-  email: string | null;
-  intlDialCode: string | null;
-  mobile: string | null;
-  fullMobile: string | null;
-  landline: string | null;
-  extension: string | null;
-  address: string;
-  postalCode: string | null;
-  country: string | null;
-  department: string | null;
-  city: string | null;
-  isActive: boolean | null;
   dailyCapacity: number | null;
-  createdAt: string | null;
-  identityDocumentUrl?: string | null;
-  rutDocumentUrl?: string | null;
-  commerceChamberDocumentUrl?: string | null;
-  passportDocumentUrl?: string | null;
-  taxCertificateDocumentUrl?: string | null;
-  companyIdDocumentUrl?: string | null;
+  legalStatus: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null;
 };
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -97,6 +73,8 @@ export function ConfectionistsTab({
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Confectionist | null>(null);
+  const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Confectionist | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(null);
@@ -346,6 +324,7 @@ export function ConfectionistsTab({
             "Especialidad",
             "Capacidad",
             "Activo",
+            "Estado jurídico",
             "Acciones",
           ]}
         />
@@ -361,6 +340,7 @@ export function ConfectionistsTab({
             <TableColumn>Especialidad</TableColumn>
             <TableColumn>Capacidad</TableColumn>
             <TableColumn>Activo</TableColumn>
+            <TableColumn>Estado jurídico</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
@@ -383,6 +363,31 @@ export function ConfectionistsTab({
                   {c.dailyCapacity === null ? "-" : c.dailyCapacity}
                 </TableCell>
                 <TableCell>{c.isActive ? "Sí" : "No"}</TableCell>
+                <TableCell>
+                  {c.legalStatus ? (
+                    <Chip
+                      color={
+                        c.legalStatus === "VIGENTE"
+                          ? "success"
+                          : c.legalStatus === "EN_REVISION"
+                            ? "warning"
+                            : "danger"
+                      }
+                      size="sm"
+                      variant="flat"
+                    >
+                      {c.legalStatus === "VIGENTE"
+                        ? "Vigente"
+                        : c.legalStatus === "EN_REVISION"
+                          ? "En Revisión"
+                          : "Bloqueado"}
+                    </Chip>
+                  ) : (
+                    <Chip color="default" size="sm" variant="flat">
+                      Sin definir
+                    </Chip>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Dropdown>
                     <DropdownTrigger>
@@ -419,6 +424,17 @@ export function ConfectionistsTab({
                         }}
                       >
                         Ver documentos
+                      </DropdownItem>
+
+                      <DropdownItem
+                        key={`legal-status-${c.id}`}
+                        startContent={<span>⚖️</span>}
+                        onPress={() => {
+                          setViewingLegalStatus(c);
+                          setLegalStatusModalOpen(true);
+                        }}
+                      >
+                        Ver estado jurídico
                       </DropdownItem>
 
                       <DropdownItem
@@ -568,6 +584,12 @@ export function ConfectionistsTab({
         onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
         onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
         onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
+      />
+
+      <ConfectionistLegalStatusModal
+        confectionist={viewingLegalStatus}
+        isOpen={legalStatusModalOpen}
+        onOpenChange={setLegalStatusModalOpen}
       />
 
       <ConfirmActionModal
