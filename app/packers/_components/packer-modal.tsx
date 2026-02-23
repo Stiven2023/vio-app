@@ -19,7 +19,6 @@ import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { FormTabTitle, IdentificationIcon, ContactIcon, PhoneIcon, LocationIcon } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
-import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import {
   PackerContactSection,
   PackerIdentificationSection,
@@ -105,7 +104,7 @@ export function PackerModal({
     city: "Medellín",
     department: "ANTIOQUIA",
     dailyCapacity: "",
-    isActive: true,
+    isActive: false,
     identityDocumentUrl: "",
     rutDocumentUrl: "",
     commerceChamberDocumentUrl: "",
@@ -163,7 +162,7 @@ export function PackerModal({
         packer?.dailyCapacity === null || packer?.dailyCapacity === undefined
           ? ""
           : String(packer.dailyCapacity),
-      isActive: Boolean(packer?.isActive ?? true),
+      isActive: Boolean(packer?.isActive ?? false),
       identityDocumentUrl: packer?.identityDocumentUrl ?? "",
       rutDocumentUrl: packer?.rutDocumentUrl ?? "",
       commerceChamberDocumentUrl: packer?.commerceChamberDocumentUrl ?? "",
@@ -231,7 +230,7 @@ export function PackerModal({
       address: importCandidate.address ?? s.address,
       city: importCandidate.city ?? s.city,
       department: importCandidate.department ?? s.department,
-      isActive: Boolean(importCandidate.isActive ?? s.isActive),
+      isActive: false,
     }));
 
     setImportPromptOpen(false);
@@ -298,17 +297,6 @@ export function PackerModal({
       return;
     }
 
-    const missingDocumentError = getMissingRequiredDocumentMessage(
-      form.identificationType,
-      form as unknown as Record<string, unknown>,
-    );
-
-    if (missingDocumentError) {
-      setErrors((prev) => ({ ...prev, documents: missingDocumentError }));
-      toast.error(missingDocumentError);
-      return;
-    }
-
     setErrors({});
 
     const payload = {
@@ -331,7 +319,7 @@ export function PackerModal({
       city: form.city.trim() ? form.city.trim() : "Medellín",
       department: form.department.trim() ? form.department.trim() : "ANTIOQUIA",
       dailyCapacity: form.dailyCapacity.trim() ? Number(form.dailyCapacity) : null,
-      isActive: form.isActive,
+      isActive: false,
       identityDocumentUrl: form.identityDocumentUrl || null,
       rutDocumentUrl: form.rutDocumentUrl || null,
       commerceChamberDocumentUrl: form.commerceChamberDocumentUrl || null,

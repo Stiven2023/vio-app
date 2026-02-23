@@ -3,7 +3,6 @@ import { eq, sql, desc } from "drizzle-orm";
 import { db } from "@/src/db";
 import { suppliers, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -196,19 +195,6 @@ export async function POST(request: Request) {
       (body as any).bankCertificateUrl || sourceClientDocuments.bankCertificateUrl,
   };
 
-  const missingDocumentError = getMissingRequiredDocumentMessage(
-    String(mergedPayload.identificationType ?? ""),
-    mergedPayload as Record<string, unknown>,
-  );
-
-  if (missingDocumentError) {
-    return new Response(missingDocumentError, { status: 400 });
-  }
-
-  if (!String(mergedPayload.bankCertificateUrl ?? "").trim()) {
-    return new Response("Comprobante bancario requerido", { status: 400 });
-  }
-
   const created = await db
     .insert(suppliers)
     .values({
@@ -336,7 +322,7 @@ export async function PUT(request: Request) {
     patch.fullLandline = data.fullLandline
       ? String(data.fullLandline).trim()
       : null;
-  if (data.isActive !== undefined) patch.isActive = data.isActive;
+  patch.isActive = false;
   if (data.hasCredit !== undefined) patch.hasCredit = data.hasCredit;
   if (data.promissoryNoteNumber !== undefined)
     patch.promissoryNoteNumber = data.promissoryNoteNumber
@@ -389,15 +375,6 @@ export async function PUT(request: Request) {
   }
 
   const supplier = currentSupplier[0];
-
-  const nextBankCertificateUrl =
-    patch.bankCertificateUrl !== undefined
-      ? patch.bankCertificateUrl
-      : supplier.bankCertificateUrl;
-
-  if (!String(nextBankCertificateUrl ?? "").trim()) {
-    return new Response("Comprobante bancario requerido", { status: 400 });
-  }
 
   // Detectar cambios críticos
   const criticalFields = [

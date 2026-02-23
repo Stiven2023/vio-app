@@ -1,9 +1,17 @@
 "use client";
 
-import { Checkbox } from "@heroui/checkbox";
+import { Divider } from "@heroui/divider";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
+import {
+  BsCreditCardFill,
+  BsEnvelopeFill,
+  BsGeoAltFill,
+  BsInfoCircle,
+  BsPersonFill,
+  BsTelephoneFill,
+} from "react-icons/bs";
 
 export type SupplierSectionsFormState = {
   name: string;
@@ -52,60 +60,108 @@ type CommonProps = {
 
 type IdentificationProps = CommonProps & {
   identificationTypes: Option[];
-  taxRegimes: Option[];
   onIdentificationInputChange: (value: string) => void;
+};
+
+type ContactProps = CommonProps & {
+  taxRegimes: Option[];
 };
 
 export function SupplierIdentificationSection({
   form,
   errors,
   identificationTypes,
-  taxRegimes,
   onStringFieldChange,
   onIdentificationInputChange,
 }: IdentificationProps) {
+  const identificationHint =
+    form.identificationType === "CC"
+      ? "CC: solo números, entre 6 y 10 dígitos"
+      : form.identificationType === "NIT"
+        ? "NIT: solo números, entre 8 y 12 dígitos"
+        : form.identificationType === "CE"
+          ? "CE: alfanumérico, entre 5 y 15 caracteres"
+          : form.identificationType === "PAS"
+            ? "Pasaporte: alfanumérico, entre 5 y 20 caracteres"
+            : "Empresa exterior: mínimo 3 caracteres";
+
+  const identificationInputMode =
+    form.identificationType === "CC" || form.identificationType === "NIT"
+      ? "numeric"
+      : "text";
+
   return (
-    <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-3">
-      <Select
-        errorMessage={errors.identificationType}
-        isInvalid={Boolean(errors.identificationType)}
-        label="Tipo de Identificación"
-        selectedKeys={form.identificationType ? [form.identificationType] : []}
-        onSelectionChange={(keys) => {
-          const selected = Array.from(keys)[0];
-          onStringFieldChange("identificationType", String(selected ?? ""));
-        }}
-      >
-        {identificationTypes.map((type) => (
-          <SelectItem key={type.value}>{type.label}</SelectItem>
-        ))}
-      </Select>
-
+    <div className="space-y-4 py-4">
       <Input
-        errorMessage={errors.identification}
-        isInvalid={Boolean(errors.identification)}
-        label="Identificación"
-        value={form.identification}
-        onValueChange={onIdentificationInputChange}
+        description="Campo crítico requerido"
+        endContent={<span className="text-danger">*</span>}
+        errorMessage={errors.name}
+        isInvalid={Boolean(errors.name)}
+        isRequired
+        label="Nombre tercero"
+        startContent={<BsPersonFill className="text-xl text-default-500" />}
+        value={form.name}
+        onValueChange={(value) => onStringFieldChange("name", value)}
       />
 
-      <Input
-        label="Dígito Verificación"
-        maxLength={1}
-        value={form.dv}
-        onValueChange={(value) => onStringFieldChange("dv", value)}
-      />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Select
+          errorMessage={errors.identificationType}
+          isInvalid={Boolean(errors.identificationType)}
+          isRequired
+          label="Tipo de identificación"
+          selectedKeys={form.identificationType ? [form.identificationType] : []}
+          onSelectionChange={(keys) => {
+            const selected = Array.from(keys)[0];
+            onStringFieldChange("identificationType", String(selected ?? ""));
+          }}
+        >
+          {identificationTypes.map((type) => (
+            <SelectItem key={type.value}>{type.label}</SelectItem>
+          ))}
+        </Select>
 
-      <Input
-        label="Sucursal"
-        value={form.branch}
-        onValueChange={(value) => onStringFieldChange("branch", value)}
-      />
+        <Input
+          description={identificationHint}
+          errorMessage={errors.identification}
+          isInvalid={Boolean(errors.identification)}
+          isRequired
+          inputMode={identificationInputMode}
+          label="Identificación"
+          value={form.identification}
+          onValueChange={onIdentificationInputChange}
+        />
 
+        <Input
+          label="Dígito verificación"
+          maxLength={1}
+          value={form.dv}
+          onValueChange={(value) => onStringFieldChange("dv", value)}
+        />
+
+        <Input
+          label="Sucursal"
+          value={form.branch}
+          onValueChange={(value) => onStringFieldChange("branch", value)}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function SupplierContactSection({
+  form,
+  errors,
+  taxRegimes,
+  onStringFieldChange,
+}: ContactProps) {
+  return (
+    <div className="space-y-4 py-4">
       <Select
         errorMessage={errors.taxRegime}
         isInvalid={Boolean(errors.taxRegime)}
-        label="Régimen Fiscal"
+        isRequired
+        label="Régimen fiscal (IVA)"
         selectedKeys={form.taxRegime ? [form.taxRegime] : []}
         onSelectionChange={(keys) => {
           const selected = Array.from(keys)[0];
@@ -116,37 +172,27 @@ export function SupplierIdentificationSection({
           <SelectItem key={regime.value}>{regime.label}</SelectItem>
         ))}
       </Select>
-    </div>
-  );
-}
-
-export function SupplierContactSection({
-  form,
-  errors,
-  onStringFieldChange,
-}: CommonProps) {
-  return (
-    <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-      <Input
-        errorMessage={errors.name}
-        isInvalid={Boolean(errors.name)}
-        label="Nombre"
-        value={form.name}
-        onValueChange={(value) => onStringFieldChange("name", value)}
-      />
 
       <Input
+        description="Persona de contacto en la empresa"
+        endContent={<span className="text-danger">*</span>}
         errorMessage={errors.contactName}
         isInvalid={Boolean(errors.contactName)}
+        isRequired
         label="Nombre de Contacto"
+        startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.contactName}
         onValueChange={(value) => onStringFieldChange("contactName", value)}
       />
 
       <Input
+        description="Campo crítico para facturación"
+        endContent={<span className="text-danger">*</span>}
         errorMessage={errors.email}
         isInvalid={Boolean(errors.email)}
+        isRequired
         label="Email"
+        startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
         type="text"
         inputMode="email"
         autoComplete="email"
@@ -163,89 +209,102 @@ export function SupplierLocationSection({
   onStringFieldChange,
 }: CommonProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+    <div className="space-y-4 py-4">
       <Input
+        endContent={<span className="text-danger">*</span>}
         errorMessage={errors.address}
         isInvalid={Boolean(errors.address)}
+        isRequired
         label="Dirección"
+        startContent={<BsGeoAltFill className="text-xl text-default-500" />}
         value={form.address}
         onValueChange={(value) => onStringFieldChange("address", value)}
       />
 
-      <Input
-        label="Código Postal"
-        value={form.postalCode}
-        onValueChange={(value) => onStringFieldChange("postalCode", value)}
-      />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Input
+          label="Código postal"
+          value={form.postalCode}
+          onValueChange={(value) => onStringFieldChange("postalCode", value)}
+        />
 
-      <Input
-        label="País"
-        value={form.country}
-        onValueChange={(value) => onStringFieldChange("country", value)}
-      />
+        <Input
+          label="País"
+          value={form.country}
+          onValueChange={(value) => onStringFieldChange("country", value)}
+        />
 
-      <Input
-        label="Departamento"
-        value={form.department}
-        onValueChange={(value) => onStringFieldChange("department", value)}
-      />
+        <Input
+          label="Departamento"
+          value={form.department}
+          onValueChange={(value) => onStringFieldChange("department", value)}
+        />
 
-      <Input
-        label="Ciudad"
-        value={form.city}
-        onValueChange={(value) => onStringFieldChange("city", value)}
-      />
+        <Input
+          label="Ciudad"
+          value={form.city}
+          onValueChange={(value) => onStringFieldChange("city", value)}
+        />
+      </div>
     </div>
   );
 }
 
 export function SupplierPhonesSection({
   form,
+  errors,
   onStringFieldChange,
 }: CommonProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-      <Input
-        label="Código Internacional"
-        value={form.intlDialCode}
-        onValueChange={(value) => onStringFieldChange("intlDialCode", value)}
-      />
+    <div className="space-y-4 py-4">
+      <p className="text-sm text-default-600">Móvil (requerido)</p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Input
+          label="Código internacional"
+          placeholder="57"
+          value={form.intlDialCode}
+          onValueChange={(value) => onStringFieldChange("intlDialCode", value)}
+        />
 
-      <Input
-        label="Móvil"
-        value={form.mobile}
-        onValueChange={(value) => onStringFieldChange("mobile", value)}
-      />
+        <div className="md:col-span-2">
+          <Input
+            endContent={<span className="text-danger">*</span>}
+            errorMessage={errors.mobile}
+            isInvalid={Boolean(errors.mobile)}
+            isRequired
+            label="Móvil"
+            startContent={<BsTelephoneFill className="text-xl text-default-500" />}
+            value={form.mobile}
+            onValueChange={(value) => onStringFieldChange("mobile", value)}
+          />
+        </div>
+      </div>
 
-      <Input
-        label="Móvil Completo"
-        value={form.fullMobile}
-        onValueChange={(value) => onStringFieldChange("fullMobile", value)}
-      />
+      <Divider className="my-4" />
 
-      <Input
-        label="Código Local"
-        value={form.localDialCode}
-        onValueChange={(value) => onStringFieldChange("localDialCode", value)}
-      />
+      <p className="text-sm text-default-600">Teléfono fijo (opcional)</p>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <Input
+          label="Código local"
+          placeholder="4"
+          value={form.localDialCode}
+          onValueChange={(value) => onStringFieldChange("localDialCode", value)}
+        />
 
-      <Input
-        label="Fijo"
-        value={form.landline}
-        onValueChange={(value) => onStringFieldChange("landline", value)}
-      />
+        <div className="md:col-span-2">
+          <Input
+            label="Fijo"
+            value={form.landline}
+            onValueChange={(value) => onStringFieldChange("landline", value)}
+          />
+        </div>
 
-      <Input
-        label="Extensión"
-        value={form.extension}
-        onValueChange={(value) => onStringFieldChange("extension", value)}
-      />
-
-      <Input
-        label="Fijo Completo"
-        value={form.fullLandline}
-        onValueChange={(value) => onStringFieldChange("fullLandline", value)}
-      />
+        <Input
+          label="Extensión"
+          value={form.extension}
+          onValueChange={(value) => onStringFieldChange("extension", value)}
+        />
+      </div>
     </div>
   );
 }
@@ -263,42 +322,64 @@ export function SupplierCreditSection({
   onBooleanFieldChange,
 }: SupplierCreditProps) {
   return (
-    <div className="space-y-4 pt-3">
-      <div className="flex items-center justify-between">
-        <Checkbox
+    <div className="space-y-4 py-4">
+      <div className="flex items-center justify-between rounded-lg border border-default-200 p-4">
+        <span className="text-sm">Proveedor activo (interno)</span>
+        <Switch
+          isSelected={form.isActive}
+          onValueChange={(value) => onBooleanFieldChange("isActive", value)}
+        />
+      </div>
+
+      {!form.isActive && (
+        <div className="rounded-lg border border-info-200 bg-info-50 p-3">
+          <div className="flex items-start gap-2">
+            <BsInfoCircle className="mt-0.5 text-lg text-info-600" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-info-900">
+                ℹ️ Proveedor inactivo por defecto
+              </p>
+              <p className="mt-1 text-xs text-info-800">
+                Proveedores nuevos comienzan inactivos hasta aprobación de estado jurídico.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Divider className="my-4" />
+
+      <div className="flex items-center justify-between rounded-lg border border-default-200 p-4">
+        <div className="flex items-center gap-2">
+          <BsCreditCardFill className="text-xl text-default-500" />
+          <span className="text-sm">¿Tiene crédito aprobado?</span>
+        </div>
+        <Switch
           isSelected={form.hasCredit}
           onValueChange={(value) => onBooleanFieldChange("hasCredit", value)}
-        >
-          Tiene Crédito
-        </Checkbox>
+        />
+      </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-default-500">Activo</span>
-          <Switch
-            isSelected={form.isActive}
-            onValueChange={(value) => onBooleanFieldChange("isActive", value)}
+      {form.hasCredit && (
+        <div className="space-y-4">
+          <Input
+            label="Número pagaré"
+            value={form.promissoryNoteNumber}
+            onValueChange={(value) =>
+              onStringFieldChange("promissoryNoteNumber", value)
+            }
+          />
+
+          <Input
+            label="Fecha firma pagaré"
+            type="date"
+            value={form.promissoryNoteDate}
+            onValueChange={(value) =>
+              onStringFieldChange("promissoryNoteDate", value)
+            }
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Input
-          label="Número Pagaré"
-          value={form.promissoryNoteNumber}
-          onValueChange={(value) =>
-            onStringFieldChange("promissoryNoteNumber", value)
-          }
-        />
-
-        <Input
-          label="Fecha Firma Pagaré"
-          type="date"
-          value={form.promissoryNoteDate}
-          onValueChange={(value) =>
-            onStringFieldChange("promissoryNoteDate", value)
-          }
-        />
-      </div>
+      )}
     </div>
   );
 }

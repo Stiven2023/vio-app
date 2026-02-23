@@ -498,7 +498,7 @@ export function ClientsTab({
                       </DropdownItem>
                       <DropdownItem
                         key={`legal-status-${c.id}`}
-                        startContent={<span>⚖️</span>}
+                        startContent={<BsShieldCheck />}
                         onPress={() => {
                           setViewingLegalStatus(c);
                           setLegalStatusModalOpen(true);

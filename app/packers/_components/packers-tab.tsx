@@ -29,6 +29,7 @@ import {
   BsTrash,
   BsPersonPlus,
   BsPeople,
+  BsShieldCheck,
   BsTruck,
 } from "react-icons/bs";
 
@@ -379,7 +380,7 @@ export function PackersTab({
 
                       <DropdownItem
                         key={`legal-status-${p.id}`}
-                        startContent={<span>⚖️</span>}
+                        startContent={<BsShieldCheck />}
                         onPress={() => {
                           setViewingLegalStatus(p);
                           setLegalStatusModalOpen(true);

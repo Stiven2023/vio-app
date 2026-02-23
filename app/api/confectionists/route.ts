@@ -3,7 +3,6 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { confectionists, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -183,15 +182,6 @@ export async function POST(request: Request) {
         payload.companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
     };
 
-    const missingDocumentError = getMissingRequiredDocumentMessage(
-      String(mergedPayload.identificationType ?? ""),
-      mergedPayload as Record<string, unknown>,
-    );
-
-    if (missingDocumentError) {
-      return new Response(missingDocumentError, { status: 400 });
-    }
-
     const created = await db
       .insert(confectionists)
       .values({
@@ -354,7 +344,7 @@ export async function PUT(request: Request) {
       : null;
   if (payload.city !== undefined)
     patch.city = payload.city ? String(payload.city).trim() : null;
-  if (payload.isActive !== undefined) patch.isActive = Boolean(payload.isActive);
+  patch.isActive = false;
   if (payload.dailyCapacity !== undefined)
     patch.dailyCapacity =
       payload.dailyCapacity === "" || payload.dailyCapacity === null

@@ -28,7 +28,6 @@ import {
 } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 import { FileUpload } from "@/components/file-upload";
-import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import {
   SupplierContactSection,
   SupplierCreditSection,
@@ -76,10 +75,7 @@ const supplierSchema = z.object({
   promissoryNoteNumber: z.string().optional(),
   promissoryNoteDate: z.string().optional(),
   isActive: z.boolean().optional(),
-  bankCertificateUrl: z
-    .string()
-    .trim()
-    .min(1, "Comprobante bancario requerido"),
+  bankCertificateUrl: z.string().optional(),
 });
 
 type FormState = {
@@ -180,7 +176,7 @@ export function SupplierModal({
     hasCredit: false,
     promissoryNoteNumber: "",
     promissoryNoteDate: "",
-    isActive: true,
+    isActive: false,
     identityDocumentUrl: "",
     rutDocumentUrl: "",
     commerceChamberDocumentUrl: "",
@@ -230,7 +226,7 @@ export function SupplierModal({
         hasCredit: supplier.hasCredit ?? false,
         promissoryNoteNumber: supplier.promissoryNoteNumber ?? "",
         promissoryNoteDate: supplier.promissoryNoteDate ?? "",
-        isActive: supplier.isActive ?? true,
+        isActive: supplier.isActive ?? false,
         identityDocumentUrl: supplier.identityDocumentUrl ?? "",
         rutDocumentUrl: supplier.rutDocumentUrl ?? "",
         commerceChamberDocumentUrl: supplier.commerceChamberDocumentUrl ?? "",
@@ -298,7 +294,7 @@ export function SupplierModal({
         hasCredit: false,
         promissoryNoteNumber: "",
         promissoryNoteDate: "",
-        isActive: true,
+        isActive: false,
         identityDocumentUrl: "",
         rutDocumentUrl: "",
         commerceChamberDocumentUrl: "",
@@ -369,7 +365,7 @@ export function SupplierModal({
       address: importCandidate.address ?? s.address,
       city: importCandidate.city ?? s.city,
       department: importCandidate.department ?? s.department,
-      isActive: Boolean(importCandidate.isActive ?? s.isActive),
+      isActive: false,
     }));
 
     setImportPromptOpen(false);
@@ -431,24 +427,6 @@ export function SupplierModal({
       return;
     }
 
-    const missingDocumentError = getMissingRequiredDocumentMessage(
-      parsed.data.identificationType,
-      form as unknown as Record<string, unknown>,
-    );
-
-    if (missingDocumentError) {
-      setErrors((prev) => ({ ...prev, documents: missingDocumentError }));
-      toast.error(missingDocumentError);
-      return;
-    }
-
-    if (!form.bankCertificateUrl.trim()) {
-      const msg = "Comprobante bancario requerido";
-      setErrors((prev) => ({ ...prev, bankCertificateUrl: msg }));
-      toast.error(msg);
-      return;
-    }
-
     setErrors({});
 
     const payload = {
@@ -472,7 +450,7 @@ export function SupplierModal({
       landline: parsed.data.landline || null,
       extension: parsed.data.extension || null,
       fullLandline: parsed.data.fullLandline || null,
-      isActive: form.isActive,
+      isActive: false,
       hasCredit: form.hasCredit,
       promissoryNoteNumber: parsed.data.promissoryNoteNumber || null,
       promissoryNoteDate: parsed.data.promissoryNoteDate || null,
@@ -532,16 +510,22 @@ export function SupplierModal({
       scrollBehavior="inside"
     >
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
-          <span>{supplier ? "Editar proveedor" : "Crear proveedor"}</span>
-          {supplier?.supplierCode && (
-            <span className="font-mono text-xs font-normal text-primary">
-              {supplier.supplierCode}
-            </span>
-          )}
+        <ModalHeader className="flex justify-between items-start">
+          <div>
+            <div>{supplier ? "Editar proveedor" : "Crear proveedor"}</div>
+            <p className="mt-1 text-xs font-normal text-default-500">
+              Los campos marcados con <span className="text-danger">*</span> son
+              críticos
+            </p>
+            {supplier?.supplierCode && (
+              <span className="mt-1 block font-mono text-xs font-normal text-primary">
+                {supplier.supplierCode}
+              </span>
+            )}
+          </div>
         </ModalHeader>
         <ModalBody>
-          <Tabs aria-label="Formulario de proveedor" variant="underlined">
+          <Tabs aria-label="Secciones del formulario" variant="underlined">
             <Tab
               key="identificacion"
               title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
@@ -550,19 +534,52 @@ export function SupplierModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                taxRegimes={taxRegimes}
                 onIdentificationInputChange={onIdentificationInputChange}
                 onStringFieldChange={onStringFieldChange}
               />
+
+              <div className="space-y-4 border-t border-default-200 pt-4">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Documentos
+                </h3>
+
+                <IdentificationDocumentsSection
+                  disabled={!form.identificationType}
+                  errors={errors}
+                  identificationType={form.identificationType}
+                  uploadFolder="suppliers/documents"
+                  values={form}
+                  onChange={(field, url) =>
+                    setForm((s) => ({ ...s, [field]: url }))
+                  }
+                  onClear={(field) => setForm((s) => ({ ...s, [field]: "" }))}
+                />
+
+                <FileUpload
+                  acceptedFileTypes=".pdf"
+                  errorMessage={errors.bankCertificateUrl}
+                  label="Comprobante bancario"
+                  maxSizeMB={10}
+                  uploadFolder="suppliers/documents"
+                  value={form.bankCertificateUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, bankCertificateUrl: url }))
+                  }
+                  onClear={() =>
+                    setForm((s) => ({ ...s, bankCertificateUrl: "" }))
+                  }
+                />
+              </div>
             </Tab>
 
             <Tab
               key="contacto"
-              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
+              title={<FormTabTitle icon={<ContactIcon />} label="Contacto y fiscal" />}
             >
               <SupplierContactSection
                 errors={errors}
                 form={form}
+                taxRegimes={taxRegimes}
                 onStringFieldChange={onStringFieldChange}
               />
             </Tab>
@@ -591,7 +608,7 @@ export function SupplierModal({
 
             <Tab
               key="credito"
-              title={<FormTabTitle icon={<FinanceIcon />} label="Crédito y estado" />}
+              title={<FormTabTitle icon={<FinanceIcon />} label="Estado y crédito" />}
             >
               <SupplierCreditSection
                 errors={errors}
@@ -599,40 +616,6 @@ export function SupplierModal({
                 onBooleanFieldChange={onBooleanFieldChange}
                 onStringFieldChange={onStringFieldChange}
               />
-            </Tab>
-
-            <Tab
-              key="documentos"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Documentos" />}
-            >
-              <IdentificationDocumentsSection
-                disabled={!form.identificationType}
-                errors={errors}
-                identificationType={form.identificationType}
-                uploadFolder="suppliers/documents"
-                values={form}
-                onChange={(field, url) =>
-                  setForm((s) => ({ ...s, [field]: url }))
-                }
-                onClear={(field) => setForm((s) => ({ ...s, [field]: "" }))}
-              />
-              <div className="pt-4">
-                <FileUpload
-                  acceptedFileTypes=".pdf"
-                  errorMessage={errors.bankCertificateUrl}
-                  isRequired
-                  label="Comprobante bancario"
-                  maxSizeMB={10}
-                  uploadFolder="suppliers/documents"
-                  value={form.bankCertificateUrl}
-                  onChange={(url) =>
-                    setForm((s) => ({ ...s, bankCertificateUrl: url }))
-                  }
-                  onClear={() =>
-                    setForm((s) => ({ ...s, bankCertificateUrl: "" }))
-                  }
-                />
-              </div>
             </Tab>
           </Tabs>
         </ModalBody>

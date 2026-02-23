@@ -15,6 +15,7 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Tabs, Tab } from "@heroui/tabs";
+import { BsShieldCheck } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createClientSchema } from "../../_lib/schemas";
@@ -99,8 +100,8 @@ export function ClientModal({
     hasCredit: false,
     promissoryNoteNumber: "",
     promissoryNoteDate: "",
-    status: "ACTIVO",
-    isActive: true,
+    status: "INACTIVO",
+    isActive: false,
     identityDocumentUrl: "",
     rutDocumentUrl: "",
     commerceChamberDocumentUrl: "",
@@ -149,8 +150,8 @@ export function ClientModal({
       hasCredit: false,
       promissoryNoteNumber: "",
       promissoryNoteDate: "",
-      status: "ACTIVO",
-      isActive: true,
+      status: "INACTIVO",
+      isActive: false,
       identityDocumentUrl: "",
       rutDocumentUrl: "",
       commerceChamberDocumentUrl: "",
@@ -186,7 +187,7 @@ export function ClientModal({
         promissoryNoteNumber: client.promissoryNoteNumber ?? "",
         promissoryNoteDate: client.promissoryNoteDate ?? "",
         status: client.status ?? "ACTIVO",
-        isActive: Boolean(client.isActive ?? true),
+        isActive: Boolean(client.isActive ?? false),
         identityDocumentUrl: client.identityDocumentUrl ?? "",
         rutDocumentUrl: client.rutDocumentUrl ?? "",
         commerceChamberDocumentUrl: client.commerceChamberDocumentUrl ?? "",
@@ -263,8 +264,8 @@ export function ClientModal({
       mobile: importCandidate.mobile ?? s.mobile,
       landline: importCandidate.landline ?? s.landline,
       extension: importCandidate.extension ?? s.extension,
-      isActive: Boolean(importCandidate.isActive ?? s.isActive),
-      status: importCandidate.isActive === false ? "INACTIVO" : s.status,
+      isActive: false,
+      status: "INACTIVO",
     }));
 
     setImportPromptOpen(false);
@@ -370,77 +371,6 @@ export function ClientModal({
         console.log("✅ Sin archivos pendientes, continuando...");
       }
 
-      // Para edición, los documentos ya existen, así que no requieren validación estricta de presencia
-      // Para creación nueva, los documentos se requieren según el identificationType
-      const isCreating = !client;
-      
-      if (isCreating && Object.keys(pendingFiles).length > 0) {
-        // Si se seleccionaron documentos, validar que se hayan completado según el tipo de identificación
-        const validationErrors: Record<string, string> = {};
-      
-        // Validar documentos basado en identificationType (no en personType + clientType)
-        switch (updatedForm.identificationType) {
-          case "CC": // Persona Natural Nacional
-            if (!updatedForm.identityDocumentUrl) {
-              validationErrors.identityDocumentUrl = "La cédula del titular es requerida";
-            }
-            if (!updatedForm.rutDocumentUrl) {
-              validationErrors.rutDocumentUrl = "El RUT es requerido";
-            }
-            break;
-
-          case "NIT": // Empresa Nacional
-            if (!updatedForm.rutDocumentUrl) {
-              validationErrors.rutDocumentUrl = "El RUT de la empresa es requerido";
-            }
-            if (!updatedForm.commerceChamberDocumentUrl) {
-              validationErrors.commerceChamberDocumentUrl = "La Cámara de Comercio es requerida";
-            }
-            if (!updatedForm.identityDocumentUrl) {
-              validationErrors.identityDocumentUrl = "La cédula del representante legal es requerida";
-            }
-            break;
-
-          case "CE": // Persona Natural Extranjera (Cédula de Extranjería)
-            if (!updatedForm.identityDocumentUrl) {
-              validationErrors.identityDocumentUrl = "La cédula de extranjería es requerida";
-            }
-            if (!updatedForm.passportDocumentUrl) {
-              validationErrors.passportDocumentUrl = "El pasaporte es requerido";
-            }
-            break;
-
-          case "PAS": // Persona Natural Extranjera (Pasaporte)
-            if (!updatedForm.identityDocumentUrl) {
-              validationErrors.identityDocumentUrl = "El documento de identidad es requerido";
-            }
-            if (!updatedForm.passportDocumentUrl) {
-              validationErrors.passportDocumentUrl = "El pasaporte es requerido";
-            }
-            break;
-
-          case "EMPRESA_EXTERIOR": // Empresa Extranjera
-            if (!updatedForm.passportDocumentUrl) {
-              validationErrors.passportDocumentUrl = "El pasaporte del representante es requerido";
-            }
-            if (!updatedForm.taxCertificateDocumentUrl) {
-              validationErrors.taxCertificateDocumentUrl = "El certificado tributario es requerido";
-            }
-            if (!updatedForm.companyIdDocumentUrl) {
-              validationErrors.companyIdDocumentUrl = "El ID de la empresa es requerido";
-            }
-            break;
-        }
-
-        if (Object.keys(validationErrors).length > 0) {
-          console.error("❌ Errores de validación de documentos:", validationErrors);
-          setErrors(validationErrors);
-          setSubmitting(false);
-          toast.error("Por favor complete los documentos requeridos");
-          return;
-        }
-      }
-
       console.log("✅ Validación de documentos completada");
       console.log("📋 Datos para crear cliente:", {
         name: updatedForm.name,
@@ -474,8 +404,8 @@ export function ClientModal({
         hasCredit: updatedForm.hasCredit,
         promissoryNoteNumber: updatedForm.promissoryNoteNumber || undefined,
         promissoryNoteDate: updatedForm.promissoryNoteDate || undefined,
-        status: updatedForm.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO",
-        isActive: updatedForm.isActive,
+        status: "INACTIVO" as "ACTIVO" | "INACTIVO" | "SUSPENDIDO",
+        isActive: false,
         identityDocumentUrl: updatedForm.identityDocumentUrl?.trim() || undefined,
         rutDocumentUrl: updatedForm.rutDocumentUrl?.trim() || undefined,
         commerceChamberDocumentUrl: updatedForm.commerceChamberDocumentUrl?.trim() || undefined,
@@ -565,7 +495,7 @@ export function ClientModal({
               onPress={() => setLegalStatusModalOpen(true)}
               title="Ver estado jurídico"
             >
-              ⚖️
+              <BsShieldCheck />
             </Button>
           )}
         </ModalHeader>

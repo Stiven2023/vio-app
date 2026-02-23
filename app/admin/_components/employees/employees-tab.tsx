@@ -26,6 +26,7 @@ import {
   BsTrash,
   BsPersonPlus,
   BsEyeFill,
+  BsShieldCheck,
 } from "react-icons/bs";
 import { Chip } from "@heroui/chip";
 
@@ -437,7 +438,7 @@ export function EmployeesTab({
                       </DropdownItem>
                       <DropdownItem
                         key={`legal-status-${e.id}`}
-                        startContent={<span>⚖️</span>}
+                        startContent={<BsShieldCheck />}
                         onPress={() => {
                           setViewingLegalStatus(e);
                           setLegalStatusModalOpen(true);

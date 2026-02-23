@@ -5,12 +5,18 @@ const PUBLIC_PATHS = new Set(["/login"]);
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const token = request.cookies.get("auth_token")?.value;
+
+  if (pathname === "/login" && token) {
+    const dashboardUrl = request.nextUrl.clone();
+    dashboardUrl.pathname = "/dashboard";
+    dashboardUrl.search = "";
+    return NextResponse.redirect(dashboardUrl);
+  }
 
   if (PUBLIC_PATHS.has(pathname)) {
     return NextResponse.next();
   }
-
-  const token = request.cookies.get("auth_token")?.value;
 
   if (!token) {
     const loginUrl = request.nextUrl.clone();

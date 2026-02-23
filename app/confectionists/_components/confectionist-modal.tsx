@@ -20,7 +20,6 @@ import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { FormTabTitle, IdentificationIcon, ContactIcon, PhoneIcon, LocationIcon } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
-import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
 import {
   ConfectionistContactSection,
   ConfectionistIdentificationSection,
@@ -127,7 +126,7 @@ export function ConfectionistModal({
     country: "COLOMBIA",
     department: "ANTIOQUIA",
     city: "Medellín",
-    isActive: true,
+    isActive: false,
     identityDocumentUrl: "",
     rutDocumentUrl: "",
     commerceChamberDocumentUrl: "",
@@ -189,7 +188,7 @@ export function ConfectionistModal({
         country: prefill.country,
         department: prefill.department,
         city: prefill.city,
-        isActive: prefill.isActive,
+        isActive: false,
         identityDocumentUrl: "",
         rutDocumentUrl: "",
         commerceChamberDocumentUrl: "",
@@ -222,7 +221,7 @@ export function ConfectionistModal({
         country: confectionist?.country ?? "COLOMBIA",
         department: confectionist?.department ?? "ANTIOQUIA",
         city: confectionist?.city ?? "Medellín",
-        isActive: Boolean(confectionist?.isActive ?? true),
+        isActive: Boolean(confectionist?.isActive ?? false),
         identityDocumentUrl: confectionist?.identityDocumentUrl ?? "",
         rutDocumentUrl: confectionist?.rutDocumentUrl ?? "",
         commerceChamberDocumentUrl:
@@ -294,7 +293,7 @@ export function ConfectionistModal({
       address: importCandidate.address ?? s.address,
       city: importCandidate.city ?? s.city,
       department: importCandidate.department ?? s.department,
-      isActive: Boolean(importCandidate.isActive ?? s.isActive),
+      isActive: false,
     }));
 
     setImportPromptOpen(false);
@@ -354,17 +353,6 @@ export function ConfectionistModal({
       return;
     }
 
-    const missingDocumentError = getMissingRequiredDocumentMessage(
-      parsed.data.identificationType,
-      form as unknown as Record<string, unknown>,
-    );
-
-    if (missingDocumentError) {
-      setErrors((prev) => ({ ...prev, documents: missingDocumentError }));
-      toast.error(missingDocumentError);
-      return;
-    }
-
     setErrors({});
 
     const payload = {
@@ -390,7 +378,7 @@ export function ConfectionistModal({
       country: form.country.trim() || "COLOMBIA",
       department: form.department.trim() || "ANTIOQUIA",
       city: form.city.trim() || "Medellín",
-      isActive: Boolean(parsed.data.isActive ?? true),
+      isActive: false,
       identityDocumentUrl: form.identityDocumentUrl || null,
       rutDocumentUrl: form.rutDocumentUrl || null,
       commerceChamberDocumentUrl: form.commerceChamberDocumentUrl || null,

@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus, BsEyeFill } from "react-icons/bs";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus, BsEyeFill, BsShieldCheck } from "react-icons/bs";
 
 import { FilterSearch } from "@/app/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
@@ -415,7 +415,7 @@ export function ConfectionistsTab({
 
                       <DropdownItem
                         key={`legal-status-${c.id}`}
-                        startContent={<span>⚖️</span>}
+                        startContent={<BsShieldCheck />}
                         onPress={() => {
                           setViewingLegalStatus(c);
                           setLegalStatusModalOpen(true);

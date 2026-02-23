@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@heroui/table";
 import { Input } from "@heroui/input";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsEyeFill } from "react-icons/bs";
+import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsEyeFill, BsShieldCheck } from "react-icons/bs";
 
 import { FilterSelect } from "@/app/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/catalog/_components/ui/pager";
@@ -436,7 +436,7 @@ export function SuppliersTab({
                       </DropdownItem>
                       <DropdownItem
                         key={`legal-status-${s.id}`}
-                        startContent={<span>⚖️</span>}
+                        startContent={<BsShieldCheck />}
                         onPress={() => {
                           setViewingLegalStatus(s);
                           setLegalStatusModalOpen(true);

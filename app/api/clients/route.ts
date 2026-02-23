@@ -6,9 +6,7 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
-import { syncClientLegalStatusWithIsActive } from "@/app/admin/_lib/sync-client-legal-status";
 import { detectCriticalFieldChanges, registerAutoRevisionOnClientChange } from "@/app/admin/_lib/sync-client-legal-status";
-import { validateRequiredDocuments } from "@/app/admin/_lib/client-document-requirements";
 
 /**
  * Formatea un número de teléfono móvil con código internacional
@@ -257,26 +255,6 @@ export async function POST(request: Request) {
     return new Response("El móvil debe tener entre 7 y 15 dígitos", {
       status: 400,
     });
-  }
-
-  // Validación de documentos basada en identificationType
-  const docsValidation = validateRequiredDocuments(
-    identificationType as any,
-    {
-      identityDocumentUrl,
-      rutDocumentUrl,
-      commerceChamberDocumentUrl,
-      passportDocumentUrl,
-      taxCertificateDocumentUrl,
-      companyIdDocumentUrl,
-    }
-  );
-
-  if (!docsValidation.isValid) {
-    return new Response(
-      `Documentos faltantes para ${identificationType}: ${docsValidation.missingDocuments.join(", ")}`,
-      { status: 400 }
-    );
   }
 
   const hasCredit = Boolean(payload.hasCredit);
@@ -652,15 +630,8 @@ export async function PUT(request: Request) {
   if (payload.isActive !== undefined) patch.isActive = payload.isActive;
 
   try {
-    // Verificar isActive contra estado jurídico del cliente
-    // Si no tiene estado jurídico o está bloqueado/en revisión, debe estar inactivo
-    if (payload.isActive !== undefined || !patch.isActive) {
-      const finalIsActive = await syncClientLegalStatusWithIsActive(
-        String(id),
-        payload.isActive
-      );
-      patch.isActive = finalIsActive;
-    }
+    patch.isActive = false;
+    patch.status = "INACTIVO";
 
     if (patch.identification) {
       const duplicatedClient = await db
