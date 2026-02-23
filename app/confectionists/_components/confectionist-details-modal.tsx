@@ -63,9 +63,14 @@ export function ConfectionistDetailsModal({
                 <div><span className="font-semibold">Tipo ID:</span> {showValue(confectionist.identificationType)}</div>
                 <div><span className="font-semibold">Identificación:</span> {showValue(confectionist.identification)}</div>
                 <div><span className="font-semibold">DV:</span> {showValue(confectionist.dv)}</div>
-                <div><span className="font-semibold">Tipo:</span> {showValue(confectionist.type)}</div>
-                <div><span className="font-semibold">Régimen fiscal:</span> {showValue(confectionist.taxRegime)}</div>
                 <div><span className="font-semibold">Activo:</span> {showValue(confectionist.isActive)}</div>
+              </div>
+
+              <div className="border-t pt-3 grid grid-cols-2 gap-3">
+                <div><span className="font-semibold">Tipo de empaque:</span> {showValue(confectionist.type)}</div>
+                <div><span className="font-semibold">Especialidad:</span> {showValue(confectionist.specialty)}</div>
+                <div><span className="font-semibold">Capacidad diaria:</span> {showValue(confectionist.dailyCapacity)}</div>
+                <div><span className="font-semibold">Régimen fiscal:</span> {showValue(confectionist.taxRegime)}</div>
               </div>
 
               <div className="border-t pt-3 grid grid-cols-2 gap-3">
@@ -75,7 +80,6 @@ export function ConfectionistDetailsModal({
                 <div><span className="font-semibold">Móvil:</span> {showValue(confectionist.mobile)}</div>
                 <div><span className="font-semibold">Móvil completo:</span> {showValue(confectionist.fullMobile)}</div>
                 <div><span className="font-semibold">Fijo:</span> {showValue(confectionist.landline)}</div>
-                <div><span className="font-semibold">Extensión:</span> {showValue(confectionist.extension)}</div>
               </div>
 
               <div className="border-t pt-3 grid grid-cols-2 gap-3">

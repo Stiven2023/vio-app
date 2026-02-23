@@ -589,6 +589,7 @@ export const confectionists = pgTable("confectionists", {
   // --- CARACTERIZACIÓN ---
   // Reemplazamos el type simple por uno más descriptivo si es necesario
   type: varchar("type", { length: 50 }), // Ej: "Taller Externo", "Sastrería", "Planta Propia"
+  specialty: varchar("specialty", { length: 100 }),
   taxRegime: taxRegimeEnum("tax_regime").notNull(), // Necesario para pagos y retenciones
   
   // --- CONTACTO Y TELÉFONOS (Estructura Imagen 1) ---
@@ -609,6 +610,7 @@ export const confectionists = pgTable("confectionists", {
 
   // --- ESTADO ---
   isActive: boolean("is_active").default(false),
+  dailyCapacity: integer("daily_capacity"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

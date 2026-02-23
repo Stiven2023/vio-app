@@ -5,7 +5,6 @@ import type { Packer } from "./packers-tab";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
 import {
   Modal,
   ModalBody,
@@ -13,22 +12,21 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import { Select, SelectItem } from "@heroui/select";
-import { Switch } from "@heroui/switch";
 import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import {
-  ContactIcon,
-  FormTabTitle,
-  IdentificationIcon,
-  LocationIcon,
-  PhoneIcon,
-} from "@/components/form-tab-title";
+import { FormTabTitle, IdentificationIcon, ContactIcon, PhoneIcon, LocationIcon } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
+import {
+  PackerContactSection,
+  PackerIdentificationSection,
+  PackerLocationSection,
+  PackerPhoneSection,
+  type PackerSectionsFormState,
+} from "./packer-modal-sections";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -50,32 +48,7 @@ const packerSchema = z.object({
   dailyCapacity: z.string().optional(),
 });
 
-type FormState = {
-  name: string;
-  identificationType: string;
-  identification: string;
-  dv: string;
-  packerType: string;
-  specialty: string;
-  contactName: string;
-  email: string;
-  intlDialCode: string;
-  mobile: string;
-  fullMobile: string;
-  landline: string;
-  address: string;
-  postalCode: string;
-  city: string;
-  department: string;
-  dailyCapacity: string;
-  isActive: boolean;
-  identityDocumentUrl: string;
-  rutDocumentUrl: string;
-  commerceChamberDocumentUrl: string;
-  passportDocumentUrl: string;
-  taxCertificateDocumentUrl: string;
-  companyIdDocumentUrl: string;
-};
+type FormState = PackerSectionsFormState;
 
 export function PackerModal({
   packer,
@@ -117,7 +90,7 @@ export function PackerModal({
 
   const [form, setForm] = useState<FormState>({
     name: "",
-    identificationType: "NIT",
+    identificationType: "",
     identification: "",
     dv: "",
     packerType: "",
@@ -126,7 +99,6 @@ export function PackerModal({
     email: "",
     intlDialCode: "57",
     mobile: "",
-    fullMobile: "",
     landline: "",
     address: "",
     postalCode: "",
@@ -148,6 +120,21 @@ export function PackerModal({
   const [importMessage, setImportMessage] = useState("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const handleStringFieldChange = (
+    field: keyof FormState,
+    value: string,
+  ) => {
+    setForm((state) => ({ ...state, [field]: value }));
+  };
+
+  const handleIdentificationInputChange = (value: string) => {
+    handleStringFieldChange("identification", value);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      checkIdentification();
+    }, 500);
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -158,7 +145,7 @@ export function PackerModal({
     setImportMessage("");
     setForm({
       name: packer?.name ?? "",
-      identificationType: packer?.identificationType ?? "NIT",
+      identificationType: packer?.identificationType ?? "",
       identification: packer?.identification ?? "",
       dv: packer?.dv ?? "",
       packerType: packer?.packerType ?? "",
@@ -167,7 +154,6 @@ export function PackerModal({
       email: packer?.email ?? "",
       intlDialCode: packer?.intlDialCode ?? "57",
       mobile: packer?.mobile ?? "",
-      fullMobile: packer?.fullMobile ?? "",
       landline: packer?.landline ?? "",
       address: packer?.address ?? "",
       postalCode: packer?.postalCode ?? "",
@@ -336,7 +322,9 @@ export function PackerModal({
       email: form.email.trim() ? form.email.trim() : null,
       intlDialCode: form.intlDialCode.trim() ? form.intlDialCode.trim() : "57",
       mobile: form.mobile.trim() ? form.mobile.trim() : null,
-      fullMobile: form.fullMobile.trim() ? form.fullMobile.trim() : null,
+      fullMobile: form.mobile.trim()
+        ? `+${form.intlDialCode.trim() || "57"} ${form.mobile.trim()}`
+        : null,
       landline: form.landline.trim() ? form.landline.trim() : null,
       address: parsed.data.address,
       postalCode: form.postalCode.trim() ? form.postalCode.trim() : null,
@@ -384,169 +372,56 @@ export function PackerModal({
               key="identificacion"
               title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-3">
-                <Select
-                  errorMessage={errors.identificationType}
-                  isInvalid={Boolean(errors.identificationType)}
-                  label="Tipo de identificación"
-                  selectedKeys={[form.identificationType]}
-                  onSelectionChange={(keys) => {
-                    const selected = Array.from(keys)[0] as string;
-                    setForm((s) => ({ ...s, identificationType: selected }));
-                  }}
-                >
-                  {identificationTypes.map((type) => (
-                    <SelectItem key={type.value}>{type.label}</SelectItem>
-                  ))}
-                </Select>
-
-                <Input
-                  errorMessage={errors.identification}
-                  isInvalid={Boolean(errors.identification)}
-                  label="Identificación"
-                  value={form.identification}
-                  onValueChange={(v) => {
-                    setForm((s) => ({ ...s, identification: v }));
-                    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-                    debounceTimerRef.current = setTimeout(() => {
-                      checkIdentification();
-                    }, 500);
-                  }}
-                />
-
-                <Input
-                  label="DV"
-                  maxLength={1}
-                  value={form.dv}
-                  onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
-                />
-              </div>
+              <PackerIdentificationSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="contacto"
               title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  errorMessage={errors.name}
-                  isInvalid={Boolean(errors.name)}
-                  label="Nombre"
-                  value={form.name}
-                  onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-                />
-
-                <Input
-                  label="Nombre de contacto"
-                  value={form.contactName}
-                  onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
-                />
-
-                <Input
-                  errorMessage={errors.email}
-                  isInvalid={Boolean(errors.email)}
-                  label="Email"
-                  type="text"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={form.email}
-                  onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-                />
-
-                <Input
-                  label="Tipo de empaque"
-                  placeholder="Interno, Satélite, Distribuidora"
-                  value={form.packerType}
-                  onValueChange={(v) => setForm((s) => ({ ...s, packerType: v }))}
-                />
-
-                <Input
-                  label="Especialidad"
-                  placeholder="Prenda colgada, Caja master, Etiquetado"
-                  value={form.specialty}
-                  onValueChange={(v) => setForm((s) => ({ ...s, specialty: v }))}
-                />
-
-                <Input
-                  label="Capacidad diaria"
-                  placeholder="Unidades por día"
-                  type="number"
-                  value={form.dailyCapacity}
-                  onValueChange={(v) => setForm((s) => ({ ...s, dailyCapacity: v }))}
-                />
-              </div>
+              <PackerContactSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="telefonos"
               title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  label="Código internacional"
-                  value={form.intlDialCode}
-                  onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
-                />
-
-                <Input
-                  label="Móvil"
-                  value={form.mobile}
-                  onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
-                />
-
-                <Input
-                  label="Móvil completo"
-                  value={form.fullMobile}
-                  onValueChange={(v) => setForm((s) => ({ ...s, fullMobile: v }))}
-                />
-
-                <Input
-                  label="Teléfono fijo"
-                  value={form.landline}
-                  onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
-                />
-              </div>
+              <PackerPhoneSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="ubicacion"
               title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  errorMessage={errors.address}
-                  isInvalid={Boolean(errors.address)}
-                  label="Dirección"
-                  value={form.address}
-                  onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
-                />
-
-                <Input
-                  label="Código postal"
-                  value={form.postalCode}
-                  onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
-                />
-
-                <Input
-                  label="Ciudad"
-                  value={form.city}
-                  onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-                />
-
-                <Input
-                  label="Departamento"
-                  value={form.department}
-                  onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
-                />
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-sm">Activo</span>
-                <Switch
-                  isSelected={form.isActive}
-                  onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
-                />
-              </div>
+              <PackerLocationSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab

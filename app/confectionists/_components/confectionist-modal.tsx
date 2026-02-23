@@ -6,7 +6,6 @@ import type { ConfectionistFormPrefill } from "./confectionist-modal.types";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
-import { Input } from "@heroui/input";
 import {
   Modal,
   ModalBody,
@@ -14,21 +13,21 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
-import { Select, SelectItem } from "@heroui/select";
-import { Switch } from "@heroui/switch";
 import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import {
-  ContactIcon,
-  FormTabTitle,
-  IdentificationIcon,
-  LocationIcon,
-} from "@/components/form-tab-title";
+import { FormTabTitle, IdentificationIcon, ContactIcon, PhoneIcon, LocationIcon } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 import { getMissingRequiredDocumentMessage } from "@/src/utils/identification-document-rules";
+import {
+  ConfectionistContactSection,
+  ConfectionistIdentificationSection,
+  ConfectionistLocationSection,
+  ConfectionistPhoneSection,
+  type ConfectionistSectionsFormState,
+} from "./confectionist-modal-sections";
 
 const identificationTypes = [
   { value: "CC", label: "Cédula de Ciudadanía" },
@@ -36,12 +35,6 @@ const identificationTypes = [
   { value: "CE", label: "Cédula de Extranjería" },
   { value: "PAS", label: "Pasaporte" },
   { value: "EMPRESA_EXTERIOR", label: "Empresa Exterior" },
-];
-
-const taxRegimes = [
-  { value: "REGIMEN_COMUN", label: "Régimen Común" },
-  { value: "REGIMEN_SIMPLIFICADO", label: "Régimen Simplificado" },
-  { value: "NO_RESPONSABLE", label: "No Responsable" },
 ];
 
 const confectionistSchema = z.object({
@@ -52,10 +45,16 @@ const confectionistSchema = z.object({
   taxRegime: z.string().trim().min(1, "Régimen fiscal requerido"),
   address: z.string().trim().min(1, "Dirección requerida"),
   type: z.string().trim().optional(),
+  specialty: z.string().trim().optional(),
+  dailyCapacity: z.string().optional(),
   contactName: z.string().trim().optional(),
-  email: z.string().trim().optional(),
+  email: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Email inválido"),
   intlDialCode: z.string().trim().optional(),
   mobile: z.string().trim().optional(),
+  fullMobile: z.string().trim().optional(),
   landline: z.string().trim().optional(),
   extension: z.string().trim().optional(),
   postalCode: z.string().trim().optional(),
@@ -65,32 +64,7 @@ const confectionistSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-type FormState = {
-  name: string;
-  identificationType: string;
-  identification: string;
-  dv: string;
-  taxRegime: string;
-  type: string;
-  contactName: string;
-  email: string;
-  intlDialCode: string;
-  mobile: string;
-  landline: string;
-  extension: string;
-  address: string;
-  postalCode: string;
-  country: string;
-  department: string;
-  city: string;
-  isActive: boolean;
-  identityDocumentUrl: string;
-  rutDocumentUrl: string;
-  commerceChamberDocumentUrl: string;
-  passportDocumentUrl: string;
-  taxCertificateDocumentUrl: string;
-  companyIdDocumentUrl: string;
-};
+type FormState = ConfectionistSectionsFormState;
 
 export function ConfectionistModal({
   confectionist,
@@ -137,12 +111,15 @@ export function ConfectionistModal({
     identificationType: "",
     identification: "",
     dv: "",
-    taxRegime: "",
+    taxRegime: "REGIMEN_COMUN",
     type: "",
+    specialty: "",
+    dailyCapacity: "",
     contactName: "",
     email: "",
     intlDialCode: "57",
     mobile: "",
+    fullMobile: "",
     landline: "",
     extension: "",
     address: "",
@@ -165,6 +142,21 @@ export function ConfectionistModal({
   const [importMessage, setImportMessage] = useState("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const handleStringFieldChange = (
+    field: keyof FormState,
+    value: string,
+  ) => {
+    setForm((state) => ({ ...state, [field]: value }));
+  };
+
+  const handleIdentificationInputChange = (value: string) => {
+    handleStringFieldChange("identification", value);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      checkIdentification();
+    }, 500);
+  };
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -183,10 +175,13 @@ export function ConfectionistModal({
         dv: prefill.dv,
         taxRegime: prefill.taxRegime,
         type: "", // type no viene en prefill
+        specialty: "",
+        dailyCapacity: "",
         contactName: prefill.contactName,
         email: prefill.email,
         intlDialCode: prefill.intlDialCode,
         mobile: prefill.mobile,
+        fullMobile: prefill.mobile ? `+${prefill.intlDialCode} ${prefill.mobile}` : "",
         landline: prefill.landline,
         extension: prefill.extension,
         address: prefill.address,
@@ -210,10 +205,16 @@ export function ConfectionistModal({
         dv: confectionist?.dv ?? "",
         taxRegime: confectionist?.taxRegime ?? "",
         type: confectionist?.type ?? "",
+        specialty: confectionist?.specialty ?? "",
+        dailyCapacity:
+          confectionist?.dailyCapacity === null || confectionist?.dailyCapacity === undefined
+            ? ""
+            : String(confectionist.dailyCapacity),
         contactName: confectionist?.contactName ?? "",
         email: confectionist?.email ?? "",
         intlDialCode: confectionist?.intlDialCode ?? "57",
         mobile: confectionist?.mobile ?? "",
+        fullMobile: confectionist?.fullMobile ?? "",
         landline: confectionist?.landline ?? "",
         extension: confectionist?.extension ?? "",
         address: confectionist?.address ?? "",
@@ -373,12 +374,14 @@ export function ConfectionistModal({
       dv: form.dv.trim() || null,
       taxRegime: parsed.data.taxRegime,
       type: form.type.trim() || null,
+      specialty: form.specialty.trim() || null,
+      dailyCapacity: form.dailyCapacity.trim() ? Number(form.dailyCapacity) : null,
       contactName: form.contactName.trim() || null,
       email: form.email.trim() || null,
       intlDialCode: form.intlDialCode.trim() || "57",
       mobile: form.mobile.trim() || null,
       fullMobile: form.mobile.trim()
-        ? `+${form.intlDialCode} ${form.mobile}`
+        ? `+${form.intlDialCode.trim() || "57"} ${form.mobile.trim()}`
         : null,
       landline: form.landline.trim() || null,
       extension: form.extension.trim() || null,
@@ -418,187 +421,70 @@ export function ConfectionistModal({
   };
 
   return (
-    <Modal isOpen={isOpen} scrollBehavior="inside" size="3xl" onOpenChange={onOpenChange}>
+    <Modal
+      isOpen={isOpen && !importPromptOpen}
+      scrollBehavior="inside"
+      size="3xl"
+      onOpenChange={onOpenChange}
+    >
       <ModalContent>
-        <ModalHeader className="flex flex-col gap-1">
-          <span>{confectionist ? "Editar confeccionista" : "Crear confeccionista"}</span>
-          {confectionist?.confectionistCode && (
-            <span className="font-mono text-xs font-normal text-primary">
-              {confectionist.confectionistCode}
-            </span>
-          )}
-        </ModalHeader>
+        <ModalHeader>{confectionist ? "Editar confeccionista" : "Crear confeccionista"}</ModalHeader>
         <ModalBody>
           <Tabs aria-label="Formulario de confeccionista" variant="underlined">
             <Tab
               key="identificacion"
               title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  errorMessage={errors.name}
-                  isInvalid={Boolean(errors.name)}
-                  label="Nombre"
-                  value={form.name}
-                  onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
-                />
-
-                <Select
-                  errorMessage={errors.identificationType}
-                  isInvalid={Boolean(errors.identificationType)}
-                  label="Tipo de identificación"
-                  selectedKeys={form.identificationType ? [form.identificationType] : []}
-                  onSelectionChange={(keys) => {
-                    const first = Array.from(keys)[0];
-                    setForm((s) => ({ ...s, identificationType: String(first ?? "") }));
-                  }}
-                >
-                  <SelectItem key="CC">Cédula de ciudadanía (CC)</SelectItem>
-                  <SelectItem key="NIT">NIT</SelectItem>
-                  <SelectItem key="CE">Cédula de extranjería (CE)</SelectItem>
-                  <SelectItem key="PAS">Pasaporte (PAS)</SelectItem>
-                  <SelectItem key="EMPRESA_EXTERIOR">Empresa exterior</SelectItem>
-                </Select>
-
-                <Input
-                  errorMessage={errors.identification}
-                  isInvalid={Boolean(errors.identification)}
-                  label="Identificación"
-                  value={form.identification}
-                  onValueChange={(v) => {
-                    setForm((s) => ({ ...s, identification: v }));
-                    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-                    debounceTimerRef.current = setTimeout(() => {
-                      checkIdentification();
-                    }, 500);
-                  }}
-                />
-
-                <Input
-                  label="Dígito verificación"
-                  maxLength={1}
-                  value={form.dv}
-                  onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
-                />
-
-                <Select
-                  errorMessage={errors.taxRegime}
-                  isInvalid={Boolean(errors.taxRegime)}
-                  label="Régimen fiscal"
-                  selectedKeys={form.taxRegime ? [form.taxRegime] : []}
-                  onSelectionChange={(keys) => {
-                    const first = Array.from(keys)[0];
-                    setForm((s) => ({ ...s, taxRegime: String(first ?? "") }));
-                  }}
-                >
-                  <SelectItem key="REGIMEN_COMUN">Régimen común</SelectItem>
-                  <SelectItem key="REGIMEN_SIMPLIFICADO">Régimen simplificado</SelectItem>
-                  <SelectItem key="NO_RESPONSABLE">No responsable</SelectItem>
-                </Select>
-
-                <Input
-                  label="Tipo de taller"
-                  placeholder="Ej: Taller Externo, Sastrería"
-                  value={form.type}
-                  onValueChange={(v) => setForm((s) => ({ ...s, type: v }))}
-                />
-              </div>
+              <ConfectionistIdentificationSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="contacto"
               title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
             >
-              <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-                <Input
-                  label="Nombre de contacto"
-                  value={form.contactName}
-                  onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
-                />
+              <ConfectionistContactSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
+            </Tab>
 
-                <Input
-                  label="Correo"
-                  type="text"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={form.email}
-                  onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
-                />
-
-                <Input
-                  label="Código internacional"
-                  placeholder="57"
-                  value={form.intlDialCode}
-                  onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
-                />
-
-                <Input
-                  label="Móvil"
-                  value={form.mobile}
-                  onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
-                />
-
-                <Input
-                  label="Fijo"
-                  value={form.landline}
-                  onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
-                />
-
-                <Input
-                  label="Extensión"
-                  value={form.extension}
-                  onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
-                />
-              </div>
+            <Tab
+              key="telefonos"
+              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+            >
+              <ConfectionistPhoneSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab
               key="ubicacion"
-              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación y estado" />}
+              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
             >
-              <div className="space-y-4 pt-3">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <Input
-                    errorMessage={errors.address}
-                    isInvalid={Boolean(errors.address)}
-                    label="Dirección"
-                    value={form.address}
-                    onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
-                  />
-
-                  <Input
-                    label="Código postal"
-                    value={form.postalCode}
-                    onValueChange={(v) => setForm((s) => ({ ...s, postalCode: v }))}
-                  />
-
-                  <Input
-                    label="País"
-                    value={form.country}
-                    onValueChange={(v) => setForm((s) => ({ ...s, country: v }))}
-                  />
-
-                  <Input
-                    label="Departamento"
-                    value={form.department}
-                    onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
-                  />
-
-                  <Input
-                    label="Ciudad"
-                    value={form.city}
-                    onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-default-500">Activo</span>
-                  <Switch
-                    isSelected={form.isActive}
-                    onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
-                  />
-                </div>
-              </div>
+              <ConfectionistLocationSection
+                errors={errors}
+                form={form}
+                identificationTypes={identificationTypes}
+                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onIdentificationInputChange={handleIdentificationInputChange}
+                onStringFieldChange={handleStringFieldChange}
+              />
             </Tab>
 
             <Tab

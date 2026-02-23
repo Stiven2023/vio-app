@@ -42,6 +42,7 @@ export type Confectionist = {
   identification: string;
   dv: string | null;
   type: string | null;
+  specialty: string | null;
   taxRegime: string;
   contactName: string | null;
   email: string | null;
@@ -56,6 +57,7 @@ export type Confectionist = {
   department: string | null;
   city: string | null;
   isActive: boolean | null;
+  dailyCapacity: number | null;
   createdAt: string | null;
   identityDocumentUrl?: string | null;
   rutDocumentUrl?: string | null;
@@ -122,6 +124,8 @@ export function ConfectionistsTab({
       const email = c.email ?? "";
       const mobile = c.mobile ?? "";
       const type = c.type ?? "";
+      const specialty = c.specialty ?? "";
+      const dailyCapacity = c.dailyCapacity === null ? "" : String(c.dailyCapacity);
 
       return (
         c.name.toLowerCase().includes(q) ||
@@ -129,7 +133,9 @@ export function ConfectionistsTab({
         identification.toLowerCase().includes(q) ||
         email.toLowerCase().includes(q) ||
         mobile.toLowerCase().includes(q) ||
-        type.toLowerCase().includes(q)
+        type.toLowerCase().includes(q) ||
+        specialty.toLowerCase().includes(q) ||
+        dailyCapacity.includes(q)
       );
     });
   }, [data, search, status]);
@@ -248,19 +254,23 @@ export function ConfectionistsTab({
           identification: confectionist.identification,
           dv: confectionist.dv ?? "",
           packerType: "EXTERNO",
-          specialty: "",
-          dailyCapacity: null,
           contactName: confectionist.contactName ?? confectionist.name,
           email: confectionist.email ?? "",
           intlDialCode: confectionist.intlDialCode ?? "57",
           mobile: confectionist.mobile ?? "",
           fullMobile: confectionist.fullMobile ?? "",
           landline: confectionist.landline ?? "",
+          extension: confectionist.extension ?? "",
           address: confectionist.address,
           postalCode: confectionist.postalCode ?? "",
+          country: confectionist.country ?? "COLOMBIA",
           city: confectionist.city ?? "Medellín",
           department: confectionist.department ?? "ANTIOQUIA",
+          taxRegime: confectionist.taxRegime,
           isActive: Boolean(confectionist.isActive ?? true),
+          specialty: confectionist.specialty ?? "",
+          dailyCapacity:
+            confectionist.dailyCapacity === null ? null : confectionist.dailyCapacity,
         }),
       });
 
@@ -333,6 +343,8 @@ export function ConfectionistsTab({
             "Email",
             "Móvil",
             "Tipo",
+            "Especialidad",
+            "Capacidad",
             "Activo",
             "Acciones",
           ]}
@@ -346,6 +358,8 @@ export function ConfectionistsTab({
             <TableColumn>Email</TableColumn>
             <TableColumn>Móvil</TableColumn>
             <TableColumn>Tipo</TableColumn>
+            <TableColumn>Especialidad</TableColumn>
+            <TableColumn>Capacidad</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
@@ -364,6 +378,10 @@ export function ConfectionistsTab({
                   {c.fullMobile ?? c.mobile ?? "-"}
                 </TableCell>
                 <TableCell className="text-default-500">{c.type ?? "-"}</TableCell>
+                <TableCell className="text-default-500">{c.specialty ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.dailyCapacity === null ? "-" : c.dailyCapacity}
+                </TableCell>
                 <TableCell>{c.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>
                   <Dropdown>

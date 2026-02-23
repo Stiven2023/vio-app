@@ -206,6 +206,7 @@ export async function POST(request: Request) {
         identification,
         dv: payload.dv ? String(payload.dv).trim() : null,
         type: payload.type ? String(payload.type).trim() : null,
+        specialty: payload.specialty ? String(payload.specialty).trim() : null,
         taxRegime: taxRegime as
           | "REGIMEN_COMUN"
           | "REGIMEN_SIMPLIFICADO"
@@ -235,6 +236,10 @@ export async function POST(request: Request) {
           : "ANTIOQUIA",
         city: payload.city ? String(payload.city).trim() : "Medellín",
         isActive: false,
+        dailyCapacity:
+          payload.dailyCapacity === "" || payload.dailyCapacity === null
+            ? null
+            : Number(payload.dailyCapacity),
         // Documentos del formulario o copiados del cliente
         identityDocumentUrl: mergedPayload.identityDocumentUrl,
         rutDocumentUrl: mergedPayload.rutDocumentUrl,
@@ -313,6 +318,8 @@ export async function PUT(request: Request) {
     patch.dv = payload.dv ? String(payload.dv).trim() : null;
   if (payload.type !== undefined)
     patch.type = payload.type ? String(payload.type).trim() : null;
+  if (payload.specialty !== undefined)
+    patch.specialty = payload.specialty ? String(payload.specialty).trim() : null;
   if (payload.contactName !== undefined)
     patch.contactName = payload.contactName
       ? String(payload.contactName).trim()
@@ -348,6 +355,11 @@ export async function PUT(request: Request) {
   if (payload.city !== undefined)
     patch.city = payload.city ? String(payload.city).trim() : null;
   if (payload.isActive !== undefined) patch.isActive = Boolean(payload.isActive);
+  if (payload.dailyCapacity !== undefined)
+    patch.dailyCapacity =
+      payload.dailyCapacity === "" || payload.dailyCapacity === null
+        ? null
+        : Number(payload.dailyCapacity);
 
   // Manejar campos de documentos
   if (payload.identityDocumentUrl !== undefined)
