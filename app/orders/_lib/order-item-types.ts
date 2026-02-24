@@ -25,6 +25,7 @@ export type OrderItemInput = {
   id?: string;
   orderId: string;
   productId?: string | null;
+  additionId?: string | null;
   productPriceId?: string | null;
   quantity: number;
   unitPrice?: string | number | null;

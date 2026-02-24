@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Tabs, Tab } from "@heroui/tabs";
 
 import { CategoriesTab } from "./categories/categories-tab";
 import { InventoryItemsTab } from "./inventory-items/inventory-items-tab";
 import { InventoryEntriesTab } from "./inventory-entries/inventory-entries-tab";
 import { InventoryOutputsTab } from "./inventory-outputs/inventory-outputs-tab";
-import { ProductsTab } from "./products/products-tab";
+import { ProductManagementTabs } from "./product-management-tabs";
+import { useState } from "react";
 
 type CatalogTabKey =
   | "products"
@@ -40,7 +40,7 @@ export function CatalogTabs({
         selectedKey={activeTab}
         onSelectionChange={(k) => setActiveTab(k as CatalogTabKey)}
       >
-        <Tab key="products" title="Productos" />
+        <Tab key="products" title="Productos y Adiciones" />
         <Tab key="categories" title="Categorías" />
         {canViewInventoryItems ? <Tab key="inventory" title="Inventario" /> : null}
         {canEntry ? <Tab key="entries" title="Entradas" /> : null}
@@ -49,7 +49,7 @@ export function CatalogTabs({
 
       <div className="mt-4">
         {activeTab === "products" ? (
-          <ProductsTab
+          <ProductManagementTabs
             canCreate={canCreateItem}
             canDelete={canDeleteItem}
             canEdit={canEditItem}

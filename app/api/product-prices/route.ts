@@ -1,286 +1,53 @@
-import { and, desc, eq, sql } from "drizzle-orm";
-
-import { db } from "@/src/db";
-import { productPrices } from "@/src/db/schema";
-import { dbErrorResponse } from "@/src/utils/db-errors";
-import { requirePermission } from "@/src/utils/permission-middleware";
-import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-function toNullableString(v: unknown) {
-  const s = String(v ?? "").trim();
-
-  return s ? s : null;
-}
-
-function toNullableNumericString(v: unknown) {
-  if (v === null || v === undefined || v === "") return null;
-  const n = typeof v === "number" ? v : Number(String(v));
-
-  if (Number.isNaN(n)) return null;
-
-  return String(n);
+function deprecatedResponse() {
+  return new Response("Endpoint deprecated", { status: 410 });
 }
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "productPrices:get",
-    limit: 200,
+    limit: 50,
     windowMs: 60_000,
   });
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "VER_INVENTARIO");
-
-  if (forbidden) return forbidden;
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const { page, pageSize, offset } = parsePagination(searchParams);
-    const productId = String(searchParams.get("productId") ?? "").trim();
-    const where = productId ? and(eq(productPrices.productId, productId)) : undefined;
-    const [{ total }] = await db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(productPrices)
-      .where(where);
-
-    const items = await db
-      .select()
-      .from(productPrices)
-      .where(where)
-      .orderBy(desc(productPrices.updatedAt))
-      .limit(pageSize)
-      .offset(offset);
-    const hasNextPage = offset + items.length < total;
-
-    return Response.json({ items, page, pageSize, total, hasNextPage });
-  } catch (error) {
-    const response = dbErrorResponse(error);
-    if (response) return response;
-    return new Response("No se pudo consultar precios", { status: 500 });
-  }
+  return deprecatedResponse();
 }
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, {
     key: "productPrices:post",
-    limit: 80,
+    limit: 50,
     windowMs: 60_000,
   });
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "CREAR_ITEM_INVENTARIO");
-
-  if (forbidden) return forbidden;
-
-  const {
-    productId,
-    referenceCode,
-    priceCopR1,
-    priceCopR2,
-    priceCopR3,
-    priceViomar,
-    priceColanta,
-    priceMayorista,
-    priceUSD,
-    isEditable,
-    startDate,
-    endDate,
-    isActive,
-  } = await request.json();
-
-  const pid = String(productId ?? "").trim();
-  const ref = String(referenceCode ?? "").trim();
-
-  if (!pid || !ref) {
-    return new Response("productId and referenceCode required", {
-      status: 400,
-    });
-  }
-
-  try {
-    const [existing] = await db
-      .select({ id: productPrices.id })
-      .from(productPrices)
-      .where(eq(productPrices.productId, pid))
-      .limit(1);
-
-    if (existing) {
-      return new Response(
-        "El producto ya tiene un registro de precios. Edita el producto para actualizarlo.",
-        { status: 409 },
-      );
-    }
-
-    const created = await db
-      .insert(productPrices)
-      .values({
-        productId: pid,
-        referenceCode: ref,
-        priceCopR1: toNullableNumericString(priceCopR1),
-        priceCopR2: toNullableNumericString(priceCopR2),
-        priceCopR3: toNullableNumericString(priceCopR3),
-        priceViomar: toNullableNumericString(priceViomar),
-        priceColanta: toNullableNumericString(priceColanta),
-        priceMayorista: toNullableNumericString(priceMayorista),
-        priceUSD: toNullableNumericString(priceUSD),
-        isEditable: Boolean(isEditable ?? false),
-        startDate: startDate ? new Date(String(startDate)) : null,
-        endDate: endDate ? new Date(String(endDate)) : null,
-        isActive: isActive ?? true,
-        updatedAt: new Date(),
-      })
-      .returning();
-
-    return Response.json(created, { status: 201 });
-  } catch (e: unknown) {
-    const code =
-      typeof e === "object" && e && "code" in e
-        ? (e as { code?: string }).code
-        : undefined;
-
-    if (code === "23505") {
-      return new Response("El código de referencia ya existe", { status: 409 });
-    }
-
-    return new Response("No se pudo crear el precio", { status: 500 });
-  }
+  return deprecatedResponse();
 }
 
 export async function PUT(request: Request) {
   const limited = rateLimit(request, {
     key: "productPrices:put",
-    limit: 140,
+    limit: 50,
     windowMs: 60_000,
   });
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "EDITAR_ITEM_INVENTARIO");
-
-  if (forbidden) return forbidden;
-
-  const {
-    id,
-    productId,
-    referenceCode,
-    priceCopR1,
-    priceCopR2,
-    priceCopR3,
-    priceViomar,
-    priceColanta,
-    priceMayorista,
-    priceUSD,
-    isEditable,
-    startDate,
-    endDate,
-    isActive,
-  } = await request.json();
-
-  if (!id) {
-    return new Response("Price ID required", { status: 400 });
-  }
-
-  const patch: Partial<typeof productPrices.$inferInsert> = {
-    isActive,
-  };
-
-  if (productId !== undefined) {
-    const incomingProductId = toNullableString(productId);
-
-    if (!incomingProductId) {
-      return new Response("productId required", { status: 400 });
-    }
-
-    const [existing] = await db
-      .select({ id: productPrices.id })
-      .from(productPrices)
-      .where(eq(productPrices.productId, incomingProductId))
-      .limit(1);
-
-    if (existing && existing.id !== String(id)) {
-      return new Response(
-        "El producto ya tiene un registro de precios.",
-        { status: 409 },
-      );
-    }
-
-    patch.productId = incomingProductId;
-  }
-
-  if (referenceCode !== undefined)
-    patch.referenceCode = String(referenceCode ?? "").trim();
-  if (priceCopR1 !== undefined)
-    patch.priceCopR1 = toNullableNumericString(priceCopR1);
-  if (priceCopR2 !== undefined)
-    patch.priceCopR2 = toNullableNumericString(priceCopR2);
-  if (priceCopR3 !== undefined)
-    patch.priceCopR3 = toNullableNumericString(priceCopR3);
-  if (priceViomar !== undefined)
-    patch.priceViomar = toNullableNumericString(priceViomar);
-  if (priceColanta !== undefined)
-    patch.priceColanta = toNullableNumericString(priceColanta);
-  if (priceMayorista !== undefined)
-    patch.priceMayorista = toNullableNumericString(priceMayorista);
-  if (priceUSD !== undefined)
-    patch.priceUSD = toNullableNumericString(priceUSD);
-  if (isEditable !== undefined) patch.isEditable = Boolean(isEditable);
-  if (startDate !== undefined)
-    patch.startDate = startDate ? new Date(String(startDate)) : null;
-  if (endDate !== undefined)
-    patch.endDate = endDate ? new Date(String(endDate)) : null;
-  patch.updatedAt = new Date();
-
-  try {
-    const updated = await db
-      .update(productPrices)
-      .set(patch)
-      .where(eq(productPrices.id, String(id)))
-      .returning();
-
-    return Response.json(updated);
-  } catch (e: unknown) {
-    const code =
-      typeof e === "object" && e && "code" in e
-        ? (e as { code?: string }).code
-        : undefined;
-
-    if (code === "23505") {
-      return new Response("El código de referencia ya existe", { status: 409 });
-    }
-
-    return new Response("No se pudo actualizar el precio", { status: 500 });
-  }
+  return deprecatedResponse();
 }
 
 export async function DELETE(request: Request) {
   const limited = rateLimit(request, {
     key: "productPrices:delete",
-    limit: 80,
+    limit: 50,
     windowMs: 60_000,
   });
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(
-    request,
-    "ELIMINAR_ITEM_INVENTARIO",
-  );
-
-  if (forbidden) return forbidden;
-
-  const { id } = await request.json();
-
-  if (!id) {
-    return new Response("Price ID required", { status: 400 });
-  }
-
-  const deleted = await db
-    .delete(productPrices)
-    .where(eq(productPrices.id, String(id)))
-    .returning();
-
-  return Response.json(deleted);
+  return deprecatedResponse();
 }

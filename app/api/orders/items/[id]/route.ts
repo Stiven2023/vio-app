@@ -13,7 +13,6 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
-  productPrices,
   products,
 } from "@/src/db/schema";
 import {
@@ -192,22 +191,8 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
-function isValidPriceRowNow(row: {
-  isActive: boolean | null;
-  startDate: Date | null;
-  endDate: Date | null;
-}) {
-  if (row.isActive === false) return false;
-
-  const now = new Date();
-  if (row.startDate && now < row.startDate) return false;
-  if (row.endDate && now > row.endDate) return false;
-
-  return true;
-}
-
 function pickCopScaleByQuantity(
-  row: typeof productPrices.$inferSelect,
+  row: typeof products.$inferSelect,
   quantity: number,
 ) {
   if (quantity <= 499) return row.priceCopR1;
@@ -220,7 +205,7 @@ function resolveUnitPriceByRule(args: {
   currency: string | null | undefined;
   clientPriceType: string | null | undefined;
   quantity: number;
-  row: typeof productPrices.$inferSelect;
+  row: typeof products.$inferSelect;
   manualUnitPrice?: unknown;
   usdCopEffectiveRate?: number | null;
 }) {
@@ -233,23 +218,32 @@ function resolveUnitPriceByRule(args: {
     usdCopEffectiveRate,
   } = args;
 
-  if (String(currency ?? "COP").toUpperCase() === "USD") {
-    return row.priceUSD;
+  const currencyCode = String(currency ?? "COP").toUpperCase();
+  const manual = toNullableNumericString(manualUnitPrice);
+
+  if (clientPriceType === "AUTORIZADO" && manual) {
+    return manual;
   }
 
-  if (clientPriceType === "VIOMAR") return row.priceViomar;
-  if (clientPriceType === "COLANTA") return row.priceColanta;
-  if (clientPriceType === "MAYORISTA") return row.priceMayorista;
+  if (currencyCode === "USD") {
+    if (row.priceUSD) return row.priceUSD;
 
-  if (clientPriceType === "AUTORIZADO") {
-    const manual = toNullableNumericString(manualUnitPrice);
+    if (row.priceCopInternational && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
+      return String(asNumber(row.priceCopInternational) / usdCopEffectiveRate);
+    }
 
-    return manual ?? pickCopScaleByQuantity(row, quantity);
+    return null;
   }
+
+  if (clientPriceType === "VIOMAR" && row.priceViomar) return row.priceViomar;
+  if (clientPriceType === "COLANTA" && row.priceColanta) return row.priceColanta;
+  if (clientPriceType === "MAYORISTA" && row.priceMayorista) return row.priceMayorista;
 
   const copByScale = pickCopScaleByQuantity(row, quantity);
 
   if (copByScale) return copByScale;
+
+  if (row.priceCopInternational) return row.priceCopInternational;
 
   if (row.priceUSD && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
     return String(asNumber(row.priceUSD) * usdCopEffectiveRate);
@@ -337,11 +331,11 @@ export async function PUT(
     .select({
       id: orderItems.id,
       orderId: orderItems.orderId,
+      productId: orderItems.productId,
       name: orderItems.name,
       status: orderItems.status,
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
-      productPriceId: orderItems.productPriceId,
     })
     .from(orderItems)
     .where(eq(orderItems.id, orderItemId))
@@ -428,27 +422,25 @@ export async function PUT(
   if (qty) patch.quantity = qty;
   if (body.productId !== undefined)
     patch.productId = toNullableString(body.productId);
-  if (body.productPriceId !== undefined)
-    patch.productPriceId = toNullableString(body.productPriceId);
   if (body.name !== undefined) patch.name = toNullableString(body.name);
 
   const effectiveQuantity = qty ?? Number(existing.quantity ?? 1);
-  const effectiveProductPriceId =
-    body.productPriceId !== undefined
-      ? toNullableString(body.productPriceId)
-      : toNullableString(existing.productPriceId);
+  const effectiveProductId =
+    body.productId !== undefined
+      ? toNullableString(body.productId)
+      : toNullableString(existing.productId);
 
-  if (!effectiveProductPriceId) {
+  const manual = toNullableNumericString(
+    body.unitPrice !== undefined ? body.unitPrice : existing.unitPrice,
+  );
+
+  if (!effectiveProductId) {
     if (String(orderRow?.clientPriceType ?? "VIOMAR") !== "AUTORIZADO") {
-      return new Response("productPriceId required", { status: 400 });
+      return new Response("productId required", { status: 400 });
     }
 
-    const manual = toNullableNumericString(
-      body.unitPrice !== undefined ? body.unitPrice : existing.unitPrice,
-    );
-
     if (!manual) {
-      return new Response("productPriceId required", { status: 400 });
+      return new Response("productId required", { status: 400 });
     }
 
     const manualNumber = Math.max(0, asNumber(manual));
@@ -457,21 +449,21 @@ export async function PUT(
       manualNumber * Math.max(1, Math.floor(asNumber(effectiveQuantity))),
     );
   } else {
-    const [priceRow] = await db
+    const [productRow] = await db
       .select()
-      .from(productPrices)
-      .where(eq(productPrices.id, effectiveProductPriceId))
+      .from(products)
+      .where(eq(products.id, effectiveProductId))
       .limit(1);
 
-    if (!priceRow || !isValidPriceRowNow(priceRow)) {
-      return new Response("precio vigente requerido", { status: 400 });
+    if (!productRow || productRow.isActive === false) {
+      return new Response("producto requerido", { status: 400 });
     }
 
     const resolvedUnitPrice = resolveUnitPriceByRule({
       currency: orderRow?.currency,
       clientPriceType: orderRow?.clientPriceType,
       quantity: Math.max(1, Math.floor(asNumber(effectiveQuantity))),
-      row: priceRow,
+      row: productRow,
       manualUnitPrice:
         body.unitPrice !== undefined ? body.unitPrice : existing.unitPrice,
       usdCopEffectiveRate: latestUsdCopRate?.effectiveRate ?? null,
@@ -487,7 +479,6 @@ export async function PUT(
     }
 
     const resolvedUnitNumber = Math.max(0, asNumber(resolvedUnitPrice));
-    patch.productPriceId = effectiveProductPriceId;
     patch.unitPrice = String(resolvedUnitNumber);
     patch.totalPrice = String(
       resolvedUnitNumber * Math.max(1, Math.floor(asNumber(effectiveQuantity))),

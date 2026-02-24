@@ -26,7 +26,9 @@ type ProductRow = {
 
 type ProductPriceRow = {
   id: string;
+  catalogType: "NACIONAL" | "INTERNACIONAL" | null;
   referenceCode: string;
+  priceCopInternational: string | null;
   priceCopR1: string | null;
   priceCopR2: string | null;
   priceCopR3: string | null;
@@ -63,9 +65,9 @@ function resolveUnitPrice(args: {
   const { currency, clientPriceType, quantity, row, manualUnitPrice } = args;
 
   if (currency === "USD") return row.priceUSD;
-  if (clientPriceType === "VIOMAR") return row.priceViomar;
-  if (clientPriceType === "COLANTA") return row.priceColanta;
-  if (clientPriceType === "MAYORISTA") return row.priceMayorista;
+  if (clientPriceType === "VIOMAR" && row.priceViomar) return row.priceViomar;
+  if (clientPriceType === "COLANTA" && row.priceColanta) return row.priceColanta;
+  if (clientPriceType === "MAYORISTA" && row.priceMayorista) return row.priceMayorista;
 
   if (clientPriceType === "AUTORIZADO") {
     const manual = String(manualUnitPrice ?? "").trim();
@@ -73,7 +75,11 @@ function resolveUnitPrice(args: {
     return manual || pickCopScaleByQuantity(row, quantity);
   }
 
-  return pickCopScaleByQuantity(row, quantity);
+  const byScale = pickCopScaleByQuantity(row, quantity);
+
+  if (byScale) return byScale;
+
+  return row.priceCopInternational;
 }
 
 export function OrderItemCreatePage(props: {

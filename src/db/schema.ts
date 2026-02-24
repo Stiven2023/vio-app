@@ -173,7 +173,7 @@ export const permissionEnum = pgEnum("permission", [
 ]);
 
 /* =========================
-	 ENUMS (POSTGRES)
+   ENUMS (POSTGRES)
 ========================= */
 export const orderTypeEnum = pgEnum("order_type", ["VN", "VI"]);
 
@@ -234,7 +234,7 @@ export const inventoryLocationEnum = pgEnum("inventory_location", [
 ]);
 
 /* =========================
-	 USERS (AUTH)
+   USERS (AUTH)
 ========================= */
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -264,7 +264,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 });
 
 /* =========================
-	 ROLES & PERMISSIONS
+   ROLES & PERMISSIONS
 ========================= */
 export const roles = pgTable("roles", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -293,10 +293,10 @@ export const rolePermissions = pgTable(
 export const employees = pgTable("employees", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id),
-  
+
   // --- CÓDIGO AUTOGENERADO ---
   employeeCode: varchar("employee_code", { length: 20 }).unique().notNull(),
-  
+
   // --- DOCUMENTOS (Igual que clientes) ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT
@@ -312,13 +312,13 @@ export const employees = pgTable("employees", {
   epsCertificateUrl: varchar("eps_certificate_url", { length: 500 }),
   pensionCertificateUrl: varchar("pension_certificate_url", { length: 500 }),
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
-  
+
   // --- IDENTIFICACIÓN Y NOMBRE ---
   name: varchar("name", { length: 255 }).notNull(),
   identificationType: identificationTypeEnum("identification_type").notNull(),
   identification: varchar("identification", { length: 20 }).unique().notNull(),
   dv: varchar("dv", { length: 1 }),
-  
+
   // --- CONTACTO DETALLADO ---
   email: varchar("email", { length: 255 }).notNull(),
   intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
@@ -335,20 +335,20 @@ export const employees = pgTable("employees", {
   // --- ROL Y ESTADO ---
   roleId: uuid("role_id").references(() => roles.id),
   isActive: boolean("is_active").default(false),
-  
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================
-	 CLIENTS
+   CLIENTS
 ========================= */
 export const clients = pgTable("clients", {
   id: uuid("id").defaultRandom().primaryKey(),
-  
+
   // --- CÓDIGO DE CLIENTE AUTOMÁTICO ---
   clientCode: varchar("client_code", { length: 20 }).unique().notNull(), // "CN10001", "CE10001", "EM10001"
   clientType: clientTypeEnum("client_type").notNull(), // NACIONAL, EXTRANJERO, EMPLEADO
-  
+
   // --- DOCUMENTOS ---
   // El tipo de persona se deduce del identificationType:
   // CC → Persona Natural Nacional
@@ -356,26 +356,26 @@ export const clients = pgTable("clients", {
   // CE → Persona Natural Extranjera
   // PAS → Persona Natural Extranjera (Venezolano)
   // EMPRESA_EXTERIOR → Empresa Extranjera
-  
+
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE / Cédula rep. legal (NIT)
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT (CC, NIT)
   commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de Comercio (NIT)
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte/PPT (CE, PAS, EMPRESA_EXTERIOR)
   taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario (EMPRESA_EXTERIOR)
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa (EMPRESA_EXTERIOR)
-  
+
   // --- IDENTIFICACIÓN Y NOMBRE (Imagen 1 y 2) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
   identificationType: identificationTypeEnum("identification_type").notNull(), // CC, NIT, CE, PAS, EMPRESA_EXTERIOR
   identification: varchar("identification", { length: 20 }).unique().notNull(), // "Identificación"
   dv: varchar("dv", { length: 1 }), // "Digito verificación"
   branch: varchar("branch", { length: 10 }).default("01"), // "Sucursal"
-  
+
   // --- INFORMACIÓN FISCAL Y CONTACTO ---
   taxRegime: taxRegimeEnum("tax_regime").notNull(), // REGIMEN_COMUN, REGIMEN_SIMPLIFICADO, NO_RESPONSABLE
   contactName: varchar("contact_name", { length: 255 }).notNull(), // "NOMBRE DE CONTACTO"
   email: varchar("email", { length: 255 }).notNull(), // "CORREO" (Crítico para facturación)
-  
+
   // --- UBICACIÓN GEOGRÁFICA (Imagen 2: Medellín, Antioquia, 5001) ---
   address: varchar("address", { length: 255 }).notNull(), // "Dirección"
   postalCode: varchar("postal_code", { length: 20 }), // "CODIGO POSTAL"
@@ -401,12 +401,12 @@ export const clients = pgTable("clients", {
   hasCredit: boolean("has_credit").default(false), // "CREDITO"
   promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
   promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
-  
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================
-	 ESTADO JURÍDICO DE CLIENTES
+   ESTADO JURÍDICO DE CLIENTES
 ========================= */
 
 export const clientLegalStatusHistory = pgTable("client_legal_status_history", {
@@ -424,7 +424,7 @@ export const clientLegalStatusHistory = pgTable("client_legal_status_history", {
 });
 
 /* =========================
-	 PRODUCTOS + CATEGORÍAS + PRECIOS
+   PRODUCTOS + CATEGORÍAS + PRECIOS
 ========================= */
 
 export const categories = pgTable("categories", {
@@ -435,39 +435,51 @@ export const categories = pgTable("categories", {
 export const products = pgTable("products", {
   id: uuid("id").defaultRandom().primaryKey(),
   productCode: varchar("product_code", { length: 10 }).unique().notNull(),
+  productKind: varchar("product_kind", { length: 20 }).default("REGULAR").notNull(),
+  catalogType: varchar("catalog_type", { length: 20 }).default("NACIONAL").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   categoryId: uuid("category_id").references(() => categories.id),
+  priceCopBase: numeric("price_cop_base", { precision: 14, scale: 2 }),
+  priceCopInternational: numeric("price_cop_international", { precision: 14, scale: 2 }),
+  priceCopR1: numeric("price_cop_r1", { precision: 14, scale: 2 }),
+  priceCopR2: numeric("price_cop_r2", { precision: 14, scale: 2 }),
+  priceCopR3: numeric("price_cop_r3", { precision: 14, scale: 2 }),
+  priceViomar: numeric("price_viomar", { precision: 14, scale: 2 }),
+  priceColanta: numeric("price_colanta", { precision: 14, scale: 2 }),
+  priceMayorista: numeric("price_mayorista", { precision: 14, scale: 2 }),
+  priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
+  trmUsed: numeric("trm_used", { precision: 14, scale: 2 }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const productPrices = pgTable(
-  "product_prices",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    productId: uuid("product_id").references(() => products.id),
-    referenceCode: varchar("reference_code", { length: 50 }).unique().notNull(),
-    priceCopR1: numeric("price_cop_r1", { precision: 14, scale: 2 }),
-    priceCopR2: numeric("price_cop_r2", { precision: 14, scale: 2 }),
-    priceCopR3: numeric("price_cop_r3", { precision: 14, scale: 2 }),
-    priceViomar: numeric("price_viomar", { precision: 14, scale: 2 }),
-    priceColanta: numeric("price_colanta", { precision: 14, scale: 2 }),
-    priceMayorista: numeric("price_mayorista", { precision: 14, scale: 2 }),
-    priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
-    isEditable: boolean("is_editable").default(false),
-    startDate: timestamp("start_date"),
-    endDate: timestamp("end_date"),
-    isActive: boolean("is_active").default(true),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  },
-  (t) => ({
-    uniqProductId: uniqueIndex("product_prices_product_id_unique").on(t.productId),
-  }),
-);
+export const additions = pgTable("additions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  additionCode: varchar("addition_code", { length: 10 }).unique().notNull(),
+  catalogType: varchar("catalog_type", { length: 20 }).default("NACIONAL").notNull(),
+  productKind: varchar("product_kind", { length: 20 }).default("REGULAR").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  categoryId: uuid("category_id").references(() => categories.id),
+  // Precios integrados
+  priceCopBase: numeric("price_cop_base", { precision: 14, scale: 2 }),
+  priceCopInternational: numeric("price_cop_international", { precision: 14, scale: 2 }),
+  priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
+  trmUsed: numeric("trm_used", { precision: 14, scale: 2 }),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+
 
 /* =========================
-	 ORDERS
+   ORDERS
 ========================= */
 export const orders = pgTable("orders", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -489,13 +501,13 @@ export const orders = pgTable("orders", {
 });
 
 /* =========================
-	 ORDER ITEMS (DISEÑOS) & REVISIONES
+   ORDER ITEMS (DISEÑOS) & REVISIONES
 ========================= */
 export const orderItems = pgTable("order_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").references(() => orders.id),
-  productId: uuid("product_id").references(() => products.id),
-  productPriceId: uuid("product_price_id").references(() => productPrices.id),
+  productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+  additionId: uuid("addition_id").references(() => additions.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }),
@@ -570,7 +582,7 @@ export const orderItemRevisions = pgTable("order_item_revisions", {
 });
 
 /* =========================
-	 HISTORIAL DE ESTADOS (ORDER ITEM)
+   HISTORIAL DE ESTADOS (ORDER ITEM)
 ========================= */
 export const orderStatusHistory = pgTable("order_status_history", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -593,10 +605,10 @@ export const orderItemStatusHistory = pgTable("order_item_status_history", {
 ========================= */
 export const confectionists = pgTable("confectionists", {
   id: uuid("id").defaultRandom().primaryKey(),
-  
+
   // --- CÓDIGO AUTOGENERADO ---
   confectionistCode: varchar("confectionist_code", { length: 20 }).unique().notNull(),
-  
+
   // --- DOCUMENTOS ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
@@ -605,26 +617,26 @@ export const confectionists = pgTable("confectionists", {
   taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
-  
+
   // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
   identificationType: identificationTypeEnum("identification_type").notNull(), // CC o NIT (común en talleres)
   identification: varchar("identification", { length: 20 }).unique().notNull(),
   dv: varchar("dv", { length: 1 }), // Vital si el confeccionista es una empresa (NIT)
-  
+
   // --- CARACTERIZACIÓN ---
   // Reemplazamos el type simple por uno más descriptivo si es necesario
   type: varchar("type", { length: 50 }), // Ej: "Taller Externo", "Sastrería", "Planta Propia"
   specialty: varchar("specialty", { length: 100 }),
   taxRegime: taxRegimeEnum("tax_regime").notNull(), // Necesario para pagos y retenciones
-  
+
   // --- CONTACTO Y TELÉFONOS (Estructura Imagen 1) ---
-  contactName: varchar("contact_name", { length: 255 }), 
+  contactName: varchar("contact_name", { length: 255 }),
   email: varchar("email", { length: 255 }),
   intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
   mobile: varchar("mobile", { length: 20 }),
   fullMobile: varchar("full_mobile", { length: 25 }),
-  landline: varchar("landline", { length: 20 }),    
+  landline: varchar("landline", { length: 20 }),
   extension: varchar("extension", { length: 10 }),
 
   // --- UBICACIÓN (Para logística de entrega y recogida) ---
@@ -641,7 +653,7 @@ export const confectionists = pgTable("confectionists", {
 });
 
 /* =========================
-	 ORDER ITEM ↔ CONFECCIONISTA
+   ORDER ITEM ↔ CONFECCIONISTA
 ========================= */
 export const orderItemConfection = pgTable("order_item_confection", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -657,10 +669,10 @@ export const orderItemConfection = pgTable("order_item_confection", {
 ========================= */
 export const suppliers = pgTable("suppliers", {
   id: uuid("id").defaultRandom().primaryKey(),
-  
+
   // --- CÓDIGO AUTOGENERADO ---
   supplierCode: varchar("supplier_code", { length: 20 }).unique().notNull(), // "PROV1001", "PROV1002", etc.
-  
+
   // --- DOCUMENTOS ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
@@ -669,7 +681,7 @@ export const suppliers = pgTable("suppliers", {
   taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
-  
+
   // --- IDENTIFICACIÓN Y NOMBRE (Estandarizado) ---
   name: varchar("name", { length: 255 }).notNull(), // "Nombre tercero"
   identificationType: identificationTypeEnum("identification_type").notNull(), // NIT es el más común aquí
@@ -767,7 +779,7 @@ export const orderItemPacker = pgTable("order_item_packer", {
 });
 
 /* =========================
-	 INVENTORY ITEMS
+   INVENTORY ITEMS
 ========================= */
 export const inventoryItems = pgTable("inventory_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -783,7 +795,7 @@ export const inventoryItems = pgTable("inventory_items", {
 });
 
 /* =========================
-	 INVENTORY (STATE)
+   INVENTORY (STATE)
 ========================= */
 export const inventory = pgTable("inventory", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -804,7 +816,7 @@ export const inventory = pgTable("inventory", {
 });
 
 /* =========================
-	 PURCHASE ORDERS
+   PURCHASE ORDERS
 ========================= */
 export const purchaseOrders = pgTable("purchase_orders", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -827,7 +839,7 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
 });
 
 /* =========================
-	 INVENTORY ENTRIES
+   INVENTORY ENTRIES
 ========================= */
 export const inventoryEntries = pgTable("inventory_entries", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -841,7 +853,7 @@ export const inventoryEntries = pgTable("inventory_entries", {
 });
 
 /* =========================
-	 INVENTORY OUTPUTS
+   INVENTORY OUTPUTS
 ========================= */
 export const inventoryOutputs = pgTable("inventory_outputs", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -856,7 +868,7 @@ export const inventoryOutputs = pgTable("inventory_outputs", {
 });
 
 /* =========================
-	 ORDER SUPPLIES
+   ORDER SUPPLIES
 ========================= */
 export const orderSupplies = pgTable(
   "order_supplies",
@@ -881,7 +893,7 @@ export const orderSupplies = pgTable(
 );
 
 /* =========================
-	 PAYMENTS
+   PAYMENTS
 ========================= */
 export const orderPayments = pgTable("order_payments", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -894,7 +906,7 @@ export const orderPayments = pgTable("order_payments", {
 });
 
 /* =========================
-	 NOTIFICATIONS
+   NOTIFICATIONS
 ========================= */
 export const notifications = pgTable("notifications", {
   id: uuid("id").defaultRandom().primaryKey(),

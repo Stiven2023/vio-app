@@ -1,8 +1,7 @@
 "use client";
 
-import type { Product, ProductPrice } from "../../_lib/types";
+import type { Product } from "../../_lib/types";
 
-import { useEffect, useState } from "react";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import {
@@ -13,60 +12,20 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 
-import { apiJson } from "../../_lib/api";
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleDateString("es-CO");
-}
-
 export function ProductDetailsModal({
   product,
   categoryName,
+  catalogType,
   isOpen,
   onOpenChange,
 }: {
   product: Product | null;
   categoryName: string;
+  catalogType: "NACIONAL" | "INTERNACIONAL";
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [price, setPrice] = useState<ProductPrice | null>(null);
-  const [loadingPrice, setLoadingPrice] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen || !product?.id) {
-      setPrice(null);
-      return;
-    }
-
-    let active = true;
-
-    setLoadingPrice(true);
-    apiJson<{ items: ProductPrice[] }>(
-      `/api/product-prices?productId=${product.id}&page=1&pageSize=1`,
-    )
-      .then((response) => {
-        if (!active) return;
-        setPrice(response.items?.[0] ?? null);
-      })
-      .catch(() => {
-        if (!active) return;
-        setPrice(null);
-      })
-      .finally(() => {
-        if (!active) return;
-        setLoadingPrice(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [isOpen, product?.id]);
+  const viewCatalogType = catalogType ?? "NACIONAL";
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange} scrollBehavior="inside">
@@ -93,44 +52,37 @@ export function ProductDetailsModal({
 
             <section className="rounded-large border border-default-200 p-3 space-y-3">
               <h4 className="text-sm font-semibold text-default-700">Precios y vigencia</h4>
-              {loadingPrice ? (
-                <p className="text-sm text-default-500">Cargando precios…</p>
+              {viewCatalogType === "INTERNACIONAL" ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Input
+                    isReadOnly
+                    label="COP internacional"
+                    value={product?.priceCopInternational ?? "-"}
+                  />
+                  <Input isReadOnly label="USD" value={product?.priceUSD ?? "-"} />
+                </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <Input isReadOnly label="Base (1-499)" value={price?.priceCopR1 ?? "-"} />
+                    <Input isReadOnly label="Base (1-499)" value={product?.priceCopR1 ?? "-"} />
                     <Input
                       isReadOnly
                       label="+499 (500-1000)"
-                      value={price?.priceCopR2 ?? "-"}
+                      value={product?.priceCopR2 ?? "-"}
                     />
-                    <Input isReadOnly label="+1000 (1001+)" value={price?.priceCopR3 ?? "-"} />
+                    <Input isReadOnly label="+1000 (1001+)" value={product?.priceCopR3 ?? "-"} />
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Input
                       isReadOnly
                       label="Fijo Mayorista"
-                      value={price?.priceMayorista ?? "-"}
+                      value={product?.priceMayorista ?? "-"}
                     />
                     <Input
                       isReadOnly
                       label="Fijo Colanta"
-                      value={price?.priceColanta ?? "-"}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <Input isReadOnly label="USD" value={price?.priceUSD ?? "-"} />
-                    <Input
-                      isReadOnly
-                      label="Inicio vigencia"
-                      value={formatDate(price?.startDate)}
-                    />
-                    <Input
-                      isReadOnly
-                      label="Fin vigencia"
-                      value={formatDate(price?.endDate)}
+                      value={product?.priceColanta ?? "-"}
                     />
                   </div>
                 </>

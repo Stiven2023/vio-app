@@ -11,7 +11,7 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
-  productPrices,
+  products,
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
@@ -78,22 +78,8 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
-function isValidPriceRowNow(row: {
-  isActive: boolean | null;
-  startDate: Date | null;
-  endDate: Date | null;
-}) {
-  if (row.isActive === false) return false;
-
-  const now = new Date();
-  if (row.startDate && now < row.startDate) return false;
-  if (row.endDate && now > row.endDate) return false;
-
-  return true;
-}
-
 function pickCopScaleByQuantity(
-  row: typeof productPrices.$inferSelect,
+  row: typeof products.$inferSelect,
   quantity: number,
 ) {
   if (quantity <= 499) return row.priceCopR1;
@@ -106,7 +92,7 @@ function resolveUnitPriceByRule(args: {
   currency: string | null | undefined;
   clientPriceType: string | null | undefined;
   quantity: number;
-  row: typeof productPrices.$inferSelect;
+  row: typeof products.$inferSelect;
   manualUnitPrice?: unknown;
   usdCopEffectiveRate?: number | null;
 }) {
@@ -119,23 +105,32 @@ function resolveUnitPriceByRule(args: {
     usdCopEffectiveRate,
   } = args;
 
-  if (String(currency ?? "COP").toUpperCase() === "USD") {
-    return row.priceUSD;
+  const currencyCode = String(currency ?? "COP").toUpperCase();
+  const manual = toNullableNumericString(manualUnitPrice);
+
+  if (clientPriceType === "AUTORIZADO" && manual) {
+    return manual;
   }
 
-  if (clientPriceType === "VIOMAR") return row.priceViomar;
-  if (clientPriceType === "COLANTA") return row.priceColanta;
-  if (clientPriceType === "MAYORISTA") return row.priceMayorista;
+  if (currencyCode === "USD") {
+    if (row.priceUSD) return row.priceUSD;
 
-  if (clientPriceType === "AUTORIZADO") {
-    const manual = toNullableNumericString(manualUnitPrice);
+    if (row.priceCopInternational && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
+      return String(asNumber(row.priceCopInternational) / usdCopEffectiveRate);
+    }
 
-    return manual ?? pickCopScaleByQuantity(row, quantity);
+    return null;
   }
+
+  if (clientPriceType === "VIOMAR" && row.priceViomar) return row.priceViomar;
+  if (clientPriceType === "COLANTA" && row.priceColanta) return row.priceColanta;
+  if (clientPriceType === "MAYORISTA" && row.priceMayorista) return row.priceMayorista;
 
   const copByScale = pickCopScaleByQuantity(row, quantity);
 
   if (copByScale) return copByScale;
+
+  if (row.priceCopInternational) return row.priceCopInternational;
 
   if (row.priceUSD && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
     return String(asNumber(row.priceUSD) * usdCopEffectiveRate);
@@ -319,27 +314,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const productPriceId = toNullableString(body.productPriceId);
+    const productId = toNullableString(body.productId);
 
-    if (!productPriceId) {
-      throw new Error("productPriceId required");
+    if (!productId) {
+      throw new Error("productId required");
     }
 
-    const [priceRow] = await tx
+    const [productRow] = await tx
       .select()
-      .from(productPrices)
-      .where(eq(productPrices.id, productPriceId))
+      .from(products)
+      .where(eq(products.id, productId))
       .limit(1);
 
-    if (!priceRow || !isValidPriceRowNow(priceRow)) {
-      throw new Error("precio vigente requerido");
+    if (!productRow || productRow.isActive === false) {
+      throw new Error("producto requerido");
     }
 
     const resolvedUnitPrice = resolveUnitPriceByRule({
       currency: orderRow.currency,
       clientPriceType: orderRow.clientPriceType,
       quantity: qty,
-      row: priceRow,
+      row: productRow,
       manualUnitPrice: body.unitPrice,
       usdCopEffectiveRate: latestUsdCopRate?.effectiveRate ?? null,
     });
@@ -354,8 +349,7 @@ export async function POST(request: Request) {
       .insert(orderItems)
       .values({
         orderId,
-        productId: toNullableString(body.productId),
-        productPriceId,
+        productId,
         name: toNullableString(body.name),
         quantity: qty,
         unitPrice: String(unitPrice),

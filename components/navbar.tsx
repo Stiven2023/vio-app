@@ -389,7 +389,10 @@ export const Navbar = () => {
 
           {!operarioOnly &&
           isAuthenticated &&
-          (canSeePurchaseOrders || canSeeSuppliers || canSeeConfectionists) ? (
+          (canSeePurchaseOrders ||
+            canSeeSuppliers ||
+            canSeeConfectionists ||
+            canSeePackers) ? (
             <NavbarItem key="nav-inventory">
               <Dropdown
                 onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
@@ -401,6 +404,7 @@ export const Navbar = () => {
                     className={clsx(
                       iconBase,
                       isActive("/purchase-orders") ||
+                        isActive("/packers") ||
                         isActive("/confectionists") ||
                         isActive("/suppliers")
                         ? activeClass
@@ -442,6 +446,16 @@ export const Navbar = () => {
                       Confeccionistas
                     </DropdownItem>
                   ) : null}
+                  {canSeePackers ? (
+                    <DropdownItem
+                      key="packers"
+                      as={NextLink}
+                      href="/packers"
+                      startContent={<BsTruck />}
+                    >
+                      Empaque
+                    </DropdownItem>
+                  ) : null}
                 </DropdownMenu>
               </Dropdown>
             </NavbarItem>
@@ -474,22 +488,6 @@ export const Navbar = () => {
                   href="/clients"
                 >
                   <BsPeople />
-                </NextLink>
-              </Tooltip>
-            </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAuthenticated && canSeePackers ? (
-            <NavbarItem key="/packers">
-              <Tooltip content="Empaque" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/packers") ? activeClass : idleClass,
-                  )}
-                  href="/packers"
-                >
-                  <BsTruck />
                 </NextLink>
               </Tooltip>
             </NavbarItem>

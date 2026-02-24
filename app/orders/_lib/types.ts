@@ -42,7 +42,8 @@ export type OrderListItem = {
 };
 
 export type OrderItemInput = {
-  productId: string;
+  productId?: string | null;
+  additionId?: string | null;
   name?: string;
   quantity: number;
   unitPrice?: string;

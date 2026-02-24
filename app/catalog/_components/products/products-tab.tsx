@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+import { Tab, Tabs } from "@heroui/tabs";
 import {
   BsEye,
   BsPencilSquare,
@@ -39,28 +40,38 @@ import { ProductDetailsModal } from "./product-details-modal";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
+type CatalogType = "NACIONAL" | "INTERNACIONAL";
 
 export function ProductsTab({
   canCreate,
   canEdit,
   canDelete,
+  activeCatalog,
+  categories,
 }: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  activeCatalog?: CatalogType;
+  categories?: Category[];
 }) {
+  const [internalActiveCatalog, setInternalActiveCatalog] = useState<CatalogType>("NACIONAL");
+  const [internalCategories, setInternalCategories] = useState<Category[]>([]);
+
+  const currentCatalog = activeCatalog ?? internalActiveCatalog;
+  const currentCategories = categories ?? internalCategories;
+
   const {
     data: productsData,
     loading: productsLoading,
     page: productsPage,
     setPage: setProductsPage,
     refresh: refreshProducts,
-  } = usePaginatedApi<Product>("/api/products", 10);
+  } = usePaginatedApi<Product>(`/api/products?catalogType=${currentCatalog}`, 10);
 
-  const [categories, setCategories] = useState<Category[]>([]);
   const categoryNameById = useMemo(
-    () => new Map(categories.map((c) => [c.id, c.name])),
-    [categories],
+    () => new Map(currentCategories.map((c) => [c.id, c.name])),
+    [currentCategories],
   );
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -74,10 +85,16 @@ export function ProductsTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    apiJson<{ items: Category[] }>(`/api/categories?page=1&pageSize=400`)
-      .then((r) => setCategories(r.items))
-      .catch(() => setCategories([]));
-  }, []);
+    if (!categories) {
+      apiJson<{ items: Category[] }>(`/api/categories?page=1&pageSize=400`)
+        .then((r) => setInternalCategories(r.items))
+        .catch(() => setInternalCategories([]));
+    }
+  }, [categories]);
+
+  useEffect(() => {
+    setProductsPage(1);
+  }, [currentCatalog, setProductsPage]);
 
   const filtered = useMemo(() => {
     const items = productsData?.items ?? [];
@@ -135,6 +152,22 @@ export function ProductsTab({
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          {/* Solo mostrar Tabs si no vienen proporcionadas desde el padre */}
+          {!activeCatalog ? (
+            <Tabs
+              aria-label="Tipo de catálogo"
+              selectedKey={internalActiveCatalog}
+              onSelectionChange={(key) =>
+                setInternalActiveCatalog(
+                  String(key) === "INTERNACIONAL" ? "INTERNACIONAL" : "NACIONAL",
+                )
+              }
+              variant="underlined"
+            >
+              <Tab key="NACIONAL" title="Catálogo nacional" />
+              <Tab key="INTERNACIONAL" title="Catálogo internacional" />
+            </Tabs>
+          ) : null}
           <FilterSearch
             className="sm:w-72"
             placeholder="Buscar producto…"
@@ -183,6 +216,7 @@ export function ProductsTab({
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Categoría</TableColumn>
+            <TableColumn>{currentCatalog === "INTERNACIONAL" ? "Precio USD" : "Precio Base (1-499)"}</TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
@@ -206,6 +240,13 @@ export function ProductsTab({
                   {p.categoryId
                     ? (categoryNameById.get(p.categoryId) ?? "-")
                     : "-"}
+                </TableCell>
+                <TableCell>
+                  <span className="text-sm font-mono">
+                    {currentCatalog === "INTERNACIONAL"
+                      ? p.priceUSD ?? "-"
+                      : p.priceCopR1 ?? "-"}
+                  </span>
                 </TableCell>
                 <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>
@@ -275,7 +316,8 @@ export function ProductsTab({
       ) : null}
 
       <ProductModal
-        categories={categories}
+        categories={currentCategories}
+        defaultCatalogType={activeCatalog}
         isOpen={modalOpen}
         product={editing}
         onOpenChange={setModalOpen}
@@ -288,6 +330,7 @@ export function ProductsTab({
             ? (categoryNameById.get(selectedProduct.categoryId) ?? "-")
             : "-"
         }
+        catalogType={currentCatalog}
         isOpen={detailsOpen}
         product={selectedProduct}
         onOpenChange={(open) => {

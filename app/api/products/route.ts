@@ -1,7 +1,7 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { categories, productPrices, products } from "@/src/db/schema";
+import { categories, products } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -57,58 +57,6 @@ function toNullableNumericString(v: unknown) {
   return String(n);
 }
 
-async function upsertPrimaryPrice(
-  tx: any,
-  args: {
-    productId: string;
-    referenceCode: string;
-    priceCopR1?: unknown;
-    priceCopR2?: unknown;
-    priceCopR3?: unknown;
-    priceViomar?: unknown;
-    priceColanta?: unknown;
-    priceMayorista?: unknown;
-    priceUSD?: unknown;
-    startDate?: unknown;
-    endDate?: unknown;
-    isActive?: unknown;
-  },
-) {
-  const [existing] = await tx
-    .select({ id: productPrices.id, referenceCode: productPrices.referenceCode })
-    .from(productPrices)
-    .where(eq(productPrices.productId, args.productId))
-    .orderBy(desc(productPrices.updatedAt))
-    .limit(1);
-
-  const values: typeof productPrices.$inferInsert = {
-    productId: args.productId,
-    referenceCode: existing?.referenceCode ?? args.referenceCode,
-    priceCopR1: toNullableNumericString(args.priceCopR1),
-    priceCopR2: toNullableNumericString(args.priceCopR2),
-    priceCopR3: toNullableNumericString(args.priceCopR3),
-    priceViomar: toNullableNumericString(args.priceViomar),
-    priceColanta: toNullableNumericString(args.priceColanta),
-    priceMayorista: toNullableNumericString(args.priceMayorista),
-    priceUSD: toNullableNumericString(args.priceUSD),
-    startDate: args.startDate ? new Date(String(args.startDate)) : null,
-    endDate: args.endDate ? new Date(String(args.endDate)) : null,
-    isActive: Boolean(args.isActive ?? true),
-    updatedAt: new Date(),
-  };
-
-  if (existing) {
-    await tx
-      .update(productPrices)
-      .set(values)
-      .where(eq(productPrices.id, existing.id));
-
-    return;
-  }
-
-  await tx.insert(productPrices).values(values);
-}
-
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "products:get",
@@ -125,15 +73,20 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
+
+    // Obtener todos los productos activos
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
-      .from(products);
+      .from(products)
+      .where(sql`${products.isActive} = true`);
 
     const items = await db
       .select()
       .from(products)
+      .where(sql`${products.isActive} = true`)
       .limit(pageSize)
       .offset(offset);
+
     const hasNextPage = offset + items.length < total;
 
     return Response.json({ items, page, pageSize, total, hasNextPage });
@@ -161,13 +114,15 @@ export async function POST(request: Request) {
     name,
     description,
     categoryId,
+    priceCopBase,
+    priceCopInternational,
     priceCopR1,
     priceCopR2,
     priceCopR3,
-    priceViomar,
     priceColanta,
     priceMayorista,
     priceUSD,
+    trmUsed,
     startDate,
     endDate,
     isActive,
@@ -189,41 +144,36 @@ export async function POST(request: Request) {
 
   if (productCode instanceof Response) return productCode;
 
-  const created = await db.transaction(async (tx) => {
-    const createdProduct = await tx
+  try {
+    const created = await db
       .insert(products)
       .values({
         productCode,
         name: n,
         description: description ? String(description) : null,
         categoryId: categoryIdValue,
+        priceCopBase: toNullableNumericString(priceCopBase),
+        priceCopInternational: toNullableNumericString(priceCopInternational),
+        priceCopR1: toNullableNumericString(priceCopR1),
+        priceCopR2: toNullableNumericString(priceCopR2),
+        priceCopR3: toNullableNumericString(priceCopR3),
+        priceViomar: null,
+        priceColanta: toNullableNumericString(priceColanta),
+        priceMayorista: toNullableNumericString(priceMayorista),
+        priceUSD: toNullableNumericString(priceUSD),
+        trmUsed: toNullableNumericString(trmUsed),
+        startDate: startDate ? new Date(String(startDate)) : null,
+        endDate: endDate ? new Date(String(endDate)) : null,
         isActive: isActive ?? true,
       })
       .returning();
 
-    const product = createdProduct[0];
-
-    if (!product) return createdProduct;
-
-    await upsertPrimaryPrice(tx, {
-      productId: product.id,
-      referenceCode: product.productCode,
-      priceCopR1,
-      priceCopR2,
-      priceCopR3,
-      priceViomar,
-      priceColanta,
-      priceMayorista,
-      priceUSD,
-      startDate,
-      endDate,
-      isActive,
-    });
-
-    return createdProduct;
-  });
-
-  return Response.json(created, { status: 201 });
+    return Response.json(created, { status: 201 });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo crear el producto", { status: 500 });
+  }
 }
 
 export async function PUT(request: Request) {
@@ -244,13 +194,15 @@ export async function PUT(request: Request) {
     name,
     description,
     categoryId,
+    priceCopBase,
+    priceCopInternational,
     priceCopR1,
     priceCopR2,
     priceCopR3,
-    priceViomar,
     priceColanta,
     priceMayorista,
     priceUSD,
+    trmUsed,
     startDate,
     endDate,
     isActive,
@@ -260,97 +212,39 @@ export async function PUT(request: Request) {
     return new Response("Product ID required", { status: 400 });
   }
 
-  const [existing] = await db
-    .select({
-      categoryId: products.categoryId,
-      productCode: products.productCode,
-    })
-    .from(products)
-    .where(eq(products.id, String(id)))
-    .limit(1);
-
-  if (!existing) {
-    return new Response("Product not found", { status: 404 });
-  }
-
-  const patch: Partial<typeof products.$inferInsert> = {
-    isActive,
-  };
-
-  if (name !== undefined) patch.name = String(name).trim();
-  if (description !== undefined)
-    patch.description = description ? String(description) : null;
-  const categoryIdValue =
-    categoryId !== undefined ? String(categoryId ?? "").trim() : null;
-
-  if (categoryId !== undefined && !categoryIdValue) {
-    return new Response("categoryId required", { status: 400 });
-  }
-
-  if (categoryId !== undefined) {
-    patch.categoryId = categoryIdValue;
-  }
-
-  const nextCategoryId = categoryIdValue ?? existing.categoryId;
-
-  if (!nextCategoryId) {
-    return new Response("categoryId required", { status: 400 });
-  }
-
-  const shouldRegenerateCode =
-    !existing.productCode ||
-    (categoryIdValue && categoryIdValue !== existing.categoryId);
-
-  if (shouldRegenerateCode) {
-    const productCode = await buildNextProductCode(nextCategoryId);
-
-    if (productCode instanceof Response) return productCode;
-
-    patch.productCode = productCode;
-  }
-
-  const hasPricePayload =
-    priceCopR1 !== undefined ||
-    priceCopR2 !== undefined ||
-    priceCopR3 !== undefined ||
-    priceViomar !== undefined ||
-    priceColanta !== undefined ||
-    priceMayorista !== undefined ||
-    priceUSD !== undefined ||
-    startDate !== undefined ||
-    endDate !== undefined ||
-    isActive !== undefined;
-
-  const updated = await db.transaction(async (tx) => {
-    const updatedProduct = await tx
+  try {
+    const updated = await db
       .update(products)
-      .set(patch)
+      .set({
+        name: name ? String(name) : undefined,
+        description: description !== undefined ? (description ? String(description) : null) : undefined,
+        categoryId: categoryId ? String(categoryId) : undefined,
+        priceCopBase: priceCopBase !== undefined ? toNullableNumericString(priceCopBase) : undefined,
+        priceCopInternational: priceCopInternational !== undefined ? toNullableNumericString(priceCopInternational) : undefined,
+        priceCopR1: priceCopR1 !== undefined ? toNullableNumericString(priceCopR1) : undefined,
+        priceCopR2: priceCopR2 !== undefined ? toNullableNumericString(priceCopR2) : undefined,
+        priceCopR3: priceCopR3 !== undefined ? toNullableNumericString(priceCopR3) : undefined,
+        priceColanta: priceColanta !== undefined ? toNullableNumericString(priceColanta) : undefined,
+        priceMayorista: priceMayorista !== undefined ? toNullableNumericString(priceMayorista) : undefined,
+        priceUSD: priceUSD !== undefined ? toNullableNumericString(priceUSD) : undefined,
+        trmUsed: trmUsed !== undefined ? toNullableNumericString(trmUsed) : undefined,
+        startDate: startDate !== undefined ? (startDate ? new Date(String(startDate)) : null) : undefined,
+        endDate: endDate !== undefined ? (endDate ? new Date(String(endDate)) : null) : undefined,
+        isActive: isActive !== undefined ? isActive : undefined,
+      })
       .where(eq(products.id, String(id)))
       .returning();
 
-    const product = updatedProduct[0];
-
-    if (product && hasPricePayload) {
-      await upsertPrimaryPrice(tx, {
-        productId: product.id,
-        referenceCode: product.productCode,
-        priceCopR1,
-        priceCopR2,
-        priceCopR3,
-        priceViomar,
-        priceColanta,
-        priceMayorista,
-        priceUSD,
-        startDate,
-        endDate,
-        isActive: product.isActive,
-      });
+    if (updated.length === 0) {
+      return new Response("Producto no encontrado", { status: 404 });
     }
 
-    return updatedProduct;
-  });
-
-  return Response.json(updated);
+    return Response.json(updated[0]);
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo actualizar el producto", { status: 500 });
+  }
 }
 
 export async function DELETE(request: Request) {

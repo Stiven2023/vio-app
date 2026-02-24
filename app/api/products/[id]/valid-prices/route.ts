@@ -1,24 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { productPrices } from "@/src/db/schema";
+import { products } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
-
-function isValidNow(row: {
-  isActive: boolean | null;
-  startDate: Date | null;
-  endDate: Date | null;
-}) {
-  if (row.isActive === false) return false;
-
-  const now = new Date();
-  if (row.startDate && now < row.startDate) return false;
-  if (row.endDate && now > row.endDate) return false;
-
-  return true;
-}
 
 export async function GET(
   request: Request,
@@ -42,20 +28,33 @@ export async function GET(
   if (!productId) return new Response("id required", { status: 400 });
 
   try {
-    const items = await db
+    const [product] = await db
       .select()
-      .from(productPrices)
-      .where(and(eq(productPrices.productId, productId)));
+      .from(products)
+      .where(eq(products.id, productId))
+      .limit(1);
 
-    const valid = items.filter((x) =>
-      isValidNow({
-        isActive: (x as any).isActive ?? true,
-        startDate: (x as any).startDate ?? null,
-        endDate: (x as any).endDate ?? null,
-      }),
-    );
+    if (!product) return new Response("Product not found", { status: 404 });
 
-    return Response.json({ items: valid });
+    const item = {
+      id: product.id,
+      catalogType: null,
+      referenceCode: product.productCode ?? product.id,
+      priceCopInternational: product.priceCopInternational ?? null,
+      priceCopR1: product.priceCopR1 ?? null,
+      priceCopR2: product.priceCopR2 ?? null,
+      priceCopR3: product.priceCopR3 ?? null,
+      priceViomar: product.priceViomar ?? null,
+      priceColanta: product.priceColanta ?? null,
+      priceMayorista: product.priceMayorista ?? null,
+      priceUSD: product.priceUSD ?? null,
+      isEditable: null,
+      startDate: null,
+      endDate: null,
+      isActive: product.isActive ?? true,
+    };
+
+    return Response.json({ items: [item] });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;

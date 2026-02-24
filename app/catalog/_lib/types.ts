@@ -14,17 +14,13 @@ export type Category = {
 export type Product = {
   id: string;
   productCode: string;
+  productKind: "REGULAR" | "ESPECIAL";
   name: string;
   description: string | null;
   categoryId: string | null;
-  isActive: boolean | null;
-  createdAt: string | null;
-};
-
-export type ProductPrice = {
-  id: string;
-  productId: string | null;
-  referenceCode: string;
+  // Precios integrados
+  priceCopBase: string | null;
+  priceCopInternational: string | null;
   priceCopR1: string | null;
   priceCopR2: string | null;
   priceCopR3: string | null;
@@ -32,10 +28,48 @@ export type ProductPrice = {
   priceColanta: string | null;
   priceMayorista: string | null;
   priceUSD: string | null;
+  trmUsed: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean | null;
+  createdAt: string | null;
+};
+
+export type ProductPrice = Product;
+
+export type AdditionPrice = {
+  id: string;
+  additionId: string | null;
+  catalogType: "NACIONAL" | "INTERNACIONAL";
+  productKind: "REGULAR" | "ESPECIAL";
+  referenceCode: string;
+  priceCopBase: string | null;
+  priceUSD: string | null;
+  trmUsed: string | null;
   isEditable: boolean | null;
   startDate: string | null;
   endDate: string | null;
   isActive: boolean | null;
+  updatedAt: string | null;
+};
+
+export type Addition = {
+  id: string;
+  additionCode: string;
+  catalogType: "NACIONAL" | "INTERNACIONAL";
+  productKind: "REGULAR" | "ESPECIAL";
+  name: string;
+  description: string | null;
+  categoryId: string | null;
+  // Precios integrados
+  priceCopBase: string | null;
+  priceCopInternational: string | null;
+  priceUSD: string | null;
+  trmUsed: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean | null;
+  createdAt: string | null;
   updatedAt: string | null;
 };
 
