@@ -389,7 +389,7 @@ export const Navbar = () => {
 
           {!operarioOnly &&
           isAuthenticated &&
-          (canSeeCatalog || canSeePurchaseOrders || canSeeSuppliers) ? (
+          (canSeePurchaseOrders || canSeeSuppliers || canSeeConfectionists) ? (
             <NavbarItem key="nav-inventory">
               <Dropdown
                 onOpenChange={(open) => setOpenGroup(open ? "inventory" : null)}
@@ -400,8 +400,8 @@ export const Navbar = () => {
                     variant="light"
                     className={clsx(
                       iconBase,
-                      isActive("/catalog") ||
-                        isActive("/purchase-orders") ||
+                      isActive("/purchase-orders") ||
+                        isActive("/confectionists") ||
                         isActive("/suppliers")
                         ? activeClass
                         : idleClass,
@@ -412,16 +412,6 @@ export const Navbar = () => {
                   </Button>
                 </DropdownTrigger>
                 <DropdownMenu aria-label="Inventario">
-                  {canSeeCatalog ? (
-                    <DropdownItem
-                      key="catalog"
-                      as={NextLink}
-                      href="/catalog"
-                      startContent={<BsBoxSeam />}
-                    >
-                      Catálogo
-                    </DropdownItem>
-                  ) : null}
                   {canSeePurchaseOrders ? (
                     <DropdownItem
                       key="purchase-orders"
@@ -442,8 +432,34 @@ export const Navbar = () => {
                       Proveedores
                     </DropdownItem>
                   ) : null}
+                  {canSeeConfectionists ? (
+                    <DropdownItem
+                      key="confectionists"
+                      as={NextLink}
+                      href="/confectionists"
+                      startContent={<BsPerson />}
+                    >
+                      Confeccionistas
+                    </DropdownItem>
+                  ) : null}
                 </DropdownMenu>
               </Dropdown>
+            </NavbarItem>
+          ) : null}
+
+          {!operarioOnly && isAuthenticated && canSeeCatalog ? (
+            <NavbarItem key="/catalog">
+              <Tooltip content="Catálogo" placement="bottom">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/catalog") ? activeClass : idleClass,
+                  )}
+                  href="/catalog"
+                >
+                  <BsBoxSeam />
+                </NextLink>
+              </Tooltip>
             </NavbarItem>
           ) : null}
 
@@ -458,22 +474,6 @@ export const Navbar = () => {
                   href="/clients"
                 >
                   <BsPeople />
-                </NextLink>
-              </Tooltip>
-            </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAuthenticated && canSeeConfectionists ? (
-            <NavbarItem key="/confectionists">
-              <Tooltip content="Confeccionistas" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/confectionists") ? activeClass : idleClass,
-                  )}
-                  href="/confectionists"
-                >
-                  <BsPerson />
                 </NextLink>
               </Tooltip>
             </NavbarItem>

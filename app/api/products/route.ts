@@ -1,7 +1,7 @@
-import { eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { categories, products } from "@/src/db/schema";
+import { categories, productPrices, products } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -46,6 +46,67 @@ async function buildNextProductCode(categoryId: string) {
   }
 
   return `${prefix}${String(nextSuffix).padStart(2, "0")}`;
+}
+
+function toNullableNumericString(v: unknown) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v));
+
+  if (Number.isNaN(n)) return null;
+
+  return String(n);
+}
+
+async function upsertPrimaryPrice(
+  tx: any,
+  args: {
+    productId: string;
+    referenceCode: string;
+    priceCopR1?: unknown;
+    priceCopR2?: unknown;
+    priceCopR3?: unknown;
+    priceViomar?: unknown;
+    priceColanta?: unknown;
+    priceMayorista?: unknown;
+    priceUSD?: unknown;
+    startDate?: unknown;
+    endDate?: unknown;
+    isActive?: unknown;
+  },
+) {
+  const [existing] = await tx
+    .select({ id: productPrices.id, referenceCode: productPrices.referenceCode })
+    .from(productPrices)
+    .where(eq(productPrices.productId, args.productId))
+    .orderBy(desc(productPrices.updatedAt))
+    .limit(1);
+
+  const values: typeof productPrices.$inferInsert = {
+    productId: args.productId,
+    referenceCode: existing?.referenceCode ?? args.referenceCode,
+    priceCopR1: toNullableNumericString(args.priceCopR1),
+    priceCopR2: toNullableNumericString(args.priceCopR2),
+    priceCopR3: toNullableNumericString(args.priceCopR3),
+    priceViomar: toNullableNumericString(args.priceViomar),
+    priceColanta: toNullableNumericString(args.priceColanta),
+    priceMayorista: toNullableNumericString(args.priceMayorista),
+    priceUSD: toNullableNumericString(args.priceUSD),
+    startDate: args.startDate ? new Date(String(args.startDate)) : null,
+    endDate: args.endDate ? new Date(String(args.endDate)) : null,
+    isActive: Boolean(args.isActive ?? true),
+    updatedAt: new Date(),
+  };
+
+  if (existing) {
+    await tx
+      .update(productPrices)
+      .set(values)
+      .where(eq(productPrices.id, existing.id));
+
+    return;
+  }
+
+  await tx.insert(productPrices).values(values);
 }
 
 export async function GET(request: Request) {
@@ -96,7 +157,21 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { name, description, categoryId, isActive } = await request.json();
+  const {
+    name,
+    description,
+    categoryId,
+    priceCopR1,
+    priceCopR2,
+    priceCopR3,
+    priceViomar,
+    priceColanta,
+    priceMayorista,
+    priceUSD,
+    startDate,
+    endDate,
+    isActive,
+  } = await request.json();
 
   const n = String(name ?? "").trim();
 
@@ -114,16 +189,39 @@ export async function POST(request: Request) {
 
   if (productCode instanceof Response) return productCode;
 
-  const created = await db
-    .insert(products)
-    .values({
-      productCode,
-      name: n,
-      description: description ? String(description) : null,
-      categoryId: categoryIdValue,
-      isActive: isActive ?? true,
-    })
-    .returning();
+  const created = await db.transaction(async (tx) => {
+    const createdProduct = await tx
+      .insert(products)
+      .values({
+        productCode,
+        name: n,
+        description: description ? String(description) : null,
+        categoryId: categoryIdValue,
+        isActive: isActive ?? true,
+      })
+      .returning();
+
+    const product = createdProduct[0];
+
+    if (!product) return createdProduct;
+
+    await upsertPrimaryPrice(tx, {
+      productId: product.id,
+      referenceCode: product.productCode,
+      priceCopR1,
+      priceCopR2,
+      priceCopR3,
+      priceViomar,
+      priceColanta,
+      priceMayorista,
+      priceUSD,
+      startDate,
+      endDate,
+      isActive,
+    });
+
+    return createdProduct;
+  });
 
   return Response.json(created, { status: 201 });
 }
@@ -141,7 +239,22 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, name, description, categoryId, isActive } = await request.json();
+  const {
+    id,
+    name,
+    description,
+    categoryId,
+    priceCopR1,
+    priceCopR2,
+    priceCopR3,
+    priceViomar,
+    priceColanta,
+    priceMayorista,
+    priceUSD,
+    startDate,
+    endDate,
+    isActive,
+  } = await request.json();
 
   if (!id) {
     return new Response("Product ID required", { status: 400 });
@@ -196,11 +309,46 @@ export async function PUT(request: Request) {
     patch.productCode = productCode;
   }
 
-  const updated = await db
-    .update(products)
-    .set(patch)
-    .where(eq(products.id, String(id)))
-    .returning();
+  const hasPricePayload =
+    priceCopR1 !== undefined ||
+    priceCopR2 !== undefined ||
+    priceCopR3 !== undefined ||
+    priceViomar !== undefined ||
+    priceColanta !== undefined ||
+    priceMayorista !== undefined ||
+    priceUSD !== undefined ||
+    startDate !== undefined ||
+    endDate !== undefined ||
+    isActive !== undefined;
+
+  const updated = await db.transaction(async (tx) => {
+    const updatedProduct = await tx
+      .update(products)
+      .set(patch)
+      .where(eq(products.id, String(id)))
+      .returning();
+
+    const product = updatedProduct[0];
+
+    if (product && hasPricePayload) {
+      await upsertPrimaryPrice(tx, {
+        productId: product.id,
+        referenceCode: product.productCode,
+        priceCopR1,
+        priceCopR2,
+        priceCopR3,
+        priceViomar,
+        priceColanta,
+        priceMayorista,
+        priceUSD,
+        startDate,
+        endDate,
+        isActive: product.isActive,
+      });
+    }
+
+    return updatedProduct;
+  });
 
   return Response.json(updated);
 }

@@ -442,23 +442,29 @@ export const products = pgTable("products", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const productPrices = pgTable("product_prices", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  productId: uuid("product_id").references(() => products.id),
-  referenceCode: varchar("reference_code", { length: 50 }).unique().notNull(),
-  priceCopR1: numeric("price_cop_r1", { precision: 14, scale: 2 }),
-  priceCopR2: numeric("price_cop_r2", { precision: 14, scale: 2 }),
-  priceCopR3: numeric("price_cop_r3", { precision: 14, scale: 2 }),
-  priceViomar: numeric("price_viomar", { precision: 14, scale: 2 }),
-  priceColanta: numeric("price_colanta", { precision: 14, scale: 2 }),
-  priceMayorista: numeric("price_mayorista", { precision: 14, scale: 2 }),
-  priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
-  isEditable: boolean("is_editable").default(false),
-  startDate: timestamp("start_date"),
-  endDate: timestamp("end_date"),
-  isActive: boolean("is_active").default(true),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
+export const productPrices = pgTable(
+  "product_prices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    productId: uuid("product_id").references(() => products.id),
+    referenceCode: varchar("reference_code", { length: 50 }).unique().notNull(),
+    priceCopR1: numeric("price_cop_r1", { precision: 14, scale: 2 }),
+    priceCopR2: numeric("price_cop_r2", { precision: 14, scale: 2 }),
+    priceCopR3: numeric("price_cop_r3", { precision: 14, scale: 2 }),
+    priceViomar: numeric("price_viomar", { precision: 14, scale: 2 }),
+    priceColanta: numeric("price_colanta", { precision: 14, scale: 2 }),
+    priceMayorista: numeric("price_mayorista", { precision: 14, scale: 2 }),
+    priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
+    isEditable: boolean("is_editable").default(false),
+    startDate: timestamp("start_date"),
+    endDate: timestamp("end_date"),
+    isActive: boolean("is_active").default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    uniqProductId: uniqueIndex("product_prices_product_id_unique").on(t.productId),
+  }),
+);
 
 /* =========================
 	 ORDERS

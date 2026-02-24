@@ -47,7 +47,7 @@ function asNumber(v: unknown) {
 }
 
 function pickCopScaleByQuantity(row: ProductPriceRow, quantity: number) {
-  if (quantity <= 500) return row.priceCopR1;
+  if (quantity <= 499) return row.priceCopR1;
   if (quantity <= 1000) return row.priceCopR2;
 
   return row.priceCopR3;

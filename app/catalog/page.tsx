@@ -30,7 +30,7 @@ export default async function CatalogPage() {
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Catálogo</h1>
       <p className="text-default-600 mt-1">
-        Gestiona productos, categorías, precios e inventario.
+        Gestiona productos con precios, categorías e inventario.
       </p>
       <div className="mt-6">
         <CatalogTabs

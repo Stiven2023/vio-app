@@ -8,6 +8,43 @@ export const createProductSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
   description: z.string().optional(),
   categoryId: z.string().uuid("Selecciona una categoría"),
+  priceCopR1: z
+    .string()
+    .trim()
+    .min(1, "Precio base requerido")
+    .refine((v) => !Number.isNaN(Number(v)), "Precio base inválido"),
+  priceCopR2: z
+    .string()
+    .trim()
+    .min(1, "Precio +499 requerido")
+    .refine((v) => !Number.isNaN(Number(v)), "Precio +499 inválido"),
+  priceCopR3: z
+    .string()
+    .trim()
+    .min(1, "Precio +1000 requerido")
+    .refine((v) => !Number.isNaN(Number(v)), "Precio +1000 inválido"),
+  priceMayorista: z
+    .string()
+    .trim()
+    .min(1, "Precio mayorista requerido")
+    .refine((v) => !Number.isNaN(Number(v)), "Precio mayorista inválido"),
+  priceColanta: z
+    .string()
+    .trim()
+    .min(1, "Precio Colanta requerido")
+    .refine((v) => !Number.isNaN(Number(v)), "Precio Colanta inválido"),
+  priceViomar: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio Viomar inválido"),
+  priceUSD: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio USD inválido"),
+  startDate: z.string().trim().optional(),
+  endDate: z.string().trim().optional(),
   isActive: z.boolean().optional(),
 });
 

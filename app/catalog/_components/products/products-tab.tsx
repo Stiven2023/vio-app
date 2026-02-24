@@ -1,6 +1,6 @@
 "use client";
 
-import type { Category, Product, ProductPrice } from "../../_lib/types";
+import type { Category, Product } from "../../_lib/types";
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@heroui/table";
 import {
-  BsCashCoin,
+  BsEye,
   BsPencilSquare,
   BsThreeDotsVertical,
   BsTrash,
@@ -32,9 +32,9 @@ import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
-import { PriceModal } from "../prices/price-modal";
 
 import { ProductModal } from "./product-modal";
+import { ProductDetailsModal } from "./product-details-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -57,14 +57,6 @@ export function ProductsTab({
     refresh: refreshProducts,
   } = usePaginatedApi<Product>("/api/products", 10);
 
-  const {
-    data: pricesData,
-    loading: pricesLoading,
-    page: pricesPage,
-    setPage: setPricesPage,
-    refresh: refreshPrices,
-  } = usePaginatedApi<ProductPrice>("/api/product-prices", 10);
-
   const [categories, setCategories] = useState<Category[]>([]);
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [c.id, c.name])),
@@ -75,38 +67,17 @@ export function ProductsTab({
   const [editing, setEditing] = useState<Product | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const [priceModalOpen, setPriceModalOpen] = useState(false);
-  const [editingPrice, setEditingPrice] = useState<ProductPrice | null>(null);
-  const [priceConfirmOpen, setPriceConfirmOpen] = useState(false);
-  const [pendingPriceDelete, setPendingPriceDelete] =
-    useState<ProductPrice | null>(null);
-  const [deletingPriceId, setDeletingPriceId] = useState<string | null>(null);
-  const [priceSearch, setPriceSearch] = useState("");
-  const [priceStatus, setPriceStatus] = useState<StatusFilter>("all");
-  const [priceProductId, setPriceProductId] = useState<string>("");
 
   useEffect(() => {
     apiJson<{ items: Category[] }>(`/api/categories?page=1&pageSize=400`)
       .then((r) => setCategories(r.items))
       .catch(() => setCategories([]));
   }, []);
-
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
-
-  useEffect(() => {
-    apiJson<{ items: Product[] }>(`/api/products?page=1&pageSize=600`)
-      .then((r) => setAllProducts(r.items))
-      .catch(() => setAllProducts([]));
-  }, []);
-
-  const productNameById = useMemo(
-    () => new Map(allProducts.map((p) => [p.id, p.name])),
-    [allProducts],
-  );
 
   const filtered = useMemo(() => {
     const items = productsData?.items ?? [];
@@ -137,35 +108,6 @@ export function ProductsTab({
     return "Sin productos";
   }, [productsLoading, search, status]);
 
-  const filteredPrices = useMemo(() => {
-    const items = pricesData?.items ?? [];
-    const q = priceSearch.trim().toLowerCase();
-
-    return items.filter((pp) => {
-      if (priceStatus === "active" && !pp.isActive) return false;
-      if (priceStatus === "inactive" && pp.isActive) return false;
-      if (priceProductId && pp.productId !== priceProductId) return false;
-      if (!q) return true;
-
-      const prodName = pp.productId
-        ? (productNameById.get(pp.productId) ?? "")
-        : "";
-
-      return (
-        pp.referenceCode.toLowerCase().includes(q) ||
-        prodName.toLowerCase().includes(q)
-      );
-    });
-  }, [priceProductId, priceSearch, priceStatus, pricesData, productNameById]);
-
-  const emptyPricesContent = useMemo(() => {
-    if (pricesLoading) return "";
-    if (priceSearch.trim() !== "" || priceStatus !== "all" || priceProductId)
-      return "Sin resultados";
-
-    return "Sin precios";
-  }, [priceProductId, priceSearch, priceStatus, pricesLoading]);
-
   const remove = async () => {
     const p = pendingDelete;
 
@@ -186,29 +128,6 @@ export function ProductsTab({
       toast.error(getErrorMessage(err));
     } finally {
       setDeletingId(null);
-    }
-  };
-
-  const removePrice = async () => {
-    const pp = pendingPriceDelete;
-
-    if (!pp) return;
-    if (deletingPriceId) return;
-
-    setDeletingPriceId(pp.id);
-    try {
-      await apiJson(`/api/product-prices`, {
-        method: "DELETE",
-        body: JSON.stringify({ id: pp.id }),
-      });
-      toast.success("Precio eliminado");
-      setPriceConfirmOpen(false);
-      setPendingPriceDelete(null);
-      refreshPrices();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setDeletingPriceId(null);
     }
   };
 
@@ -301,6 +220,17 @@ export function ProductsTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="detail"
+                        startContent={<BsEye />}
+                        onPress={() => {
+                          setSelectedProduct(p);
+                          setDetailsOpen(true);
+                        }}
+                      >
+                        Ver detalles
+                      </DropdownItem>
+
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -311,20 +241,6 @@ export function ProductsTab({
                           }}
                         >
                           Editar
-                        </DropdownItem>
-                      ) : null}
-
-                      {canEdit ? (
-                        <DropdownItem
-                          key="prices"
-                          startContent={<BsCashCoin />}
-                          onPress={() => {
-                            setEditingPrice(null);
-                            setPriceProductId(p.id);
-                            setPriceModalOpen(true);
-                          }}
-                        >
-                          Precios
                         </DropdownItem>
                       ) : null}
 
@@ -358,205 +274,25 @@ export function ProductsTab({
         />
       ) : null}
 
-      <div className="pt-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <FilterSearch
-              className="sm:w-72"
-              placeholder="Buscar precio (código o producto)…"
-              value={priceSearch}
-              onValueChange={setPriceSearch}
-            />
-            <FilterSelect
-              className="sm:w-56"
-              label="Estado"
-              options={[
-                { value: "all", label: "Todos" },
-                { value: "active", label: "Activos" },
-                { value: "inactive", label: "Desactivados" },
-              ]}
-              value={priceStatus}
-              onChange={(v) => setPriceStatus(v as StatusFilter)}
-            />
-            <FilterSelect
-              className="sm:w-64"
-              label="Producto"
-              options={[
-                { value: "", label: "Todos" },
-                ...allProducts.map((p) => ({ value: p.id, label: p.name })),
-              ]}
-              value={priceProductId}
-              onChange={(v) => setPriceProductId(String(v ?? ""))}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            {canCreate ? (
-              <Button
-                color="primary"
-                onPress={() => {
-                  setEditingPrice(null);
-                  setPriceModalOpen(true);
-                }}
-              >
-                Crear precio
-              </Button>
-            ) : null}
-            <Button variant="flat" onPress={refreshPrices}>
-              Refrescar
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-3">
-          {pricesLoading ? (
-            <TableSkeleton
-              ariaLabel="Precios"
-              headers={[
-                "Código",
-                "Producto",
-                "R1",
-                "R2",
-                "R3",
-                "Viomar",
-                "Colanta",
-                "Mayorista",
-                "USD",
-                "Activo",
-                "Acciones",
-              ]}
-            />
-          ) : (
-            <Table aria-label="Precios">
-              <TableHeader>
-                <TableColumn>Código</TableColumn>
-                <TableColumn>Producto</TableColumn>
-                <TableColumn>R1</TableColumn>
-                <TableColumn>R2</TableColumn>
-                <TableColumn>R3</TableColumn>
-                <TableColumn>Viomar</TableColumn>
-                <TableColumn>Colanta</TableColumn>
-                <TableColumn>Mayorista</TableColumn>
-                <TableColumn>USD</TableColumn>
-                <TableColumn>Activo</TableColumn>
-                <TableColumn>Acciones</TableColumn>
-              </TableHeader>
-              <TableBody
-                emptyContent={emptyPricesContent}
-                items={filteredPrices}
-              >
-                {(pp) => (
-                  <TableRow key={pp.id}>
-                    <TableCell className="font-medium">
-                      {pp.referenceCode}
-                    </TableCell>
-                    <TableCell>
-                      {pp.productId
-                        ? (productNameById.get(pp.productId) ?? "-")
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceCopR1 ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceCopR2 ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceCopR3 ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceViomar ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceColanta ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceMayorista ?? "-"}
-                    </TableCell>
-                    <TableCell className="text-default-600">
-                      {pp.priceUSD ?? "-"}
-                    </TableCell>
-                    <TableCell>{pp.isActive ? "Sí" : "No"}</TableCell>
-                    <TableCell>
-                      <Dropdown>
-                        <DropdownTrigger>
-                          <Button
-                            isDisabled={Boolean(deletingPriceId)}
-                            size="sm"
-                            variant="flat"
-                          >
-                            <BsThreeDotsVertical />
-                          </Button>
-                        </DropdownTrigger>
-                        <DropdownMenu aria-label="Acciones">
-                          {canEdit ? (
-                            <DropdownItem
-                              key="edit"
-                              startContent={<BsPencilSquare />}
-                              onPress={() => {
-                                setEditingPrice(pp);
-                                setPriceModalOpen(true);
-                              }}
-                            >
-                              Editar
-                            </DropdownItem>
-                          ) : null}
-                          {canDelete ? (
-                            <DropdownItem
-                              key="delete"
-                              className="text-danger"
-                              startContent={<BsTrash />}
-                              onPress={() => {
-                                setPendingPriceDelete(pp);
-                                setPriceConfirmOpen(true);
-                              }}
-                            >
-                              Eliminar
-                            </DropdownItem>
-                          ) : null}
-                        </DropdownMenu>
-                      </Dropdown>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-
-          {pricesData ? (
-            <Pager
-              data={pricesData}
-              page={pricesPage}
-              onChange={setPricesPage}
-            />
-          ) : null}
-        </div>
-      </div>
-
       <ProductModal
         categories={categories}
         isOpen={modalOpen}
         product={editing}
         onOpenChange={setModalOpen}
-        onSaved={() => {
-          refreshProducts();
-          apiJson<{ items: Product[] }>(`/api/products?page=1&pageSize=600`)
-            .then((r) => setAllProducts(r.items))
-            .catch(() => setAllProducts([]));
-        }}
+        onSaved={refreshProducts}
       />
 
-      <PriceModal
-        defaultProductId={priceProductId}
-        isOpen={priceModalOpen}
-        price={editingPrice}
-        products={allProducts}
+      <ProductDetailsModal
+        categoryName={
+          selectedProduct?.categoryId
+            ? (categoryNameById.get(selectedProduct.categoryId) ?? "-")
+            : "-"
+        }
+        isOpen={detailsOpen}
+        product={selectedProduct}
         onOpenChange={(open) => {
-          if (!open) setEditingPrice(null);
-          setPriceModalOpen(open);
-        }}
-        onSaved={() => {
-          refreshPrices();
+          if (!open) setSelectedProduct(null);
+          setDetailsOpen(open);
         }}
       />
 
@@ -578,23 +314,6 @@ export function ProductsTab({
         }}
       />
 
-      <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Eliminar"
-        description={
-          pendingPriceDelete
-            ? `¿Eliminar el precio ${pendingPriceDelete.referenceCode}?`
-            : undefined
-        }
-        isLoading={deletingPriceId === pendingPriceDelete?.id}
-        isOpen={priceConfirmOpen}
-        title="Confirmar eliminación"
-        onConfirm={removePrice}
-        onOpenChange={(open) => {
-          if (!open) setPendingPriceDelete(null);
-          setPriceConfirmOpen(open);
-        }}
-      />
     </div>
   );
 }

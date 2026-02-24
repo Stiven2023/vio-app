@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { productPrices } from "@/src/db/schema";
@@ -38,13 +38,18 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
+    const productId = String(searchParams.get("productId") ?? "").trim();
+    const where = productId ? and(eq(productPrices.productId, productId)) : undefined;
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
-      .from(productPrices);
+      .from(productPrices)
+      .where(where);
 
     const items = await db
       .select()
       .from(productPrices)
+      .where(where)
+      .orderBy(desc(productPrices.updatedAt))
       .limit(pageSize)
       .offset(offset);
     const hasNextPage = offset + items.length < total;
@@ -96,6 +101,19 @@ export async function POST(request: Request) {
   }
 
   try {
+    const [existing] = await db
+      .select({ id: productPrices.id })
+      .from(productPrices)
+      .where(eq(productPrices.productId, pid))
+      .limit(1);
+
+    if (existing) {
+      return new Response(
+        "El producto ya tiene un registro de precios. Edita el producto para actualizarlo.",
+        { status: 409 },
+      );
+    }
+
     const created = await db
       .insert(productPrices)
       .values({
@@ -169,7 +187,29 @@ export async function PUT(request: Request) {
     isActive,
   };
 
-  if (productId !== undefined) patch.productId = toNullableString(productId);
+  if (productId !== undefined) {
+    const incomingProductId = toNullableString(productId);
+
+    if (!incomingProductId) {
+      return new Response("productId required", { status: 400 });
+    }
+
+    const [existing] = await db
+      .select({ id: productPrices.id })
+      .from(productPrices)
+      .where(eq(productPrices.productId, incomingProductId))
+      .limit(1);
+
+    if (existing && existing.id !== String(id)) {
+      return new Response(
+        "El producto ya tiene un registro de precios.",
+        { status: 409 },
+      );
+    }
+
+    patch.productId = incomingProductId;
+  }
+
   if (referenceCode !== undefined)
     patch.referenceCode = String(referenceCode ?? "").trim();
   if (priceCopR1 !== undefined)
