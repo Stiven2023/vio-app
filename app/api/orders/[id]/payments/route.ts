@@ -125,6 +125,25 @@ export async function GET(
       .from(orderPayments)
       .where(where);
 
+    const [orderSummary] = await db
+      .select({ total: orders.total })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    const [paymentsSummary] = await db
+      .select({
+        paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
+      })
+      .from(orderPayments)
+      .where(
+        and(
+          eq(orderPayments.orderId, orderId),
+          sql`${orderPayments.status} <> 'ANULADO'`,
+        ),
+      )
+      .limit(1);
+
     const items = await db
       .select({
         id: orderPayments.id,
@@ -143,7 +162,15 @@ export async function GET(
 
     const hasNextPage = offset + items.length < total;
 
-    return Response.json({ items, page, pageSize, total, hasNextPage });
+    return Response.json({
+      items,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+      orderTotal: String(orderSummary?.total ?? "0"),
+      paidTotal: String(paymentsSummary?.paidTotal ?? "0"),
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;

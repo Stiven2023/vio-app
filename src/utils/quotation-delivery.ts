@@ -1,19 +1,20 @@
-export const NEGOTIATION_LEAD_DAYS: Record<string, number> = {
-  BODEGA: 1,
-  MUESTRA: 28,
+const PROCESS_LEAD_DAYS: Record<string, number> = {
+  BODEGA: 5,
   COMPRAS: 15,
   PRODUCCION: 28,
-  CONVENIO: 28,
-  OBSEQUIO: 28,
 };
 
 export const DEFAULT_LEAD_DAYS = 7;
 export const ADDITIONS_EXTRA_DAYS = 0;
 
-function normalizeNegotiation(value: unknown) {
+function normalizeOrderType(value: unknown) {
   const raw = String(value ?? "").trim().toUpperCase();
-  if (raw === "MUESTRA_G" || raw === "MUESTRA_C") return "MUESTRA";
+  if (raw === "BODEGA") return "REPOSICION";
   return raw;
+}
+
+function normalizeProcess(value: unknown) {
+  return String(value ?? "").trim().toUpperCase();
 }
 
 function toPositiveInt(value: unknown) {
@@ -30,11 +31,33 @@ function toDateOnlyLocal(date: Date) {
 }
 
 export function getItemLeadDays(item: {
+  orderType?: unknown;
+  process?: unknown;
   negotiation?: unknown;
   additions?: Array<unknown> | null;
 }) {
-  const negotiation = normalizeNegotiation(item?.negotiation);
-  const baseDays = NEGOTIATION_LEAD_DAYS[negotiation] ?? DEFAULT_LEAD_DAYS;
+  const orderType = normalizeOrderType(item?.orderType);
+  const process = normalizeProcess(item?.process ?? item?.negotiation);
+
+  let baseDays = DEFAULT_LEAD_DAYS;
+
+  if (orderType === "REPOSICION") {
+    baseDays = 6;
+  } else if (orderType === "MUESTRA" && process === "PRODUCCION") {
+    baseDays = 6;
+  } else if (process === "BODEGA") {
+    baseDays = PROCESS_LEAD_DAYS.BODEGA;
+  } else if (process === "COMPRAS") {
+    baseDays = PROCESS_LEAD_DAYS.COMPRAS;
+  } else if (
+    orderType === "NORMAL" ||
+    orderType === "COMPLETACION" ||
+    orderType === "REFERENTE" ||
+    orderType === "OBSEQUIO"
+  ) {
+    baseDays = PROCESS_LEAD_DAYS.PRODUCCION;
+  }
+
   const additionsCount = Array.isArray(item?.additions) ? item.additions.length : 0;
   const additionsDays = additionsCount > 0 ? ADDITIONS_EXTRA_DAYS : 0;
 
@@ -42,14 +65,24 @@ export function getItemLeadDays(item: {
 }
 
 export function getMaxLeadDays(
-  items: Array<{ negotiation?: unknown; additions?: Array<unknown> | null }>,
+  items: Array<{
+    orderType?: unknown;
+    process?: unknown;
+    negotiation?: unknown;
+    additions?: Array<unknown> | null;
+  }>,
 ) {
   if (!Array.isArray(items) || items.length === 0) return 0;
   return items.reduce((max, item) => Math.max(max, getItemLeadDays(item)), 0);
 }
 
 export function buildDeliveryDateFromItems(
-  items: Array<{ negotiation?: unknown; additions?: Array<unknown> | null }>,
+  items: Array<{
+    orderType?: unknown;
+    process?: unknown;
+    negotiation?: unknown;
+    additions?: Array<unknown> | null;
+  }>,
   fromDate = new Date(),
 ) {
   const maxLeadDays = getMaxLeadDays(items);

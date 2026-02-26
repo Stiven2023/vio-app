@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Button } from "@heroui/button";
@@ -16,7 +17,7 @@ import type {
   OrderType,
   ProductOption,
   QuoteItem,
-  Negotiation,
+  QuoteProcess,
 } from "../_lib/types";
 
 type QuotationsProductsTableProps = {
@@ -72,10 +73,7 @@ export function QuotationsProductsTable({
       index: index + 1,
       code: item.code || "-",
       product: item.product || "Producto sin seleccionar",
-      negotiation:
-        item.negotiation === "MUESTRA_G" || item.negotiation === "MUESTRA_C"
-          ? "MUESTRA"
-          : item.negotiation || "NINGUNO",
+      process: item.process,
       quantity: item.quantity,
       lineTotal,
       additionsCount,
@@ -107,7 +105,7 @@ export function QuotationsProductsTable({
                     <tr className="border-b border-default-200 text-default-600">
                       <th className="py-2 px-2 text-left font-semibold">#</th>
                       <th className="py-2 px-2 text-left font-semibold">Producto</th>
-                      <th className="py-2 px-2 text-left font-semibold">Negociación</th>
+                      <th className="py-2 px-2 text-left font-semibold">Proceso</th>
                       <th className="py-2 px-2 text-right font-semibold">Cant.</th>
                       <th className="py-2 px-2 text-right font-semibold">Total diseño</th>
                       <th className="py-2 px-2 text-right font-semibold">Adiciones</th>
@@ -120,7 +118,7 @@ export function QuotationsProductsTable({
                       <tr key={row.key} className="border-b border-default-100 last:border-b-0">
                         <td className="py-2 px-2">{row.index}</td>
                         <td className="py-2 px-2">{`${row.code} - ${row.product}`}</td>
-                        <td className="py-2 px-2">{row.negotiation}</td>
+                        <td className="py-2 px-2">{row.process}</td>
                         <td className="py-2 px-2 text-right">{row.quantity}</td>
                         <td className="py-2 px-2 text-right">{asMoney(row.lineTotal)}</td>
                         <td className="py-2 px-2 text-right">{`${row.additionsCount} · ${asMoney(row.additionsTotal)}`}</td>
@@ -201,47 +199,51 @@ export function QuotationsProductsTable({
                     <SelectItem key="COMPLETACION">Completación</SelectItem>
                     <SelectItem key="REFERENTE">Referente</SelectItem>
                     <SelectItem key="REPOSICION">Reposición</SelectItem>
-                    <SelectItem key="BODEGA">Bodega</SelectItem>
+                    <SelectItem key="MUESTRA">Muestra</SelectItem>
+                    <SelectItem key="OBSEQUIO">Obsequio</SelectItem>
                   </Select>
 
                   <Select
                     size="sm"
                     variant="bordered"
-                    label="Negociación"
-                    aria-label="Tipo de negociación"
-                    selectedKeys={editingRow.negotiation ? [editingRow.negotiation] : []}
+                    label="Proceso"
+                    aria-label="Proceso del diseño"
+                    selectedKeys={editingRow.process ? [editingRow.process] : []}
                     onSelectionChange={(keys) => {
                       const first = Array.from(keys)[0];
-                      onUpdateItem(editingRow.id, { negotiation: String(first ?? "") as Negotiation });
+                      onUpdateItem(editingRow.id, {
+                        process: String(first ?? "PRODUCCION") as QuoteProcess,
+                      });
                     }}
                     classNames={{ trigger: "min-h-12 text-sm font-medium" }}
                   >
-                    <SelectItem key="">Ninguno</SelectItem>
-                    <SelectItem key="MUESTRA">Muestra</SelectItem>
-                    <SelectItem key="BODEGA">Origen: Bodega</SelectItem>
-                    <SelectItem key="COMPRAS">Origen: Compras</SelectItem>
-                    <SelectItem key="PRODUCCION">Origen: Producción</SelectItem>
+                    <SelectItem key="PRODUCCION">Producción</SelectItem>
+                    <SelectItem key="BODEGA">Bodega</SelectItem>
+                    <SelectItem key="COMPRAS">Compras</SelectItem>
                   </Select>
 
-                  <Select
+                  <Autocomplete
                     size="sm"
                     variant="bordered"
-                    label="Producto"
+                    label="Producto (buscar por código)"
                     isLoading={loadingProducts}
-                    aria-label="Seleccionar producto"
-                    selectedKeys={editingRow.productId ? [editingRow.productId] : []}
-                    onSelectionChange={(keys) => {
-                      const first = Array.from(keys)[0];
-                      onUpdateItem(editingRow.id, { productId: String(first ?? "") });
+                    aria-label="Buscar producto por código"
+                    selectedKey={editingRow.productId || null}
+                    defaultItems={products}
+                    onSelectionChange={(key) => {
+                      onUpdateItem(editingRow.id, { productId: String(key ?? "") });
                     }}
-                    classNames={{ trigger: "min-h-12 text-sm font-medium" }}
+                    classNames={{ base: "min-h-12", selectorButton: "min-h-12" }}
                   >
                     {products.map((product) => (
-                      <SelectItem key={product.id}>
+                      <AutocompleteItem
+                        key={product.id}
+                        textValue={`${product.productCode ?? ""} ${product.name}`}
+                      >
                         {`${product.productCode ?? "-"} - ${product.name}`}
-                      </SelectItem>
+                      </AutocompleteItem>
                     ))}
-                  </Select>
+                  </Autocomplete>
                 </div>
 
                 <Input

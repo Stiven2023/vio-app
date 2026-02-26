@@ -5,7 +5,7 @@ export function makeItem(): QuoteItem {
     id: crypto.randomUUID(),
     productId: "",
     orderType: "NORMAL",
-    negotiation: "",
+    process: "PRODUCCION",
     code: "",
     quantity: 1,
     product: "",

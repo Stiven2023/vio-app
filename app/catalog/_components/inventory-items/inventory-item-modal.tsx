@@ -142,7 +142,7 @@ export function InventoryItemModal({
           <Select
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
-            label="Unidad"
+            label="Unidad de medida"
             selectedKeys={unit ? [String(unit)] : []}
             onSelectionChange={(keys: any) => {
               const k = Array.from(keys as any)[0];
@@ -151,16 +151,13 @@ export function InventoryItemModal({
           >
             <SelectItem key="unidades">Unidades</SelectItem>
             <SelectItem key="metros">Metros</SelectItem>
-            <SelectItem key="pares">Pares</SelectItem>
-            <SelectItem key="cajas">Cajas</SelectItem>
-            <SelectItem key="paquetes">Paquetes</SelectItem>
+            <SelectItem key="talla">Talla</SelectItem>
+
             {unit &&
             ![
               "unidades",
               "metros",
-              "pares",
-              "cajas",
-              "paquetes",
+              "talla",
             ].includes(unit) ? (
               <SelectItem key={unit}>{unit}</SelectItem>
             ) : null}

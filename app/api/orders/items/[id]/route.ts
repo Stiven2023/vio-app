@@ -27,6 +27,7 @@ import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { canRoleChangeStatus } from "@/src/utils/role-status";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
+import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 
 const orderItemStatuses = new Set([
   "PENDIENTE",
@@ -206,6 +207,29 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
+function normalizeOperationalProcess(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "BODEGA" || raw === "COMPRAS" || raw === "PRODUCCION") {
+    return raw;
+  }
+
+  return "PRODUCCION";
+}
+
+function resolveOrderTypeFromKind(kind: unknown) {
+  const normalizedKind = String(kind ?? "NUEVO")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedKind === "COMPLETACION") return "COMPLETACION";
+  if (normalizedKind === "REFERENTE") return "REFERENTE";
+
+  return "NORMAL";
+}
+
 function pickCopScaleByQuantity(
   row: typeof products.$inferSelect,
   quantity: number,
@@ -353,6 +377,7 @@ export async function PUT(
       unitPrice: orderItems.unitPrice,
       hasAdditions: orderItems.hasAdditions,
       additionEvidence: orderItems.additionEvidence,
+      process: orderItems.process,
     })
     .from(orderItems)
     .where(eq(orderItems.id, orderItemId))
@@ -524,8 +549,9 @@ export async function PUT(
   if (body.tag !== undefined) patch.tag = Boolean(body.tag);
   if (body.flag !== undefined) patch.flag = Boolean(body.flag);
   if (body.gender !== undefined) patch.gender = toNullableString(body.gender);
-  if (body.process !== undefined)
-    patch.process = toNullableString(body.process);
+  if (body.process !== undefined) {
+    patch.process = normalizeOperationalProcess(body.process);
+  }
   if (body.neckType !== undefined)
     patch.neckType = toNullableString(body.neckType);
   if (body.sleeve !== undefined) patch.sleeve = toNullableString(body.sleeve);
@@ -538,6 +564,22 @@ export async function PUT(
   if (patch.hasAdditions === false) {
     patch.additionEvidence = null;
   }
+
+  const effectiveProcess = normalizeOperationalProcess(
+    patch.process !== undefined ? patch.process : existing.process,
+  );
+  const effectiveHasAdditions =
+    patch.hasAdditions !== undefined
+      ? Boolean(patch.hasAdditions)
+      : Boolean(existing.hasAdditions);
+
+  patch.process = effectiveProcess;
+  patch.estimatedLeadDays = getItemLeadDays({
+    orderType: resolveOrderTypeFromKind(kind),
+    process: effectiveProcess,
+    additions: effectiveHasAdditions ? [{}] : [],
+  });
+
   if (body.status !== undefined) {
     const nextStatus = String(body.status ?? "").trim().toUpperCase();
 

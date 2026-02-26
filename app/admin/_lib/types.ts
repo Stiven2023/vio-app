@@ -43,6 +43,8 @@ export type Employee = {
   epsCertificateUrl: string | null;
   pensionCertificateUrl: string | null;
   bankCertificateUrl: string | null;
+  employeeImageUrl: string | null;
+  signatureImageUrl: string | null;
   roleId: string | null;
   isActive: boolean | null;
   createdAt: string | null;

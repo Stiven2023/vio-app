@@ -1,17 +1,14 @@
 export type Currency = "COP" | "USD";
 export type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
 export type DocumentType = "P" | "R"; // P = Persona (con IVA), R = Razón social (sin IVA)
-export type OrderType = "NORMAL" | "COMPLETACION" | "REFERENTE" | "REPOSICION" | "BODEGA";
-export type Negotiation =
-  | ""
-  | "CONVENIO"
-  | "OBSEQUIO"
+export type OrderType =
+  | "NORMAL"
+  | "COMPLETACION"
+  | "REFERENTE"
+  | "REPOSICION"
   | "MUESTRA"
-  | "BODEGA"
-  | "COMPRAS"
-  | "PRODUCCION"
-  | "MUESTRA_G"
-  | "MUESTRA_C";
+  | "OBSEQUIO";
+export type QuoteProcess = "PRODUCCION" | "BODEGA" | "COMPRAS";
 
 export type ClientOption = {
   id: string;
@@ -68,7 +65,7 @@ export type QuoteItem = {
   id: string;
   productId: string;
   orderType: OrderType;
-  negotiation: Negotiation;
+  process: QuoteProcess;
   code: string;
   quantity: number;
   product: string;
@@ -86,7 +83,6 @@ export type QuoteForm = {
   sellerId: string; // User ID
   documentType: DocumentType; // P = Persona (con IVA), R = Razón social (sin IVA)
   currency: Currency;
-  deliveryDate: string;
   expiryDate: string;
   paymentTerms: string;
   promissoryNoteNumber: string; // Solo si paymentTerms es CREDITO

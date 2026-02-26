@@ -53,7 +53,14 @@ export function useQuoteItems(
           
           const validatedPatch = { ...patch };
           if (validatedPatch.orderType !== undefined && typeof validatedPatch.orderType === 'string') {
-            const validOrderTypes: OrderType[] = ["NORMAL", "COMPLETACION", "REFERENTE", "REPOSICION", "BODEGA"];
+            const validOrderTypes: OrderType[] = [
+              "NORMAL",
+              "COMPLETACION",
+              "REFERENTE",
+              "REPOSICION",
+              "MUESTRA",
+              "OBSEQUIO",
+            ];
             if (!validOrderTypes.includes(validatedPatch.orderType as OrderType)) {
               validatedPatch.orderType = "NORMAL";
             }

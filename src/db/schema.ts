@@ -253,6 +253,7 @@ export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   passwordHash: text("password_hash").notNull(),
+  preferredLanguage: varchar("preferred_language", { length: 10 }).default("es"),
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -325,6 +326,8 @@ export const employees = pgTable("employees", {
   epsCertificateUrl: varchar("eps_certificate_url", { length: 500 }),
   pensionCertificateUrl: varchar("pension_certificate_url", { length: 500 }),
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
+  employeeImageUrl: varchar("employee_image_url", { length: 500 }),
+  signatureImageUrl: varchar("signature_image_url", { length: 500 }),
 
   // --- IDENTIFICACIÓN Y NOMBRE ---
   name: varchar("name", { length: 255 }).notNull(),
@@ -605,6 +608,7 @@ export const orderItems = pgTable("order_items", {
   flag: boolean("flag").default(false),
   gender: varchar("gender", { length: 50 }),
   process: varchar("process", { length: 100 }),
+  estimatedLeadDays: integer("estimated_lead_days"),
   neckType: varchar("neck_type", { length: 100 }),
   sleeve: varchar("sleeve", { length: 100 }),
   color: varchar("color", { length: 100 }),

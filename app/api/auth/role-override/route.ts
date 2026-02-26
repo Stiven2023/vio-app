@@ -32,15 +32,15 @@ const ALLOWED_ROLES = [
   "EMPAQUE",
 ];
 
-function requireDevEnvironment() {
+function requireDevEnvironment(): Response | null {
   if (process.env.NODE_ENV === "production") {
     return new Response("Not found", { status: 404 });
   }
 
-    return undefined;
+  return null;
 }
 
-async function requireAdminRole() {
+async function requireAdminRole(): Promise<Response | null> {
   const token = (await cookies()).get("auth_token")?.value;
   const payload = token ? verifyAuthToken(token) : null;
   const role =
@@ -51,14 +51,14 @@ async function requireAdminRole() {
   if (!payload) return new Response("Unauthorized", { status: 401 });
   if (role !== "ADMINISTRADOR") return new Response("Forbidden", { status: 403 });
 
-    return undefined;
+  return null;
 }
 
 export async function GET() {
   const envGuard = requireDevEnvironment();
   if (envGuard) return envGuard;
 
-  const authGuard = requireAdminRole();
+  const authGuard = await requireAdminRole();
   if (authGuard) return authGuard;
 
   const override = (await cookies()).get("role_override")?.value ?? "";

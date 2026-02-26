@@ -53,6 +53,30 @@ export const createEmployeeSchema = z
     address: z.string().trim().optional(),
     city: z.string().trim().optional(),
     department: z.string().trim().optional(),
+    employeeImageUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) =>
+          val.length === 0 ||
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
+      )
+      .optional(),
+    signatureImageUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) =>
+          val.length === 0 ||
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
+      )
+      .optional(),
     roleId: z.string().uuid("Selecciona un rol").optional(),
     isActive: z.boolean().optional(),
   })

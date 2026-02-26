@@ -23,6 +23,18 @@ type InventoryItem = {
   unit: string | null;
 };
 
+function normalizeOperationalProcess(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "BODEGA" || raw === "COMPRAS" || raw === "PRODUCCION") {
+    return raw;
+  }
+
+  return "PRODUCCION";
+}
+
 function defaultPackaging(mode: PackagingMode): OrderItemPackagingInput[] {
   if (mode === "INDIVIDUAL") return [];
 
@@ -58,7 +70,7 @@ export function useOrderItemModalState(options: {
     fabric: initialValue?.item?.fabric ?? "",
     imageUrl: initialValue?.item?.imageUrl ?? null,
     gender: initialValue?.item?.gender ?? null,
-    process: initialValue?.item?.process ?? null,
+    process: normalizeOperationalProcess(initialValue?.item?.process),
     neckType: initialValue?.item?.neckType ?? null,
     sleeve: initialValue?.item?.sleeve ?? null,
     color: initialValue?.item?.color ?? null,
@@ -130,7 +142,7 @@ export function useOrderItemModalState(options: {
       fabric: initialValue?.item?.fabric ?? "",
       imageUrl: initialValue?.item?.imageUrl ?? null,
       gender: initialValue?.item?.gender ?? null,
-      process: initialValue?.item?.process ?? null,
+      process: normalizeOperationalProcess(initialValue?.item?.process),
       neckType: initialValue?.item?.neckType ?? null,
       sleeve: initialValue?.item?.sleeve ?? null,
       color: initialValue?.item?.color ?? null,

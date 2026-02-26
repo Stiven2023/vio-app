@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ProgramacionItemsTable } from "@/app/programacion/_components/programacion-items-table";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
-export default async function AprobacionInicialPage() {
+export default async function AprobacionInicialBodegaPage() {
   const token = (await cookies()).get("auth_token")?.value;
 
   if (!token) redirect("/login");
@@ -18,11 +18,11 @@ export default async function AprobacionInicialPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Aprobación inicial</h1>
-      <p className="text-default-600 mt-1">Items en estado de pedido APROBACION_INICIAL, sectorizados por proceso.</p>
+      <h1 className="text-2xl font-bold">Aprobación inicial Bodega</h1>
+      <p className="text-default-600 mt-1">Items de aprobación inicial en proceso BODEGA.</p>
       <div className="mt-6">
         <ProgramacionItemsTable
-          process="PRODUCCION"
+          process="BODEGA"
           orderStatus="APROBACION_INICIAL"
           showProcessColumn
           basePath="/aprobacion-inicial"

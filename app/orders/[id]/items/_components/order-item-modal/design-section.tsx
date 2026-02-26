@@ -192,7 +192,7 @@ export function DesignSection({
 
         <Select
           isDisabled={locked}
-          label="Proceso"
+          label="Proceso creación"
           selectedKeys={value.process ? [String(value.process)] : []}
           onSelectionChange={(keys: any) => {
             const k = Array.from(keys as any)[0];
@@ -200,12 +200,9 @@ export function DesignSection({
             onChange({ ...value, process: k ? String(k) : null });
           }}
         >
-          <SelectItem key="CONFECCION">Confección</SelectItem>
-          <SelectItem key="BORDADO">Bordado</SelectItem>
-          <SelectItem key="ESTAMPADO">Estampado</SelectItem>
-          <SelectItem key="SUBLIMADO">Sublimado</SelectItem>
-          <SelectItem key="CORTE_MANUAL">Corte manual</SelectItem>
-          <SelectItem key="OTRO">Otro</SelectItem>
+          <SelectItem key="PRODUCCION">Producción</SelectItem>
+          <SelectItem key="BODEGA">Bodega</SelectItem>
+          <SelectItem key="COMPRAS">Compras</SelectItem>
         </Select>
       </div>
 

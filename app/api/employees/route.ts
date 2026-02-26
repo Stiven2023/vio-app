@@ -348,6 +348,12 @@ export async function POST(request: Request) {
         bankCertificateUrl: payload.bankCertificateUrl
           ? String(payload.bankCertificateUrl).trim()
           : null,
+        employeeImageUrl: payload.employeeImageUrl
+          ? String(payload.employeeImageUrl).trim()
+          : null,
+        signatureImageUrl: payload.signatureImageUrl
+          ? String(payload.signatureImageUrl).trim()
+          : null,
       })
       .returning();
 
@@ -496,6 +502,14 @@ export async function PUT(request: Request) {
   if (payload.bankCertificateUrl !== undefined)
     patch.bankCertificateUrl = payload.bankCertificateUrl
       ? String(payload.bankCertificateUrl).trim()
+      : null;
+  if (payload.employeeImageUrl !== undefined)
+    patch.employeeImageUrl = payload.employeeImageUrl
+      ? String(payload.employeeImageUrl).trim()
+      : null;
+  if (payload.signatureImageUrl !== undefined)
+    patch.signatureImageUrl = payload.signatureImageUrl
+      ? String(payload.signatureImageUrl).trim()
       : null;
 
   try {

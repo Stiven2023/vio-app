@@ -165,17 +165,8 @@ export function ProductsTab({
 
   const downloadTemplate = () => {
     const anchor = document.createElement("a");
-    anchor.href = "/documents/plantilla-integracion-masiva-productos.csv";
-    anchor.download = "plantilla-integracion-masiva-productos.csv";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-  };
-
-  const downloadCategoriesCsv = () => {
-    const anchor = document.createElement("a");
-    anchor.href = "/api/categories/csv";
-    anchor.download = "categories-id-name.csv";
+    anchor.href = "/api/products/import/template";
+    anchor.download = "products-import-template.csv";
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -214,12 +205,13 @@ export function ProductsTab({
       }
 
       const createdCount = Number(payload?.createdCount ?? 0);
+      const updatedCount = Number(payload?.updatedCount ?? 0);
       const failedCount = Number(payload?.failedCount ?? 0);
       const firstError = Array.isArray(payload?.errors)
         ? String(payload.errors[0]?.message ?? "")
         : "";
 
-      if (createdCount === 0 && failedCount > 0) {
+      if (createdCount === 0 && updatedCount === 0 && failedCount > 0) {
         toast.error(
           `No se creó ningún producto. ${firstError || "Revisa el archivo CSV y vuelve a intentar."}`,
         );
@@ -227,9 +219,13 @@ export function ProductsTab({
       }
 
       if (failedCount > 0) {
-        toast.success(`Importación parcial: ${createdCount} creados, ${failedCount} con error`);
+        toast.success(
+          `Importación parcial: ${createdCount} creados, ${updatedCount} editados, ${failedCount} con error`,
+        );
       } else {
-        toast.success(`Importación masiva exitosa: ${createdCount} productos creados`);
+        toast.success(
+          `Importación masiva exitosa: ${createdCount} creados, ${updatedCount} editados`,
+        );
       }
 
       refreshProducts();
@@ -293,9 +289,6 @@ export function ProductsTab({
           />
           <Button variant="flat" onPress={downloadTemplate}>
             Descargar plantilla CSV
-          </Button>
-          <Button variant="flat" onPress={downloadCategoriesCsv}>
-            Descargar categorías CSV
           </Button>
           <Button
             color="secondary"

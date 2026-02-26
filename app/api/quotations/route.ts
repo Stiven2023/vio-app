@@ -13,11 +13,15 @@ import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
-import {
-  buildDeliveryDateFromItems,
-  buildExpiryDateFromDelivery,
-} from "@/src/utils/quotation-delivery";
+import { buildExpiryDateFromDelivery } from "@/src/utils/quotation-delivery";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+function toDateOnlyLocal(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function isMissingPrefacturaColumnsError(error: unknown) {
   const code = String((error as any)?.code ?? "");
@@ -281,8 +285,7 @@ export async function POST(request: Request) {
   const items = Array.isArray(body?.items) ? body.items : [];
   const totalProducts = calculateTotalProductsFromItems(items);
   const paymentTerms = String(body?.paymentTerms ?? "").toUpperCase();
-  const autoDeliveryDate = buildDeliveryDateFromItems(items);
-  const autoExpiryDate = buildExpiryDateFromDelivery(autoDeliveryDate, 30);
+  const autoExpiryDate = buildExpiryDateFromDelivery(toDateOnlyLocal(new Date()), 30);
 
   if (items.length === 0) {
     return new Response("items required", { status: 400 });
@@ -328,7 +331,7 @@ export async function POST(request: Request) {
             ? (String(body.documentType) as "P" | "R")
             : "P",
           currency: body?.currency ? String(body.currency) : "COP",
-          deliveryDate: autoDeliveryDate,
+          deliveryDate: null,
           expiryDate: autoExpiryDate,
           paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : null,
           promissoryNoteNumber:
@@ -355,14 +358,19 @@ export async function POST(request: Request) {
           throw new Error("item productId required");
         }
 
+        const rawOrderType = String(rawItem?.orderType ?? "NORMAL").toUpperCase();
+        const orderType = rawOrderType === "BODEGA" ? "REPOSICION" : rawOrderType;
+
         const [savedItem] = await tx
           .insert(quotationItems)
           .values({
             quotationId: header.id,
             productId,
-            orderType: String(rawItem?.orderType ?? "NORMAL"),
-            negotiation: rawItem?.negotiation
-              ? String(rawItem.negotiation)
+            orderType,
+            negotiation: rawItem?.process
+              ? String(rawItem.process)
+              : rawItem?.negotiation
+                ? String(rawItem.negotiation)
               : null,
             quantity: toNumericString(rawItem?.quantity),
             unitPrice: toNumericString(rawItem?.unitPrice),

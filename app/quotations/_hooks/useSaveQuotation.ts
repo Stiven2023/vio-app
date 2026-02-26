@@ -55,7 +55,6 @@ export function useSaveQuotation(
           sellerId: form.sellerId,
           documentType: form.documentType,
           currency: form.currency,
-          deliveryDate: form.deliveryDate,
           expiryDate: form.expiryDate,
           paymentTerms: form.paymentTerms,
           promissoryNoteNumber:
@@ -74,10 +73,7 @@ export function useSaveQuotation(
           items: validItems.map((item) => ({
             productId: item.productId,
             orderType: item.orderType,
-            negotiation:
-              item.negotiation === "MUESTRA_G" || item.negotiation === "MUESTRA_C"
-                ? "MUESTRA"
-                : item.negotiation,
+            process: item.process,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             discount: item.discount,

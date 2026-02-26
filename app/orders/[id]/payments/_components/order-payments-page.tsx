@@ -72,6 +72,16 @@ type FormState = {
   status: PaymentStatus;
 };
 
+type PaymentsResponse = {
+  items: PaymentRow[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasNextPage: boolean;
+  orderTotal?: string | null;
+  paidTotal?: string | null;
+};
+
 function toNumberString(v: string) {
   const s = String(v ?? "").trim();
 
@@ -92,6 +102,7 @@ export function OrderPaymentsPage({
 }) {
   const [order, setOrder] = useState<OrderListItem | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     apiJson<OrderListItem>(`/api/orders/${orderId}`)
@@ -128,6 +139,44 @@ export function OrderPaymentsPage({
 
     return formatter.format(Number.isFinite(n) ? n : 0);
   };
+
+  const paymentsResponse = data as PaymentsResponse | null;
+  const orderTotalValue = useMemo(() => {
+    const fromApi = Number(paymentsResponse?.orderTotal ?? "NaN");
+    if (Number.isFinite(fromApi)) return Math.max(0, fromApi);
+    const fromOrder = Number(order?.total ?? "0");
+    return Number.isFinite(fromOrder) ? Math.max(0, fromOrder) : 0;
+  }, [order?.total, paymentsResponse?.orderTotal]);
+
+  const paidTotalValue = useMemo(() => {
+    const fromApi = Number(paymentsResponse?.paidTotal ?? "NaN");
+    if (Number.isFinite(fromApi)) return Math.max(0, fromApi);
+    return 0;
+  }, [paymentsResponse?.paidTotal]);
+
+  const requiredFor50Value = useMemo(() => {
+    const minFor50 = orderTotalValue * 0.5;
+    return Math.max(0, minFor50 - paidTotalValue);
+  }, [orderTotalValue, paidTotalValue]);
+
+  const remainingValue = useMemo(
+    () => Math.max(0, orderTotalValue - paidTotalValue),
+    [orderTotalValue, paidTotalValue],
+  );
+
+  useEffect(() => {
+    if (!proofFile) {
+      setProofPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(proofFile);
+    setProofPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [proofFile]);
 
   const uploadProofToCloudinary = async (file: File) => {
     const sig = await apiJson<{
@@ -202,6 +251,7 @@ export function OrderPaymentsPage({
       setModalOpen(false);
       setForm({ amount: "", method: "EFECTIVO", status: "PENDIENTE" });
       setProofFile(null);
+      setProofPreviewUrl(null);
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -276,6 +326,21 @@ export function OrderPaymentsPage({
                 <div className="font-medium">
                   {order.type} · {order.kind ?? "NUEVO"}
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-medium border border-default-200 p-3">
+                <div className="text-xs text-default-500">Total pedido</div>
+                <div className="font-semibold">{formatMoney(orderTotalValue)}</div>
+              </div>
+              <div className="rounded-medium border border-default-200 p-3">
+                <div className="text-xs text-default-500">Abono necesario para 50%</div>
+                <div className="font-semibold">{formatMoney(requiredFor50Value)}</div>
+              </div>
+              <div className="rounded-medium border border-default-200 p-3">
+                <div className="text-xs text-default-500">Restante</div>
+                <div className="font-semibold">{formatMoney(remainingValue)}</div>
               </div>
             </div>
           </CardBody>
@@ -386,10 +451,35 @@ export function OrderPaymentsPage({
         </div>
       ) : null}
 
-      <Modal isOpen={modalOpen} size="xl" onOpenChange={setModalOpen}>
+      <Modal
+        isOpen={modalOpen}
+        size="xl"
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) {
+            setProofFile(null);
+            setProofPreviewUrl(null);
+          }
+        }}
+      >
         <ModalContent>
           <ModalHeader>Registrar pago</ModalHeader>
           <ModalBody>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="rounded-medium border border-default-200 p-3">
+                <div className="text-xs text-default-500">Total pedido</div>
+                <div className="font-semibold">{formatMoney(orderTotalValue)}</div>
+              </div>
+              <div className="rounded-medium border border-default-200 p-3">
+                <div className="text-xs text-default-500">Abono necesario para 50%</div>
+                <div className="font-semibold">{formatMoney(requiredFor50Value)}</div>
+              </div>
+              <div className="rounded-medium border border-default-200 p-3">
+                <div className="text-xs text-default-500">Restante</div>
+                <div className="font-semibold">{formatMoney(remainingValue)}</div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input
                 label="Monto"
@@ -438,6 +528,15 @@ export function OrderPaymentsPage({
                     setProofFile(f);
                   }}
                 />
+                {proofPreviewUrl ? (
+                  <div className="mt-2 overflow-hidden rounded-medium border border-default-200">
+                    <img
+                      alt="Preview soporte de pago"
+                      className="h-40 w-full object-contain bg-default-50"
+                      src={proofPreviewUrl}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </ModalBody>

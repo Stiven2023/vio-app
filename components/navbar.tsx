@@ -295,6 +295,7 @@ export const Navbar = () => {
     }
     if (isAuthenticated) {
       extra.push({ name: "Notificaciones", href: "/notifications" });
+      extra.push({ name: "Opciones", href: "/options" });
     }
     if (isAdmin) {
       extra.push({ name: "Administración", href: "/admin" });
@@ -627,9 +628,21 @@ export const Navbar = () => {
         {isAuthenticated ? (
           <NavbarItem className="hidden sm:flex gap-3 items-center">
             <div className="flex items-center gap-2">
-              <Avatar name={user?.name ?? "VIOMAR"} size="sm" />
+              <Avatar
+                name={user?.name ?? "VIOMAR"}
+                size="sm"
+                src={user?.avatarUrl ?? undefined}
+              />
               <div className="text-sm font-medium">{user?.name ?? "Usuario"}</div>
             </div>
+
+            <Button
+              size="sm"
+              variant="flat"
+              onPress={() => router.push("/options")}
+            >
+              Opciones
+            </Button>
 
             <Button
               size="sm"

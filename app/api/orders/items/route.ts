@@ -23,6 +23,7 @@ import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
+import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -76,6 +77,29 @@ function toPositiveInt(v: unknown) {
   const i = Math.floor(n);
 
   return i > 0 ? i : null;
+}
+
+function normalizeOperationalProcess(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "BODEGA" || raw === "COMPRAS" || raw === "PRODUCCION") {
+    return raw;
+  }
+
+  return "PRODUCCION";
+}
+
+function resolveOrderTypeFromKind(kind: unknown) {
+  const normalizedKind = String(kind ?? "NUEVO")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedKind === "COMPLETACION") return "COMPLETACION";
+  if (normalizedKind === "REFERENTE") return "REFERENTE";
+
+  return "NORMAL";
 }
 
 function pickCopScaleByQuantity(
@@ -360,6 +384,12 @@ export async function POST(request: Request) {
     const unitPrice = Math.max(0, asNumber(resolvedUnitPrice));
     const additionEvidence = toNullableString(body.additionEvidence);
     const hasAdditions = Boolean(body.hasAdditions) || Boolean(additionEvidence);
+    const normalizedProcess = normalizeOperationalProcess(body.process);
+    const estimatedLeadDays = getItemLeadDays({
+      orderType: resolveOrderTypeFromKind(orderRow.kind),
+      process: normalizedProcess,
+      additions: hasAdditions ? [{}] : [],
+    });
 
     const [oi] = await tx
       .insert(orderItems)
@@ -382,7 +412,8 @@ export async function POST(request: Request) {
         tag: Boolean(body.tag ?? false),
         flag: Boolean(body.flag ?? false),
         gender: toNullableString(body.gender),
-        process: toNullableString(body.process),
+        process: normalizedProcess,
+        estimatedLeadDays,
         neckType: toNullableString(body.neckType),
         sleeve: toNullableString(body.sleeve),
         color: toNullableString(body.color),

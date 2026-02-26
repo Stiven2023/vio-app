@@ -12,7 +12,7 @@ import {
 } from "@heroui/dropdown";
 import { TableCell, TableRow } from "@heroui/table";
 
-import type { OrderType, Negotiation } from "../_lib/types";
+import type { OrderType, QuoteProcess } from "../_lib/types";
 
 type Addition = {
   id: string;
@@ -26,7 +26,7 @@ type QuoteItem = {
   id: string;
   productId: string;
   orderType: OrderType;
-  negotiation: Negotiation;
+  process: QuoteProcess;
   code: string;
   quantity: number;
   product: string;
@@ -91,26 +91,25 @@ export function QuotationsTableRow({
             <SelectItem key="COMPLETACION">Completación</SelectItem>
             <SelectItem key="REFERENTE">Referente</SelectItem>
             <SelectItem key="REPOSICION">Reposición</SelectItem>
-            <SelectItem key="BODEGA">Bodega</SelectItem>
+            <SelectItem key="MUESTRA">Muestra</SelectItem>
+            <SelectItem key="OBSEQUIO">Obsequio</SelectItem>
           </Select>
         </TableCell>
-        {/* Negociación */}
+        {/* Proceso */}
         <TableCell>
           <Select
             size="sm"
             variant="flat"
-            selectedKeys={row.negotiation ? [row.negotiation] : []}
+            selectedKeys={row.process ? [row.process] : []}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
-              onUpdateItem(row.id, { negotiation: String(first ?? "") as Negotiation });
+              onUpdateItem(row.id, { process: String(first ?? "PRODUCCION") as QuoteProcess });
             }}
             classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
           >
-            <SelectItem key="">Ninguno</SelectItem>
-            <SelectItem key="MUESTRA">Muestra</SelectItem>
-            <SelectItem key="BODEGA">Origen: Bodega</SelectItem>
-            <SelectItem key="COMPRAS">Origen: Compras</SelectItem>
-            <SelectItem key="PRODUCCION">Origen: Producción</SelectItem>
+            <SelectItem key="PRODUCCION">Producción</SelectItem>
+            <SelectItem key="BODEGA">Bodega</SelectItem>
+            <SelectItem key="COMPRAS">Compras</SelectItem>
           </Select>
         </TableCell>
         {/* Producto */}

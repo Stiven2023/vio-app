@@ -9,11 +9,15 @@ import {
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
-import {
-  buildDeliveryDateFromItems,
-  buildExpiryDateFromDelivery,
-} from "@/src/utils/quotation-delivery";
+import { buildExpiryDateFromDelivery } from "@/src/utils/quotation-delivery";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+function toDateOnlyLocal(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function toNumericString(value: unknown) {
   if (value === null || value === undefined || value === "") return "0";
@@ -92,22 +96,43 @@ export async function GET(
       additionsByItemId.set(key, current);
     }
 
-    const mappedItems = items.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      orderType: item.orderType,
-      negotiation: item.negotiation ?? "",
-      quantity: Number(item.quantity ?? 0),
-      unitPrice: Number(item.unitPrice ?? 0),
-      discount: Number(item.discount ?? 0),
-      referenceOrderCode: item.orderCodeReference,
-      referenceDesign: item.designNumber,
-      additions: (additionsByItemId.get(item.id) ?? []).map((add) => ({
-        id: add.additionId,
-        quantity: Number(add.quantity ?? 0),
-        unitPrice: Number(add.unitPrice ?? 0),
-      })),
-    }));
+    const mappedItems = items.map((item) => {
+      const rawOrderType = String(item.orderType ?? "").toUpperCase();
+      const rawProcess = String(item.negotiation ?? "").toUpperCase();
+      const orderType = [
+        "NORMAL",
+        "COMPLETACION",
+        "REFERENTE",
+        "REPOSICION",
+        "MUESTRA",
+        "OBSEQUIO",
+      ].includes(rawOrderType)
+        ? rawOrderType
+        : rawOrderType === "BODEGA"
+          ? "REPOSICION"
+          : rawProcess === "MUESTRA"
+            ? "MUESTRA"
+            : "NORMAL";
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        orderType,
+        process: ["PRODUCCION", "BODEGA", "COMPRAS"].includes(rawProcess)
+          ? rawProcess
+          : "PRODUCCION",
+        quantity: Number(item.quantity ?? 0),
+        unitPrice: Number(item.unitPrice ?? 0),
+        discount: Number(item.discount ?? 0),
+        referenceOrderCode: item.orderCodeReference,
+        referenceDesign: item.designNumber,
+        additions: (additionsByItemId.get(item.id) ?? []).map((add) => ({
+          id: add.additionId,
+          quantity: Number(add.quantity ?? 0),
+          unitPrice: Number(add.unitPrice ?? 0),
+        })),
+      };
+    });
 
     return Response.json({ ...quotation, items: mappedItems });
   } catch (error) {
@@ -145,8 +170,7 @@ export async function PUT(
   const items = Array.isArray(body?.items) ? body.items : [];
   const totalProducts = calculateTotalProductsFromItems(items);
   const paymentTerms = String(body?.paymentTerms ?? "").toUpperCase();
-  const autoDeliveryDate = buildDeliveryDateFromItems(items);
-  const autoExpiryDate = buildExpiryDateFromDelivery(autoDeliveryDate, 30);
+  const autoExpiryDate = buildExpiryDateFromDelivery(toDateOnlyLocal(new Date()), 30);
 
   if (items.length === 0) {
     return new Response("items required", { status: 400 });
@@ -203,7 +227,7 @@ export async function PUT(
             ? (String(body.documentType) as "P" | "R")
             : undefined,
           currency: body?.currency ? String(body.currency) : undefined,
-          deliveryDate: autoDeliveryDate,
+          deliveryDate: null,
           expiryDate: autoExpiryDate,
           paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : null,
           promissoryNoteNumber:
@@ -234,14 +258,19 @@ export async function PUT(
         const productId = String(rawItem?.productId ?? "").trim();
         if (!productId) continue;
 
+        const rawOrderType = String(rawItem?.orderType ?? "NORMAL").toUpperCase();
+        const orderType = rawOrderType === "BODEGA" ? "REPOSICION" : rawOrderType;
+
         const [savedItem] = await tx
           .insert(quotationItems)
           .values({
             quotationId,
             productId,
-            orderType: String(rawItem?.orderType ?? "NORMAL"),
-            negotiation: rawItem?.negotiation
-              ? String(rawItem.negotiation)
+            orderType,
+            negotiation: rawItem?.process
+              ? String(rawItem.process)
+              : rawItem?.negotiation
+                ? String(rawItem.negotiation)
               : null,
             quantity: toNumericString(rawItem?.quantity),
             unitPrice: toNumericString(rawItem?.unitPrice),

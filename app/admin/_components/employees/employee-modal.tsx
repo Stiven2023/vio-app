@@ -50,6 +50,8 @@ type FormState = {
   address: string;
   city: string;
   department: string;
+  employeeImageUrl: string;
+  signatureImageUrl: string;
   roleId: string;
   isActive: boolean;
   createUserEmail: string;
@@ -116,6 +118,8 @@ export function EmployeeModal({
     address: "",
     city: "Medellín",
     department: "ANTIOQUIA",
+    employeeImageUrl: "",
+    signatureImageUrl: "",
     roleId: "",
     isActive: true,
     createUserEmail: "",
@@ -149,6 +153,8 @@ export function EmployeeModal({
       address: source?.address ?? "",
       city: source?.city ?? "Medellín",
       department: source?.department ?? "ANTIOQUIA",
+      employeeImageUrl: source?.employeeImageUrl ?? "",
+      signatureImageUrl: source?.signatureImageUrl ?? "",
       roleId: source?.roleId ?? "",
       isActive: Boolean(source?.isActive ?? true),
       createUserEmail:
@@ -428,6 +434,26 @@ export function EmployeeModal({
                   label="Extensión"
                   value={form.extension}
                   onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
+                />
+
+                <Input
+                  errorMessage={errors.employeeImageUrl}
+                  isInvalid={Boolean(errors.employeeImageUrl)}
+                  label="Imagen empleado (URL)"
+                  value={form.employeeImageUrl}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, employeeImageUrl: v }))
+                  }
+                />
+
+                <Input
+                  errorMessage={errors.signatureImageUrl}
+                  isInvalid={Boolean(errors.signatureImageUrl)}
+                  label="Firma empleado (URL)"
+                  value={form.signatureImageUrl}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, signatureImageUrl: v }))
+                  }
                 />
               </div>
             </Tab>

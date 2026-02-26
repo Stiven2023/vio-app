@@ -12,7 +12,6 @@ type QuotationsFormProps = {
   form: QuoteForm;
   clients: ClientOption[];
   loadingClients: boolean;
-  estimatedLeadDays?: number;
   onFormChange: (updates: Partial<QuoteForm>) => void;
 };
 
@@ -20,7 +19,6 @@ export function QuotationsForm({
   form,
   clients,
   loadingClients,
-  estimatedLeadDays = 0,
   onFormChange,
 }: QuotationsFormProps) {
   const isMounted = useClientOnly();
@@ -186,18 +184,6 @@ export function QuotationsForm({
         ) : (
           <Skeleton className="rounded-lg h-12" />
         )}
-        <Input
-          label="Fecha Entrega"
-          type="date"
-          value={form.deliveryDate}
-          variant="bordered"
-          isReadOnly
-          description={
-            estimatedLeadDays > 0
-              ? `Calculada automáticamente por el diseño con mayor tiempo estimado (${estimatedLeadDays} días).`
-              : "Se calculará automáticamente al agregar diseños."
-          }
-        />
         <Input
           label="Fecha Vencimiento"
           type="date"

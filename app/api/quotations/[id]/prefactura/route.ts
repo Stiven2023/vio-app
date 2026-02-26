@@ -19,6 +19,7 @@ import {
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function asNumber(v: unknown) {
@@ -270,6 +271,8 @@ export async function POST(
         .select({
           id: quotationItems.id,
           productId: quotationItems.productId,
+          orderType: quotationItems.orderType,
+          process: quotationItems.negotiation,
           quantity: quotationItems.quantity,
           unitPrice: quotationItems.unitPrice,
           discount: quotationItems.discount,
@@ -317,6 +320,16 @@ export async function POST(
         const subtotal = unitPrice * qty;
         const lineTotal = subtotal - subtotal * (discount / 100);
         const adds = additionsByItem.get(item.id) ?? [];
+        const process = ["PRODUCCION", "BODEGA", "COMPRAS"].includes(
+          String(item.process ?? "").toUpperCase(),
+        )
+          ? String(item.process ?? "").toUpperCase()
+          : "PRODUCCION";
+        const estimatedLeadDays = getItemLeadDays({
+          orderType: item.orderType,
+          process,
+          additions: adds,
+        });
         const additionEvidence = adds.length
           ? adds
               .map((add) => String(add.additionName ?? "Adición").trim())
@@ -334,6 +347,9 @@ export async function POST(
           totalPrice: String(lineTotal),
           hasAdditions: adds.length > 0,
           additionEvidence,
+          process,
+          estimatedLeadDays,
+          observations: `Demora estimada: ${estimatedLeadDays} días`,
           status: "PENDIENTE" as any,
           requiresRevision: false,
           isActive: true,

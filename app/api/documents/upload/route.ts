@@ -3,6 +3,27 @@ import path from "path";
 import crypto from "crypto";
 import { rateLimit } from "@/src/utils/rate-limit";
 
+function sanitizeBaseName(name: string): string {
+  return name
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[^a-zA-Z0-9-_]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 120);
+}
+
+function resolveFileExtension(file: File): string {
+  const fromName = path.extname(file.name || "").toLowerCase();
+  if (fromName) return fromName;
+
+  const typeParts = (file.type || "").split("/");
+  const subtype = typeParts.length === 2 ? typeParts[1] : "";
+  if (!subtype) return "";
+
+  const cleanSubtype = subtype.split("+")[0].toLowerCase();
+  return cleanSubtype ? `.${cleanSubtype}` : "";
+}
+
 export async function POST(request: Request) {
   const limited = rateLimit(request, {
     key: "documents:upload",
@@ -26,6 +47,10 @@ export async function POST(request: Request) {
       return new Response("Nombre de archivo requerido", { status: 400 });
     }
 
+    const baseName = sanitizeBaseName(fileName) || `file-${Date.now()}`;
+    const extension = resolveFileExtension(file);
+    const localFileName = `${baseName}${extension}`;
+
     // ============================================
     // MODO CLOUDINARY (PRODUCCIÓN - ACTIVO)
     // ============================================
@@ -39,13 +64,13 @@ export async function POST(request: Request) {
       const documentsDir = path.join(process.cwd(), "public/documents");
       await mkdir(documentsDir, { recursive: true });
 
-      const filePath = path.join(documentsDir, `${fileName}.pdf`);
+      const filePath = path.join(documentsDir, localFileName);
       const bytes = await file.arrayBuffer();
       await writeFile(filePath, new Uint8Array(bytes));
 
       console.log("✅ Documento guardado localmente:", filePath);
 
-      const publicUrl = `/documents/${fileName}.pdf`;
+      const publicUrl = `/documents/${localFileName}`;
       return Response.json({ url: publicUrl });
     }
 
@@ -53,7 +78,7 @@ export async function POST(request: Request) {
     const params: Record<string, string> = {
       timestamp: String(timestamp),
       folder: uploadFolder,
-      public_id: fileName,
+      public_id: baseName,
     };
 
     const toSign = Object.keys(params)
@@ -77,7 +102,7 @@ export async function POST(request: Request) {
     console.log("📝 Archivo:", fileName);
 
     const uploadRes = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
       {
         method: "POST",
         body: formDataCloudinary,

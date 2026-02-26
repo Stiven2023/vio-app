@@ -11,9 +11,7 @@ import { toast } from "react-hot-toast";
 import { useSessionStore } from "@/store/session";
 import { apiJson, getErrorMessage } from "@/app/catalog/_lib/api";
 import {
-  buildDeliveryDateFromItems,
   buildExpiryDateFromDelivery,
-  getMaxLeadDays,
 } from "@/src/utils/quotation-delivery";
 import { QuotationsForm } from "./QuotationsForm";
 import { QuotationsProductsTable } from "./QuotationsProductsTable";
@@ -50,15 +48,15 @@ type QuotationDetailResponse = {
   items: Array<{
     id: string;
     productId: string;
-    orderType: "NORMAL" | "COMPLETACION" | "REFERENTE" | "REPOSICION" | "BODEGA";
-    negotiation:
-      | ""
+    orderType:
+      | "NORMAL"
+      | "COMPLETACION"
+      | "REFERENTE"
+      | "REPOSICION"
       | "MUESTRA"
-      | "BODEGA"
-      | "COMPRAS"
-      | "PRODUCCION"
-      | "MUESTRA_G"
-      | "MUESTRA_C";
+      | "OBSEQUIO"
+      | "BODEGA";
+    process: "PRODUCCION" | "BODEGA" | "COMPRAS";
     quantity: number;
     unitPrice: number;
     discount: number;
@@ -90,7 +88,6 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
     postalCode: "",
     seller: user?.name ?? "",
     currency: "COP",
-    deliveryDate: "",
     expiryDate: "",
     paymentTerms: "TRANSFERENCIA",
     promissoryNoteNumber: "",
@@ -129,8 +126,6 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
     selectedClientPriceType,
   );
 
-  const estimatedLeadDays = useMemo(() => getMaxLeadDays(items), [items]);
-
   const draftCacheKey = quoteId
     ? `quotations:draft:${quoteId}:items`
     : "quotations:draft:new:items";
@@ -167,15 +162,13 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
     setItems(
       initialItems.map((item) => {
         const product = products.find((p) => p.id === item.productId);
+        const normalizedOrderType = item.orderType === "BODEGA" ? "REPOSICION" : item.orderType;
 
         return {
           id: item.id,
           productId: item.productId,
-          orderType: item.orderType,
-          negotiation:
-            item.negotiation === "MUESTRA_G" || item.negotiation === "MUESTRA_C"
-              ? "MUESTRA"
-              : item.negotiation,
+          orderType: normalizedOrderType,
+          process: item.process,
           code: product?.productCode ?? "",
           quantity: item.quantity,
           product: product?.name ?? "",
@@ -210,7 +203,6 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
           sellerId: quote.sellerId,
           documentType: quote.documentType ?? "P",
           currency: quote.currency,
-          deliveryDate: quote.deliveryDate ?? "",
           expiryDate: quote.expiryDate ?? "",
           paymentTerms: quote.paymentTerms ?? "TRANSFERENCIA",
           promissoryNoteNumber: quote.promissoryNoteNumber ?? "",
@@ -253,25 +245,16 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
   }, [selectedClient]);
 
   useEffect(() => {
-    if (!items.length) return;
+    if (quoteId) return;
+    const baseDate = new Date();
+    const nextExpiry = buildExpiryDateFromDelivery(
+      baseDate.toISOString().split("T")[0] ?? null,
+      30,
+    );
+    if (!nextExpiry) return;
 
-    const nextDelivery = buildDeliveryDateFromItems(items);
-    const nextExpiry = buildExpiryDateFromDelivery(nextDelivery, 30);
-
-    if (!nextDelivery || !nextExpiry) return;
-
-    setForm((s) => {
-      if (s.deliveryDate === nextDelivery && s.expiryDate === nextExpiry) {
-        return s;
-      }
-
-      return {
-        ...s,
-        deliveryDate: nextDelivery,
-        expiryDate: nextExpiry,
-      };
-    });
-  }, [items]);
+    setForm((s) => ({ ...s, expiryDate: nextExpiry }));
+  }, [quoteId]);
 
   const computed = useQuoteCalculations(
     items,
@@ -298,14 +281,6 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
   const onFormChange = (updates: Partial<QuoteForm>) => {
     setForm((s) => {
       const next = { ...s, ...updates };
-
-      if (updates.deliveryDate !== undefined && updates.deliveryDate) {
-        const deliveryDate = new Date(updates.deliveryDate);
-        const expiryDate = new Date(deliveryDate);
-        expiryDate.setDate(expiryDate.getDate() + 30);
-        next.expiryDate = expiryDate.toISOString().split("T")[0];
-      }
-
       return next;
     });
   };
@@ -375,7 +350,6 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
             form={form}
             clients={clients}
             loadingClients={loadingClients || loadingQuote}
-            estimatedLeadDays={estimatedLeadDays}
             onFormChange={onFormChange}
           />
 

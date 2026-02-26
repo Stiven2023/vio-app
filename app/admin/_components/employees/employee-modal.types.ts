@@ -12,6 +12,8 @@ export type EmployeeFormPrefill = Partial<{
   address: string;
   city: string;
   department: string;
+  employeeImageUrl: string;
+  signatureImageUrl: string;
   roleId: string;
   isActive: boolean;
   createUserEmail: string;

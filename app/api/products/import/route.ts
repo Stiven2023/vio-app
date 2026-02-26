@@ -9,6 +9,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 type ImportRow = {
   categoryId?: string;
+  categoryName?: string;
   productCode?: string;
   name?: string;
   description?: string;
@@ -21,9 +22,6 @@ type ImportRow = {
   priceCopInternational?: string;
   priceUSD?: string;
   trmUsed?: string;
-  startDate?: string;
-  endDate?: string;
-  createdAt?: string;
   isActive?: string;
 };
 
@@ -87,7 +85,7 @@ function parseCsv(content: string): ImportRow[] {
   const lines = normalized
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
 
   if (lines.length < 2) return [];
 
@@ -108,6 +106,7 @@ function parseCsv(content: string): ImportRow[] {
 
     const row: ImportRow = {
       categoryId: getCell(cells, ["categoryId", "categoriaId", "idCategoria"]),
+      categoryName: getCell(cells, ["categoryName", "categoria", "nombreCategoria", "nombreDeCategoria"]),
       productCode: getCell(cells, ["productCode", "codigoProducto"]),
       name: getCell(cells, ["name", "nombre", "nombreProducto", "producto"]),
       description: getCell(cells, ["description", "descripcion", "detalle"]),
@@ -120,13 +119,10 @@ function parseCsv(content: string): ImportRow[] {
       priceCopInternational: getCell(cells, ["priceCopInternational", "precioCopInternacional"]),
       priceUSD: getCell(cells, ["priceUSD", "precioUsd"]),
       trmUsed: getCell(cells, ["trmUsed", "trm"]),
-      startDate: getCell(cells, ["startDate", "fechaInicio", "fechainicioyyyy-mm-dd"]),
-      endDate: getCell(cells, ["endDate", "fechaFin", "fechafinyyyy-mm-dd"]),
-      createdAt: getCell(cells, ["createdAt", "creado"]),
-      isActive: getCell(cells, ["isActive", "activo"]),
+      isActive: getCell(cells, ["isActive", "activo", "estado"]),
     };
 
-    if (!row.name && !row.categoryId) continue;
+    if (!row.name && !row.categoryId && !row.categoryName) continue;
     rows.push(row);
   }
 
@@ -171,24 +167,51 @@ async function buildNextProductCodeTx(tx: any, categoryId: string) {
   return `${prefix}${String(nextSuffix).padStart(2, "0")}`;
 }
 
-async function resolveCategoryIdFromRow(row: ImportRow) {
+function normalizeCategoryName(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function resolveCategoryIdFromRow(args: {
+  row: ImportRow;
+  categoryIdSet: Set<string>;
+  categoryNameToId: Map<string, string>;
+}) {
+  const { row, categoryIdSet, categoryNameToId } = args;
   const categoryIdRaw = String(row.categoryId ?? "").trim();
 
   if (categoryIdRaw) {
-    const [existingById] = await db
-      .select({ id: categories.id })
-      .from(categories)
-      .where(eq(categories.id, categoryIdRaw))
-      .limit(1);
-
-    if (!existingById?.id) {
-      throw new Error(`categoryId inválido: ${categoryIdRaw}`);
+    if (categoryIdSet.has(categoryIdRaw)) {
+      return categoryIdRaw;
     }
 
-    return existingById.id;
+    const normalizedFromCategoryId = normalizeCategoryName(categoryIdRaw);
+    const byName = categoryNameToId.get(normalizedFromCategoryId);
+    if (byName) {
+      return byName;
+    }
+
+    throw new Error(`categoryId inválido: ${categoryIdRaw}`);
   }
 
-  throw new Error("categoryId requerido");
+  const categoryNameRaw = String(row.categoryName ?? "").trim();
+  if (categoryNameRaw) {
+    const normalizedCategoryName = normalizeCategoryName(categoryNameRaw);
+    const categoryId = categoryNameToId.get(normalizedCategoryName);
+
+    if (!categoryId) {
+      throw new Error(`Categoría no encontrada: ${categoryNameRaw}`);
+    }
+
+    return categoryId;
+  }
+
+  throw new Error("categoryId o categoryName requerido");
 }
 
 function asNumber(value: unknown) {
@@ -199,17 +222,34 @@ function asNumber(value: unknown) {
   return Number.isFinite(number) ? number : null;
 }
 
-function toOptionalDate(value: string | undefined) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return null;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
+function hasValue(value: unknown) {
+  return String(value ?? "").trim().length > 0;
 }
 
-function toIsActive(value: string | undefined) {
+function parseOptionalNumber(value: unknown, label: string) {
+  if (!hasValue(value)) return undefined;
+  const parsed = asNumber(value);
+  if (parsed === null) {
+    throw new Error(`${label} inválido`);
+  }
+  return parsed;
+}
+
+function parseIsActiveForEdit(value: string | undefined) {
   const raw = String(value ?? "").trim().toLowerCase();
-  if (!raw) return true;
-  return ["1", "true", "si", "sí", "activo", "activa"].includes(raw);
+  if (!raw) return undefined;
+  if (["1", "true", "si", "sí", "activo", "activa"].includes(raw)) return true;
+  if (["0", "false", "no", "inactivo", "inactiva"].includes(raw)) return false;
+  throw new Error("isActive inválido: usa SI/NO o true/false");
+}
+
+function buildAutomaticValidityDates() {
+  const now = new Date();
+  const nextYearFebFirst = new Date(now.getFullYear() + 1, 1, 1, 0, 0, 0, 0);
+  return {
+    startDate: now,
+    endDate: nextYearFebFirst,
+  };
 }
 
 export async function POST(request: Request) {
@@ -243,6 +283,19 @@ export async function POST(request: Request) {
     const latestRate = await getLatestUsdCopRate();
     const trm = Number(latestRate?.effectiveRate ?? 0);
 
+    const categoryRows = await db
+      .select({ id: categories.id, name: categories.name })
+      .from(categories);
+    const categoryIdSet = new Set(categoryRows.map((c) => String(c.id)));
+    const categoryNameToId = new Map<string, string>();
+    for (const category of categoryRows) {
+      const normalizedName = normalizeCategoryName(String(category.name ?? ""));
+      if (!normalizedName) continue;
+      if (!categoryNameToId.has(normalizedName)) {
+        categoryNameToId.set(normalizedName, String(category.id));
+      }
+    }
+
     if (!trm || trm <= 0) {
       return new Response("No hay TRM vigente. Actualiza la tasa USD/COP antes de importar.", {
         status: 400,
@@ -250,6 +303,7 @@ export async function POST(request: Request) {
     }
 
     let createdCount = 0;
+    let updatedCount = 0;
     const errors: Array<{ row: number; message: string }> = [];
 
     for (let index = 0; index < rows.length; index += 1) {
@@ -257,53 +311,134 @@ export async function POST(request: Request) {
       const rowNumber = index + 2;
 
       try {
-        const name = String(row.name ?? "").trim();
+        const productCodeRaw = String(row.productCode ?? "").trim().toUpperCase();
+        const isEdit = productCodeRaw.length > 0;
 
-        if (!name) throw new Error("name requerido");
+        if (!isEdit) {
+          const name = String(row.name ?? "").trim();
 
-        const categoryId = await resolveCategoryIdFromRow(row);
+          if (!name) throw new Error("name requerido en creación");
 
-        const priceCopR1 = asNumber(row.priceCopR1);
-        const priceCopR2 = asNumber(row.priceCopR2);
-        const priceCopR3 = asNumber(row.priceCopR3);
-        const priceMayorista = asNumber(row.priceMayorista);
-        const priceColanta = asNumber(row.priceColanta);
-        const priceCopBase = asNumber(row.priceCopBase);
-
-        if (priceCopR1 === null) throw new Error("priceCopR1 requerido");
-        if (priceCopR2 === null) throw new Error("priceCopR2 requerido");
-        if (priceCopR3 === null) throw new Error("priceCopR3 requerido");
-        if (priceMayorista === null) throw new Error("priceMayorista requerido");
-        if (priceColanta === null) throw new Error("priceColanta requerido");
-
-        const priceCopInternational = Number((priceCopR1 * 1.19).toFixed(2));
-        const priceUSD = Number((priceCopInternational / trm).toFixed(2));
-
-        await db.transaction(async (tx) => {
-          const productCode = await buildNextProductCodeTx(tx, categoryId);
-
-          await tx.insert(products).values({
-            productCode,
-            name,
-            description: String(row.description ?? "").trim() || null,
-            categoryId,
-            priceCopBase: String(priceCopBase ?? priceCopR1),
-            priceCopR1: String(priceCopR1),
-            priceCopR2: String(priceCopR2),
-            priceCopR3: String(priceCopR3),
-            priceViomar: null,
-            priceColanta: String(priceColanta),
-            priceMayorista: String(priceMayorista),
-            priceCopInternational: String(priceCopInternational),
-            priceUSD: String(priceUSD),
-            trmUsed: String(trm),
-            startDate: toOptionalDate(row.startDate),
-            endDate: toOptionalDate(row.endDate),
-            isActive: toIsActive(row.isActive),
+          const categoryId = await resolveCategoryIdFromRow({
+            row,
+            categoryIdSet,
+            categoryNameToId,
           });
-        });
 
-        createdCount += 1;
+          const priceCopR1 = asNumber(row.priceCopR1);
+          const priceCopR2 = asNumber(row.priceCopR2);
+          const priceCopR3 = asNumber(row.priceCopR3);
+          const priceMayorista = asNumber(row.priceMayorista);
+          const priceColanta = asNumber(row.priceColanta);
+          const priceCopBase = asNumber(row.priceCopBase);
+
+          if (priceCopR1 === null) throw new Error("priceCopR1 requerido en creación");
+          if (priceCopR2 === null) throw new Error("priceCopR2 requerido en creación");
+          if (priceCopR3 === null) throw new Error("priceCopR3 requerido en creación");
+          if (priceMayorista === null) throw new Error("priceMayorista requerido en creación");
+          if (priceColanta === null) throw new Error("priceColanta requerido en creación");
+
+          const priceCopInternational = Number((priceCopR1 * 1.19).toFixed(2));
+          const priceUSD = Number((priceCopInternational / trm).toFixed(2));
+          const validity = buildAutomaticValidityDates();
+
+          await db.transaction(async (tx) => {
+            const productCode = await buildNextProductCodeTx(tx, categoryId);
+
+            await tx.insert(products).values({
+              productCode,
+              name,
+              description: String(row.description ?? "").trim() || null,
+              categoryId,
+              priceCopBase: String(priceCopBase ?? priceCopR1),
+              priceCopR1: String(priceCopR1),
+              priceCopR2: String(priceCopR2),
+              priceCopR3: String(priceCopR3),
+              priceViomar: null,
+              priceColanta: String(priceColanta),
+              priceMayorista: String(priceMayorista),
+              priceCopInternational: String(priceCopInternational),
+              priceUSD: String(priceUSD),
+              trmUsed: String(trm),
+              startDate: validity.startDate,
+              endDate: validity.endDate,
+              isActive: true,
+            });
+          });
+
+          createdCount += 1;
+          continue;
+        }
+
+        const [existing] = await db
+          .select()
+          .from(products)
+          .where(eq(products.productCode, productCodeRaw))
+          .limit(1);
+
+        if (!existing) {
+          throw new Error(`productCode no existe para edición: ${productCodeRaw}`);
+        }
+
+        const categoryProvided = hasValue(row.categoryId) || hasValue(row.categoryName);
+        const categoryId = categoryProvided
+          ? await resolveCategoryIdFromRow({ row, categoryIdSet, categoryNameToId })
+          : String(existing.categoryId ?? "").trim() || null;
+
+        const nextPriceCopR1 = parseOptionalNumber(row.priceCopR1, "priceCopR1") ?? asNumber(existing.priceCopR1);
+        const nextPriceCopR2 = parseOptionalNumber(row.priceCopR2, "priceCopR2") ?? asNumber(existing.priceCopR2);
+        const nextPriceCopR3 = parseOptionalNumber(row.priceCopR3, "priceCopR3") ?? asNumber(existing.priceCopR3);
+        const nextPriceMayorista = parseOptionalNumber(row.priceMayorista, "priceMayorista") ?? asNumber(existing.priceMayorista);
+        const nextPriceColanta = parseOptionalNumber(row.priceColanta, "priceColanta") ?? asNumber(existing.priceColanta);
+        const nextPriceCopBase = parseOptionalNumber(row.priceCopBase, "priceCopBase") ?? asNumber(existing.priceCopBase);
+        const nextIsActive = parseIsActiveForEdit(row.isActive);
+
+        const hasPriceInputs =
+          hasValue(row.priceCopR1) ||
+          hasValue(row.priceCopR2) ||
+          hasValue(row.priceCopR3) ||
+          hasValue(row.priceMayorista) ||
+          hasValue(row.priceColanta) ||
+          hasValue(row.priceCopBase);
+
+        const patch: Partial<typeof products.$inferInsert> = {};
+
+        if (hasValue(row.name)) patch.name = String(row.name ?? "").trim();
+        if (hasValue(row.description)) patch.description = String(row.description ?? "").trim();
+        if (categoryProvided) patch.categoryId = categoryId;
+        if (nextIsActive !== undefined) patch.isActive = nextIsActive;
+
+        if (hasPriceInputs) {
+          if (nextPriceCopR1 === null) throw new Error("priceCopR1 inválido");
+          if (nextPriceCopR2 === null) throw new Error("priceCopR2 inválido");
+          if (nextPriceCopR3 === null) throw new Error("priceCopR3 inválido");
+          if (nextPriceMayorista === null) throw new Error("priceMayorista inválido");
+          if (nextPriceColanta === null) throw new Error("priceColanta inválido");
+
+          const priceCopInternational = Number((nextPriceCopR1 * 1.19).toFixed(2));
+          const priceUSD = Number((priceCopInternational / trm).toFixed(2));
+
+          patch.priceCopBase = String(nextPriceCopBase ?? nextPriceCopR1);
+          patch.priceCopR1 = String(nextPriceCopR1);
+          patch.priceCopR2 = String(nextPriceCopR2);
+          patch.priceCopR3 = String(nextPriceCopR3);
+          patch.priceMayorista = String(nextPriceMayorista);
+          patch.priceColanta = String(nextPriceColanta);
+          patch.priceCopInternational = String(priceCopInternational);
+          patch.priceUSD = String(priceUSD);
+          patch.trmUsed = String(trm);
+        }
+
+        if (Object.keys(patch).length === 0) {
+          throw new Error(`Fila sin cambios para edición (${productCodeRaw})`);
+        }
+
+        await db
+          .update(products)
+          .set(patch)
+          .where(eq(products.id, existing.id));
+
+        updatedCount += 1;
       } catch (error) {
         errors.push({
           row: rowNumber,
@@ -316,6 +451,7 @@ export async function POST(request: Request) {
       message: "Importación finalizada",
       totalRows: rows.length,
       createdCount,
+      updatedCount,
       failedCount: errors.length,
       errors,
     });
