@@ -15,7 +15,6 @@ import {
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
-import { Tab, Tabs } from "@heroui/tabs";
 import { BsBoxSeam, BsCashCoin, BsClockHistory, BsTag } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
@@ -23,7 +22,6 @@ import { createProductSchema } from "../../_lib/schemas";
 import { getTRMColombia, applyTRMConversion } from "@/src/utils/trm";
 
 type FormState = {
-  catalogType: "NACIONAL" | "INTERNACIONAL";
   name: string;
   description: string;
   categoryId: string;
@@ -42,14 +40,12 @@ type FormState = {
 
 export function ProductModal({
   product,
-  defaultCatalogType,
   categories,
   isOpen,
   onOpenChange,
   onSaved,
 }: {
   product: Product | null;
-  defaultCatalogType?: "NACIONAL" | "INTERNACIONAL";
   categories: Category[];
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,7 +53,6 @@ export function ProductModal({
 }) {
   const conversionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [form, setForm] = useState<FormState>({
-    catalogType: "NACIONAL",
     name: "",
     description: "",
     categoryId: "",
@@ -90,8 +85,6 @@ export function ProductModal({
 
   const scheduleInternationalFromR1 = useCallback(
     (value: string) => {
-      if (form.catalogType !== "INTERNACIONAL") return;
-
       if (conversionTimerRef.current) {
         clearTimeout(conversionTimerRef.current);
       }
@@ -130,7 +123,7 @@ export function ProductModal({
         }
       }, 400);
     },
-    [form.catalogType, toast]
+    [toast]
   );
 
   useEffect(() => {
@@ -138,13 +131,7 @@ export function ProductModal({
 
     setErrors({});
     setSubmitting(false);
-    const inferredCatalogType = (
-      product?.priceUSD || product?.priceCopInternational
-        ? "INTERNACIONAL"
-        : defaultCatalogType ?? "NACIONAL"
-    ) as "NACIONAL" | "INTERNACIONAL";
     const newForm = {
-      catalogType: inferredCatalogType,
       name: product?.name ?? "",
       description: product?.description ?? "",
       categoryId: product?.categoryId ?? "",
@@ -168,20 +155,18 @@ export function ProductModal({
         conversionTimerRef.current = null;
       }
     };
-  }, [defaultCatalogType, fixedEndDate, isOpen, product]);
+  }, [fixedEndDate, isOpen, product]);
 
   useEffect(() => {
-    // Cuando cambias al tab internacional e ingresaste un R1, recalcula los precios
-    if (form.catalogType === "INTERNACIONAL" && form.priceCopR1.trim()) {
+    if (form.priceCopR1.trim()) {
       scheduleInternationalFromR1(form.priceCopR1);
     }
-  }, [form.catalogType, scheduleInternationalFromR1]);
+  }, [form.priceCopR1, scheduleInternationalFromR1]);
 
   const submit = async () => {
     if (submitting) return;
 
     const parsed = createProductSchema.safeParse({
-      catalogType: form.catalogType,
       name: form.name,
       description: form.description.trim() ? form.description : undefined,
       categoryId: form.categoryId ? form.categoryId : undefined,
@@ -219,44 +204,40 @@ export function ProductModal({
       let finalPriceCopInternational = parsed.data.priceCopInternational;
       let finalPriceUSD = parsed.data.priceUSD;
 
-      if (form.catalogType === "INTERNACIONAL") {
-        try {
-          const trm = await getTRMColombia();
-          trmUsed = trm;
+      try {
+        const trm = await getTRMColombia();
+        trmUsed = trm;
 
-          const baseR1 = Number(parsed.data.priceCopR1 ?? "");
+        const baseR1 = Number(parsed.data.priceCopR1 ?? "");
 
-          if (!Number.isFinite(baseR1) || baseR1 <= 0) {
-            toast.error("Precio base (1-499) requerido para internacional.");
-            return;
-          }
-
-          const adjustedCop = applyInternationalMarkup(baseR1);
-          const converted = await applyTRMConversion({
-            priceCopBase: adjustedCop,
-            sourceCurrency: "COP",
-          });
-
-          finalPriceCopInternational = String(adjustedCop);
-          finalPriceUSD = String(converted.priceUSD);
-          trmUsed = converted.trmUsed;
-        } catch (trmError) {
-          console.error("TRM conversion error:", trmError);
-          toast.error("Error al obtener TRM. Intenta nuevamente.");
+        if (!Number.isFinite(baseR1) || baseR1 <= 0) {
+          toast.error("Precio base (1-499) requerido para calcular internacional.");
           return;
         }
+
+        const adjustedCop = applyInternationalMarkup(baseR1);
+        const converted = await applyTRMConversion({
+          priceCopBase: adjustedCop,
+          sourceCurrency: "COP",
+        });
+
+        finalPriceCopInternational = String(adjustedCop);
+        finalPriceUSD = String(converted.priceUSD);
+        trmUsed = converted.trmUsed;
+      } catch (trmError) {
+        console.error("TRM conversion error:", trmError);
+        toast.error("Error al obtener TRM. Intenta nuevamente.");
+        return;
       }
 
       const payload = {
         name: parsed.data.name,
         description: parsed.data.description ? parsed.data.description : null,
         categoryId: parsed.data.categoryId ? parsed.data.categoryId : null,
-        catalogType: parsed.data.catalogType,
         priceCopBase: finalPriceCopBase ? Number(finalPriceCopBase) : null,
-        priceCopInternational:
-          form.catalogType === "INTERNACIONAL" && finalPriceCopInternational
-            ? Number(finalPriceCopInternational)
-            : null,
+        priceCopInternational: finalPriceCopInternational
+          ? Number(finalPriceCopInternational)
+          : null,
         priceCopR1: parsed.data.priceCopR1 ? Number(parsed.data.priceCopR1) : null,
         priceCopR2: parsed.data.priceCopR2 ? Number(parsed.data.priceCopR2) : null,
         priceCopR3: parsed.data.priceCopR3 ? Number(parsed.data.priceCopR3) : null,
@@ -264,11 +245,8 @@ export function ProductModal({
           ? Number(parsed.data.priceMayorista)
           : null,
         priceColanta: parsed.data.priceColanta ? Number(parsed.data.priceColanta) : null,
-        priceUSD:
-          form.catalogType === "INTERNACIONAL" && finalPriceUSD
-            ? Number(finalPriceUSD)
-            : null,
-        trmUsed: form.catalogType === "INTERNACIONAL" ? trmUsed : null,
+        priceUSD: finalPriceUSD ? Number(finalPriceUSD) : null,
+        trmUsed: trmUsed,
         startDate: parsed.data.startDate ? parsed.data.startDate : null,
         endDate: form.endDate ? form.endDate : null,
         isActive: parsed.data.isActive,
@@ -340,123 +318,75 @@ export function ProductModal({
                   <SelectItem key={c.id}>{c.name}</SelectItem>
                 ))}
               </Select>
-
-              <Select
-                label="Tipo de catálogo"
-                selectedKeys={[form.catalogType]}
-                onSelectionChange={(keys) => {
-                  const first = Array.from(keys)[0];
-                  const next =
-                    String(first ?? "NACIONAL") === "INTERNACIONAL"
-                      ? "INTERNACIONAL"
-                      : "NACIONAL";
-
-                  setForm((s) => ({
-                    ...s,
-                    catalogType: next,
-                  }));
-                }}
-              >
-                <SelectItem key="NACIONAL">Catálogo nacional</SelectItem>
-                <SelectItem key="INTERNACIONAL">Catálogo internacional</SelectItem>
-              </Select>
             </section>
 
             <section className="rounded-large border border-default-200 p-3 space-y-3">
               <h4 className="text-sm font-semibold text-default-700">Precios y vigencia</h4>
-              <Tabs
-                aria-label="Tipo de catálogo"
-                selectedKey={form.catalogType}
-                onSelectionChange={(key) => {
-                  const next =
-                    String(key) === "INTERNACIONAL"
-                      ? "INTERNACIONAL"
-                      : "NACIONAL";
+              <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-3">
+                <Input
+                  errorMessage={errors.priceCopR1}
+                  isInvalid={Boolean(errors.priceCopR1)}
+                  label="Precio base (1-499)"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceCopR1}
+                  onValueChange={(v) => {
+                    setForm((s) => ({ ...s, priceCopR1: v }));
+                    scheduleInternationalFromR1(v);
+                  }}
+                />
+                <Input
+                  errorMessage={errors.priceCopR2}
+                  isInvalid={Boolean(errors.priceCopR2)}
+                  label="Precio +499 (500-1000)"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceCopR2}
+                  onValueChange={(v) => setForm((s) => ({ ...s, priceCopR2: v }))}
+                />
+                <Input
+                  errorMessage={errors.priceCopR3}
+                  isInvalid={Boolean(errors.priceCopR3)}
+                  label="Precio +1000 (1001+)"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceCopR3}
+                  onValueChange={(v) => setForm((s) => ({ ...s, priceCopR3: v }))}
+                />
+              </div>
 
-                  setForm((s) => ({
-                    ...s,
-                    catalogType: next,
-                  }));
-                }}
-                variant="underlined"
-              >
-                <Tab key="NACIONAL" title="Catálogo nacional">
-                  <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-3">
-                    <Input
-                      errorMessage={errors.priceCopR1}
-                      isInvalid={Boolean(errors.priceCopR1)}
-                      label="Precio base (1-499)"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceCopR1}
-                      onValueChange={(v) => setForm((s) => ({ ...s, priceCopR1: v }))}
-                    />
-                    <Input
-                      errorMessage={errors.priceCopR2}
-                      isInvalid={Boolean(errors.priceCopR2)}
-                      label="Precio +499 (500-1000)"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceCopR2}
-                      onValueChange={(v) => setForm((s) => ({ ...s, priceCopR2: v }))}
-                    />
-                    <Input
-                      errorMessage={errors.priceCopR3}
-                      isInvalid={Boolean(errors.priceCopR3)}
-                      label="Precio +1000 (1001+)"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceCopR3}
-                      onValueChange={(v) => setForm((s) => ({ ...s, priceCopR3: v }))}
-                    />
-                  </div>
+              <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
+                <Input
+                  errorMessage={errors.priceMayorista}
+                  isInvalid={Boolean(errors.priceMayorista)}
+                  label="Precio fijo Mayorista"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceMayorista}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, priceMayorista: v }))
+                  }
+                />
+                <Input
+                  errorMessage={errors.priceColanta}
+                  isInvalid={Boolean(errors.priceColanta)}
+                  label="Precio fijo Colanta"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceColanta}
+                  onValueChange={(v) => setForm((s) => ({ ...s, priceColanta: v }))}
+                />
+              </div>
 
-                  <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
-                    <Input
-                      errorMessage={errors.priceMayorista}
-                      isInvalid={Boolean(errors.priceMayorista)}
-                      label="Precio fijo Mayorista"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceMayorista}
-                      onValueChange={(v) =>
-                        setForm((s) => ({ ...s, priceMayorista: v }))
-                      }
-                    />
-                    <Input
-                      errorMessage={errors.priceColanta}
-                      isInvalid={Boolean(errors.priceColanta)}
-                      label="Precio fijo Colanta"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceColanta}
-                      onValueChange={(v) => setForm((s) => ({ ...s, priceColanta: v }))}
-                    />
-                  </div>
-                </Tab>
-                <Tab key="INTERNACIONAL" title="Catálogo internacional">
-                  <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-3">
-                    <Input
-                      errorMessage={errors.priceCopR1}
-                      isInvalid={Boolean(errors.priceCopR1)}
-                      label="Precio base (1-499)"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceCopR1}
-                      onValueChange={(v) => {
-                        setForm((s) => ({ ...s, priceCopR1: v }));
-                        scheduleInternationalFromR1(v);
-                      }}
-                    />
-                    <Input
-                      label="Precio COP internacional"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceCopInternational}
-                      isReadOnly
-                    />
-                    <Input
-                      label="Precio USD"
-                      startContent={<BsCashCoin className="text-default-400" />}
-                      value={form.priceUSD}
-                      isReadOnly
-                    />
-                  </div>
-                </Tab>
-              </Tabs>
+              <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
+                <Input
+                  label="Precio COP internacional"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceCopInternational}
+                  isReadOnly
+                />
+                <Input
+                  label="Precio USD"
+                  startContent={<BsCashCoin className="text-default-400" />}
+                  value={form.priceUSD}
+                  isReadOnly
+                />
+              </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Input

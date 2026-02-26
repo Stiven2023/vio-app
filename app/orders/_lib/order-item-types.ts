@@ -26,6 +26,8 @@ export type OrderItemInput = {
   orderId: string;
   productId?: string | null;
   additionId?: string | null;
+  hasAdditions?: boolean;
+  additionEvidence?: string | null;
   productPriceId?: string | null;
   quantity: number;
   unitPrice?: string | number | null;

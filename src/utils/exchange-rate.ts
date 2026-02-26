@@ -1,7 +1,7 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { exchangeRates } from "@/src/db/schema";
+import { additions, exchangeRates, products } from "@/src/db/schema";
 
 const DEFAULT_FLOOR_RATE = 3600;
 const PROVIDER_NAME = "datos.gov.co (TRM Colombia)";
@@ -16,7 +16,38 @@ type ExchangeRateUpdate = {
   adjustmentApplied: number;
   sourceDate: string | null;
   createdAt?: string | null;
+  macroConversion?: {
+    productsUpdated: number;
+    additionsUpdated: number;
+  } | null;
 };
+
+async function applyMacroUsdConversion(effectiveRate: number) {
+  const [updatedProducts, updatedAdditions] = await Promise.all([
+    db
+      .update(products)
+      .set({
+        priceCopInternational: sql`round((${products.priceUSD}::numeric * ${effectiveRate})::numeric, 2)`,
+        trmUsed: String(effectiveRate),
+      })
+      .where(isNotNull(products.priceUSD))
+      .returning({ id: products.id }),
+    db
+      .update(additions)
+      .set({
+        priceCopInternational: sql`round((${additions.priceUSD}::numeric * ${effectiveRate})::numeric, 2)`,
+        trmUsed: String(effectiveRate),
+        updatedAt: new Date(),
+      })
+      .where(isNotNull(additions.priceUSD))
+      .returning({ id: additions.id }),
+  ]);
+
+  return {
+    productsUpdated: updatedProducts.length,
+    additionsUpdated: updatedAdditions.length,
+  };
+}
 
 function toNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -128,6 +159,8 @@ export async function updateUsdCopRateDaily(args?: { floorRate?: number }) {
       createdAt: exchangeRates.createdAt,
     });
 
+  const macroConversion = await applyMacroUsdConversion(floored.effectiveRate);
+
   return {
     provider: PROVIDER_NAME,
     sourceRate: fetched.sourceRate,
@@ -136,6 +169,7 @@ export async function updateUsdCopRateDaily(args?: { floorRate?: number }) {
     adjustmentApplied: floored.adjustmentApplied,
     sourceDate: fetched.sourceDate ? fetched.sourceDate.toISOString() : null,
     createdAt: inserted?.createdAt ? new Date(inserted.createdAt).toISOString() : null,
+    macroConversion,
   } satisfies ExchangeRateUpdate;
 }
 

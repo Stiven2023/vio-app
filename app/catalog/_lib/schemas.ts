@@ -5,7 +5,6 @@ export const createCategorySchema = z.object({
 });
 
 export const createProductSchema = z.object({
-  catalogType: z.enum(["NACIONAL", "INTERNACIONAL"]),
   name: z.string().trim().min(1, "Nombre requerido"),
   description: z.string().optional(),
   categoryId: z.string().uuid("Selecciona una categoría"),
@@ -56,52 +55,40 @@ export const createProductSchema = z.object({
   endDate: z.string().trim().optional(),
   isActive: z.boolean().optional(),
 }).superRefine((data, ctx) => {
-  if (data.catalogType === "NACIONAL") {
-    if (!data.priceCopR1?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["priceCopR1"],
-        message: "Precio 1-499 requerido",
-      });
-    }
-    if (!data.priceCopR2?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["priceCopR2"],
-        message: "Precio 500-1000 requerido",
-      });
-    }
-    if (!data.priceCopR3?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["priceCopR3"],
-        message: "Precio 1001+ requerido",
-      });
-    }
-    if (!data.priceMayorista?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["priceMayorista"],
-        message: "Precio mayorista requerido",
-      });
-    }
-    if (!data.priceColanta?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["priceColanta"],
-        message: "Precio Colanta requerido",
-      });
-    }
+  if (!data.priceCopR1?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["priceCopR1"],
+      message: "Precio 1-499 requerido",
+    });
   }
-
-  if (data.catalogType === "INTERNACIONAL") {
-    if (!data.priceCopR1?.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["priceCopR1"],
-        message: "Precio base (1-499) requerido",
-      });
-    }
+  if (!data.priceCopR2?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["priceCopR2"],
+      message: "Precio 500-1000 requerido",
+    });
+  }
+  if (!data.priceCopR3?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["priceCopR3"],
+      message: "Precio 1001+ requerido",
+    });
+  }
+  if (!data.priceMayorista?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["priceMayorista"],
+      message: "Precio mayorista requerido",
+    });
+  }
+  if (!data.priceColanta?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["priceColanta"],
+      message: "Precio Colanta requerido",
+    });
   }
 });
 

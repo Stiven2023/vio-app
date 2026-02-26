@@ -44,9 +44,13 @@ export async function POST(request: Request) {
   return Response.json({
     message: "Tasa USD/COP actualizada",
     rate: updated,
+    macroConversion: updated.macroConversion ?? null,
     note:
       updated.adjustmentApplied > 0
         ? `Se ajustó +${updated.adjustmentApplied.toFixed(4)} para respetar el piso de ${updated.floorRate.toFixed(4)}.`
         : "No fue necesario ajuste por piso.",
+    conversionNote: updated.macroConversion
+      ? `Conversión masiva aplicada: ${updated.macroConversion.productsUpdated} productos y ${updated.macroConversion.additionsUpdated} adiciones.`
+      : "Conversión masiva no aplicada.",
   });
 }

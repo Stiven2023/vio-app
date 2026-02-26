@@ -2,7 +2,7 @@
 
 import type { Addition, Category, Paginated } from "../../_lib/types";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import {
   Table,
@@ -23,7 +23,25 @@ import {
 } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
+import { FilterSearch } from "../ui/filter-search";
+import { FilterSelect } from "../ui/filter-select";
 import { AdditionModal } from "./addition-modal";
+
+type StatusFilter = "all" | "active" | "inactive";
+
+function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
 export function AdditionsTab({
   activeCatalog,
@@ -39,7 +57,32 @@ export function AdditionsTab({
   const [total, setTotal] = useState(0);
   const [selectedAddition, setSelectedAddition] = useState<Addition | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchCode, setSearchCode] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const loadingRef = useRef(false);
+  const categoryNameById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams({
+      catalogType: activeCatalog,
+      status,
+    });
+
+    const q = searchCode.trim();
+
+    if (q) {
+      params.set("q", q);
+    }
+
+    if (categoryFilter !== "all") {
+      params.set("categoryId", categoryFilter);
+    }
+
+    return params.toString();
+  }, [activeCatalog, status, searchCode, categoryFilter]);
 
   function loadAdditions() {
     if (loadingRef.current) return;
@@ -47,7 +90,7 @@ export function AdditionsTab({
     setLoading(true);
 
     apiJson<Paginated<Addition>>(
-      `/api/additions?catalogType=${activeCatalog}&page=${page}&pageSize=${pageSize}`,
+      `/api/additions?${queryString}&page=${page}&pageSize=${pageSize}`,
     )
       .then((response) => {
         setItems(response.items ?? []);
@@ -64,11 +107,11 @@ export function AdditionsTab({
 
   useEffect(() => {
     setPage(1);
-  }, [activeCatalog]);
+  }, [activeCatalog, status, categoryFilter, searchCode]);
 
   useEffect(() => {
     loadAdditions();
-  }, [page, activeCatalog]);
+  }, [page, queryString]);
 
   async function handleDelete(additionId: string) {
     if (!confirm("¿Eliminar esta adición?")) return;
@@ -113,14 +156,48 @@ export function AdditionsTab({
         onSaved={loadAdditions}
       />
 
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">Adiciones</h3>
-        <Button
-          isIconOnly
-          color="primary"
-          onPress={handleNew}
-          startContent={<BsPlusLg />}
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          <FilterSearch
+            className="sm:w-72"
+            placeholder="Buscar por código o nombre…"
+            value={searchCode}
+            onValueChange={setSearchCode}
+          />
+          <FilterSelect
+            className="sm:w-64"
+            label="Categoría"
+            options={[
+              { value: "all", label: "Todas" },
+              ...categories.map((category) => ({
+                value: category.id,
+                label: category.name,
+              })),
+            ]}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
+          />
+          <FilterSelect
+            className="sm:w-56"
+            label="Estado"
+            options={[
+              { value: "all", label: "Todos" },
+              { value: "active", label: "Activos" },
+              { value: "inactive", label: "Inactivos" },
+            ]}
+            value={status}
+            onChange={(v) => setStatus(v as StatusFilter)}
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <Button color="primary" onPress={handleNew} startContent={<BsPlusLg />}>
+            Nueva adición
+          </Button>
+          <Button variant="flat" onPress={loadAdditions}>
+            Refrescar
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -130,7 +207,9 @@ export function AdditionsTab({
       ) : items.length === 0 ? (
         <div className="flex items-center justify-center rounded-lg border border-dashed border-divider py-8 text-center">
           <p className="text-sm text-default-500">
-            No hay adiciones en este catálogo
+            {searchCode.trim() || status !== "all" || categoryFilter !== "all"
+              ? "Sin resultados"
+              : "No hay adiciones en este catálogo"}
           </p>
         </div>
       ) : (
@@ -166,7 +245,6 @@ export function AdditionsTab({
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
-            <TableColumn>Tipo</TableColumn>
             <TableColumn>{activeCatalog === "INTERNACIONAL" ? "Precio USD" : "Precio Base"}</TableColumn>
             <TableColumn>Categoría</TableColumn>
             <TableColumn>Estado</TableColumn>
@@ -180,22 +258,17 @@ export function AdditionsTab({
                 </TableCell>
                 <TableCell>{addition.name}</TableCell>
                 <TableCell>
-                  <Chip
-                    size="sm"
-                    variant="flat"
-                    color={addition.productKind === "ESPECIAL" ? "warning" : "default"}
-                  >
-                    {addition.productKind}
-                  </Chip>
-                </TableCell>
-                <TableCell>
                   <span className="text-sm font-mono">
                     {activeCatalog === "INTERNACIONAL"
-                      ? addition.priceUSD ?? "-"
-                      : addition.priceCopBase ?? "-"}
+                      ? formatCurrency(addition.priceUSD, "USD")
+                      : formatCurrency(addition.priceCopBase, "COP")}
                   </span>
                 </TableCell>
-                <TableCell>{addition.categoryId}</TableCell>
+                <TableCell>
+                  {addition.categoryId
+                    ? (categoryNameById.get(addition.categoryId) ?? "-")
+                    : "-"}
+                </TableCell>
                 <TableCell>
                   <Chip
                     size="sm"

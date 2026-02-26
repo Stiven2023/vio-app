@@ -7,6 +7,7 @@ import NextLink from "next/link";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Select, SelectItem } from "@heroui/select";
 import {
   Modal,
   ModalBody,
@@ -51,6 +52,8 @@ type OrderItemRow = {
   quantity: number;
   unitPrice: string | null;
   totalPrice: string | null;
+  hasAdditions?: boolean | null;
+  additionEvidence?: string | null;
   imageUrl?: string | null;
   status: OrderItemStatusTarget["status"] | null;
   lastStatusAt?: string | null;
@@ -87,6 +90,7 @@ export function OrderItemsPage({
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [reloadKey, setReloadKey] = useState(0);
+  const [additionsFilter, setAdditionsFilter] = useState<"ALL" | "WITH" | "WITHOUT">("ALL");
 
   const [itemsData, setItemsData] = useState<Paginated<OrderItemRow> | null>(
     null,
@@ -104,6 +108,11 @@ export function OrderItemsPage({
     Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
   >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -131,9 +140,12 @@ export function OrderItemsPage({
     sp.set("orderId", orderId);
     sp.set("page", String(page));
     sp.set("pageSize", String(pageSize));
+    if (additionsFilter !== "ALL") {
+      sp.set("hasAdditions", additionsFilter === "WITH" ? "with" : "without");
+    }
 
     return `/api/orders/items?${sp.toString()}`;
-  }, [orderId, page]);
+  }, [orderId, page, additionsFilter]);
 
   useEffect(() => {
     let active = true;
@@ -172,8 +184,7 @@ export function OrderItemsPage({
     { key: "statusHistory", name: "Ultimo cambio" },
     { key: "confectionist", name: "Confeccionista" },
     { key: "quantity", name: "Cantidad" },
-    { key: "unitPrice", name: "Unit" },
-    { key: "totalPrice", name: "Total" },
+    { key: "additions", name: "Adiciones" },
     { key: "actions", name: "Acciones" },
   ];
 
@@ -274,21 +285,42 @@ export function OrderItemsPage({
 
       <Card>
         <CardHeader className="flex items-center justify-between">
-          <div>
+          <div className="min-w-0">
             <div className="font-semibold">Información</div>
             <div className="text-sm text-default-500">
               Pedido: {orderId} {loadingOrder ? "(cargando...)" : null}
               <span className="ml-2">Kind: {orderKind}</span>
             </div>
           </div>
-          <Button
-            isDisabled={loadingItems}
-            size="sm"
-            variant="flat"
-            onPress={refresh}
-          >
-            Refrescar
-          </Button>
+          <div className="flex items-center gap-2">
+            {isClient ? (
+              <Select
+                className="w-52"
+                label="Filtro adiciones"
+                selectedKeys={[additionsFilter]}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0] as "ALL" | "WITH" | "WITHOUT" | undefined;
+                  const next = first ?? "ALL";
+                  setAdditionsFilter(next);
+                  setPage(1);
+                }}
+              >
+                <SelectItem key="ALL">Todos</SelectItem>
+                <SelectItem key="WITH">Con adiciones</SelectItem>
+                <SelectItem key="WITHOUT">Sin adiciones</SelectItem>
+              </Select>
+            ) : (
+              <div className="h-14 w-52 rounded-xl border border-default-200 bg-content1" />
+            )}
+            <Button
+              isDisabled={loadingItems}
+              size="sm"
+              variant="flat"
+              onPress={refresh}
+            >
+              Refrescar
+            </Button>
+          </div>
         </CardHeader>
         <CardBody>
           {orderKind === "COMPLETACION" ? (
@@ -428,6 +460,16 @@ export function OrderItemsPage({
                           ) : (
                             "-"
                           )}
+                        </TableCell>
+                      );
+                    }
+
+                    if (columnKey === "additions") {
+                      return (
+                        <TableCell>
+                          {row.hasAdditions
+                            ? String(row.additionEvidence ?? "Sí").trim() || "Sí"
+                            : "No"}
                         </TableCell>
                       );
                     }

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, eq, ilike, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { additions, categories } from "@/src/db/schema";
@@ -70,14 +70,40 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
-    const catalogType = String(searchParams.get("catalogType") ?? "").trim();
-    const where =
-      catalogType === "INTERNACIONAL"
-        ? and(
-            isNotNull(additions.priceUSD),
-            isNotNull(additions.priceCopInternational),
-          )
-        : undefined;
+    const catalogType = String(searchParams.get("catalogType") ?? "").trim().toUpperCase();
+    const status = String(searchParams.get("status") ?? "all").trim().toLowerCase();
+    const categoryId = String(searchParams.get("categoryId") ?? "").trim();
+    const q = String(searchParams.get("q") ?? "").trim();
+
+    const filters: any[] = [];
+
+    if (catalogType === "INTERNACIONAL") {
+      filters.push(
+        and(
+          isNotNull(additions.priceUSD),
+          isNotNull(additions.priceCopInternational),
+        ),
+      );
+    }
+
+    if (status === "active") {
+      filters.push(eq(additions.isActive, true));
+    } else if (status === "inactive") {
+      filters.push(eq(additions.isActive, false));
+    }
+
+    if (categoryId) {
+      filters.push(eq(additions.categoryId, categoryId));
+    }
+
+    if (q) {
+      filters.push(
+        sql`(${ilike(additions.additionCode, `%${q}%`)} OR ${ilike(additions.name, `%${q}%`)})`,
+      );
+    }
+
+    const where = filters.length > 0 ? and(...filters) : undefined;
+
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
       .from(additions)

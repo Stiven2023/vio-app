@@ -3,9 +3,11 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  additions,
   clients,
   employees,
   inventoryItems,
+  orderItemAdditions,
   inventoryOutputs,
   orderItemMaterials,
   orderItemPackaging,
@@ -164,7 +166,20 @@ export async function GET(
       : "0",
   }));
 
-  return Response.json({ item, packaging, socks, materials });
+  const additionsRows = await db
+    .select({
+      id: orderItemAdditions.id,
+      additionId: orderItemAdditions.additionId,
+      quantity: orderItemAdditions.quantity,
+      unitPrice: orderItemAdditions.unitPrice,
+      additionName: additions.name,
+      additionCode: additions.additionCode,
+    })
+    .from(orderItemAdditions)
+    .leftJoin(additions, eq(orderItemAdditions.additionId, additions.id))
+    .where(eq(orderItemAdditions.orderItemId, orderItemId));
+
+  return Response.json({ item, packaging, socks, materials, additions: additionsRows });
 }
 
 function toNullableString(v: unknown) {
@@ -336,6 +351,8 @@ export async function PUT(
       status: orderItems.status,
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
+      hasAdditions: orderItems.hasAdditions,
+      additionEvidence: orderItems.additionEvidence,
     })
     .from(orderItems)
     .where(eq(orderItems.id, orderItemId))
@@ -423,6 +440,14 @@ export async function PUT(
   if (body.productId !== undefined)
     patch.productId = toNullableString(body.productId);
   if (body.name !== undefined) patch.name = toNullableString(body.name);
+  if (body.hasAdditions !== undefined) {
+    patch.hasAdditions = Boolean(body.hasAdditions);
+  }
+  if (body.additionEvidence !== undefined) {
+    const evidence = toNullableString(body.additionEvidence);
+    patch.additionEvidence = evidence;
+    if (evidence) patch.hasAdditions = true;
+  }
 
   const effectiveQuantity = qty ?? Number(existing.quantity ?? 1);
   const effectiveProductId =
@@ -510,6 +535,9 @@ export async function PUT(
   if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
   if (body.manufacturingId !== undefined)
     patch.manufacturingId = toNullableString(body.manufacturingId);
+  if (patch.hasAdditions === false) {
+    patch.additionEvidence = null;
+  }
   if (body.status !== undefined) {
     const nextStatus = String(body.status ?? "").trim().toUpperCase();
 

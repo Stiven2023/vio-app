@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@heroui/table";
 import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import { BsEye } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -28,6 +29,7 @@ import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 
 import { CategoryModal } from "./category-modal";
+import { CategoryProductsModal } from "./category-products-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -50,6 +52,8 @@ export function CategoriesTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [viewingCategory, setViewingCategory] = useState<Category | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -143,6 +147,16 @@ export function CategoriesTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="products"
+                        startContent={<BsEye />}
+                        onPress={() => {
+                          setViewingCategory(c);
+                          setProductsOpen(true);
+                        }}
+                      >
+                        Ver productos
+                      </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -185,6 +199,14 @@ export function CategoriesTab({
         isOpen={modalOpen}
         onOpenChange={setModalOpen}
         onSaved={refresh}
+      />
+      <CategoryProductsModal
+        category={viewingCategory}
+        isOpen={productsOpen}
+        onOpenChange={(open) => {
+          if (!open) setViewingCategory(null);
+          setProductsOpen(open);
+        }}
       />
 
       <ConfirmActionModal

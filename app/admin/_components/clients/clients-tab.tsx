@@ -660,6 +660,7 @@ export function ClientsTab({
         client={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
         onOpenChange={setLegalStatusModalOpen}
+        onSaved={onSaved}
       />
 
       <ConfirmActionModal

@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   }
 
   const user = {
+    id: (payload as any).userId ?? null,
     name: (payload as any).name ?? null,
     role: (payload as any).role ?? null,
   };

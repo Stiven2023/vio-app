@@ -2,7 +2,7 @@
 
 import type { Category, Product } from "../../_lib/types";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { Tab, Tabs } from "@heroui/tabs";
 import {
   BsEye,
   BsPencilSquare,
@@ -42,6 +41,20 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 type StatusFilter = "all" | "active" | "inactive";
 type CatalogType = "NACIONAL" | "INTERNACIONAL";
 
+function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function ProductsTab({
   canCreate,
   canEdit,
@@ -57,9 +70,31 @@ export function ProductsTab({
 }) {
   const [internalActiveCatalog, setInternalActiveCatalog] = useState<CatalogType>("NACIONAL");
   const [internalCategories, setInternalCategories] = useState<Category[]>([]);
+  const [searchCode, setSearchCode] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const currentCatalog = activeCatalog ?? internalActiveCatalog;
   const currentCategories = categories ?? internalCategories;
+  const endpoint = useMemo(() => {
+    const params = new URLSearchParams({
+      catalogType: currentCatalog,
+      status,
+      searchBy: "code",
+    });
+
+    const q = searchCode.trim();
+
+    if (q) {
+      params.set("q", q);
+    }
+
+    if (categoryFilter !== "all") {
+      params.set("categoryId", categoryFilter);
+    }
+
+    return `/api/products?${params.toString()}`;
+  }, [categoryFilter, currentCatalog, searchCode, status]);
 
   const {
     data: productsData,
@@ -67,7 +102,7 @@ export function ProductsTab({
     page: productsPage,
     setPage: setProductsPage,
     refresh: refreshProducts,
-  } = usePaginatedApi<Product>(`/api/products?catalogType=${currentCatalog}`, 10);
+  } = usePaginatedApi<Product>(endpoint, 10);
 
   const categoryNameById = useMemo(
     () => new Map(currentCategories.map((c) => [c.id, c.name])),
@@ -76,13 +111,13 @@ export function ProductsTab({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!categories) {
@@ -94,36 +129,16 @@ export function ProductsTab({
 
   useEffect(() => {
     setProductsPage(1);
-  }, [currentCatalog, setProductsPage]);
-
-  const filtered = useMemo(() => {
-    const items = productsData?.items ?? [];
-    const q = search.trim().toLowerCase();
-
-    return items.filter((p) => {
-      if (status === "active" && !p.isActive) return false;
-      if (status === "inactive" && p.isActive) return false;
-      if (!q) return true;
-
-      const catName = p.categoryId
-        ? (categoryNameById.get(p.categoryId) ?? "")
-        : "";
-
-      return (
-        p.name.toLowerCase().includes(q) ||
-        String(p.productCode ?? "").toLowerCase().includes(q) ||
-        (p.description ?? "").toLowerCase().includes(q) ||
-        catName.toLowerCase().includes(q)
-      );
-    });
-  }, [categoryNameById, productsData, search, status]);
+  }, [currentCatalog, status, categoryFilter, searchCode, setProductsPage]);
 
   const emptyContent = useMemo(() => {
     if (productsLoading) return "";
-    if (search.trim() !== "" || status !== "all") return "Sin resultados";
+    if (searchCode.trim() !== "" || status !== "all" || categoryFilter !== "all") {
+      return "Sin resultados";
+    }
 
     return "Sin productos";
-  }, [productsLoading, search, status]);
+  }, [productsLoading, searchCode, status, categoryFilter]);
 
   const remove = async () => {
     const p = pendingDelete;
@@ -148,31 +163,108 @@ export function ProductsTab({
     }
   };
 
+  const downloadTemplate = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/documents/plantilla-integracion-masiva-productos.csv";
+    anchor.download = "plantilla-integracion-masiva-productos.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const downloadCategoriesCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/categories/csv";
+    anchor.download = "categories-id-name.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const importCsv = async (file: File) => {
+    if (importing) return;
+
+    const isCsv =
+      file.type === "text/csv" ||
+      file.name.toLowerCase().endsWith(".csv") ||
+      file.type === "application/vnd.ms-excel";
+
+    if (!isCsv) {
+      toast.error("Selecciona un archivo CSV válido");
+      return;
+    }
+
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/products/import", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || (typeof payload === "string" ? payload : "No se pudo importar el CSV"),
+        );
+      }
+
+      const createdCount = Number(payload?.createdCount ?? 0);
+      const failedCount = Number(payload?.failedCount ?? 0);
+      const firstError = Array.isArray(payload?.errors)
+        ? String(payload.errors[0]?.message ?? "")
+        : "";
+
+      if (createdCount === 0 && failedCount > 0) {
+        toast.error(
+          `No se creó ningún producto. ${firstError || "Revisa el archivo CSV y vuelve a intentar."}`,
+        );
+        return;
+      }
+
+      if (failedCount > 0) {
+        toast.success(`Importación parcial: ${createdCount} creados, ${failedCount} con error`);
+      } else {
+        toast.success(`Importación masiva exitosa: ${createdCount} productos creados`);
+      }
+
+      refreshProducts();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          {/* Solo mostrar Tabs si no vienen proporcionadas desde el padre */}
-          {!activeCatalog ? (
-            <Tabs
-              aria-label="Tipo de catálogo"
-              selectedKey={internalActiveCatalog}
-              onSelectionChange={(key) =>
-                setInternalActiveCatalog(
-                  String(key) === "INTERNACIONAL" ? "INTERNACIONAL" : "NACIONAL",
-                )
-              }
-              variant="underlined"
-            >
-              <Tab key="NACIONAL" title="Catálogo nacional" />
-              <Tab key="INTERNACIONAL" title="Catálogo internacional" />
-            </Tabs>
-          ) : null}
           <FilterSearch
             className="sm:w-72"
-            placeholder="Buscar producto…"
-            value={search}
-            onValueChange={setSearch}
+            placeholder="Buscar por código…"
+            value={searchCode}
+            onValueChange={setSearchCode}
+          />
+          <FilterSelect
+            className="sm:w-64"
+            label="Categoría"
+            options={[
+              { value: "all", label: "Todas" },
+              ...currentCategories.map((category) => ({
+                value: category.id,
+                label: category.name,
+              })),
+            ]}
+            value={categoryFilter}
+            onChange={setCategoryFilter}
           />
           <FilterSelect
             className="sm:w-56"
@@ -187,7 +279,31 @@ export function ProductsTab({
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          <input
+            ref={fileInputRef}
+            accept=".csv,text/csv"
+            className="hidden"
+            type="file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              importCsv(file);
+            }}
+          />
+          <Button variant="flat" onPress={downloadTemplate}>
+            Descargar plantilla CSV
+          </Button>
+          <Button variant="flat" onPress={downloadCategoriesCsv}>
+            Descargar categorías CSV
+          </Button>
+          <Button
+            color="secondary"
+            isLoading={importing}
+            onPress={() => fileInputRef.current?.click()}
+          >
+            Importar CSV
+          </Button>
           {canCreate ? (
             <Button
               color="primary"
@@ -220,7 +336,7 @@ export function ProductsTab({
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody emptyContent={emptyContent} items={filtered}>
+          <TableBody emptyContent={emptyContent} items={productsData?.items ?? []}>
             {(p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium text-default-700">
@@ -244,8 +360,8 @@ export function ProductsTab({
                 <TableCell>
                   <span className="text-sm font-mono">
                     {currentCatalog === "INTERNACIONAL"
-                      ? p.priceUSD ?? "-"
-                      : p.priceCopR1 ?? "-"}
+                      ? formatCurrency(p.priceUSD, "USD")
+                      : formatCurrency(p.priceCopR1, "COP")}
                   </span>
                 </TableCell>
                 <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
@@ -317,7 +433,6 @@ export function ProductsTab({
 
       <ProductModal
         categories={currentCategories}
-        defaultCatalogType={activeCatalog}
         isOpen={modalOpen}
         product={editing}
         onOpenChange={setModalOpen}
@@ -330,7 +445,6 @@ export function ProductsTab({
             ? (categoryNameById.get(selectedProduct.categoryId) ?? "-")
             : "-"
         }
-        catalogType={currentCatalog}
         isOpen={detailsOpen}
         product={selectedProduct}
         onOpenChange={(open) => {

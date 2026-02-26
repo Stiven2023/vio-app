@@ -77,9 +77,21 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
         throw new Error(text || "No se pudo actualizar la tasa");
       }
 
-      const json = (await res.json()) as { note?: string; message?: string };
+      const json = (await res.json()) as {
+        note?: string;
+        message?: string;
+        conversionNote?: string;
+      };
 
-      toast.success(json.note || json.message || "Tasa actualizada");
+      const successMessage = [
+        json.message || "Tasa actualizada",
+        json.note,
+        json.conversionNote,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+
+      toast.success(successMessage);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo actualizar la tasa");

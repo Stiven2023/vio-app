@@ -218,7 +218,7 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
                 </div>
               </div>
               <div>
-                <div className="text-xs text-default-500">Descuento (%)</div>
+                <div className="text-xs text-default-500">Descuento diseños/items (%)</div>
                 <div className="font-medium">
                   {String(data.totals.discountPercent)}
                 </div>

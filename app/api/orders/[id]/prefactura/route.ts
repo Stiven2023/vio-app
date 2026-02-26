@@ -12,6 +12,10 @@ function asNumber(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function roundMoney(v: number) {
+  return Math.round((v + Number.EPSILON) * 100) / 100;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -84,14 +88,22 @@ export async function GET(
       return acc + lineTotal;
     }, 0);
 
-    const discountPercent = Math.min(
-      100,
-      Math.max(0, asNumber(orderRow.discount)),
-    );
-    const discountAmount = subtotal * (discountPercent / 100);
-    const totalAfterDiscount = subtotal - discountAmount;
-    const shippingFee = Math.max(0, asNumber(orderRow.shippingFee));
-    const grandTotal = totalAfterDiscount + shippingFee;
+    const rawSubtotal = lines.reduce((acc, l) => {
+      const qty = Number(l.quantity ?? 0);
+      const unit = asNumber(l.unitPrice);
+      return acc + unit * qty;
+    }, 0);
+
+    const subtotalRounded = roundMoney(subtotal);
+    const rawSubtotalRounded = roundMoney(rawSubtotal);
+    const discountAmount = roundMoney(Math.max(0, rawSubtotalRounded - subtotalRounded));
+    const discountPercent =
+      rawSubtotalRounded > 0
+        ? Math.min(100, Math.max(0, (discountAmount / rawSubtotalRounded) * 100))
+        : 0;
+    const totalAfterDiscount = subtotalRounded;
+    const shippingFee = roundMoney(Math.max(0, asNumber(orderRow.shippingFee)));
+    const grandTotal = roundMoney(totalAfterDiscount + shippingFee);
 
     const [paidRow] = await db
       .select({
@@ -103,18 +115,18 @@ export async function GET(
       )
       .limit(1);
 
-    const paidTotal = Math.max(0, asNumber(paidRow?.paidTotal));
+    const paidTotal = roundMoney(Math.max(0, asNumber(paidRow?.paidTotal)));
     const paidPercent =
       grandTotal > 0
         ? Math.min(100, Math.max(0, (paidTotal / grandTotal) * 100))
         : 0;
-    const remaining = Math.max(0, grandTotal - paidTotal);
+    const remaining = roundMoney(Math.max(0, grandTotal - paidTotal));
 
     return Response.json({
       order: orderRow,
       lines,
       totals: {
-        subtotal,
+        subtotal: subtotalRounded,
         discountPercent,
         discountAmount,
         totalAfterDiscount,

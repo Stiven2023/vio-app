@@ -125,6 +125,31 @@ export function DesignSection({
         <Input isReadOnly label="Total" value={computedTotal} />
       </div>
 
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <Switch
+          isDisabled={locked}
+          isSelected={Boolean(value.hasAdditions)}
+          onValueChange={(v: boolean) =>
+            onChange({
+              ...value,
+              hasAdditions: v,
+              additionEvidence: v ? String(value.additionEvidence ?? "") : "",
+            })
+          }
+        >
+          Tiene adiciones
+        </Switch>
+      </div>
+
+      <Textarea
+        isDisabled={locked || !Boolean(value.hasAdditions)}
+        label="Evidencia de adición"
+        minRows={2}
+        placeholder="Describe la adición aplicada a este diseño"
+        value={String(value.additionEvidence ?? "")}
+        onValueChange={(v: string) => onChange({ ...value, additionEvidence: v })}
+      />
+
       <Textarea
         isDisabled={locked}
         label="Observaciones"

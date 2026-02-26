@@ -15,6 +15,8 @@ import {
   orders,
   orderPayments,
   orderStatusHistory,
+  prefacturas,
+  quotations,
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
@@ -834,7 +836,23 @@ export async function DELETE(request: Request) {
 
   if (advisorForbidden) return advisorForbidden;
 
-  const deleted = await db.transaction(async (tx) => {
+  const employeeId = await resolveEmployeeId(request);
+
+  const disabled = await db.transaction(async (tx) => {
+    const [orderRow] = await tx
+      .select({
+        id: orders.id,
+        orderCode: orders.orderCode,
+        status: orders.status,
+      })
+      .from(orders)
+      .where(eq(orders.id, String(id)))
+      .limit(1);
+
+    if (!orderRow) {
+      return null;
+    }
+
     const items = await tx
       .select({ id: orderItems.id })
       .from(orderItems)
@@ -842,36 +860,86 @@ export async function DELETE(request: Request) {
 
     const itemIds = items.map((r) => r.id);
 
-    await tx.delete(orderPayments).where(eq(orderPayments.orderId, String(id)));
     await tx
-      .delete(orderStatusHistory)
-      .where(eq(orderStatusHistory.orderId, String(id)));
+      .update(orderPayments)
+      .set({ status: "ANULADO" as any })
+      .where(eq(orderPayments.orderId, String(id)));
+
+    await tx
+      .update(orderItems)
+      .set({
+        isActive: false,
+        status: "CANCELADO" as any,
+      })
+      .where(eq(orderItems.orderId, String(id)));
 
     if (itemIds.length > 0) {
-      await tx
-        .delete(orderItemRevisions)
-        .where(inArray(orderItemRevisions.orderItemId, itemIds));
-      await tx
-        .delete(orderItemStatusHistory)
-        .where(inArray(orderItemStatusHistory.orderItemId, itemIds));
-      await tx
-        .delete(orderItemConfection)
-        .where(inArray(orderItemConfection.orderItemId, itemIds));
-      await tx
-        .delete(inventoryOutputs)
-        .where(inArray(inventoryOutputs.orderItemId, itemIds));
-      await tx.delete(orderItems).where(inArray(orderItems.id, itemIds));
+      await tx.insert(orderItemStatusHistory).values(
+        itemIds.map((orderItemId) => ({
+          orderItemId,
+          status: "CANCELADO" as any,
+          changedBy: employeeId,
+        })),
+      );
     }
 
-    const delRes = await tx
-      .delete(orders)
+    const prefRows = await tx
+      .select({
+        id: prefacturas.id,
+        quotationId: prefacturas.quotationId,
+      })
+      .from(prefacturas)
+      .where(eq(prefacturas.orderId, String(id)));
+
+    await tx
+      .update(prefacturas)
+      .set({ status: "CANCELADA" })
+      .where(eq(prefacturas.orderId, String(id)));
+
+    const quotationIds = prefRows
+      .map((p) => String(p.quotationId ?? "").trim())
+      .filter(Boolean);
+
+    if (quotationIds.length > 0) {
+      await tx
+        .update(quotations)
+        .set({
+          prefacturaApproved: false,
+          isActive: false,
+          updatedAt: new Date(),
+        })
+        .where(inArray(quotations.id, quotationIds));
+    }
+
+    await tx
+      .update(orders)
+      .set({ status: "CANCELADO" as any })
+      .where(eq(orders.id, String(id)));
+
+    await tx.insert(orderStatusHistory).values({
+      orderId: String(id),
+      status: "CANCELADO" as any,
+      changedBy: employeeId,
+    });
+
+    const [updated] = await tx
+      .select()
+      .from(orders)
       .where(eq(orders.id, String(id)))
-      .returning();
+      .limit(1);
 
-    const res = Array.isArray(delRes) ? delRes[0] : (delRes as any)?.rows?.[0];
-
-    return res;
+    return updated;
   });
 
-  return Response.json(deleted);
+  if (!disabled) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  await createNotificationsForPermission("VER_PEDIDO", {
+    title: "Pedido deshabilitado",
+    message: `Pedido ${disabled.orderCode} marcado como CANCELADO.`,
+    href: `/orders/${String(id)}/detail`,
+  });
+
+  return Response.json(disabled);
 }

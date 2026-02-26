@@ -358,6 +358,10 @@ export function OrderItemEditPage(props: {
         quantity,
         unitPrice: String(unitPrice),
         totalPrice: String(unitPrice * quantity),
+        hasAdditions: Boolean(item.hasAdditions),
+        additionEvidence: item.hasAdditions
+          ? String(item.additionEvidence ?? "").trim() || null
+          : null,
         observations: item.observations ?? null,
         fabric: item.fabric ?? null,
         imageUrl,
@@ -395,6 +399,24 @@ export function OrderItemEditPage(props: {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  if (loadingItem && !initialValue) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-8 w-56 rounded-medium bg-default-200" />
+        <div className="h-4 w-80 rounded-medium bg-default-100" />
+        <div className="rounded-medium border border-default-200 p-4 space-y-3">
+          <div className="h-12 w-full rounded-medium bg-default-100" />
+          <div className="h-12 w-full rounded-medium bg-default-100" />
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="h-10 rounded-medium bg-default-100" />
+            <div className="h-10 rounded-medium bg-default-100" />
+            <div className="h-10 rounded-medium bg-default-100" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

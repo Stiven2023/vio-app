@@ -12,6 +12,7 @@ export type OrderKind = "NUEVO" | "COMPLETACION" | "REFERENTE";
 
 export type OrderStatus =
   | "PENDIENTE"
+  | "APROBACION_INICIAL"
   | "PRODUCCION"
   | "ATRASADO"
   | "FINALIZADO"

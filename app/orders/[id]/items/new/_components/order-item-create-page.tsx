@@ -365,6 +365,10 @@ export function OrderItemCreatePage(props: {
         quantity,
         unitPrice: String(unitPrice),
         totalPrice: String(unitPrice * quantity),
+        hasAdditions: Boolean(item.hasAdditions),
+        additionEvidence: item.hasAdditions
+          ? String(item.additionEvidence ?? "").trim() || null
+          : null,
         observations: item.observations ?? null,
         fabric: item.fabric ?? null,
         imageUrl,

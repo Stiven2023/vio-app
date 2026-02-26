@@ -21,6 +21,7 @@ type OrderItemPayload = {
   packaging: Array<any>;
   socks: Array<any>;
   materials: Array<any>;
+  additions?: Array<any>;
 };
 
 type IssueRow = {
@@ -55,6 +56,23 @@ function buildGroupedSummary(packaging: Array<any>): GroupedRow[] {
   }
 
   return Array.from(map.entries()).map(([size, quantity]) => ({ size, quantity }));
+}
+
+function asNumber(value: unknown) {
+  const n = Number(String(value ?? "0"));
+
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatMoney(value: unknown, currency: string | null | undefined) {
+  const code = String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
+
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: code,
+    minimumFractionDigits: code === "USD" ? 2 : 0,
+    maximumFractionDigits: code === "USD" ? 2 : 0,
+  }).format(asNumber(value));
 }
 
 export function OrderItemDetailPage({
@@ -164,6 +182,7 @@ export function OrderItemDetailPage({
   }, [groupedSummary, payload?.packaging]);
 
   const item = payload?.item ?? null;
+  const currency = String(order?.currency ?? "COP").toUpperCase();
 
   if (loading) {
     return (
@@ -218,9 +237,6 @@ export function OrderItemDetailPage({
             <div>
               <div className="text-xs text-default-500">Cantidad</div>
               <div className="font-medium">{item?.quantity ?? "-"}</div>
-              <div className="text-sm text-default-600">
-                Total: {item?.totalPrice ?? "-"}
-              </div>
             </div>
           </div>
         </CardBody>
@@ -239,12 +255,14 @@ export function OrderItemDetailPage({
               </div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Precio</div>
-              <div className="font-medium">{item?.unitPrice ?? "-"}</div>
+              <div className="text-xs text-default-500">Tiene adiciones</div>
+              <div className="font-medium">{item?.hasAdditions ? "Sí" : "No"}</div>
             </div>
-            <div>
-              <div className="text-xs text-default-500">Total</div>
-              <div className="font-medium">{item?.totalPrice ?? "-"}</div>
+            <div className="sm:col-span-2">
+              <div className="text-xs text-default-500">Evidencia de adición</div>
+              <div className="font-medium whitespace-pre-wrap">
+                {String(item?.additionEvidence ?? "").trim() || "-"}
+              </div>
             </div>
             <div>
               <div className="text-xs text-default-500">Tela</div>
@@ -343,6 +361,36 @@ export function OrderItemDetailPage({
           </CardBody>
         </Card>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Adiciones aplicadas</div>
+        </CardHeader>
+        <CardBody>
+          <Table removeWrapper aria-label="Adiciones del diseño">
+            <TableHeader>
+              <TableColumn>Código</TableColumn>
+              <TableColumn>Adición</TableColumn>
+              <TableColumn>Cantidad</TableColumn>
+              <TableColumn>Unitario</TableColumn>
+              <TableColumn>Total</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent="Sin adiciones" items={payload?.additions ?? []}>
+              {(row: any) => (
+                <TableRow key={row.id ?? `${row.additionId}-${row.additionName}`}>
+                  <TableCell>{row.additionCode ?? "-"}</TableCell>
+                  <TableCell>{row.additionName ?? "-"}</TableCell>
+                  <TableCell>{row.quantity ?? "-"}</TableCell>
+                  <TableCell>{formatMoney(row.unitPrice ?? 0, currency)}</TableCell>
+                  <TableCell>
+                    {formatMoney(asNumber(row.quantity) * asNumber(row.unitPrice), currency)}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader>

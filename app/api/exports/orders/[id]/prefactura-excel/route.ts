@@ -296,12 +296,18 @@ export async function GET(
     return acc + lineTotal;
   }, 0);
 
-  const discountPercent = Math.min(
-    100,
-    Math.max(0, asNumber(orderRow.discount)),
-  );
-  const discountAmount = subtotal * (discountPercent / 100);
-  const totalAfterDiscount = subtotal - discountAmount;
+  const rawSubtotal = lines.reduce((acc, l) => {
+    const qty = Number(l.quantity ?? 0);
+    const unit = asNumber(l.unitPrice);
+    return acc + unit * qty;
+  }, 0);
+
+  const discountAmount = Math.max(0, rawSubtotal - subtotal);
+  const discountPercent =
+    rawSubtotal > 0
+      ? Math.min(100, Math.max(0, (discountAmount / rawSubtotal) * 100))
+      : 0;
+  const totalAfterDiscount = subtotal;
   const shippingFee = Math.max(0, asNumber(orderRow.shippingFee));
   const grandTotal = totalAfterDiscount + shippingFee;
 

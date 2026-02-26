@@ -202,6 +202,7 @@ export async function PUT(request: Request) {
   }
   const response = Response.json({
     user: {
+      id: user[0].id,
       name,
       role: roleName,
     },

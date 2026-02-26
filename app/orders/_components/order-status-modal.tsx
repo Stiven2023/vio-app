@@ -18,6 +18,7 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 
 const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "PENDIENTE", label: "Pendiente" },
+  { value: "APROBACION_INICIAL", label: "Aprobación inicial" },
   { value: "PRODUCCION", label: "Produccion" },
   { value: "ATRASADO", label: "Atrasado" },
   { value: "FINALIZADO", label: "Finalizado" },

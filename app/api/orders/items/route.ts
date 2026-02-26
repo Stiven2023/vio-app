@@ -197,6 +197,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const { page, pageSize, offset } = parsePagination(searchParams);
   const orderId = String(searchParams.get("orderId") ?? "").trim();
+  const hasAdditionsFilter = String(searchParams.get("hasAdditions") ?? "").trim().toLowerCase();
 
   if (!orderId) {
     return new Response("orderId required", { status: 400 });
@@ -206,7 +207,18 @@ export async function GET(request: Request) {
 
   if (advisorForbidden) return advisorForbidden;
 
-  const where = and(eq(orderItems.orderId, orderId));
+  const whereClauses = [eq(orderItems.orderId, orderId)];
+
+  if (hasAdditionsFilter === "with") {
+    whereClauses.push(eq(orderItems.hasAdditions, true));
+  } else if (hasAdditionsFilter === "without") {
+    whereClauses.push(eq(orderItems.hasAdditions, false));
+  }
+
+  const where =
+    whereClauses.length > 1
+      ? and(...whereClauses)
+      : whereClauses[0];
 
   const [{ total }] = await db
     .select({ total: sql<number>`count(*)::int` })
@@ -221,6 +233,8 @@ export async function GET(request: Request) {
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
       totalPrice: orderItems.totalPrice,
+      hasAdditions: orderItems.hasAdditions,
+      additionEvidence: orderItems.additionEvidence,
       imageUrl: orderItems.imageUrl,
       status: orderItems.status,
       lastStatusAt: sql<string | null>`(
@@ -344,6 +358,8 @@ export async function POST(request: Request) {
     }
 
     const unitPrice = Math.max(0, asNumber(resolvedUnitPrice));
+    const additionEvidence = toNullableString(body.additionEvidence);
+    const hasAdditions = Boolean(body.hasAdditions) || Boolean(additionEvidence);
 
     const [oi] = await tx
       .insert(orderItems)
@@ -354,6 +370,8 @@ export async function POST(request: Request) {
         quantity: qty,
         unitPrice: String(unitPrice),
         totalPrice: String(unitPrice * qty),
+        hasAdditions,
+        additionEvidence: hasAdditions ? additionEvidence : null,
         observations: toNullableString(body.observations),
         fabric: toNullableString(body.fabric),
         imageUrl: toNullableString(body.imageUrl),

@@ -53,6 +53,7 @@ import {
 const statusOptions: Array<{ value: string; label: string }> = [
   { value: "all", label: "Todos" },
   { value: "PENDIENTE", label: "Pendiente" },
+  { value: "APROBACION_INICIAL", label: "Aprobación inicial" },
   { value: "PRODUCCION", label: "Producción" },
   { value: "ATRASADO", label: "Atrasado" },
   { value: "FINALIZADO", label: "Finalizado" },
@@ -160,7 +161,7 @@ export function OrdersTab({
         method: "DELETE",
         body: JSON.stringify({ id: o.id }),
       });
-      toast.success("Pedido eliminado");
+      toast.success("Pedido deshabilitado");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();

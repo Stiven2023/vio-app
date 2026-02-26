@@ -16,6 +16,12 @@ export function usePaginatedApi<T>(endpoint: string, pageSize: number) {
   const refresh = useCallback(() => setReloadKey((v) => v + 1), []);
 
   useEffect(() => {
+    if (!endpoint) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
     let active = true;
 
     setLoading(true);

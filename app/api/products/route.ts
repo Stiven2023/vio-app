@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { categories, products } from "@/src/db/schema";
@@ -73,17 +73,70 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
+    const status = String(searchParams.get("status") ?? "active").toLowerCase();
+    const catalogType = String(searchParams.get("catalogType") ?? "").toUpperCase();
+    const categoryId = String(searchParams.get("categoryId") ?? "").trim();
+    const q = String(searchParams.get("q") ?? "").trim();
+    const searchBy = String(searchParams.get("searchBy") ?? "all").toLowerCase();
 
-    // Obtener todos los productos activos
+    const filters = [] as Array<any>;
+
+    if (status === "active") {
+      filters.push(eq(products.isActive, true));
+    } else if (status === "inactive") {
+      filters.push(eq(products.isActive, false));
+    }
+
+    if (catalogType === "INTERNACIONAL") {
+      filters.push(
+        and(
+          isNotNull(products.priceCopInternational),
+          isNotNull(products.priceUSD),
+        ),
+      );
+    } else if (catalogType === "NACIONAL") {
+      filters.push(
+        and(
+          isNotNull(products.priceCopR1),
+          isNotNull(products.priceCopR2),
+          isNotNull(products.priceCopR3),
+          isNotNull(products.priceColanta),
+          isNotNull(products.priceMayorista),
+        ),
+      );
+    }
+
+    if (categoryId) {
+      filters.push(eq(products.categoryId, categoryId));
+    }
+
+    if (q) {
+      if (searchBy === "code") {
+        filters.push(ilike(products.productCode, `%${q}%`));
+      } else if (searchBy === "name") {
+        filters.push(ilike(products.name, `%${q}%`));
+      } else {
+        filters.push(
+          or(
+            ilike(products.productCode, `%${q}%`),
+            ilike(products.name, `%${q}%`),
+            ilike(products.description, `%${q}%`),
+          ),
+        );
+      }
+    }
+
+    const whereClause = filters.length > 0 ? and(...filters) : undefined;
+
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
       .from(products)
-      .where(sql`${products.isActive} = true`);
+      .where(whereClause);
 
     const items = await db
       .select()
       .from(products)
-      .where(sql`${products.isActive} = true`)
+      .where(whereClause)
       .limit(pageSize)
       .offset(offset);
 

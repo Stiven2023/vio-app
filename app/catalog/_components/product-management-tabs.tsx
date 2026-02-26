@@ -33,7 +33,6 @@ export function ProductManagementTabs({
 
   return (
     <div className="space-y-3">
-      {/* Catalog Type Tabs */}
       <Tabs
         aria-label="Tipo de catálogo"
         selectedKey={activeCatalog}

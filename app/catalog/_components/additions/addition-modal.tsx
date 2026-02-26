@@ -20,8 +20,21 @@ import { BsBoxSeam, BsCashCoin, BsTag } from "react-icons/bs";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { getTRMColombia, applyTRMConversion } from "@/src/utils/trm";
 
+function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+  const amount = Number(value ?? 0);
+  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+    return "";
+  }
+
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 type FormState = {
-  productKind: "REGULAR" | "ESPECIAL";
   name: string;
   description: string;
   categoryId: string;
@@ -45,7 +58,6 @@ export function AdditionModal({
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<FormState>({
-    productKind: "REGULAR",
     name: "",
     description: "",
     categoryId: "",
@@ -112,7 +124,6 @@ export function AdditionModal({
     setErrors({});
     setSubmitting(false);
     setForm({
-      productKind: (addition?.productKind ?? "REGULAR") as "REGULAR" | "ESPECIAL",
       name: addition?.name ?? "",
       description: addition?.description ?? "",
       categoryId: addition?.categoryId ?? "",
@@ -177,7 +188,7 @@ export function AdditionModal({
       const payload: any = {
         ...(addition?.id && { id: addition.id }),
         catalogType: "INTERNACIONAL",
-        productKind: form.productKind,
+        productKind: addition?.productKind ?? "REGULAR",
         name: form.name,
         description: form.description,
         categoryId: form.categoryId,
@@ -221,24 +232,6 @@ export function AdditionModal({
           {addition?.id ? "Editar Adición" : "Nueva Adición"}
         </ModalHeader>
         <ModalBody className="gap-4">
-          <Select
-            label="Tipo de Producto"
-            selectedKeys={[form.productKind]}
-            onChange={(e) =>
-              setForm((s) => ({
-                ...s,
-                productKind: e.target.value as "REGULAR" | "ESPECIAL",
-              }))
-            }
-          >
-            <SelectItem key="REGULAR">
-              Regular
-            </SelectItem>
-            <SelectItem key="ESPECIAL">
-              Especial
-            </SelectItem>
-          </Select>
-
           <Select
             label="Categoría"
             selectedKeys={form.categoryId ? [form.categoryId] : []}
@@ -294,13 +287,13 @@ export function AdditionModal({
               <Input
                 label="Precio COP internacional (calculado +19%)"
                 startContent={<BsCashCoin className="text-default-400" />}
-                value={form.priceCopInternational}
+                value={formatCurrency(form.priceCopInternational, "COP")}
                 isReadOnly
               />
               <Input
                 label="Precio USD (calculado)"
                 startContent={<BsCashCoin className="text-default-400" />}
-                value={form.priceUSD}
+                value={formatCurrency(form.priceUSD, "USD")}
                 isReadOnly
               />
               <p className="text-xs text-default-500">

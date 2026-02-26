@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderPayments } from "@/src/db/schema";
+import { orderPayments, orders, orderStatusHistory, prefacturas } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -25,6 +25,70 @@ function toPositiveNumericString(v: unknown) {
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
 const statuses = new Set(["PENDIENTE", "PARCIAL", "PAGADO", "ANULADO"]);
+
+async function syncOrderStatusByPayments(orderId: string) {
+  const [orderRow] = await db
+    .select({ id: orders.id, total: orders.total, status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!orderRow) return;
+
+  const [paidRow] = await db
+    .select({
+      paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
+    })
+    .from(orderPayments)
+    .where(
+      sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} <> 'ANULADO'`,
+    )
+    .limit(1);
+
+  const total = Math.max(0, Number(orderRow.total ?? 0));
+  const paidTotal = Math.max(0, Number(paidRow?.paidTotal ?? 0));
+  const paidPercent = total > 0 ? (paidTotal / total) * 100 : 0;
+
+  const nextStatus =
+    paidPercent >= 50
+      ? "PRODUCCION"
+      : paidTotal > 0
+        ? "APROBACION_INICIAL"
+        : "PENDIENTE";
+
+  const nextPrefacturaStatus =
+    paidPercent >= 50
+      ? "PROGRAMACION"
+      : paidTotal > 0
+        ? "APROBACION_INICIAL"
+        : "PENDIENTE_CONTABILIDAD";
+
+  await db.transaction(async (tx) => {
+    const [currentOrder] = await tx
+      .select({ status: orders.status })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (String(currentOrder?.status ?? "") !== nextStatus) {
+      await tx
+        .update(orders)
+        .set({ status: nextStatus as any })
+        .where(eq(orders.id, orderId));
+
+      await tx.insert(orderStatusHistory).values({
+        orderId,
+        status: nextStatus as any,
+        changedBy: null,
+      });
+    }
+
+    await tx
+      .update(prefacturas)
+      .set({ status: nextPrefacturaStatus })
+      .where(eq(prefacturas.orderId, orderId));
+  });
+}
 
 export async function PUT(
   request: Request,
@@ -100,6 +164,10 @@ export async function PUT(
 
   if (!updated) return new Response("Not found", { status: 404 });
 
+  if (updated.orderId) {
+    await syncOrderStatusByPayments(String(updated.orderId));
+  }
+
   return Response.json(updated);
 }
 
@@ -130,6 +198,10 @@ export async function DELETE(
     .returning();
 
   if (!deleted) return new Response("Not found", { status: 404 });
+
+  if (deleted.orderId) {
+    await syncOrderStatusByPayments(String(deleted.orderId));
+  }
 
   return Response.json(deleted);
 }

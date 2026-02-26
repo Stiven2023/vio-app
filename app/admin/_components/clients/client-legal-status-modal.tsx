@@ -49,10 +49,12 @@ export function ClientLegalStatusModal({
   client,
   isOpen,
   onOpenChange,
+  onSaved,
 }: {
   client: Client | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaved?: () => void;
 }) {
   const [status, setStatus] = useState<"VIGENTE" | "EN_REVISION" | "BLOQUEADO">("VIGENTE");
   const [notes, setNotes] = useState("");
@@ -104,6 +106,7 @@ export function ClientLegalStatusModal({
       // Recargar historial
       const data = await getClientLegalStatusHistory(client.id);
       setHistory(data || []);
+      onSaved?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al actualizar");
     } finally {
