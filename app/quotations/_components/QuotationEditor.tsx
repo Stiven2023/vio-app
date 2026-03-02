@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { Switch } from "@heroui/switch";
 import { Button } from "@heroui/button";
+import { Select, SelectItem } from "@heroui/select";
 import { toast } from "react-hot-toast";
 
 import { useSessionStore } from "@/store/session";
@@ -27,7 +28,10 @@ import {
 
 type QuotationEditorProps = {
   quoteId?: string;
+  mode?: "quotation" | "prefactura";
 };
+
+type PrefacturaOrderType = "VN" | "VI" | "VT" | "VW";
 
 type QuotationDetailResponse = {
   id: string;
@@ -66,7 +70,7 @@ type QuotationDetailResponse = {
   }>;
 };
 
-export function QuotationEditor({ quoteId }: QuotationEditorProps) {
+export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditorProps) {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
 
@@ -101,6 +105,9 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
   const [initialItems, setInitialItems] = useState<QuotationDetailResponse["items"] | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadedQuoteCode, setLoadedQuoteCode] = useState("");
+  const [prefacturaOrderType, setPrefacturaOrderType] =
+    useState<PrefacturaOrderType>("VN");
+  const [creatingPrefactura, setCreatingPrefactura] = useState(false);
 
   const { products, loading: loadingProducts } = useProductsData(form.currency);
   const { additions, loading: loadingAdditions } = useAdditionsData(form.currency);
@@ -302,6 +309,86 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
       }
     }
 
+    if (mode === "prefactura" && !quoteId) {
+      if (creatingPrefactura) return;
+
+      if (!form.clientId) {
+        toast.error("Selecciona un cliente activo");
+        return;
+      }
+
+      const validItems = items.filter(
+        (row) => row.productId && row.quantity > 0 && row.unitPrice >= 0,
+      );
+
+      if (validItems.length === 0) {
+        toast.error("Agrega al menos un item válido");
+        return;
+      }
+
+      const orderName = String(form.customerName ?? "").trim()
+        ? `Pedido ${String(form.customerName ?? "").trim()}`
+        : "Pedido prefactura";
+
+      try {
+        setCreatingPrefactura(true);
+        const created = await apiJson<{ prefactura?: { id: string } }>("/api/prefacturas", {
+          method: "POST",
+          body: JSON.stringify({
+            clientId: form.clientId,
+            documentType: form.documentType,
+            currency: form.currency,
+            shippingEnabled,
+            shippingFee,
+            subtotal: computed.subtotal,
+            total: computed.total,
+            orderName,
+            orderType: prefacturaOrderType,
+            items: validItems.map((item) => ({
+              productId: item.productId,
+              orderType: item.orderType,
+              process: item.process,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              orderCodeReference: item.referenceOrderCode ?? null,
+              designNumber: item.referenceDesign ?? null,
+              additions: item.additions.map((add) => ({
+                id: add.id,
+                quantity: add.quantity,
+                unitPrice: add.unitPrice,
+              })),
+            })),
+          }),
+        });
+
+        toast.success("Prefactura creada");
+
+        if (!quoteId) {
+          try {
+            localStorage.removeItem(draftCacheKey);
+          } catch {
+            // ignore
+          }
+        }
+
+        if (created?.prefactura?.id) {
+          router.push("/prefacturas");
+          router.refresh();
+          return;
+        }
+
+        router.push("/prefacturas");
+        router.refresh();
+        return;
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+        return;
+      } finally {
+        setCreatingPrefactura(false);
+      }
+    }
+
     const formToSave = {
       ...form,
       sellerId: form.sellerId || user?.id || "",
@@ -318,7 +405,7 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
       insuranceFee,
     );
 
-    if (saved) {
+    if (saved.ok) {
       if (!quoteId) {
         try {
           localStorage.removeItem(draftCacheKey);
@@ -336,12 +423,48 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">
-            {quoteId ? "Editar cotización" : "Crear cotización"}
+            {quoteId
+              ? "Editar cotización"
+              : mode === "prefactura"
+                ? "Crear prefactura"
+                : "Crear cotización"}
           </h1>
-          <p className="text-default-600">Código: {loadedQuoteCode || quoteCode}</p>
+          <p className="text-default-600">
+            Código: {loadedQuoteCode || quoteCode}
+            {mode === "prefactura" && !quoteId ? " (se creará como prefactura directa)" : ""}
+          </p>
         </div>
-        <Button variant="flat" onPress={() => router.push("/quotations")}>Volver</Button>
+        <Button
+          variant="flat"
+          onPress={() =>
+            router.push(mode === "prefactura" && !quoteId ? "/prefacturas" : "/quotations")
+          }
+        >
+          Volver
+        </Button>
       </div>
+
+      {mode === "prefactura" && !quoteId ? (
+        <Card radius="md" shadow="none" className="border border-default-200">
+          <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Select
+              label="Tipo de pedido"
+              selectedKeys={[prefacturaOrderType]}
+              onSelectionChange={(keys) => {
+                const first = String(Array.from(keys)[0] ?? "VN");
+                setPrefacturaOrderType(
+                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
+                );
+              }}
+            >
+              <SelectItem key="VN">VN - Nacional</SelectItem>
+              <SelectItem key="VI">VI - Internacional</SelectItem>
+              <SelectItem key="VT">VT</SelectItem>
+              <SelectItem key="VW">VW</SelectItem>
+            </Select>
+          </CardBody>
+        </Card>
+      ) : null}
 
       <Card radius="md" shadow="none" className="border border-default-200">
         <CardHeader className="text-sm font-semibold">Información General</CardHeader>
@@ -434,8 +557,12 @@ export function QuotationEditor({ quoteId }: QuotationEditorProps) {
               <span>{asMoney(computed.advancePayment)}</span>
             </div>
 
-            <Button color="primary" isLoading={submitting} onPress={handleSaveQuotation}>
-              {quoteId ? "Guardar cambios" : "Guardar cotización"}
+            <Button
+              color="primary"
+              isLoading={submitting || creatingPrefactura}
+              onPress={handleSaveQuotation}
+            >
+              {quoteId ? "Guardar cambios" : mode === "prefactura" ? "Guardar prefactura" : "Guardar cotización"}
             </Button>
           </CardBody>
         </Card>

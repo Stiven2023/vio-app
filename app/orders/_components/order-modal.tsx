@@ -28,6 +28,8 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 const orderTypes: Array<{ value: OrderType; label: string }> = [
   { value: "VN", label: "VN" },
   { value: "VI", label: "VI" },
+  { value: "VT", label: "VT" },
+  { value: "VW", label: "VW" },
 ];
 
 const orderKinds: Array<{ value: OrderKind; label: string }> = [

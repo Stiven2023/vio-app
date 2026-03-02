@@ -21,7 +21,10 @@ export default async function ProgramacionBodegaPage() {
       <h1 className="text-2xl font-bold">Programación Bodega</h1>
       <p className="text-default-600 mt-1">Items en proceso BODEGA.</p>
       <div className="mt-6">
-        <ProgramacionItemsTable process="BODEGA" />
+        <ProgramacionItemsTable
+          process="BODEGA"
+          actualizacionBasePath="/programacion/actualizacion"
+        />
       </div>
     </div>
   );

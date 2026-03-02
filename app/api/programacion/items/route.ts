@@ -17,9 +17,11 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
 type OrderStatusFilter = "PRODUCCION" | "APROBACION_INICIAL";
+type ProgramacionView = "GENERAL" | "ACTUALIZACION";
 
 const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
 const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "APROBACION_INICIAL"];
+const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -41,6 +43,9 @@ export async function GET(request: Request) {
   const orderStatusRaw = String(searchParams.get("orderStatus") ?? "PRODUCCION")
     .trim()
     .toUpperCase();
+  const viewRaw = String(searchParams.get("view") ?? "GENERAL")
+    .trim()
+    .toUpperCase();
 
   if (!VALID_PROCESSES.includes(processRaw as ProcessType)) {
     return new Response("process inválido. Usa: PRODUCCION, BODEGA, COMPRAS", {
@@ -54,17 +59,38 @@ export async function GET(request: Request) {
     });
   }
 
+  if (!VALID_VIEW.includes(viewRaw as ProgramacionView)) {
+    return new Response("view inválido. Usa: GENERAL o ACTUALIZACION", {
+      status: 400,
+    });
+  }
+
   const process = processRaw as ProcessType;
   const orderStatus = orderStatusRaw as OrderStatusFilter;
+  const view = viewRaw as ProgramacionView;
 
-  const where = and(
+  const whereBase = and(
     sql`coalesce(nullif(${orderItems.process}, ''), 'PRODUCCION') = ${process}`,
     eq(orders.status, orderStatus as any),
   );
 
+  const where =
+    view === "ACTUALIZACION"
+      ? and(
+          whereBase,
+          sql`exists (
+            select 1
+            from order_item_status_history oish
+            where oish.order_item_id = ${orderItems.id}
+              and oish.status in ('EN_REVISION_CAMBIO', 'APROBADO_CAMBIO', 'RECHAZADO_CAMBIO')
+          )`,
+        )
+      : whereBase;
+
   const baseItems = await db
     .select({
       id: orderItems.id,
+      orderItemId: orderItems.id,
       orderId: orders.id,
       orderCode: orders.orderCode,
       orderDate: orders.createdAt,
@@ -137,6 +163,7 @@ export async function GET(request: Request) {
 
   const expandedItems: Array<{
     id: string;
+    orderItemId: string;
     orderId: string;
     orderCode: string;
     orderDate: Date | null;
@@ -160,6 +187,7 @@ export async function GET(request: Request) {
     if (sizeRows.length === 0) {
       expandedItems.push({
         id: itemId,
+        orderItemId: itemId,
         orderId: String(item.orderId),
         orderCode: String(item.orderCode ?? ""),
         orderDate: item.orderDate,
@@ -183,6 +211,7 @@ export async function GET(request: Request) {
     sizeRows.forEach((sizeRow, index) => {
       expandedItems.push({
         id: `${itemId}:${index + 1}`,
+        orderItemId: itemId,
         orderId: String(item.orderId),
         orderCode: String(item.orderCode ?? ""),
         orderDate: item.orderDate,

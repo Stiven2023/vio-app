@@ -35,6 +35,7 @@ import {
   BsTag,
   BsTruck,
   BsWindowStack,
+  BsCreditCard,
 } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -94,6 +95,7 @@ export const Navbar = () => {
   const [canSeeConfectionists, setCanSeeConfectionists] = useState(false);
   const [canSeePackers, setCanSeePackers] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
+  const [canSeePayments, setCanSeePayments] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [roleOverride, setRoleOverride] = useState("");
   const pathname = usePathname();
@@ -112,6 +114,7 @@ export const Navbar = () => {
     setCanSeeConfectionists(Boolean(permissions?.VER_CONFECCIONISTA));
     setCanSeePackers(Boolean(permissions?.VER_EMPAQUE));
     setCanSeeStatusHistory(Boolean(permissions?.VER_HISTORIAL_ESTADO));
+    setCanSeePayments(Boolean(permissions?.VER_PAGO || permissions?.CREAR_PAGO));
   };
 
   const readCachedPermissions = () => {
@@ -154,7 +157,7 @@ export const Navbar = () => {
     }
 
     fetch(
-      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_EMPAQUE,VER_HISTORIAL_ESTADO`,
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_EMPAQUE,VER_HISTORIAL_ESTADO,VER_PAGO,CREAR_PAGO`,
       {
         credentials: "include",
       },
@@ -171,6 +174,8 @@ export const Navbar = () => {
               VER_CONFECCIONISTA: false,
               VER_EMPAQUE: false,
               VER_HISTORIAL_ESTADO: false,
+              VER_PAGO: false,
+              CREAR_PAGO: false,
             },
           };
 
@@ -266,6 +271,7 @@ export const Navbar = () => {
     }
     if (isAuthenticated && canSeeOrders) {
       extra.push({ name: "Pedidos", href: "/orders" });
+      extra.push({ name: "Pagos", href: "/pagos" });
       extra.push({ name: "Cotizaciones", href: "/quotations" });
       extra.push({ name: "Prefacturas", href: "/prefacturas" });
       extra.push({ name: "Contabilidad", href: "/contabilidad" });
@@ -349,6 +355,22 @@ export const Navbar = () => {
                   href="/dashboard"
                 >
                   <BsWindowStack />
+                </NextLink>
+              </Tooltip>
+            </NavbarItem>
+          ) : null}
+
+          {!operarioOnly && isAuthenticated && canSeePayments ? (
+            <NavbarItem key="nav-payments">
+              <Tooltip content="Pagos" placement="bottom">
+                <NextLink
+                  className={clsx(
+                    iconBase,
+                    isActive("/pagos") ? activeClass : idleClass,
+                  )}
+                  href="/pagos"
+                >
+                  <BsCreditCard />
                 </NextLink>
               </Tooltip>
             </NavbarItem>

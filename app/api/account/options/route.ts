@@ -72,6 +72,7 @@ export async function GET(request: Request) {
             department: employees.department,
             employeeImageUrl: employees.employeeImageUrl,
             signatureImageUrl: employees.signatureImageUrl,
+            companyImageUrl: employees.companyImageUrl,
           })
           .from(employees)
           .where(eq(employees.id, employeeId))
@@ -191,6 +192,11 @@ export async function PUT(request: Request) {
         ? String(payload.signatureImageUrl).trim()
         : null;
 
+    if (payload.companyImageUrl !== undefined)
+      employeePatch.companyImageUrl = payload.companyImageUrl
+        ? String(payload.companyImageUrl).trim()
+        : null;
+
     if (Object.keys(userPatch).length > 0) {
       await db.update(users).set(userPatch).where(eq(users.id, userId));
     }
@@ -226,6 +232,7 @@ export async function PUT(request: Request) {
         department: employees.department,
         employeeImageUrl: employees.employeeImageUrl,
         signatureImageUrl: employees.signatureImageUrl,
+        companyImageUrl: employees.companyImageUrl,
       })
       .from(employees)
       .where(eq(employees.userId, userId))

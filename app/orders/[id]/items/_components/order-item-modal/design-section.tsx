@@ -49,38 +49,60 @@ function getPastedImageFile(ev: React.ClipboardEvent) {
 
 export function DesignSection({
   value,
-  imageFile,
+  imageOneFile,
+  imageTwoFile,
+  logoFile,
   computedTotal,
   orderKind,
   isCreateBlocked,
   canEditUnitPrice,
   onChange,
-  onSelectImageFile,
+  onSelectImageOneFile,
+  onSelectImageTwoFile,
+  onSelectLogoFile,
 }: {
   value: OrderItemInput;
-  imageFile: File | null;
+  imageOneFile: File | null;
+  imageTwoFile: File | null;
+  logoFile: File | null;
   computedTotal: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   isCreateBlocked: boolean;
   canEditUnitPrice: boolean;
   onChange: (next: OrderItemInput) => void;
-  onSelectImageFile: (file: File | null) => void;
+  onSelectImageOneFile: (file: File | null) => void;
+  onSelectImageTwoFile: (file: File | null) => void;
+  onSelectLogoFile: (file: File | null) => void;
 }) {
   const locked = orderKind === "COMPLETACION";
   const dropDisabled = locked || isCreateBlocked;
 
-  const previewUrl = React.useMemo(() => {
-    if (!imageFile) return null;
-    return URL.createObjectURL(imageFile);
-  }, [imageFile]);
+  const imageOnePreview = React.useMemo(() => {
+    if (!imageOneFile) return null;
+    return URL.createObjectURL(imageOneFile);
+  }, [imageOneFile]);
+
+  const imageTwoPreview = React.useMemo(() => {
+    if (!imageTwoFile) return null;
+    return URL.createObjectURL(imageTwoFile);
+  }, [imageTwoFile]);
+
+  const logoPreview = React.useMemo(() => {
+    if (!logoFile) return null;
+    return URL.createObjectURL(logoFile);
+  }, [logoFile]);
 
   React.useEffect(() => {
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (imageOnePreview) URL.revokeObjectURL(imageOnePreview);
+      if (imageTwoPreview) URL.revokeObjectURL(imageTwoPreview);
+      if (logoPreview) URL.revokeObjectURL(logoPreview);
     };
-  }, [previewUrl]);
+  }, [imageOnePreview, imageTwoPreview, logoPreview]);
 
-  const resolvedImage = previewUrl ?? (value.imageUrl ? String(value.imageUrl) : "");
+  const resolvedImageOne = imageOnePreview ?? (value.clothingImageOneUrl ? String(value.clothingImageOneUrl) : "");
+  const resolvedImageTwo = imageTwoPreview ?? (value.clothingImageTwoUrl ? String(value.clothingImageTwoUrl) : "");
+  const resolvedLogo = logoPreview ?? (value.logoImageUrl ? String(value.logoImageUrl) : "");
 
   function setNeck(id: string) {
     onChange({ ...value, neckType: value.neckType === id ? null : id });
@@ -95,6 +117,23 @@ export function DesignSection({
         value={String(value.name ?? "")}
         onValueChange={(v: string) => onChange({ ...value, name: v })}
       />
+
+      <Select
+        isDisabled={locked}
+        label="Tipo de prenda / posición"
+        selectedKeys={value.garmentType ? [String(value.garmentType)] : ["JUGADOR"]}
+        onSelectionChange={(keys: any) => {
+          const k = Array.from(keys as any)[0];
+          onChange({ ...value, garmentType: k ? String(k) as any : "JUGADOR" });
+        }}
+      >
+        <SelectItem key="JUGADOR">Jugador</SelectItem>
+        <SelectItem key="ARQUERO">Arquero</SelectItem>
+        <SelectItem key="CAPITAN">Capitán</SelectItem>
+        <SelectItem key="JUEZ">Juez</SelectItem>
+        <SelectItem key="ENTRENADOR">Entrenador</SelectItem>
+        <SelectItem key="LIBERO">Líbero</SelectItem>
+      </Select>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Input
@@ -278,7 +317,7 @@ export function DesignSection({
         </Switch>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div
           className={
             "rounded-medium border border-dashed border-default-300 p-3 " +
@@ -292,19 +331,19 @@ export function DesignSection({
             if (dropDisabled) return;
             e.preventDefault();
             const f = e.dataTransfer.files?.[0] ?? null;
-            if (f) onSelectImageFile(f);
+            if (f) onSelectImageOneFile(f);
           }}
           onPaste={(e) => {
             if (dropDisabled) return;
             const f = getPastedImageFile(e);
             if (f) {
               e.preventDefault();
-              onSelectImageFile(f);
+              onSelectImageOneFile(f);
             }
           }}
           tabIndex={dropDisabled ? -1 : 0}
         >
-          <div className="text-sm text-default-600 mb-2">Imagen (opcional)</div>
+          <div className="text-sm text-default-600 mb-2">Imagen prenda 1</div>
           <div className="text-xs text-default-500">
             Arrastra y suelta aquí, o pega desde el portapapeles (Ctrl+V).
           </div>
@@ -314,29 +353,76 @@ export function DesignSection({
               disabled={dropDisabled}
               type="file"
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                onSelectImageFile(e.target.files?.[0] ?? null)
+                onSelectImageOneFile(e.target.files?.[0] ?? null)
               }
             />
           </div>
         </div>
+
+        <div className={"rounded-medium border border-dashed border-default-300 p-3 " + (dropDisabled ? "opacity-60" : "")}>
+          <div className="text-sm text-default-600 mb-2">Imagen prenda 2 (opcional)</div>
+          <div className="mt-2">
+            <input
+              accept="image/*"
+              disabled={dropDisabled}
+              type="file"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onSelectImageTwoFile(e.target.files?.[0] ?? null)
+              }
+            />
+          </div>
+        </div>
+
+        <div className={"rounded-medium border border-dashed border-default-300 p-3 " + (dropDisabled ? "opacity-60" : "")}>
+          <div className="text-sm text-default-600 mb-2">Logo (obligatorio)</div>
+          <div className="mt-2">
+            <input
+              accept="image/*"
+              disabled={dropDisabled}
+              type="file"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onSelectLogoFile(e.target.files?.[0] ?? null)
+              }
+            />
+          </div>
+        </div>
+
         <Input
           isReadOnly
-          label="URL actual"
-          value={String(value.imageUrl ?? "")}
+          label="URL prenda 1"
+          value={String(value.clothingImageOneUrl ?? "")}
         />
+        <Input isReadOnly label="URL prenda 2" value={String(value.clothingImageTwoUrl ?? "")} />
+        <Input isReadOnly label="URL logo" value={String(value.logoImageUrl ?? "")} />
       </div>
 
-      {resolvedImage ? (
+      {resolvedImageOne || resolvedImageTwo || resolvedLogo ? (
         <div className="rounded-medium border border-default-200 bg-content1 p-3">
           <div className="text-sm font-semibold mb-2">Preview</div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-start">
-            <img
-              alt="Preview del diseño"
-              className="h-40 w-auto rounded-medium border border-default-200 object-contain"
-              src={resolvedImage}
-            />
-            <div className="text-xs text-default-500">
-              {imageFile ? imageFile.name : "Imagen actual"}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div>
+              <div className="text-xs text-default-500 mb-1">Prenda 1</div>
+              {resolvedImageOne ? (
+                <img alt="Preview prenda 1" className="h-32 w-auto rounded-medium border border-default-200 object-contain" src={resolvedImageOne} />
+              ) : (
+                <div className="text-xs text-default-400">Sin imagen</div>
+              )}
+            </div>
+            <div>
+              <div className="text-xs text-default-500 mb-1">Prenda 2</div>
+              {resolvedImageTwo ? (
+                <img alt="Preview prenda 2" className="h-32 w-auto rounded-medium border border-default-200 object-contain" src={resolvedImageTwo} />
+              ) : (
+                <div className="text-xs text-default-400">Sin imagen</div>
+              )}
+            </div>
+            <div>
+              <div className="text-xs text-default-500 mb-1">Logo</div>
+              {resolvedLogo ? (
+                <img alt="Preview logo" className="h-32 w-auto rounded-medium border border-default-200 object-contain" src={resolvedLogo} />
+              ) : (
+                <div className="text-xs text-danger">Falta logo</div>
+              )}
             </div>
           </div>
         </div>

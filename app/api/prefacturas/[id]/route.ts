@@ -158,21 +158,35 @@ export async function PUT(
           .set({ status })
           .where(eq(prefacturas.id, prefacturaId));
 
-        await tx
-          .update(quotations)
-          .set({
-            prefacturaApproved: status === "APROBADA",
-            updatedAt: new Date(),
-          })
-          .where(eq(quotations.id, String(current.quotationId)));
+        if (current.quotationId) {
+          await tx
+            .update(quotations)
+            .set({
+              prefacturaApproved: status === "APROBADA",
+              updatedAt: new Date(),
+            })
+            .where(eq(quotations.id, String(current.quotationId)));
+        }
       }
 
-      if (current.orderId && (orderName || orderType === "VN" || orderType === "VI")) {
+      if (
+        current.orderId &&
+        (orderName ||
+          orderType === "VN" ||
+          orderType === "VI" ||
+          orderType === "VT" ||
+          orderType === "VW")
+      ) {
         await tx
           .update(orders)
           .set({
             orderName: orderName || undefined,
-            type: orderType === "VI" ? ("VI" as any) : orderType === "VN" ? ("VN" as any) : undefined,
+            type:
+              orderType === "VI" || orderType === "VT" || orderType === "VW"
+                ? (orderType as any)
+                : orderType === "VN"
+                  ? ("VN" as any)
+                  : undefined,
           })
           .where(eq(orders.id, String(current.orderId)));
       }
@@ -247,10 +261,12 @@ export async function DELETE(
 
       await tx.delete(prefacturas).where(eq(prefacturas.id, prefacturaId));
 
-      await tx
-        .update(quotations)
-        .set({ prefacturaApproved: false, updatedAt: new Date() })
-        .where(eq(quotations.id, String(current.quotationId)));
+      if (current.quotationId) {
+        await tx
+          .update(quotations)
+          .set({ prefacturaApproved: false, updatedAt: new Date() })
+          .where(eq(quotations.id, String(current.quotationId)));
+      }
 
       return current;
     });

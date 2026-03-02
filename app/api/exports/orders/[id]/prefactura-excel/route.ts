@@ -1,11 +1,11 @@
 import ExcelJS from "exceljs";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { Buffer as NodeBuffer } from "node:buffer";
 
 import { db } from "@/src/db";
-import { clients, orderItems, orderPayments, orders } from "@/src/db/schema";
+import { clients, orderItemPackaging, orderItems, orderPayments, orders } from "@/src/db/schema";
 import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -277,13 +277,33 @@ export async function GET(
     .select({
       id: orderItems.id,
       name: orderItems.name,
+      garmentType: orderItems.garmentType,
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
       totalPrice: orderItems.totalPrice,
       imageUrl: orderItems.imageUrl,
+      clothingImageOneUrl: orderItems.clothingImageOneUrl,
+      clothingImageTwoUrl: orderItems.clothingImageTwoUrl,
+      logoImageUrl: orderItems.logoImageUrl,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
+
+  const lineIds = lines.map((line) => line.id).filter(Boolean);
+
+  const packaging = lineIds.length
+    ? await db
+        .select({
+          orderItemId: orderItemPackaging.orderItemId,
+          mode: orderItemPackaging.mode,
+          size: orderItemPackaging.size,
+          quantity: orderItemPackaging.quantity,
+          personName: orderItemPackaging.personName,
+          personNumber: orderItemPackaging.personNumber,
+        })
+        .from(orderItemPackaging)
+        .where(inArray(orderItemPackaging.orderItemId, lineIds as any))
+    : [];
 
   const subtotal = lines.reduce((acc, l) => {
     const qty = Number(l.quantity ?? 0);
@@ -371,34 +391,39 @@ export async function GET(
   const sheet = workbook.addWorksheet("Prefactura");
   let rowPointer = applyDocumentHeader(sheet, headerInfo, stickerImageId);
 
-  sheet.getColumn(1).width = 28;
-  sheet.getColumn(2).width = 12;
-  sheet.getColumn(3).width = 16;
+  sheet.getColumn(1).width = 24;
+  sheet.getColumn(2).width = 16;
+  sheet.getColumn(3).width = 12;
   sheet.getColumn(4).width = 16;
-  sheet.getColumn(5).width = 20;
+  sheet.getColumn(5).width = 16;
+  sheet.getColumn(6).width = 16;
+  sheet.getColumn(7).width = 16;
 
   rowPointer += 1;
-  styleSectionTitle(sheet, rowPointer, 1, 5, "DETALLE DE PRODUCTOS");
+  styleSectionTitle(sheet, rowPointer, 1, 7, "DETALLE DE PRODUCTOS");
   rowPointer += 1;
 
-  sheet.addRow(["Diseño", "Cantidad", "Unitario", "Total", "Imagen"]);
-  styleTableHeader(sheet, rowPointer, 1, 5);
+  sheet.addRow(["Diseño", "Tipo", "Cantidad", "Unitario", "Total", "Prenda 1", "Logo"]);
+  styleTableHeader(sheet, rowPointer, 1, 7);
   rowPointer += 1;
 
   for (const line of lines) {
     const row = sheet.addRow([
       line.name ?? "-",
+      line.garmentType ?? "JUGADOR",
       line.quantity ?? 0,
       formatMoney(line.unitPrice ?? 0, currency),
       formatMoney(line.totalPrice ?? 0, currency),
       "",
+      "",
     ]);
-    applyRowBorder(sheet, row.number, 1, 5);
-    centerRowCells(sheet, row.number, 1, 5);
+    applyRowBorder(sheet, row.number, 1, 7);
+    centerRowCells(sheet, row.number, 1, 7);
     rowPointer = row.number + 1;
 
-    if (line.imageUrl) {
-      const image = await fetchImageBuffer(line.imageUrl);
+    const imageOneSource = line.clothingImageOneUrl ?? line.imageUrl;
+    if (imageOneSource) {
+      const image = await fetchImageBuffer(imageOneSource);
       if (image) {
         const imageId = workbook.addImage({
           base64: imageBase64(
@@ -407,17 +432,75 @@ export async function GET(
           ),
           extension: image.extension,
         });
-        addImageToCell(sheet, imageId, row.number, 5, 80);
+        addImageToCell(sheet, imageId, row.number, 6, 70);
       } else {
-        setCenteredCellValue(row.getCell(5), "Imagen no disponible");
+        setCenteredCellValue(row.getCell(6), "Imagen no disponible");
       }
     } else {
-      setCenteredCellValue(row.getCell(5), "Imagen no disponible");
+      setCenteredCellValue(row.getCell(6), "Imagen no disponible");
+    }
+
+    if (line.logoImageUrl) {
+      const image = await fetchImageBuffer(line.logoImageUrl);
+      if (image) {
+        const imageId = workbook.addImage({
+          base64: imageBase64(
+            image.buffer as NodeBuffer,
+            image.extension as ImageExtension,
+          ),
+          extension: image.extension,
+        });
+        addImageToCell(sheet, imageId, row.number, 7, 70);
+      } else {
+        setCenteredCellValue(row.getCell(7), "Imagen no disponible");
+      }
+    } else {
+      setCenteredCellValue(row.getCell(7), "Imagen no disponible");
+    }
+  }
+
+  const lineNameById = new Map(lines.map((line) => [line.id, line.name ?? "-"]));
+  const packagingRows = packaging.filter((row) => {
+    const name = String(row.personName ?? "").trim();
+    const number = String(row.personNumber ?? "").trim();
+    const size = String(row.size ?? "").trim();
+    const quantity = Math.max(0, Math.floor(asNumber(row.quantity)));
+
+    return Boolean(name || number || size || quantity > 0);
+  });
+
+  rowPointer += 1;
+  styleSectionTitle(sheet, rowPointer, 1, 7, "LISTA DE EMPAQUE");
+  rowPointer += 1;
+
+  sheet.addRow(["Diseño", "Número", "Nombre", "Talla", "Cantidad", "", ""]);
+  styleTableHeader(sheet, rowPointer, 1, 7);
+  rowPointer += 1;
+
+  if (packagingRows.length === 0) {
+    const row = sheet.addRow(["-", "-", "-", "-", 0, "", ""]);
+    applyRowBorder(sheet, row.number, 1, 7);
+    centerRowCells(sheet, row.number, 1, 7);
+    rowPointer = row.number + 1;
+  } else {
+    for (const rowData of packagingRows) {
+      const row = sheet.addRow([
+        lineNameById.get(String(rowData.orderItemId)) ?? "-",
+        rowData.personNumber ?? "-",
+        rowData.personName ?? "-",
+        rowData.size ?? "-",
+        Math.max(0, Math.floor(asNumber(rowData.quantity))),
+        "",
+        "",
+      ]);
+      applyRowBorder(sheet, row.number, 1, 7);
+      centerRowCells(sheet, row.number, 1, 7);
+      rowPointer = row.number + 1;
     }
   }
 
   rowPointer += 1;
-  styleSectionTitle(sheet, rowPointer, 1, 5, "RESUMEN FINANCIERO");
+  styleSectionTitle(sheet, rowPointer, 1, 7, "RESUMEN FINANCIERO");
   rowPointer += 1;
 
   const resumenRows = [
@@ -434,21 +517,21 @@ export async function GET(
     sheet.getCell(rowPointer, 1).value = label;
     sheet.getCell(rowPointer, 1).font = { bold: true };
     sheet.getCell(rowPointer, 2).value = value;
-    sheet.mergeCells(rowPointer, 2, rowPointer, 5);
+    sheet.mergeCells(rowPointer, 2, rowPointer, 7);
     sheet.getCell(rowPointer, 2).alignment = {
       vertical: "middle",
       horizontal: "center",
     };
-    applyRowBorder(sheet, rowPointer, 1, 5);
+    applyRowBorder(sheet, rowPointer, 1, 7);
     rowPointer += 1;
   }
 
   rowPointer += 1;
-  styleSectionTitle(sheet, rowPointer, 1, 5, "HISTORIAL DE ABONOS");
+  styleSectionTitle(sheet, rowPointer, 1, 7, "HISTORIAL DE ABONOS");
   rowPointer += 1;
 
-  sheet.addRow(["Fecha", "Metodo", "Estado", "Monto", "Soporte"]);
-  styleTableHeader(sheet, rowPointer, 1, 5);
+  sheet.addRow(["Fecha", "Metodo", "Estado", "Monto", "Soporte", "", ""]);
+  styleTableHeader(sheet, rowPointer, 1, 7);
   rowPointer += 1;
 
   for (const payment of payments) {
@@ -458,9 +541,11 @@ export async function GET(
       payment.status ?? "-",
       formatMoney(payment.amount ?? 0, currency),
       "",
+      "",
+      "",
     ]);
-    applyRowBorder(sheet, row.number, 1, 5);
-    centerRowCells(sheet, row.number, 1, 5);
+    applyRowBorder(sheet, row.number, 1, 7);
+    centerRowCells(sheet, row.number, 1, 7);
     rowPointer = row.number + 1;
 
     if (payment.proofImageUrl) {
@@ -473,7 +558,7 @@ export async function GET(
           ),
           extension: image.extension,
         });
-        addImageToCell(sheet, imageId, row.number, 5, 80);
+        addImageToCell(sheet, imageId, row.number, 5, 70);
       } else {
         setCenteredCellValue(row.getCell(5), "Imagen no disponible");
       }

@@ -76,6 +76,10 @@ type HeaderInfo = {
   sourceOrderId: string;
 };
 
+const KIDS_SIZES = ["2", "4", "6", "8", "10", "12", "14", "16"];
+const ADULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
+const SOCKS_SIZES = ["4-6", "6-8", "8-10", "9-11", "10-12"];
+
 function applyThinBorder(cell: ExcelJS.Cell) {
   cell.border = {
     top: { style: "thin" },
@@ -148,6 +152,20 @@ function styleTableHeader(
 function setCenteredCellValue(cell: ExcelJS.Cell, value: string) {
   cell.value = value;
   cell.alignment = { vertical: "middle", horizontal: "center" };
+}
+
+function qtyBySize(rows: Array<{ size: string | null; quantity: unknown }>) {
+  const map = new Map<string, number>();
+
+  for (const row of rows) {
+    const key = String(row.size ?? "").trim().toUpperCase();
+    if (!key) continue;
+    const qty = Math.max(0, Math.floor(asNumber(row.quantity)));
+    if (qty <= 0) continue;
+    map.set(key, (map.get(key) ?? 0) + qty);
+  }
+
+  return map;
 }
 
 function centerRowCells(
@@ -302,6 +320,7 @@ export async function GET(
     .select({
       id: orderItems.id,
       name: orderItems.name,
+      garmentType: orderItems.garmentType,
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
       totalPrice: orderItems.totalPrice,
@@ -314,6 +333,9 @@ export async function GET(
       gender: orderItems.gender,
       requiresSocks: orderItems.requiresSocks,
       imageUrl: orderItems.imageUrl,
+      clothingImageOneUrl: orderItems.clothingImageOneUrl,
+      clothingImageTwoUrl: orderItems.clothingImageTwoUrl,
+      logoImageUrl: orderItems.logoImageUrl,
     })
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
@@ -630,13 +652,20 @@ export async function GET(
     sheetRow += 1;
 
     sheet.mergeCells(sheetRow, 1, sheetRow, 5);
-    sheet.getCell(sheetRow, 1).value = "Detalle del Diseño";
-    sheet.getCell(sheetRow, 1).font = { bold: true };
+    sheet.getCell(sheetRow, 1).value = `DISEÑO ${index + 1} DE ${totalItems}`;
+    sheet.getCell(sheetRow, 1).font = { bold: true, color: { argb: "FF00E5FF" }, size: 14 };
+    sheet.getCell(sheetRow, 1).alignment = { vertical: "middle", horizontal: "center" };
+    sheet.getCell(sheetRow, 1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF000000" },
+    };
     applyRowBorder(sheet, sheetRow, 1, 5);
     sheetRow += 1;
 
     const detailRows: Array<[string, string, string?, string?]> = [
       ["Diseño", item.name ?? "-", "Estado", item.status ?? "-"],
+      ["Posición", item.garmentType ?? "JUGADOR", "Total prendas", String(item.quantity ?? 0)],
       ["Cantidad", String(item.quantity ?? 0), "Proceso", item.process ?? "-"],
       ["Tela", item.fabric ?? "-", "Cuello", item.neckType ?? "-"],
       ["Manga", item.sleeve ?? "-", "Color", item.color ?? "-"],
@@ -652,82 +681,144 @@ export async function GET(
       sheetRow += 1;
     }
 
-    setLabelValue(sheet, sheetRow, 1, 2, "Imagen", "");
-    sheet.mergeCells(sheetRow, 2, sheetRow, 5);
-    applyRowBorder(sheet, sheetRow, 1, 5);
+    styleSectionTitle(sheet, sheetRow, 1, 5, "IMÁGENES DEL DISEÑO");
+    sheetRow += 1;
+    sheet.addRow(["Prenda 1", "Prenda 2", "Logo", "", ""]);
+    styleTableHeader(sheet, sheetRow, 1, 3);
+    applyRowBorder(sheet, sheetRow, 4, 5);
+    sheetRow += 1;
 
     const imageRow = sheet.getRow(sheetRow);
-    if (imageRow) {
-      if (item.imageUrl) {
-        const image = await fetchImageBuffer(item.imageUrl);
-        if (image) {
-          const imageId = workbook.addImage({
-            base64: imageBase64(
-              image.buffer as NodeBuffer,
-              image.extension as ImageExtension,
-            ),
-            extension: image.extension,
-          });
-          addImageToCell(sheet, imageId, imageRow.number, 2, 120);
-        } else {
-          imageRow.getCell(2).value = "Imagen no disponible";
-        }
-      } else {
-        imageRow.getCell(2).value = "Imagen no disponible";
+    imageRow.height = 78;
+    applyRowBorder(sheet, sheetRow, 1, 5);
+
+    const imageSources = [
+      item.clothingImageOneUrl ?? item.imageUrl,
+      item.clothingImageTwoUrl,
+      item.logoImageUrl,
+    ];
+
+    for (let imageCol = 1; imageCol <= 3; imageCol += 1) {
+      const source = imageSources[imageCol - 1];
+      if (!source) {
+        setCenteredCellValue(sheet.getCell(sheetRow, imageCol), "Imagen no disponible");
+        continue;
       }
+
+      const image = await fetchImageBuffer(source);
+      if (!image) {
+        setCenteredCellValue(sheet.getCell(sheetRow, imageCol), "Imagen no disponible");
+        continue;
+      }
+
+      const imageId = workbook.addImage({
+        base64: imageBase64(
+          image.buffer as NodeBuffer,
+          image.extension as ImageExtension,
+        ),
+        extension: image.extension,
+      });
+      addImageToCell(sheet, imageId, sheetRow, imageCol, 72);
     }
 
     sheetRow += 2;
     styleSectionTitle(sheet, sheetRow, 1, 5, "EMPAQUE");
     sheetRow += 1;
-    sheet.addRow(["Modo", "Talla", "Cantidad", "Nombre", "Numero"]);
+    const itemPackaging = packagingByItem.get(item.id) ?? [];
+    const packingMap = qtyBySize(itemPackaging.map((p) => ({ size: p.size, quantity: p.quantity })));
+
+    sheet.addRow(["TALLA", ...KIDS_SIZES, "TOTAL"]);
+    styleTableHeader(sheet, sheetRow, 1, 10);
+    sheetRow += 1;
+
+    const kidsValues = KIDS_SIZES.map((size) => packingMap.get(size) ?? 0);
+    const kidsTotal = kidsValues.reduce((acc, v) => acc + v, 0);
+    const kidsRow = sheet.addRow(["NIÑO", ...kidsValues, kidsTotal]);
+    applyRowBorder(sheet, kidsRow.number, 1, 10);
+    centerRowCells(sheet, kidsRow.number, 1, 10);
+    sheetRow = kidsRow.number + 1;
+
+    sheet.addRow(["TALLA", ...ADULT_SIZES, "TOTAL"]);
+    styleTableHeader(sheet, sheetRow, 1, 10);
+    sheetRow += 1;
+
+    const adultValues = ADULT_SIZES.map((size) => packingMap.get(size) ?? 0);
+    const adultTotal = adultValues.reduce((acc, v) => acc + v, 0);
+    const adultRow = sheet.addRow(["ADULTO", ...adultValues, adultTotal]);
+    applyRowBorder(sheet, adultRow.number, 1, 10);
+    centerRowCells(sheet, adultRow.number, 1, 10);
+    sheetRow = adultRow.number + 1;
+
+    sheetRow += 1;
+    styleSectionTitle(sheet, sheetRow, 1, 5, "LISTA DE EMPAQUE");
+    sheetRow += 1;
+    sheet.addRow(["Número", "Nombre", "Talla", "Cantidad", "-"]);
     styleTableHeader(sheet, sheetRow, 1, 5);
     sheetRow += 1;
 
-    const itemPackaging = packagingByItem.get(item.id) ?? [];
-    if (itemPackaging.length === 0) {
-      const row = sheet.addRow(["-", "-", "-", "-", "-"]);
+    const packagingRows = itemPackaging.filter((p) => {
+      const name = String(p.personName ?? "").trim();
+      const number = String(p.personNumber ?? "").trim();
+      const size = String(p.size ?? "").trim();
+      const quantity = Math.max(0, Math.floor(asNumber(p.quantity)));
+
+      return Boolean(name || number || size || quantity > 0);
+    });
+
+    if (packagingRows.length === 0) {
+      const row = sheet.addRow(["-", "-", "-", 0, ""]);
       applyRowBorder(sheet, row.number, 1, 5);
       centerRowCells(sheet, row.number, 1, 5);
       sheetRow = row.number + 1;
     } else {
-      itemPackaging.forEach((p) => {
+      for (const p of packagingRows) {
         const row = sheet.addRow([
-          p.mode ?? "-",
+          p.personNumber ?? "-",
+          p.personName ?? "-",
           p.size ?? "-",
           p.quantity ?? 0,
-          p.personName ?? "-",
-          p.personNumber ?? "-",
+          "",
         ]);
         applyRowBorder(sheet, row.number, 1, 5);
         centerRowCells(sheet, row.number, 1, 5);
         sheetRow = row.number + 1;
-      });
+      }
     }
 
     sheetRow += 1;
     styleSectionTitle(sheet, sheetRow, 1, 5, "MEDIAS");
     sheetRow += 1;
-    sheet.addRow(["Talla", "Cantidad", "Descripcion", "Imagen"]);
-    styleTableHeader(sheet, sheetRow, 1, 4);
+    const itemSocks = socksByItem.get(item.id) ?? [];
+    const socksMap = qtyBySize(itemSocks.map((s) => ({ size: s.size, quantity: s.quantity })));
+    sheet.addRow(["TALLAS MEDIAS", ...SOCKS_SIZES, "TOTAL"]);
+    styleTableHeader(sheet, sheetRow, 1, 7);
     sheetRow += 1;
 
-    const itemSocks = socksByItem.get(item.id) ?? [];
-    if (itemSocks.length === 0) {
-      const row = sheet.addRow(["-", "-", "-", "-"]);
-      applyRowBorder(sheet, row.number, 1, 4);
-      centerRowCells(sheet, row.number, 1, 4);
-      sheetRow = row.number + 1;
-    } else {
+    const socksValues = SOCKS_SIZES.map((size) => socksMap.get(size) ?? 0);
+    const socksTotal = socksValues.reduce((acc, v) => acc + v, 0);
+    const socksRow = sheet.addRow(["JUGADOR", ...socksValues, socksTotal]);
+    applyRowBorder(sheet, socksRow.number, 1, 7);
+    centerRowCells(sheet, socksRow.number, 1, 7);
+    sheetRow = socksRow.number + 1;
+
+    if (itemSocks.length > 0) {
+      sheetRow += 1;
+      styleSectionTitle(sheet, sheetRow, 1, 5, "LISTA MEDIAS");
+      sheetRow += 1;
+      sheet.addRow(["Talla", "Cantidad", "Descripcion", "Imagen", "-"]);
+      styleTableHeader(sheet, sheetRow, 1, 5);
+      sheetRow += 1;
+
       for (const sock of itemSocks) {
         const row = sheet.addRow([
           sock.size ?? "-",
           sock.quantity ?? 0,
           sock.description ?? "-",
           "",
+          "",
         ]);
-        applyRowBorder(sheet, row.number, 1, 4);
-        centerRowCells(sheet, row.number, 1, 4);
+        applyRowBorder(sheet, row.number, 1, 5);
+        centerRowCells(sheet, row.number, 1, 5);
 
         if (sock.imageUrl) {
           const image = await fetchImageBuffer(sock.imageUrl);
@@ -739,7 +830,7 @@ export async function GET(
               ),
               extension: image.extension,
             });
-            addImageToCell(sheet, imageId, row.number, 4, 70);
+            addImageToCell(sheet, imageId, row.number, 4, 60);
           } else {
             setCenteredCellValue(row.getCell(4), "Imagen no disponible");
           }

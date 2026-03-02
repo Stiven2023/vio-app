@@ -6,7 +6,7 @@ export type Paginated<T> = {
   hasNextPage: boolean;
 };
 
-export type OrderType = "VN" | "VI";
+export type OrderType = "VN" | "VI" | "VT" | "VW";
 
 export type OrderKind = "NUEVO" | "COMPLETACION" | "REFERENTE";
 
@@ -29,6 +29,7 @@ export type OrderListItem = {
   createdBy?: string | null;
   clientId: string | null;
   clientName: string | null;
+  clientCode?: string | null;
   type: OrderType;
   status: OrderStatus;
   total: string | null;

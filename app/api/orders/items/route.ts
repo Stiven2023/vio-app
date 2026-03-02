@@ -91,6 +91,25 @@ function normalizeOperationalProcess(v: unknown) {
   return "PRODUCCION";
 }
 
+const GARMENT_TYPES = new Set([
+  "JUGADOR",
+  "ARQUERO",
+  "CAPITAN",
+  "JUEZ",
+  "ENTRENADOR",
+  "LIBERO",
+]);
+
+function normalizeGarmentType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (!GARMENT_TYPES.has(raw)) return null;
+
+  return raw;
+}
+
 function resolveOrderTypeFromKind(kind: unknown) {
   const normalizedKind = String(kind ?? "NUEVO")
     .trim()
@@ -327,6 +346,19 @@ export async function POST(request: Request) {
 
   const employeeId = await resolveEmployeeId(request);
   const latestUsdCopRate = await getLatestUsdCopRate();
+  const garmentType = normalizeGarmentType(body.garmentType);
+
+  if (!garmentType) {
+    return new Response("garmentType inválido", { status: 400 });
+  }
+
+  const clothingImageOneUrl = toNullableString(body.clothingImageOneUrl);
+  const clothingImageTwoUrl = toNullableString(body.clothingImageTwoUrl);
+  const logoImageUrl = toNullableString(body.logoImageUrl);
+
+  if (!logoImageUrl) {
+    return new Response("logoImageUrl es obligatorio", { status: 400 });
+  }
 
   let created: typeof orderItems.$inferSelect | undefined;
 
@@ -350,6 +382,16 @@ export async function POST(request: Request) {
       throw new Error(
         "No se pueden agregar diseños en pedidos de completación",
       );
+    }
+
+    const [duplicatedGarmentType] = await tx
+      .select({ id: orderItems.id })
+      .from(orderItems)
+      .where(and(eq(orderItems.orderId, orderId), eq(orderItems.garmentType, garmentType)))
+      .limit(1);
+
+    if (duplicatedGarmentType) {
+      throw new Error(`Ya existe un diseño para el tipo ${garmentType}`);
     }
 
     const productId = toNullableString(body.productId);
@@ -397,6 +439,7 @@ export async function POST(request: Request) {
         orderId,
         productId,
         name: toNullableString(body.name),
+        garmentType,
         quantity: qty,
         unitPrice: String(unitPrice),
         totalPrice: String(unitPrice * qty),
@@ -404,7 +447,10 @@ export async function POST(request: Request) {
         additionEvidence: hasAdditions ? additionEvidence : null,
         observations: toNullableString(body.observations),
         fabric: toNullableString(body.fabric),
-        imageUrl: toNullableString(body.imageUrl),
+        imageUrl: clothingImageOneUrl ?? toNullableString(body.imageUrl),
+        clothingImageOneUrl,
+        clothingImageTwoUrl,
+        logoImageUrl,
         screenPrint: Boolean(body.screenPrint ?? false),
         embroidery: Boolean(body.embroidery ?? false),
         buttonhole: Boolean(body.buttonhole ?? false),
@@ -502,7 +548,9 @@ export async function POST(request: Request) {
       message.includes("required") ||
       message.includes("vigente") ||
       message.includes("aplicable") ||
-      message.includes("completación")
+      message.includes("completación") ||
+      message.includes("Ya existe") ||
+      message.includes("obligatorio")
     ) {
       return new Response(message, { status: 400 });
     }

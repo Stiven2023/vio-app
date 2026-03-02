@@ -152,6 +152,23 @@ export async function PUT(
     patch.proofImageUrl = url ? url : null;
   }
 
+  if (body.referenceCode !== undefined) {
+    const code =
+      body.referenceCode === null ? null : String(body.referenceCode).trim();
+
+    patch.referenceCode = code ? code : null;
+  }
+
+  if (body.depositAmount !== undefined) {
+    const depositAmount = toPositiveNumericString(body.depositAmount);
+
+    if (!depositAmount) {
+      return new Response("depositAmount must be > 0", { status: 400 });
+    }
+
+    patch.depositAmount = depositAmount;
+  }
+
   if (Object.keys(patch).length === 0) {
     return new Response("No fields to update", { status: 400 });
   }

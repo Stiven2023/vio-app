@@ -23,7 +23,6 @@ import NextLink from "next/link";
 import {
   BsArrowRepeat,
   BsClockHistory,
-  BsCreditCard,
   BsEye,
   BsPencilSquare,
   BsReceipt,
@@ -62,6 +61,14 @@ const statusOptions: Array<{ value: string; label: string }> = [
   { value: "REVISION", label: "Revisión" },
 ];
 
+const typeOptions: Array<{ value: string; label: string }> = [
+  { value: "all", label: "Todos" },
+  { value: "VN", label: "VN" },
+  { value: "VI", label: "VI" },
+  { value: "VT", label: "VT" },
+  { value: "VW", label: "VW" },
+];
+
 export function OrdersTab({
   canCreate,
   canEdit,
@@ -79,8 +86,23 @@ export function OrdersTab({
   isAdvisor: boolean;
   advisorEmployeeId: string | null;
 }) {
+  const formatCurrency = (value: string | number | null | undefined, currency: string | null | undefined) => {
+    const amount = Number(value ?? 0);
+    const code = String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
+
+    if (!Number.isFinite(amount)) return code === "USD" ? "$0.00" : "$0";
+
+    return new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
+  const [type, setType] = useState("all");
 
   const endpoint = useMemo(() => {
     const sp = new URLSearchParams();
@@ -89,11 +111,12 @@ export function OrdersTab({
     if (query) sp.set("q", query);
 
     if (status !== "all") sp.set("status", status);
+    if (type !== "all") sp.set("type", type);
 
     const qs = sp.toString();
 
     return `/api/orders${qs ? `?${qs}` : ""}`;
-  }, [q, status]);
+  }, [q, status, type]);
 
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<OrderListItem>(endpoint, 10);
@@ -144,10 +167,10 @@ export function OrdersTab({
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (q.trim() !== "" || status !== "all") return "Sin resultados";
+    if (q.trim() !== "" || status !== "all" || type !== "all") return "Sin resultados";
 
     return "Sin pedidos";
-  }, [loading, q, status]);
+  }, [loading, q, status, type]);
 
   const remove = async () => {
     const o = pendingDelete;
@@ -211,6 +234,13 @@ export function OrdersTab({
             options={statusOptions}
             value={status}
             onChange={setStatus}
+          />
+          <FilterSelect
+            className="sm:w-40"
+            label="Tipo"
+            options={typeOptions}
+            value={type}
+            onChange={setType}
           />
         </div>
 
@@ -290,7 +320,7 @@ export function OrdersTab({
                     </div>
                   ) : null}
                 </TableCell>
-                <TableCell>{o.total ?? "0"}</TableCell>
+                <TableCell>{formatCurrency(o.total, o.currency)}</TableCell>
                 <TableCell>
                   {(() => {
                     const total = Number(o.total ?? 0);
@@ -298,15 +328,27 @@ export function OrdersTab({
                     const denom = total + shipping;
                     const paid = Number(o.paidTotal ?? 0);
 
-                    if (!Number.isFinite(denom) || denom <= 0) return "0%";
-                    if (!Number.isFinite(paid) || paid <= 0) return "0%";
+                    if (!Number.isFinite(denom) || denom <= 0) {
+                      return <span className="font-semibold text-danger">0%</span>;
+                    }
+
+                    if (!Number.isFinite(paid) || paid <= 0) {
+                      return <span className="font-semibold text-danger">0%</span>;
+                    }
 
                     const pct = Math.min(
                       100,
                       Math.max(0, (paid / denom) * 100),
                     );
 
-                    return `${pct.toFixed(0)}%`;
+                    const toneClass =
+                      pct >= 50
+                        ? "text-success"
+                        : pct >= 30
+                          ? "text-warning"
+                          : "text-danger";
+
+                    return <span className={`font-semibold ${toneClass}`}>{pct.toFixed(0)}%</span>;
                   })()}
                 </TableCell>
                 <TableCell>
@@ -349,17 +391,6 @@ export function OrdersTab({
                         startContent={<BsReceipt />}
                         >
                           Prefactura
-                        </DropdownItem>
-                      ) : null}
-
-                      {canAccessOrder(o) ? (
-                        <DropdownItem
-                        key="payments"
-                        as={NextLink}
-                        href={`/orders/${o.id}/payments`}
-                        startContent={<BsCreditCard />}
-                        >
-                          Pagos
                         </DropdownItem>
                       ) : null}
 

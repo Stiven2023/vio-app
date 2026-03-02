@@ -31,6 +31,7 @@ type AccountOptionsResponse = {
     department: string | null;
     employeeImageUrl: string | null;
     signatureImageUrl: string | null;
+    companyImageUrl: string | null;
   } | null;
 };
 
@@ -46,6 +47,7 @@ type ProfileForm = {
   department: string;
   employeeImageUrl: string;
   signatureImageUrl: string;
+  companyImageUrl: string;
 };
 
 function mapResponseToProfile(data: AccountOptionsResponse): ProfileForm {
@@ -61,6 +63,7 @@ function mapResponseToProfile(data: AccountOptionsResponse): ProfileForm {
     department: data.employee?.department ?? "",
     employeeImageUrl: data.employee?.employeeImageUrl ?? "",
     signatureImageUrl: data.employee?.signatureImageUrl ?? "",
+    companyImageUrl: data.employee?.companyImageUrl ?? "",
   };
 }
 
@@ -74,10 +77,12 @@ export function OptionsPageClient() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [uploadingEmployeeImage, setUploadingEmployeeImage] = useState(false);
   const [uploadingSignatureImage, setUploadingSignatureImage] = useState(false);
+  const [uploadingCompanyImage, setUploadingCompanyImage] = useState(false);
   const [language, setLanguage] = useState("es");
 
   const employeeImageInputRef = useRef<HTMLInputElement>(null);
   const signatureImageInputRef = useRef<HTMLInputElement>(null);
+  const companyImageInputRef = useRef<HTMLInputElement>(null);
 
   const [profile, setProfile] = useState<ProfileForm>({
     name: "",
@@ -91,6 +96,7 @@ export function OptionsPageClient() {
     department: "",
     employeeImageUrl: "",
     signatureImageUrl: "",
+    companyImageUrl: "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -137,12 +143,19 @@ export function OptionsPageClient() {
     };
   }, [setSession]);
 
-  const uploadImage = async (file: File, type: "employee" | "signature") => {
-    const isEmployee = type === "employee";
-    const setUploading = isEmployee
-      ? setUploadingEmployeeImage
-      : setUploadingSignatureImage;
-    const folder = isEmployee ? "employees/profile" : "employees/signatures";
+  const uploadImage = async (file: File, type: "employee" | "signature" | "company") => {
+    const setUploading =
+      type === "employee"
+        ? setUploadingEmployeeImage
+        : type === "signature"
+          ? setUploadingSignatureImage
+          : setUploadingCompanyImage;
+    const folder =
+      type === "employee"
+        ? "employees/profile"
+        : type === "signature"
+          ? "employees/signatures"
+          : "employees/company";
     const publicId = `${type}-${sessionUser?.id ?? "employee"}-${Date.now()}`;
 
     try {
@@ -151,11 +164,12 @@ export function OptionsPageClient() {
 
       setProfile((prev) => ({
         ...prev,
-        employeeImageUrl: isEmployee ? url : prev.employeeImageUrl,
-        signatureImageUrl: isEmployee ? prev.signatureImageUrl : url,
+        employeeImageUrl: type === "employee" ? url : prev.employeeImageUrl,
+        signatureImageUrl: type === "signature" ? url : prev.signatureImageUrl,
+        companyImageUrl: type === "company" ? url : prev.companyImageUrl,
       }));
 
-      if (isEmployee && sessionUser) {
+      if (type === "employee" && sessionUser) {
         setSession({
           ...sessionUser,
           avatarUrl: url,
@@ -169,11 +183,14 @@ export function OptionsPageClient() {
       );
     } finally {
       setUploading(false);
-      if (isEmployee && employeeImageInputRef.current) {
+      if (type === "employee" && employeeImageInputRef.current) {
         employeeImageInputRef.current.value = "";
       }
-      if (!isEmployee && signatureImageInputRef.current) {
+      if (type === "signature" && signatureImageInputRef.current) {
         signatureImageInputRef.current.value = "";
+      }
+      if (type === "company" && companyImageInputRef.current) {
+        companyImageInputRef.current.value = "";
       }
     }
   };
@@ -202,13 +219,26 @@ export function OptionsPageClient() {
     await uploadImage(file, "signature");
   };
 
-  const clearImage = (type: "employee" | "signature") => {
+  const onCompanyImageSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecciona una imagen válida");
+      return;
+    }
+
+    await uploadImage(file, "company");
+  };
+
+  const clearImage = (type: "employee" | "signature" | "company") => {
     const isEmployee = type === "employee";
 
     setProfile((prev) => ({
       ...prev,
       employeeImageUrl: isEmployee ? "" : prev.employeeImageUrl,
-      signatureImageUrl: isEmployee ? prev.signatureImageUrl : "",
+      signatureImageUrl: type === "signature" ? "" : prev.signatureImageUrl,
+      companyImageUrl: type === "company" ? "" : prev.companyImageUrl,
     }));
 
     if (isEmployee && sessionUser) {
@@ -423,6 +453,47 @@ export function OptionsPageClient() {
                 isDisabled={!profile.signatureImageUrl}
                 variant="light"
                 onPress={() => clearImage("signature")}
+              >
+                Quitar
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-large border border-default-200 p-3">
+            <div className="text-sm font-medium">Imagen de empresa</div>
+            <div className="rounded-medium border border-default-200 bg-default-50 p-3">
+              {profile.companyImageUrl ? (
+                <img
+                  alt="Empresa"
+                  className="h-24 w-full object-contain"
+                  src={profile.companyImageUrl}
+                />
+              ) : (
+                <div className="h-24 content-center text-center text-sm text-default-500">
+                  Sin imagen de empresa
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <input
+                ref={companyImageInputRef}
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                className="hidden"
+                type="file"
+                onChange={onCompanyImageSelected}
+              />
+              <Button
+                isLoading={uploadingCompanyImage}
+                variant="flat"
+                onPress={() => companyImageInputRef.current?.click()}
+              >
+                Subir imagen empresa
+              </Button>
+              <Button
+                color="danger"
+                isDisabled={!profile.companyImageUrl}
+                variant="light"
+                onPress={() => clearImage("company")}
               >
                 Quitar
               </Button>

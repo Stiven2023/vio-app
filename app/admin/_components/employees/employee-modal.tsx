@@ -52,6 +52,7 @@ type FormState = {
   department: string;
   employeeImageUrl: string;
   signatureImageUrl: string;
+  companyImageUrl: string;
   roleId: string;
   isActive: boolean;
   createUserEmail: string;
@@ -120,6 +121,7 @@ export function EmployeeModal({
     department: "ANTIOQUIA",
     employeeImageUrl: "",
     signatureImageUrl: "",
+    companyImageUrl: "",
     roleId: "",
     isActive: true,
     createUserEmail: "",
@@ -155,6 +157,7 @@ export function EmployeeModal({
       department: source?.department ?? "ANTIOQUIA",
       employeeImageUrl: source?.employeeImageUrl ?? "",
       signatureImageUrl: source?.signatureImageUrl ?? "",
+      companyImageUrl: source?.companyImageUrl ?? "",
       roleId: source?.roleId ?? "",
       isActive: Boolean(source?.isActive ?? true),
       createUserEmail:
@@ -453,6 +456,16 @@ export function EmployeeModal({
                   value={form.signatureImageUrl}
                   onValueChange={(v) =>
                     setForm((s) => ({ ...s, signatureImageUrl: v }))
+                  }
+                />
+
+                <Input
+                  errorMessage={errors.companyImageUrl}
+                  isInvalid={Boolean(errors.companyImageUrl)}
+                  label="Imagen empresa (URL)"
+                  value={form.companyImageUrl}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, companyImageUrl: v }))
                   }
                 />
               </div>

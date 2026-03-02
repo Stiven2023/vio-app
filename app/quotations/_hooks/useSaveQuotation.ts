@@ -25,17 +25,17 @@ export function useSaveQuotation(
       shippingFee: number,
       insuranceEnabled: boolean,
       insuranceFee: number,
-    ): Promise<boolean> => {
-      if (submitting) return false;
+    ): Promise<{ ok: boolean; id?: string; quoteCode?: string }> => {
+      if (submitting) return { ok: false };
 
       if (!form.clientId) {
         toast.error("Selecciona un cliente activo");
-        return false;
+        return { ok: false };
       }
 
       if (!form.sellerId) {
         toast.error("No se encontró el vendedor de la sesión. Recarga la página.");
-        return false;
+        return { ok: false };
       }
 
       const validItems = items.filter(
@@ -44,7 +44,7 @@ export function useSaveQuotation(
 
       if (validItems.length === 0) {
         toast.error("Agrega al menos un item válido");
-        return false;
+        return { ok: false };
       }
 
       setSubmitting(true);
@@ -93,7 +93,7 @@ export function useSaveQuotation(
         }
 
         const endpoint = quoteId ? `/api/quotations/${quoteId}` : "/api/quotations";
-        const created = await apiJson<{ quoteCode: string }>(endpoint, {
+        const created = await apiJson<{ id: string; quoteCode: string }>(endpoint, {
           method: quoteId ? "PUT" : "POST",
           body: JSON.stringify(quoteData),
         });
@@ -104,10 +104,10 @@ export function useSaveQuotation(
             ? `Cotización actualizada: ${created.quoteCode}`
             : `Cotización creada: ${created.quoteCode}`,
         );
-        return true;
+        return { ok: true, id: created.id, quoteCode: created.quoteCode };
       } catch (error) {
         toast.error(getErrorMessage(error));
-        return false;
+        return { ok: false };
       } finally {
         setSubmitting(false);
       }

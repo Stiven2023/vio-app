@@ -101,3 +101,44 @@ export async function sendEmailVerificationToken(to: string, token: string) {
     `,
   });
 }
+
+export async function sendExternalAccessToken(args: {
+  to: string;
+  token: string;
+  audience: "CLIENTE" | "TERCERO";
+  clientCode: string;
+}) {
+  const audienceLabel = args.audience === "CLIENTE" ? "cliente" : "tercero";
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: args.to,
+    subject: "Token de acceso a pedidos y diseños",
+    text:
+      `VIOMAR\n\n` +
+      `Acceso externo (${audienceLabel})\n\n` +
+      `Cliente: ${args.clientCode}\n` +
+      `Código: ${args.token}\n` +
+      `Expira en 3 minutos.\n` +
+      `Puedes solicitar uno nuevo cada 3 minutos.\n`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.45;">
+        <div style="text-align:center; margin: 12px 0 18px;">
+          ${VIOMAR_STICKER_URL ? `<img src="${VIOMAR_STICKER_URL}" alt="VIOMAR" style="max-width: 160px; height: auto;" />` : ""}
+        </div>
+
+        <h2 style="margin: 0 0 10px; font-size: 18px;">Acceso externo a pedidos y diseños</h2>
+        <p style="margin: 0 0 12px;">Tipo de acceso: <strong>${audienceLabel}</strong></p>
+        <p style="margin: 0 0 12px;">Cliente: <strong>${args.clientCode}</strong></p>
+
+        <div style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; display: inline-block;">
+          <div style="font-size: 14px; color: #374151; margin-bottom: 6px;">Código OTP</div>
+          <div style="font-size: 20px; font-weight: 700; letter-spacing: 4px;">${args.token}</div>
+        </div>
+
+        <p style="margin: 12px 0 0; font-size: 13px; color: #374151;">Este código expira en <strong>3 minutos</strong>.</p>
+        <p style="margin: 8px 0 0; font-size: 13px; color: #374151;">Solo podrás solicitar uno nuevo después de <strong>3 minutos</strong>.</p>
+      </div>
+    `,
+  });
+}

@@ -45,11 +45,12 @@ export function OrderItemModal(props: {
   const [error, setError] = React.useState<string | null>(null);
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
   const [priceClientType, setPriceClientType] = React.useState<string>("VIOMAR");
+  const [imageOneFile, setImageOneFile] = React.useState<File | null>(null);
+  const [imageTwoFile, setImageTwoFile] = React.useState<File | null>(null);
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
 
   const {
     inventoryItems,
-    imageFile,
-    setImageFile,
     packagingMode,
     setPackagingMode,
     item,
@@ -71,6 +72,9 @@ export function OrderItemModal(props: {
 
     setError(null);
     setIsUploadingAssets(false);
+    setImageOneFile(null);
+    setImageTwoFile(null);
+    setLogoFile(null);
   }, [isOpen]);
 
   React.useEffect(() => {
@@ -135,12 +139,41 @@ export function OrderItemModal(props: {
     setIsSaving(true);
     try {
       let imageUrl = item.imageUrl ?? null;
+      let clothingImageOneUrl = item.clothingImageOneUrl ?? null;
+      let clothingImageTwoUrl = item.clothingImageTwoUrl ?? null;
+      let logoImageUrl = item.logoImageUrl ?? null;
 
-      if (imageFile && orderKind !== "COMPLETACION") {
-        imageUrl = await uploadToCloudinary({
-          file: imageFile,
-          folder: `order-items/${orderId}`,
-        });
+      if (orderKind !== "COMPLETACION") {
+        if (imageOneFile) {
+          clothingImageOneUrl = await uploadToCloudinary({
+            file: imageOneFile,
+            folder: `order-items/${orderId}`,
+          });
+        }
+
+        if (imageTwoFile) {
+          clothingImageTwoUrl = await uploadToCloudinary({
+            file: imageTwoFile,
+            folder: `order-items/${orderId}`,
+          });
+        }
+
+        if (logoFile) {
+          logoImageUrl = await uploadToCloudinary({
+            file: logoFile,
+            folder: `order-items/${orderId}/logos`,
+          });
+        }
+      }
+
+      imageUrl = clothingImageOneUrl;
+
+      if (orderKind !== "COMPLETACION" && !String(logoImageUrl ?? "").trim()) {
+        throw new Error("El logo es obligatorio para el diseño");
+      }
+
+      if (!String(item.garmentType ?? "").trim()) {
+        throw new Error("Selecciona el tipo de prenda/posición");
       }
 
       const base: any = {
@@ -148,6 +181,7 @@ export function OrderItemModal(props: {
         productId: item.productId ?? null,
         productPriceId: (item as any).productPriceId ?? null,
         name,
+        garmentType: item.garmentType ?? null,
         quantity,
         unitPrice: String(unitPrice),
         totalPrice: String(unitPrice * quantity),
@@ -158,6 +192,9 @@ export function OrderItemModal(props: {
         observations: item.observations ?? null,
         fabric: item.fabric ?? null,
         imageUrl,
+        clothingImageOneUrl,
+        clothingImageTwoUrl,
+        logoImageUrl,
         gender: item.gender ?? null,
         process: item.process ?? null,
         neckType: item.neckType ?? null,
@@ -218,18 +255,23 @@ export function OrderItemModal(props: {
               <DesignSection
                 canEditUnitPrice={canEditUnitPrice}
                 computedTotal={computedTotal}
-                imageFile={imageFile}
+                imageOneFile={imageOneFile}
+                imageTwoFile={imageTwoFile}
+                logoFile={logoFile}
                 isCreateBlocked={isCreateBlocked}
                 orderKind={orderKind}
                 value={item}
                 onChange={setItem}
-                onSelectImageFile={setImageFile}
+                onSelectImageOneFile={setImageOneFile}
+                onSelectImageTwoFile={setImageTwoFile}
+                onSelectLogoFile={setLogoFile}
               />
 
               <PackagingSection
                 disabled={uiDisabled}
                 mode={packagingMode}
                 packaging={packaging}
+                garmentType={String(item.garmentType ?? "JUGADOR")}
                 onModeChange={setPackagingMode}
                 onPackagingChange={setPackaging}
                 onError={(m) => setError(m)}
@@ -238,6 +280,7 @@ export function OrderItemModal(props: {
               {orderKind !== "COMPLETACION" ? (
                 <SocksSection
                   disabled={uiDisabled}
+                  garmentType={String(item.garmentType ?? "JUGADOR")}
                   orderId={orderId}
                   value={socks}
                   onChange={setSocks}

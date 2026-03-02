@@ -21,7 +21,10 @@ export default async function ProgramacionPage() {
       <h1 className="text-2xl font-bold">Programación</h1>
       <p className="text-default-600 mt-1">Items de pedido filtrados por proceso para programación.</p>
       <div className="mt-6">
-        <ProgramacionItemsTable process="PRODUCCION" />
+        <ProgramacionItemsTable
+          process="PRODUCCION"
+          actualizacionBasePath="/programacion/actualizacion"
+        />
       </div>
     </div>
   );

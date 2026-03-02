@@ -130,9 +130,11 @@ async function assertAdvisorOwnsOrder(request: Request, orderId: string) {
   return null;
 }
 
-async function generateOrderCode(tx: any, type: "VN" | "VI"): Promise<string> {
+type OrderTypeCode = "VN" | "VI" | "VT" | "VW";
+
+async function generateOrderCode(tx: any, type: OrderTypeCode): Promise<string> {
   const prefix = `${type}-`;
-  const seqLen = type === "VN" ? 6 : 4;
+  const seqLen = type === "VI" ? 4 : 6;
 
   // Soporta formatos históricos (VN-YYYYMMDD-000001) y el nuevo (vn-000001).
   // Mantiene un consecutivo por tipo, sin reiniciarse por fecha.
@@ -211,12 +213,22 @@ export async function GET(request: Request) {
   const { page, pageSize, offset } = parsePagination(searchParams);
   const q = String(searchParams.get("q") ?? "").trim();
   const status = String(searchParams.get("status") ?? "").trim();
+  const type = String(searchParams.get("type") ?? "").trim().toUpperCase();
 
-  const filters: Array<ReturnType<typeof ilike> | ReturnType<typeof eq>> = [
-    q ? ilike(orders.orderCode, `%${q}%`) : undefined,
+  const filters: Array<any> = [
+    q
+      ? sql`(
+          ${orders.orderCode} ilike ${`%${q}%`}
+          or ${clients.clientCode} ilike ${`%${q}%`}
+          or ${clients.name} ilike ${`%${q}%`}
+        )`
+      : undefined,
     status && status !== "all" ? eq(orders.status, status as any) : undefined,
+    type === "VN" || type === "VI" || type === "VT" || type === "VW"
+      ? eq(orders.type, type as any)
+      : undefined,
     advisorScope ? eq(orders.createdBy, advisorScope) : undefined,
-  ].filter(Boolean) as Array<ReturnType<typeof ilike> | ReturnType<typeof eq>>;
+  ].filter(Boolean);
 
   const where = filters.length ? and(...filters) : undefined;
 
@@ -239,6 +251,7 @@ export async function GET(request: Request) {
       createdBy: orders.createdBy,
       clientId: orders.clientId,
       clientName: clients.name,
+      clientCode: clients.clientCode,
       type: orders.type,
       status: orders.status,
       total: orders.total,
@@ -306,7 +319,10 @@ export async function POST(request: Request) {
   const normalizedType = String(type ?? "VN")
     .trim()
     .toUpperCase();
-  const orderType = (normalizedType === "VI" ? "VI" : "VN") as "VN" | "VI";
+  const orderType =
+    normalizedType === "VI" || normalizedType === "VT" || normalizedType === "VW"
+      ? (normalizedType as OrderTypeCode)
+      : ("VN" as OrderTypeCode);
 
   const normalizedKind = String(kind ?? "NUEVO")
     .trim()

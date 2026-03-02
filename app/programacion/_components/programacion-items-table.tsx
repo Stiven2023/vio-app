@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@heroui/button";
 import { Skeleton } from "@heroui/skeleton";
+import { AlertToast } from "@/components/alert-toast";
 import {
   Table,
   TableBody,
@@ -17,6 +18,7 @@ type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
 
 type ProgramacionItem = {
   id: string;
+  orderItemId: string;
   orderId: string;
   orderCode: string;
   orderDate: string | null;
@@ -58,15 +60,21 @@ export function ProgramacionItemsTable({
   process,
   orderStatus = "PRODUCCION",
   basePath = "/programacion",
+  actualizacionBasePath,
   labels,
   decompressByDesign = false,
   showProcessColumn = false,
+  view = "GENERAL",
+  enableDecisions = false,
 }: {
   process: ProcessType;
   orderStatus?: "PRODUCCION" | "APROBACION_INICIAL";
   basePath?: string;
+  actualizacionBasePath?: string;
   decompressByDesign?: boolean;
   showProcessColumn?: boolean;
+  view?: "GENERAL" | "ACTUALIZACION";
+  enableDecisions?: boolean;
   labels?: {
     principal: string;
     bodega: string;
@@ -76,12 +84,19 @@ export function ProgramacionItemsTable({
   const [data, setData] = useState<Paginated<ProgramacionItem> | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+
+  const activeActualizacionBasePath = actualizacionBasePath ?? `${basePath}/actualizacion`;
 
   useEffect(() => {
     let active = true;
     setLoading(true);
 
-      fetch(`/api/programacion/items?process=${process}&orderStatus=${orderStatus}&page=${page}&pageSize=${PAGE_SIZE}`, {
+      fetch(`/api/programacion/items?process=${process}&orderStatus=${orderStatus}&view=${view}&page=${page}&pageSize=${PAGE_SIZE}`, {
       credentials: "include",
     })
       .then(async (response) => {
@@ -103,7 +118,7 @@ export function ProgramacionItemsTable({
     return () => {
       active = false;
     };
-  }, [page, process, orderStatus]);
+  }, [page, process, orderStatus, view]);
 
   const title = useMemo(() => {
     if (process === "PRODUCCION") return labels?.principal ?? "Programación principal";
@@ -112,6 +127,44 @@ export function ProgramacionItemsTable({
   }, [labels?.bodega, labels?.compras, labels?.principal, process]);
 
   const hasRows = (data?.items?.length ?? 0) > 0;
+
+  const isActualizacion = view === "ACTUALIZACION";
+
+  const decide = async (item: ProgramacionItem, nextStatus: "PENDIENTE_PRODUCCION" | "EN_REVISION_CAMBIO") => {
+    if (!item.orderItemId) return;
+    setPendingActionId(item.orderItemId);
+    try {
+      const res = await fetch(`/api/orders/items/${item.orderItemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        setToast({ message: text || "No se pudo actualizar el estado.", type: "error" });
+        return;
+      }
+
+      setToast({ message: "Estado actualizado correctamente.", type: "success" });
+      setLoading(true);
+      const refreshed = await fetch(
+        `/api/programacion/items?process=${process}&orderStatus=${orderStatus}&view=${view}&page=${page}&pageSize=${PAGE_SIZE}`,
+        { credentials: "include" },
+      );
+
+      if (refreshed.ok) {
+        const payload = (await refreshed.json()) as Paginated<ProgramacionItem>;
+        setData(payload);
+      }
+    } catch {
+      setToast({ message: "No se pudo actualizar el estado.", type: "error" });
+    } finally {
+      setPendingActionId(null);
+      setLoading(false);
+    }
+  };
 
   const renderHeaderColumns = () => {
     if (decompressByDesign && showProcessColumn) {
@@ -129,6 +182,7 @@ export function ProgramacionItemsTable({
           <TableColumn>PROCESO</TableColumn>
           <TableColumn>PLAZO</TableColumn>
           <TableColumn>PLAZO EN HORAS</TableColumn>
+          {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
         </>
       );
     }
@@ -147,6 +201,7 @@ export function ProgramacionItemsTable({
           <TableColumn>GENERO</TableColumn>
           <TableColumn>PLAZO</TableColumn>
           <TableColumn>PLAZO EN HORAS</TableColumn>
+          {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
         </>
       );
     }
@@ -167,6 +222,7 @@ export function ProgramacionItemsTable({
           <TableColumn>PROCESO</TableColumn>
           <TableColumn>PLAZO</TableColumn>
           <TableColumn>PLAZO EN HORAS</TableColumn>
+          {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
         </>
       );
     }
@@ -185,11 +241,37 @@ export function ProgramacionItemsTable({
         <TableColumn>GENERO</TableColumn>
         <TableColumn>PLAZO</TableColumn>
         <TableColumn>PLAZO EN HORAS</TableColumn>
+        {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
       </>
     );
   };
 
   const renderRowCells = (item: ProgramacionItem) => {
+    const actionsCell = enableDecisions ? (
+      <TableCell key="acciones">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            color="success"
+            isDisabled={pendingActionId === item.orderItemId}
+            size="sm"
+            variant="flat"
+            onPress={() => decide(item, "PENDIENTE_PRODUCCION")}
+          >
+            Aprobar
+          </Button>
+          <Button
+            color="danger"
+            isDisabled={pendingActionId === item.orderItemId}
+            size="sm"
+            variant="flat"
+            onPress={() => decide(item, "EN_REVISION_CAMBIO")}
+          >
+            Denegar
+          </Button>
+        </div>
+      </TableCell>
+    ) : null;
+
     if (decompressByDesign && showProcessColumn) {
       return (
         [
@@ -218,6 +300,7 @@ export function ProgramacionItemsTable({
               ? "-"
               : String(item.leadHours)}
           </TableCell>,
+          ...(actionsCell ? [actionsCell] : []),
         ]
       );
     }
@@ -249,6 +332,7 @@ export function ProgramacionItemsTable({
               ? "-"
               : String(item.leadHours)}
           </TableCell>,
+          ...(actionsCell ? [actionsCell] : []),
         ]
       );
     }
@@ -277,6 +361,7 @@ export function ProgramacionItemsTable({
               ? "-"
               : String(item.leadHours)}
           </TableCell>,
+          ...(actionsCell ? [actionsCell] : []),
         ]
       );
     }
@@ -303,12 +388,14 @@ export function ProgramacionItemsTable({
             ? "-"
             : String(item.leadHours)}
         </TableCell>,
+        ...(actionsCell ? [actionsCell] : []),
       ]
     );
   };
 
   return (
     <div className="space-y-4">
+      {toast ? <AlertToast message={toast.message} type={toast.type} /> : null}
       <div className="flex flex-wrap items-center gap-2">
           <Button as={Link} href={basePath} variant={process === "PRODUCCION" ? "solid" : "flat"}>
           Principal
@@ -318,6 +405,13 @@ export function ProgramacionItemsTable({
         </Button>
           <Button as={Link} href={`${basePath}/compras`} variant={process === "COMPRAS" ? "solid" : "flat"}>
           Compras
+        </Button>
+        <Button
+          as={Link}
+          href={activeActualizacionBasePath}
+          variant={isActualizacion ? "solid" : "flat"}
+        >
+          Actualización
         </Button>
       </div>
 

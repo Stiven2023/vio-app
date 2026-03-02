@@ -49,6 +49,43 @@ function sanitizeWinAnsi(value: unknown) {
     .replace(/[^\u0020-\u00FF]/g, "-");
 }
 
+async function readImageSourceBytes(source: string): Promise<Uint8Array | null> {
+  const value = String(source ?? "").trim();
+  if (!value) return null;
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    const response = await fetch(value);
+    if (!response.ok) return null;
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
+
+  const normalized = value.startsWith("/")
+    ? value.slice(1)
+    : value;
+  const diskPath = join(process.cwd(), "public", normalized);
+  const bytes = await readFile(diskPath);
+  return new Uint8Array(bytes);
+}
+
+async function embedImageFromSource(
+  pdf: PDFDocument,
+  source: string,
+): Promise<Awaited<ReturnType<PDFDocument["embedPng"]>> | null> {
+  const bytes = await readImageSourceBytes(source);
+  if (!bytes) return null;
+
+  try {
+    return await pdf.embedPng(bytes);
+  } catch {
+    try {
+      return await pdf.embedJpg(bytes);
+    } catch {
+      return null;
+    }
+  }
+}
+
 export async function GET(
   request: Request,
   props: { params: Promise<{ id: string }> },
@@ -107,6 +144,8 @@ export async function GET(
       clientCity: clients.city,
       clientPostalCode: clients.postalCode,
       sellerName: sql<string>`coalesce(${employees.name}, ${users.email})`,
+      sellerSignatureImageUrl: employees.signatureImageUrl,
+      sellerCompanyImageUrl: employees.companyImageUrl,
     })
     .from(quotations)
     .leftJoin(clients, eq(quotations.clientId, clients.id))
@@ -164,21 +203,23 @@ export async function GET(
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  let logoImage: Awaited<ReturnType<PDFDocument["embedPng"]>> | null = null;
-
-  try {
-    const logoPath = join(process.cwd(), "public", "image.png");
-    const logoBytes = await readFile(logoPath);
-    logoImage = await pdf.embedPng(logoBytes);
-  } catch {
-    logoImage = null;
-  }
+  const headerImage =
+    (await embedImageFromSource(pdf, String(header.sellerCompanyImageUrl ?? ""))) ||
+    (await embedImageFromSource(pdf, "/image.png"));
+  const footerSignatureImage = await embedImageFromSource(
+    pdf,
+    String(header.sellerSignatureImageUrl ?? ""),
+  );
 
   const pageWidth = 595;
   const pageHeight = 842;
   const margin = 30;
   const contentWidth = pageWidth - margin * 2;
-  const bottomLimit = 40;
+  const footerFullWidth = pageWidth;
+  const estimatedFooterHeight = footerSignatureImage
+    ? Math.max(56, footerSignatureImage.height * (footerFullWidth / footerSignatureImage.width))
+    : 0;
+  const bottomLimit = 24 + estimatedFooterHeight + 18;
   const textColor = rgb(0.12, 0.12, 0.15);
   const mutedColor = rgb(0.4, 0.42, 0.48);
   const lineColor = rgb(0.84, 0.86, 0.9);
@@ -225,10 +266,25 @@ export async function GET(
   };
 
   const drawFooter = () => {
+    if (footerSignatureImage) {
+      const signatureWidth = footerFullWidth;
+      const ratio = signatureWidth / footerSignatureImage.width;
+      const signatureHeight = Math.max(56, footerSignatureImage.height * ratio);
+      const signatureX = 0;
+      const signatureY = 0;
+
+      page.drawImage(footerSignatureImage, {
+        x: signatureX,
+        y: signatureY,
+        width: signatureWidth,
+        height: signatureHeight,
+      });
+    }
+
     drawText(
       `Documento generado automáticamente por Viomar · Página ${pageNumber}`,
       margin,
-      18,
+      10,
       8,
       false,
       mutedColor,
@@ -238,15 +294,14 @@ export async function GET(
   const drawHeader = (isFirstPage: boolean) => {
     let headerHeight = 56;
 
-    if (logoImage) {
-      const maxLogoWidth = 220;
-      const ratio = maxLogoWidth / logoImage.width;
-      const logoWidth = logoImage.width * ratio;
-      const logoHeight = logoImage.height * ratio;
+    if (headerImage) {
+      const logoWidth = Math.min(280, contentWidth);
+      const ratio = logoWidth / headerImage.width;
+      const logoHeight = Math.max(62, headerImage.height * ratio);
       const logoX = (pageWidth - logoWidth) / 2;
       const logoTopY = y;
 
-      page.drawImage(logoImage, {
+      page.drawImage(headerImage, {
         x: logoX,
         y: logoTopY - logoHeight,
         width: logoWidth,

@@ -98,6 +98,9 @@ export function OrderItemEditPage(props: {
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
   const [priceClientType, setPriceClientType] = React.useState<string>("VIOMAR");
   const [loadingItem, setLoadingItem] = React.useState(true);
+  const [imageOneFile, setImageOneFile] = React.useState<File | null>(null);
+  const [imageTwoFile, setImageTwoFile] = React.useState<File | null>(null);
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
   const [initialValue, setInitialValue] = React.useState<
     Partial<OrderItemModalValue> | undefined
   >(undefined);
@@ -154,8 +157,6 @@ export function OrderItemEditPage(props: {
 
   const {
     inventoryItems,
-    imageFile,
-    setImageFile,
     packagingMode,
     setPackagingMode,
     item,
@@ -342,19 +343,45 @@ export function OrderItemEditPage(props: {
     setIsSaving(true);
     try {
       let imageUrl = item.imageUrl ?? null;
+      let clothingImageOneUrl = item.clothingImageOneUrl ?? null;
+      let clothingImageTwoUrl = item.clothingImageTwoUrl ?? null;
+      let logoImageUrl = item.logoImageUrl ?? null;
 
-      if (imageFile && orderKind !== "COMPLETACION") {
-        imageUrl = await uploadToCloudinary({
-          file: imageFile,
-          folder: `order-items/${orderId}`,
-        });
+      if (orderKind !== "COMPLETACION") {
+        if (imageOneFile) {
+          clothingImageOneUrl = await uploadToCloudinary({
+            file: imageOneFile,
+            folder: `order-items/${orderId}`,
+          });
+        }
+
+        if (imageTwoFile) {
+          clothingImageTwoUrl = await uploadToCloudinary({
+            file: imageTwoFile,
+            folder: `order-items/${orderId}`,
+          });
+        }
+
+        if (logoFile) {
+          logoImageUrl = await uploadToCloudinary({
+            file: logoFile,
+            folder: `order-items/${orderId}/logos`,
+          });
+        }
+
+        if (!String(logoImageUrl ?? "").trim()) {
+          throw new Error("Debes cargar el logo del diseño");
+        }
       }
+
+      imageUrl = clothingImageOneUrl;
 
       const base: any = {
         orderId,
         productId: item.productId ?? null,
         productPriceId: (item as any).productPriceId ?? null,
         name,
+        garmentType: item.garmentType ?? "JUGADOR",
         quantity,
         unitPrice: String(unitPrice),
         totalPrice: String(unitPrice * quantity),
@@ -365,6 +392,9 @@ export function OrderItemEditPage(props: {
         observations: item.observations ?? null,
         fabric: item.fabric ?? null,
         imageUrl,
+        clothingImageOneUrl,
+        clothingImageTwoUrl,
+        logoImageUrl,
         gender: item.gender ?? null,
         process: item.process ?? null,
         neckType: item.neckType ?? null,
@@ -531,12 +561,16 @@ export function OrderItemEditPage(props: {
           <DesignSection
             canEditUnitPrice={canEditUnitPrice}
             computedTotal={computedTotal}
-            imageFile={imageFile}
+            imageOneFile={imageOneFile}
+            imageTwoFile={imageTwoFile}
+            logoFile={logoFile}
             isCreateBlocked={false}
             orderKind={orderKind}
             value={item}
             onChange={setItem}
-            onSelectImageFile={setImageFile}
+            onSelectImageOneFile={setImageOneFile}
+            onSelectImageTwoFile={setImageTwoFile}
+            onSelectLogoFile={setLogoFile}
           />
         </CardBody>
       </Card>
@@ -548,6 +582,7 @@ export function OrderItemEditPage(props: {
         <CardBody>
           <PackagingSection
             disabled={uiDisabled}
+            garmentType={String(item.garmentType ?? "JUGADOR")}
             mode={packagingMode}
             packaging={packaging}
             onModeChange={setPackagingMode}
@@ -565,6 +600,7 @@ export function OrderItemEditPage(props: {
           <CardBody>
             <SocksSection
               disabled={uiDisabled}
+              garmentType={String(item.garmentType ?? "JUGADOR")}
               orderId={orderId}
               value={socks}
               onChange={setSocks}

@@ -45,6 +45,7 @@ export type Employee = {
   bankCertificateUrl: string | null;
   employeeImageUrl: string | null;
   signatureImageUrl: string | null;
+  companyImageUrl: string | null;
   roleId: string | null;
   isActive: boolean | null;
   createdAt: string | null;

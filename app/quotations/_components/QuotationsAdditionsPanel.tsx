@@ -74,7 +74,9 @@ export function QuotationsAdditionsPanel({
   const selectedDesign = useMemo(
     () =>
       designOptions.find(
-        (design) => design.designNumber === (row.referenceDesign ?? ""),
+        (design) =>
+          design.id === (row.referenceDesign ?? "") ||
+          design.designNumber === (row.referenceDesign ?? ""),
       ) ?? null,
     [designOptions, row.referenceDesign],
   );
@@ -169,7 +171,7 @@ export function QuotationsAdditionsPanel({
 
               <Select
                 size="sm"
-                label="Order Code"
+                label="Pedido origen"
                 variant="bordered"
                 isLoading={ordersLoading}
                 selectedKeys={selectedOrderId ? [selectedOrderId] : []}
@@ -190,7 +192,7 @@ export function QuotationsAdditionsPanel({
 
               <Select
                 size="sm"
-                label="Número de diseño"
+                label="Diseño origen"
                 variant="bordered"
                 isLoading={designsLoading}
                 isDisabled={!selectedOrderId}
@@ -201,7 +203,7 @@ export function QuotationsAdditionsPanel({
                 }}
               >
                 {designOptions.map((design) => (
-                  <SelectItem key={design.designNumber}>{`${design.designNumber} · ${design.designName}`}</SelectItem>
+                  <SelectItem key={design.id}>{`${design.designNumber} · ${design.designName}`}</SelectItem>
                 ))}
               </Select>
             </div>

@@ -14,6 +14,7 @@ import {
   DropdownTrigger,
 } from "@heroui/dropdown";
 import { Input } from "@heroui/input";
+import { NumberInput } from "@heroui/react";
 import {
   Modal,
   ModalBody,
@@ -42,6 +43,8 @@ type PaymentRow = {
   id: string;
   orderId: string | null;
   amount: string | null;
+  depositAmount?: string | null;
+  referenceCode?: string | null;
   method: PaymentMethod | null;
   status: PaymentStatus | null;
   proofImageUrl?: string | null;
@@ -68,6 +71,8 @@ const statusOptions: Array<{ value: PaymentStatus; label: string }> = [
 
 type FormState = {
   amount: string;
+  depositAmount: string;
+  referenceCode: string;
   method: PaymentMethod;
   status: PaymentStatus;
 };
@@ -82,13 +87,29 @@ type PaymentsResponse = {
   paidTotal?: string | null;
 };
 
-function toNumberString(v: string) {
-  const s = String(v ?? "").trim();
+function toAmountString(v: number | string | null | undefined) {
+  const raw = String(v ?? "").trim().replace(/,/g, ".");
+  if (!raw) return "";
+  const n = Number(raw);
+  return Number.isFinite(n) ? String(n) : "";
+}
 
-  if (!s) return "";
-  const n = Number(s);
+function toNumberInputValue(v: string) {
+  const n = Number(String(v ?? "").replace(/,/g, "."));
+  return Number.isFinite(n) ? n : 0;
+}
 
-  return Number.isNaN(n) ? "" : String(n);
+function getPastedImageFile(e: React.ClipboardEvent<HTMLElement>) {
+  const items = e.clipboardData?.items;
+  if (!items) return null;
+
+  for (const item of Array.from(items)) {
+    if (String(item.type ?? "").startsWith("image/")) {
+      return item.getAsFile();
+    }
+  }
+
+  return null;
 }
 
 export function OrderPaymentsPage({
@@ -119,8 +140,14 @@ export function OrderPaymentsPage({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<{
+    amount?: string;
+    depositAmount?: string;
+  }>({});
   const [form, setForm] = useState<FormState>({
     amount: "",
+    depositAmount: "",
+    referenceCode: "",
     method: "EFECTIVO",
     status: "PENDIENTE",
   });
@@ -223,12 +250,28 @@ export function OrderPaymentsPage({
     if (!canCreate) return;
     if (submitting) return;
 
+    const nextErrors: { amount?: string; depositAmount?: string } = {};
+
     const amount = form.amount ? Number(form.amount) : 0;
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("El monto debe ser mayor a 0");
+      nextErrors.amount = "El monto debe ser mayor a 0";
+      setFormErrors(nextErrors);
+      toast.error(nextErrors.amount);
+      (document.getElementById("payment-amount") as HTMLInputElement | null)?.focus();
       return;
     }
+
+    const deposit = form.depositAmount ? Number(form.depositAmount) : amount;
+    if (!Number.isFinite(deposit) || deposit <= 0) {
+      nextErrors.depositAmount = "La consignación total debe ser mayor a 0";
+      setFormErrors(nextErrors);
+      toast.error(nextErrors.depositAmount);
+      (document.getElementById("payment-deposit") as HTMLInputElement | null)?.focus();
+      return;
+    }
+
+    setFormErrors({});
 
     try {
       setSubmitting(true);
@@ -241,6 +284,8 @@ export function OrderPaymentsPage({
         method: "POST",
         body: JSON.stringify({
           amount,
+          depositAmount: form.depositAmount ? Number(form.depositAmount) : amount,
+          referenceCode: form.referenceCode.trim() || null,
           method: form.method,
           status: form.status,
           proofImageUrl,
@@ -249,7 +294,14 @@ export function OrderPaymentsPage({
 
       toast.success("Pago registrado");
       setModalOpen(false);
-      setForm({ amount: "", method: "EFECTIVO", status: "PENDIENTE" });
+      setForm({
+        amount: "",
+        depositAmount: "",
+        referenceCode: "",
+        method: "EFECTIVO",
+        status: "PENDIENTE",
+      });
+      setFormErrors({});
       setProofFile(null);
       setProofPreviewUrl(null);
       refresh();
@@ -277,8 +329,10 @@ export function OrderPaymentsPage({
   const columns = useMemo<ColumnDef[]>(
     () => [
       { key: "createdAt", name: "Fecha" },
+      { key: "referenceCode", name: "Referencia" },
       { key: "method", name: "Método" },
       { key: "status", name: "Estado" },
+      { key: "depositAmount", name: "Consignación" },
       { key: "amount", name: "Monto" },
       { key: "proof", name: "Soporte" },
       { key: "actions", name: "Acciones" },
@@ -375,6 +429,8 @@ export function OrderPaymentsPage({
 
                 if (columnKey === "method") return <TableCell>{p.method ?? "-"}</TableCell>;
                 if (columnKey === "status") return <TableCell>{p.status ?? "-"}</TableCell>;
+                if (columnKey === "referenceCode") return <TableCell>{p.referenceCode ?? "-"}</TableCell>;
+                if (columnKey === "depositAmount") return <TableCell>{formatMoney(p.depositAmount)}</TableCell>;
                 if (columnKey === "amount") return <TableCell>{formatMoney(p.amount)}</TableCell>;
 
                 if (columnKey === "proof") {
@@ -481,12 +537,42 @@ export function OrderPaymentsPage({
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input
+              <NumberInput
+                id="payment-amount"
+                hideStepper
+                isInvalid={Boolean(formErrors.amount)}
+                errorMessage={formErrors.amount}
                 label="Monto"
-                value={form.amount}
+                value={toNumberInputValue(form.amount)}
+                formatOptions={{
+                  style: "currency",
+                  currency: (order?.currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP",
+                  maximumFractionDigits: 2,
+                }}
                 onValueChange={(v) =>
-                  setForm((s) => ({ ...s, amount: toNumberString(v) }))
+                  setForm((s) => ({ ...s, amount: toAmountString(v) }))
                 }
+              />
+              <NumberInput
+                id="payment-deposit"
+                hideStepper
+                isInvalid={Boolean(formErrors.depositAmount)}
+                errorMessage={formErrors.depositAmount}
+                label="Consignación total"
+                value={toNumberInputValue(form.depositAmount)}
+                formatOptions={{
+                  style: "currency",
+                  currency: (order?.currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP",
+                  maximumFractionDigits: 2,
+                }}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, depositAmount: toAmountString(v) }))
+                }
+              />
+              <Input
+                label="Código de referencia"
+                value={form.referenceCode}
+                onValueChange={(v) => setForm((s) => ({ ...s, referenceCode: v }))}
               />
               <Select
                 label="Método"
@@ -519,15 +605,36 @@ export function OrderPaymentsPage({
                 <div className="text-sm text-default-600 mb-1">
                   Imagen de validación (opcional)
                 </div>
-                <input
-                  accept="image/*"
-                  type="file"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-
-                    setProofFile(f);
+                <div
+                  className="rounded-medium border border-dashed border-default-300 bg-default-50 p-3"
+                  onDragOver={(e) => {
+                    e.preventDefault();
                   }}
-                />
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0] ?? null;
+                    setProofFile(file);
+                  }}
+                  onPaste={(e) => {
+                    const file = getPastedImageFile(e);
+                    if (!file) return;
+                    e.preventDefault();
+                    setProofFile(file);
+                  }}
+                  tabIndex={0}
+                >
+                  <p className="text-xs text-default-500 mb-2">
+                    Arrastra una imagen aquí, selecciónala o pégala con Ctrl+V.
+                  </p>
+                  <input
+                    accept="image/*"
+                    type="file"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setProofFile(f);
+                    }}
+                  />
+                </div>
                 {proofPreviewUrl ? (
                   <div className="mt-2 overflow-hidden rounded-medium border border-default-200">
                     <img

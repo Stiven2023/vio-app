@@ -51,6 +51,15 @@ const orderItemStatuses = new Set([
   "CANCELADO",
 ]);
 
+const GARMENT_TYPES = new Set([
+  "JUGADOR",
+  "ARQUERO",
+  "CAPITAN",
+  "JUEZ",
+  "ENTRENADOR",
+  "LIBERO",
+]);
+
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
 
@@ -219,6 +228,16 @@ function normalizeOperationalProcess(v: unknown) {
   return "PRODUCCION";
 }
 
+function normalizeGarmentType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (!GARMENT_TYPES.has(raw)) return null;
+
+  return raw;
+}
+
 function resolveOrderTypeFromKind(kind: unknown) {
   const normalizedKind = String(kind ?? "NUEVO")
     .trim()
@@ -372,6 +391,8 @@ export async function PUT(
       orderId: orderItems.orderId,
       productId: orderItems.productId,
       name: orderItems.name,
+      garmentType: orderItems.garmentType,
+      logoImageUrl: orderItems.logoImageUrl,
       status: orderItems.status,
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
@@ -462,6 +483,29 @@ export async function PUT(
   }
 
   if (qty) patch.quantity = qty;
+  const effectiveGarmentType =
+    body.garmentType !== undefined
+      ? normalizeGarmentType(body.garmentType)
+      : normalizeGarmentType(existing.garmentType);
+
+  if (!effectiveGarmentType) {
+    return new Response("garmentType inválido", { status: 400 });
+  }
+
+  patch.garmentType = effectiveGarmentType;
+
+  const [duplicatedGarmentType] = await db
+    .select({ id: orderItems.id })
+    .from(orderItems)
+    .where(
+      sql`${orderItems.orderId} = ${existing.orderId} and ${orderItems.garmentType} = ${effectiveGarmentType} and ${orderItems.id} <> ${orderItemId}`,
+    )
+    .limit(1);
+
+  if (duplicatedGarmentType) {
+    return new Response(`Ya existe un diseño para el tipo ${effectiveGarmentType}`, { status: 400 });
+  }
+
   if (body.productId !== undefined)
     patch.productId = toNullableString(body.productId);
   if (body.name !== undefined) patch.name = toNullableString(body.name);
@@ -539,6 +583,14 @@ export async function PUT(
   if (body.fabric !== undefined) patch.fabric = toNullableString(body.fabric);
   if (body.imageUrl !== undefined)
     patch.imageUrl = toNullableString(body.imageUrl);
+  if (body.clothingImageOneUrl !== undefined) {
+    patch.clothingImageOneUrl = toNullableString(body.clothingImageOneUrl);
+    patch.imageUrl = toNullableString(body.clothingImageOneUrl);
+  }
+  if (body.clothingImageTwoUrl !== undefined)
+    patch.clothingImageTwoUrl = toNullableString(body.clothingImageTwoUrl);
+  if (body.logoImageUrl !== undefined)
+    patch.logoImageUrl = toNullableString(body.logoImageUrl);
   if (body.screenPrint !== undefined)
     patch.screenPrint = Boolean(body.screenPrint);
   if (body.embroidery !== undefined)
@@ -563,6 +615,15 @@ export async function PUT(
     patch.manufacturingId = toNullableString(body.manufacturingId);
   if (patch.hasAdditions === false) {
     patch.additionEvidence = null;
+  }
+
+  const effectiveLogoImageUrl =
+    patch.logoImageUrl !== undefined
+      ? toNullableString(patch.logoImageUrl)
+      : toNullableString(existing.logoImageUrl);
+
+  if (!effectiveLogoImageUrl) {
+    return new Response("logoImageUrl es obligatorio", { status: 400 });
   }
 
   const effectiveProcess = normalizeOperationalProcess(

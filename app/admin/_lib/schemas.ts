@@ -77,6 +77,18 @@ export const createEmployeeSchema = z
         "Debe ser una URL válida o ruta local",
       )
       .optional(),
+    companyImageUrl: z
+      .string()
+      .trim()
+      .refine(
+        (val) =>
+          val.length === 0 ||
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
+      )
+      .optional(),
     roleId: z.string().uuid("Selecciona un rol").optional(),
     isActive: z.boolean().optional(),
   })

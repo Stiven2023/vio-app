@@ -53,7 +53,7 @@ type QuotationRow = {
   sellerName: string | null;
 };
 
-type OrderType = "VN" | "VI";
+type OrderType = "VN" | "VI" | "VT" | "VW";
 
 type Paginated<T> = {
   items: T[];
@@ -222,6 +222,36 @@ export function QuotationsList() {
   const openDownloadModal = (row: QuotationRow) => {
     if (downloadingId) return;
     setDownloadRow(row);
+  };
+
+  const downloadExcel = async (row: QuotationRow) => {
+    if (downloadingId) return;
+
+    try {
+      setDownloadingId(row.id);
+      const response = await fetch(`/api/exports/quotations/${row.id}/excel`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `cotizacion-${row.quoteCode}.xlsx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const openPrefacturaModal = (row: QuotationRow) => {
@@ -393,6 +423,13 @@ export function QuotationsList() {
                       {downloadingId === row.id ? "Descargando PDF..." : "Descargar PDF"}
                     </DropdownItem>
                     <DropdownItem
+                      key="download-excel"
+                      startContent={<BsDownload />}
+                      onPress={() => downloadExcel(row)}
+                    >
+                      {downloadingId === row.id ? "Descargando Excel..." : "Descargar Excel"}
+                    </DropdownItem>
+                    <DropdownItem
                       key="prefactura"
                       startContent={<BsFileEarmarkCheck />}
                       onPress={() => openPrefacturaModal(row)}
@@ -534,11 +571,15 @@ export function QuotationsList() {
               selectedKeys={[prefacturaOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
-                setPrefacturaOrderType(first === "VI" ? "VI" : "VN");
+                setPrefacturaOrderType(
+                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
+                );
               }}
             >
               <SelectItem key="VN">Nacional</SelectItem>
               <SelectItem key="VI">Internacional</SelectItem>
+              <SelectItem key="VT">VT</SelectItem>
+              <SelectItem key="VW">VW</SelectItem>
             </Select>
           </ModalBody>
           <ModalFooter>

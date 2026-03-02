@@ -1,0 +1,45 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "typecheck",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"-s",
+				"tsc",
+				"--noEmit"
+			]
+		},
+		{
+			"label": "typecheck-payments",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"-s",
+				"tsc",
+				"--noEmit"
+			]
+		},
+		{
+			"label": "typecheck-payments-final",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"-s",
+				"tsc",
+				"--noEmit"
+			]
+		},
+		{
+			"label": "typecheck-pdf-image-size",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"-s",
+				"tsc",
+				"--noEmit"
+			]
+		}
+	]
+}

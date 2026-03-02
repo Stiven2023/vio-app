@@ -354,6 +354,9 @@ export async function POST(request: Request) {
         signatureImageUrl: payload.signatureImageUrl
           ? String(payload.signatureImageUrl).trim()
           : null,
+        companyImageUrl: payload.companyImageUrl
+          ? String(payload.companyImageUrl).trim()
+          : null,
       })
       .returning();
 
@@ -510,6 +513,10 @@ export async function PUT(request: Request) {
   if (payload.signatureImageUrl !== undefined)
     patch.signatureImageUrl = payload.signatureImageUrl
       ? String(payload.signatureImageUrl).trim()
+      : null;
+  if (payload.companyImageUrl !== undefined)
+    patch.companyImageUrl = payload.companyImageUrl
+      ? String(payload.companyImageUrl).trim()
       : null;
 
   try {

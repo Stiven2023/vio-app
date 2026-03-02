@@ -149,6 +149,8 @@ export async function GET(
         id: orderPayments.id,
         orderId: orderPayments.orderId,
         amount: orderPayments.amount,
+        depositAmount: orderPayments.depositAmount,
+        referenceCode: orderPayments.referenceCode,
         method: orderPayments.method,
         status: orderPayments.status,
         proofImageUrl: orderPayments.proofImageUrl,
@@ -226,6 +228,14 @@ export async function POST(
       ? null
       : String(body.proofImageUrl).trim() || null;
 
+  const referenceCode =
+    body.referenceCode === undefined || body.referenceCode === null
+      ? null
+      : String(body.referenceCode).trim() || null;
+
+  const depositAmount =
+    toPositiveNumericString(body.depositAmount) ?? amount;
+
   const created = await db.transaction(async (tx) => {
     const [o] = await tx
       .select({ id: orders.id, orderCode: orders.orderCode })
@@ -240,6 +250,8 @@ export async function POST(
       .values({
         orderId,
         amount,
+        depositAmount,
+        referenceCode,
         method: method as any,
         status: status as any,
         proofImageUrl,

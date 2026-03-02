@@ -187,7 +187,7 @@ export const permissionEnum = pgEnum("permission", [
 /* =========================
    ENUMS (POSTGRES)
 ========================= */
-export const orderTypeEnum = pgEnum("order_type", ["VN", "VI"]);
+export const orderTypeEnum = pgEnum("order_type", ["VN", "VI", "VT", "VW"]);
 
 export const orderKindEnum = pgEnum("order_kind", [
   "NUEVO",
@@ -277,6 +277,20 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
+export const externalAccessOtps = pgTable("external_access_otps", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  clientCode: varchar("client_code", { length: 20 }).notNull(),
+  audience: varchar("audience", { length: 20 }).notNull(),
+  token: varchar("token", { length: 10 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  resendAvailableAt: timestamp("resend_available_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 /* =========================
    ROLES & PERMISSIONS
 ========================= */
@@ -328,6 +342,7 @@ export const employees = pgTable("employees", {
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
   employeeImageUrl: varchar("employee_image_url", { length: 500 }),
   signatureImageUrl: varchar("signature_image_url", { length: 500 }),
+  companyImageUrl: varchar("company_image_url", { length: 500 }),
 
   // --- IDENTIFICACIÓN Y NOMBRE ---
   name: varchar("name", { length: 255 }).notNull(),
@@ -573,7 +588,7 @@ export const orders = pgTable("orders", {
 export const prefacturas = pgTable("prefacturas", {
   id: uuid("id").defaultRandom().primaryKey(),
   prefacturaCode: varchar("prefactura_code", { length: 20 }).unique().notNull(),
-  quotationId: uuid("quotation_id").notNull().references(() => quotations.id, { onDelete: "cascade" }),
+  quotationId: uuid("quotation_id").references(() => quotations.id, { onDelete: "cascade" }),
   orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
   status: varchar("status", { length: 40 }).default("PENDIENTE_CONTABILIDAD").notNull(),
   totalProducts: numeric("total_products", { precision: 14, scale: 2 }).default("0"),
@@ -592,6 +607,7 @@ export const orderItems = pgTable("order_items", {
   productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
   additionId: uuid("addition_id").references(() => additions.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }),
+  garmentType: varchar("garment_type", { length: 30 }),
   quantity: integer("quantity").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }),
   totalPrice: numeric("total_price", { precision: 14, scale: 2 }),
@@ -600,6 +616,9 @@ export const orderItems = pgTable("order_items", {
   observations: text("observations"),
   fabric: varchar("fabric", { length: 100 }),
   imageUrl: text("image_url"),
+  clothingImageOneUrl: text("clothing_image_one_url"),
+  clothingImageTwoUrl: text("clothing_image_two_url"),
+  logoImageUrl: text("logo_image_url"),
   screenPrint: boolean("screen_print").default(false),
   embroidery: boolean("embroidery").default(false),
   buttonhole: boolean("buttonhole").default(false),
@@ -998,6 +1017,8 @@ export const orderPayments = pgTable("order_payments", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").references(() => orders.id),
   amount: numeric("amount", { precision: 14, scale: 2 }),
+  depositAmount: numeric("deposit_amount", { precision: 14, scale: 2 }),
+  referenceCode: varchar("reference_code", { length: 120 }),
   method: paymentMethodEnum("method"),
   status: paymentStatusEnum("status").default("PENDIENTE"),
   proofImageUrl: text("proof_image_url"),

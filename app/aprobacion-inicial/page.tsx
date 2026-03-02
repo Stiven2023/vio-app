@@ -26,6 +26,8 @@ export default async function AprobacionInicialPage() {
           orderStatus="APROBACION_INICIAL"
           showProcessColumn
           basePath="/aprobacion-inicial"
+          actualizacionBasePath="/aprobacion-inicial/actualizacion"
+          enableDecisions
           labels={{
             principal: "Aprobación inicial principal",
             bodega: "Aprobación inicial bodega",

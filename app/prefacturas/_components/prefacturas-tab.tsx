@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -42,12 +43,12 @@ import { usePaginatedApi } from "@/app/orders/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
-type OrderType = "VN" | "VI";
+type OrderType = "VN" | "VI" | "VT" | "VW";
 
 type PrefacturaRow = {
   id: string;
   prefacturaCode: string;
-  quotationId: string;
+  quotationId: string | null;
   quoteCode: string | null;
   orderId: string | null;
   orderCode: string | null;
@@ -77,6 +78,8 @@ const typeOptions = [
   { value: "all", label: "Todos" },
   { value: "VN", label: "Nacional" },
   { value: "VI", label: "Internacional" },
+  { value: "VT", label: "VT" },
+  { value: "VW", label: "VW" },
 ];
 
 function formatMoney(value: string | number | null | undefined) {
@@ -116,6 +119,7 @@ export function PrefacturasTab({
   lockStatusFilter?: boolean;
   initialOrderStatus?: string;
 }) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(initialStatus);
   const [type, setType] = useState("all");
@@ -162,7 +166,11 @@ export function PrefacturasTab({
   const openEdit = (row: PrefacturaRow) => {
     setEditing(row);
     setEditOrderName(String(row.orderName ?? ""));
-    setEditOrderType(row.orderType === "VI" ? "VI" : "VN");
+    setEditOrderType(
+      row.orderType === "VI" || row.orderType === "VT" || row.orderType === "VW"
+        ? row.orderType
+        : "VN",
+    );
     setEditStatus(String(row.status ?? "APROBADA").toUpperCase());
   };
 
@@ -284,7 +292,7 @@ export function PrefacturasTab({
 
         <div className="flex gap-2">
           {canCreate ? (
-            <Button color="primary" onPress={() => setCreateOpen(true)}>
+            <Button color="primary" onPress={() => router.push("/prefacturas/new")}>
               <BsPlusCircle /> Nueva prefactura
             </Button>
           ) : null}
@@ -431,11 +439,15 @@ export function PrefacturasTab({
               selectedKeys={[createOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
-                setCreateOrderType(first === "VI" ? "VI" : "VN");
+                setCreateOrderType(
+                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
+                );
               }}
             >
               <SelectItem key="VN">Nacional</SelectItem>
               <SelectItem key="VI">Internacional</SelectItem>
+              <SelectItem key="VT">VT</SelectItem>
+              <SelectItem key="VW">VW</SelectItem>
             </Select>
           </ModalBody>
           <ModalFooter>
@@ -470,11 +482,15 @@ export function PrefacturasTab({
               selectedKeys={[editOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
-                setEditOrderType(first === "VI" ? "VI" : "VN");
+                setEditOrderType(
+                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
+                );
               }}
             >
               <SelectItem key="VN">Nacional</SelectItem>
               <SelectItem key="VI">Internacional</SelectItem>
+              <SelectItem key="VT">VT</SelectItem>
+              <SelectItem key="VW">VW</SelectItem>
             </Select>
             <Select
               label="Estado"

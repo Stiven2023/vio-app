@@ -35,10 +35,27 @@ function normalizeOperationalProcess(v: unknown) {
   return "PRODUCCION";
 }
 
-function defaultPackaging(mode: PackagingMode): OrderItemPackagingInput[] {
-  if (mode === "INDIVIDUAL") return [];
+function normalizeGarmentType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
 
-  return [{ mode: "AGRUPADO", size: "", quantity: 1 }];
+  if (
+    raw === "JUGADOR" ||
+    raw === "ARQUERO" ||
+    raw === "CAPITAN" ||
+    raw === "JUEZ" ||
+    raw === "ENTRENADOR" ||
+    raw === "LIBERO"
+  ) {
+    return raw;
+  }
+
+  return "JUGADOR";
+}
+
+function defaultPackaging(_mode: PackagingMode): OrderItemPackagingInput[] {
+  return [];
 }
 
 export function useOrderItemModalState(options: {
@@ -61,6 +78,7 @@ export function useOrderItemModalState(options: {
     productId: (initialValue?.item as any)?.productId ?? null,
     productPriceId: (initialValue?.item as any)?.productPriceId ?? null,
     name: initialValue?.item?.name ?? "",
+    garmentType: normalizeGarmentType((initialValue?.item as any)?.garmentType),
     quantity: initialValue?.item?.quantity ?? 1,
     unitPrice: initialValue?.item?.unitPrice ?? "0",
     totalPrice: initialValue?.item?.totalPrice ?? "0",
@@ -69,6 +87,9 @@ export function useOrderItemModalState(options: {
     observations: initialValue?.item?.observations ?? "",
     fabric: initialValue?.item?.fabric ?? "",
     imageUrl: initialValue?.item?.imageUrl ?? null,
+    clothingImageOneUrl: (initialValue?.item as any)?.clothingImageOneUrl ?? null,
+    clothingImageTwoUrl: (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
+    logoImageUrl: (initialValue?.item as any)?.logoImageUrl ?? null,
     gender: initialValue?.item?.gender ?? null,
     process: normalizeOperationalProcess(initialValue?.item?.process),
     neckType: initialValue?.item?.neckType ?? null,
@@ -133,6 +154,7 @@ export function useOrderItemModalState(options: {
       productId: (initialValue?.item as any)?.productId ?? null,
       productPriceId: (initialValue?.item as any)?.productPriceId ?? null,
       name: initialValue?.item?.name ?? "",
+      garmentType: normalizeGarmentType((initialValue?.item as any)?.garmentType),
       quantity: initialValue?.item?.quantity ?? 1,
       unitPrice: initialValue?.item?.unitPrice ?? "0",
       totalPrice: initialValue?.item?.totalPrice ?? "0",
@@ -141,6 +163,9 @@ export function useOrderItemModalState(options: {
       observations: initialValue?.item?.observations ?? "",
       fabric: initialValue?.item?.fabric ?? "",
       imageUrl: initialValue?.item?.imageUrl ?? null,
+      clothingImageOneUrl: (initialValue?.item as any)?.clothingImageOneUrl ?? null,
+      clothingImageTwoUrl: (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
+      logoImageUrl: (initialValue?.item as any)?.logoImageUrl ?? null,
       gender: initialValue?.item?.gender ?? null,
       process: normalizeOperationalProcess(initialValue?.item?.process),
       neckType: initialValue?.item?.neckType ?? null,

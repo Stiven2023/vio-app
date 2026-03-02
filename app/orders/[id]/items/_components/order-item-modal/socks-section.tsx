@@ -10,16 +10,30 @@ import { Input } from "@heroui/input";
 import { uploadToCloudinary } from "@/app/orders/_lib/cloudinary";
 import { parseSocksFromRows, readExcelFirstSheetRows } from "@/app/orders/_lib/excel";
 
-function asPositiveInt(v: unknown) {
-  const n = Number(String(v ?? ""));
+const SOCKS_CURVE_SIZES = ["4-6", "6-8", "8-10", "9-11", "10-12"];
+
+function parseCount(v: unknown) {
+  const digits = String(v ?? "").replace(/[^\d]/g, "");
+  if (!digits) return 0;
+
+  const n = Number(digits);
 
   if (!Number.isFinite(n)) return 0;
 
-  return Math.max(1, Math.floor(n));
+  return Math.max(0, Math.floor(n));
+}
+
+function formatCount(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "";
+
+  return new Intl.NumberFormat("es-CO", {
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 export function SocksSection({
   orderId,
+  garmentType,
   value,
   disabled,
   onChange,
@@ -27,6 +41,7 @@ export function SocksSection({
   onError,
 }: {
   orderId: string;
+  garmentType?: string;
   value: OrderItemSockInput[];
   disabled: boolean;
   onChange: (next: OrderItemSockInput[]) => void;
@@ -34,6 +49,58 @@ export function SocksSection({
   onError?: (message: string) => void;
 }) {
   const [uploadingIndex, setUploadingIndex] = React.useState<number | null>(null);
+
+  const socksMap = React.useMemo(() => {
+    const map = new Map<string, number>();
+
+    for (const row of value ?? []) {
+      const key = String(row.size ?? "").trim().toUpperCase();
+      if (!key) continue;
+      const qty = Number(row.quantity ?? 0);
+      const safeQty = Number.isFinite(qty) ? Math.max(0, Math.floor(qty)) : 0;
+      if (safeQty <= 0) continue;
+
+      map.set(key, (map.get(key) ?? 0) + safeQty);
+    }
+
+    return map;
+  }, [value]);
+
+  const getCurveQty = (size: string) => socksMap.get(String(size).toUpperCase()) ?? 0;
+  const socksCurveTotal = SOCKS_CURVE_SIZES.reduce(
+    (acc, size) => acc + getCurveQty(size),
+    0,
+  );
+
+  function upsertCurveSize(size: string, raw: string) {
+    const qty = parseCount(raw);
+    const normalized = String(size).trim().toUpperCase();
+    const existing = [...(value ?? [])];
+    const index = existing.findIndex(
+      (row) => String(row.size ?? "").trim().toUpperCase() === normalized,
+    );
+
+    if (qty <= 0) {
+      if (index >= 0) {
+        onChange(existing.filter((_, i) => i !== index));
+      }
+      return;
+    }
+
+    if (index >= 0) {
+      onChange(
+        existing.map((row, i) =>
+          i === index ? { ...row, size: normalized, quantity: qty } : row,
+        ),
+      );
+      return;
+    }
+
+    onChange([
+      ...existing,
+      { size: normalized, quantity: qty, description: "", imageUrl: null },
+    ]);
+  }
 
   async function importExcel(file: File) {
     try {
@@ -76,7 +143,7 @@ export function SocksSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold">Medias</div>
+        <div className="text-sm font-semibold">Medias · {String(garmentType ?? "JUGADOR")}</div>
         <Button
           isDisabled={disabled}
           size="sm"
@@ -90,6 +157,34 @@ export function SocksSection({
         >
           Agregar
         </Button>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-xs text-default-500">
+          Curva medias (admite centenas y miles, ej: 2.500).
+        </div>
+        <div className="rounded-medium border border-default-200 overflow-x-auto">
+          <div className="grid min-w-[700px] grid-cols-[120px_repeat(5,minmax(90px,1fr))_90px] gap-1 border-b border-default-200 bg-content2 px-2 py-2 text-xs font-semibold uppercase text-default-600">
+            <div>Tallas medias</div>
+            {SOCKS_CURVE_SIZES.map((size) => (
+              <div key={`head-socks-${size}`} className="text-center">{size}</div>
+            ))}
+            <div className="text-center rounded-small bg-default-900 text-white">Total</div>
+          </div>
+          <div className="grid min-w-[700px] grid-cols-[120px_repeat(5,minmax(90px,1fr))_90px] gap-1 px-2 py-2 items-center">
+            <div className="text-sm font-semibold">Jugador</div>
+            {SOCKS_CURVE_SIZES.map((size) => (
+              <Input
+                key={`socks-${size}`}
+                isDisabled={disabled}
+                placeholder="0"
+                value={formatCount(getCurveQty(size))}
+                onValueChange={(v: string) => upsertCurveSize(size, v)}
+              />
+            ))}
+            <div className="text-center font-semibold rounded-small bg-default-900 text-white py-2 px-1">{formatCount(socksCurveTotal) || "0"}</div>
+          </div>
+        </div>
       </div>
 
       <div>
@@ -130,12 +225,12 @@ export function SocksSection({
             <Input
               isDisabled={disabled}
               label="Cantidad"
-              type="number"
-              value={String(s.quantity ?? 1)}
+              placeholder="0"
+              value={formatCount(Number(s.quantity ?? 0))}
               onValueChange={(v: string) =>
                 onChange(
                   value.map((x, i) =>
-                    i === idx ? { ...x, quantity: asPositiveInt(v) } : x,
+                    i === idx ? { ...x, quantity: Math.max(1, parseCount(v)) } : x,
                   ),
                 )
               }

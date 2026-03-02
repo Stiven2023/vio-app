@@ -24,6 +24,14 @@ export type OrderItemMaterialInput = {
 export type OrderItemInput = {
   id?: string;
   orderId: string;
+  garmentType?:
+    | "JUGADOR"
+    | "ARQUERO"
+    | "CAPITAN"
+    | "JUEZ"
+    | "ENTRENADOR"
+    | "LIBERO"
+    | null;
   productId?: string | null;
   additionId?: string | null;
   hasAdditions?: boolean;
@@ -37,6 +45,9 @@ export type OrderItemInput = {
   fabric?: string | null;
   name?: string | null;
   imageUrl?: string | null;
+  clothingImageOneUrl?: string | null;
+  clothingImageTwoUrl?: string | null;
+  logoImageUrl?: string | null;
 
   screenPrint?: boolean;
   embroidery?: boolean;

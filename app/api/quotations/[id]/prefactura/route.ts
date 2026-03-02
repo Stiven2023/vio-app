@@ -58,9 +58,11 @@ async function resolveEmployeeId(request: Request) {
   return row?.id ?? null;
 }
 
-async function generateOrderCode(tx: any, type: "VN" | "VI") {
+type OrderTypeCode = "VN" | "VI" | "VT" | "VW";
+
+async function generateOrderCode(tx: any, type: OrderTypeCode) {
   const prefix = `${type}-`;
-  const seqLen = type === "VN" ? 6 : 4;
+  const seqLen = type === "VI" ? 4 : 6;
   const pattern = `(?i)^${type}-(?:[0-9]{8}-)?([0-9]+)$`;
 
   const [row] = await tx
@@ -114,14 +116,19 @@ export async function POST(
   if (!quotationId) return new Response("id required", { status: 400 });
 
   let orderNameFromBody: string | null = null;
-  let orderTypeFromBody: "VN" | "VI" | null = null;
+  let orderTypeFromBody: OrderTypeCode | null = null;
   try {
     const body = await request.json();
     const rawOrderName = String(body?.orderName ?? "").trim();
     const rawOrderType = String(body?.orderType ?? "").trim().toUpperCase();
 
     orderNameFromBody = rawOrderName ? rawOrderName : null;
-    orderTypeFromBody = rawOrderType === "VI" ? "VI" : rawOrderType === "VN" ? "VN" : null;
+    orderTypeFromBody =
+      rawOrderType === "VI" || rawOrderType === "VT" || rawOrderType === "VW"
+        ? (rawOrderType as OrderTypeCode)
+        : rawOrderType === "VN"
+          ? "VN"
+          : null;
   } catch {
     orderNameFromBody = null;
     orderTypeFromBody = null;
@@ -209,7 +216,7 @@ export async function POST(
 
       const orderTypeByQuotation =
         String(quotation.currency ?? "COP").toUpperCase() === "USD" ? "VI" : "VN";
-      const orderType = orderTypeFromBody ?? orderTypeByQuotation;
+      const orderType = (orderTypeFromBody ?? orderTypeByQuotation) as OrderTypeCode;
       const orderName = orderNameFromBody ?? `Pedido ${quotation.quoteCode}`;
 
       let createdOrder: {
@@ -219,7 +226,7 @@ export async function POST(
       } | null = null;
 
       for (let attempt = 0; attempt < 5; attempt++) {
-        const orderCode = await generateOrderCode(tx, orderType as "VN" | "VI");
+        const orderCode = await generateOrderCode(tx, orderType);
 
         try {
           const [savedOrder] = await tx
@@ -276,6 +283,8 @@ export async function POST(
           quantity: quotationItems.quantity,
           unitPrice: quotationItems.unitPrice,
           discount: quotationItems.discount,
+          orderCodeReference: quotationItems.orderCodeReference,
+          designNumber: quotationItems.designNumber,
           productName: sql<string>`(select p.name from products p where p.id = ${quotationItems.productId})`,
         })
         .from(quotationItems)
@@ -305,6 +314,81 @@ export async function POST(
         additionsByItem.set(key, current);
       }
 
+      const conditionalTypes = new Set(["COMPLETACION", "REFERENTE", "REPOSICION"]);
+      const referencedQuoteItems = quoteItems.filter((item) => {
+        const type = String(item.orderType ?? "").toUpperCase();
+        const code = String(item.orderCodeReference ?? "").trim();
+        return conditionalTypes.has(type) && Boolean(code);
+      });
+
+      const referencedOrderCodes = Array.from(
+        new Set(
+          referencedQuoteItems
+            .map((item) => String(item.orderCodeReference ?? "").trim())
+            .filter(Boolean),
+        ),
+      );
+
+      const referencedOrders = referencedOrderCodes.length
+        ? await tx
+            .select({ id: orders.id, orderCode: orders.orderCode })
+            .from(orders)
+            .where(inArray(orders.orderCode, referencedOrderCodes))
+        : [];
+
+      const referencedOrderIdByCode = new Map(
+        referencedOrders.map((row) => [String(row.orderCode), String(row.id)]),
+      );
+
+      const referencedOrderIds = Array.from(
+        new Set(referencedOrders.map((row) => String(row.id))),
+      );
+
+      const referencedDesignItems = referencedOrderIds.length
+        ? await tx
+            .select({
+              id: orderItems.id,
+              orderId: orderItems.orderId,
+              productId: orderItems.productId,
+              name: orderItems.name,
+              quantity: orderItems.quantity,
+              unitPrice: orderItems.unitPrice,
+              totalPrice: orderItems.totalPrice,
+              hasAdditions: orderItems.hasAdditions,
+              additionEvidence: orderItems.additionEvidence,
+              observations: orderItems.observations,
+              fabric: orderItems.fabric,
+              imageUrl: orderItems.imageUrl,
+              screenPrint: orderItems.screenPrint,
+              embroidery: orderItems.embroidery,
+              buttonhole: orderItems.buttonhole,
+              snap: orderItems.snap,
+              tag: orderItems.tag,
+              flag: orderItems.flag,
+              gender: orderItems.gender,
+              process: orderItems.process,
+              estimatedLeadDays: orderItems.estimatedLeadDays,
+              neckType: orderItems.neckType,
+              sleeve: orderItems.sleeve,
+              color: orderItems.color,
+              requiresSocks: orderItems.requiresSocks,
+              isActive: orderItems.isActive,
+              manufacturingId: orderItems.manufacturingId,
+              status: orderItems.status,
+              requiresRevision: orderItems.requiresRevision,
+            })
+            .from(orderItems)
+            .where(inArray(orderItems.orderId, referencedOrderIds as any))
+        : [];
+
+      const referencedDesignsByOrderId = new Map<string, typeof referencedDesignItems>();
+      for (const design of referencedDesignItems) {
+        const key = String(design.orderId ?? "");
+        const current = referencedDesignsByOrderId.get(key) ?? [];
+        current.push(design);
+        referencedDesignsByOrderId.set(key, current);
+      }
+
       const designValues: Array<typeof orderItems.$inferInsert> = [];
       const additionsQueue: Array<{
         quotationItemId: string;
@@ -314,6 +398,26 @@ export async function POST(
       }> = [];
 
       for (const item of quoteItems) {
+        const orderTypeNormalized = String(item.orderType ?? "").trim().toUpperCase();
+        const referenceOrderCode = String(item.orderCodeReference ?? "").trim();
+        const referenceDesign = String(item.designNumber ?? "").trim();
+        const referencedOrderId = referenceOrderCode
+          ? referencedOrderIdByCode.get(referenceOrderCode)
+          : undefined;
+        const sourceCandidates = referencedOrderId
+          ? referencedDesignsByOrderId.get(referencedOrderId) ?? []
+          : [];
+        const sourceDesign = conditionalTypes.has(orderTypeNormalized)
+          ? sourceCandidates.find((candidate) => {
+              const designNumber = referenceDesign.toUpperCase();
+              return (
+                String(candidate.id ?? "") === referenceDesign ||
+                String(candidate.manufacturingId ?? "").trim().toUpperCase() === designNumber ||
+                String(candidate.name ?? "").trim().toUpperCase() === designNumber
+              );
+            })
+          : null;
+
         const qty = toPositiveInt(item.quantity);
         const unitPrice = asNumber(item.unitPrice);
         const discount = Math.min(100, Math.max(0, asNumber(item.discount)));
@@ -339,20 +443,37 @@ export async function POST(
 
         designValues.push({
           orderId: createdOrder.id,
-          productId: item.productId,
+          productId: sourceDesign?.productId ?? item.productId,
           additionId: null,
-          name: item.productName ?? "Producto",
-          quantity: qty,
-          unitPrice: String(unitPrice),
-          totalPrice: String(lineTotal),
-          hasAdditions: adds.length > 0,
-          additionEvidence,
-          process,
-          estimatedLeadDays,
-          observations: `Demora estimada: ${estimatedLeadDays} días`,
-          status: "PENDIENTE" as any,
-          requiresRevision: false,
-          isActive: true,
+          name: sourceDesign?.name ?? item.productName ?? "Producto",
+          quantity: sourceDesign?.quantity ?? qty,
+          unitPrice: sourceDesign?.unitPrice ?? String(unitPrice),
+          totalPrice: sourceDesign?.totalPrice ?? String(lineTotal),
+          hasAdditions: sourceDesign
+            ? Boolean(sourceDesign.hasAdditions)
+            : adds.length > 0,
+          additionEvidence: sourceDesign?.additionEvidence ?? additionEvidence,
+          observations:
+            sourceDesign?.observations ?? `Demora estimada: ${estimatedLeadDays} días`,
+          fabric: sourceDesign?.fabric ?? null,
+          imageUrl: sourceDesign?.imageUrl ?? null,
+          screenPrint: Boolean(sourceDesign?.screenPrint ?? false),
+          embroidery: Boolean(sourceDesign?.embroidery ?? false),
+          buttonhole: Boolean(sourceDesign?.buttonhole ?? false),
+          snap: Boolean(sourceDesign?.snap ?? false),
+          tag: Boolean(sourceDesign?.tag ?? false),
+          flag: Boolean(sourceDesign?.flag ?? false),
+          gender: sourceDesign?.gender ?? null,
+          process: sourceDesign?.process ?? process,
+          estimatedLeadDays: sourceDesign?.estimatedLeadDays ?? estimatedLeadDays,
+          neckType: sourceDesign?.neckType ?? null,
+          sleeve: sourceDesign?.sleeve ?? null,
+          color: sourceDesign?.color ?? null,
+          requiresSocks: Boolean(sourceDesign?.requiresSocks ?? false),
+          isActive: sourceDesign?.isActive ?? true,
+          manufacturingId: sourceDesign?.manufacturingId ?? null,
+          status: sourceDesign?.status ?? ("PENDIENTE" as any),
+          requiresRevision: Boolean(sourceDesign?.requiresRevision ?? false),
         });
 
         for (const add of adds) {
