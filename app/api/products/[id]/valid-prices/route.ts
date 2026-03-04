@@ -40,6 +40,7 @@ export async function GET(
       id: product.id,
       catalogType: null,
       referenceCode: product.productCode ?? product.id,
+      priceCopBase: product.priceCopBase ?? null,
       priceCopInternational: product.priceCopInternational ?? null,
       priceCopR1: product.priceCopR1 ?? null,
       priceCopR2: product.priceCopR2 ?? null,

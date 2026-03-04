@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, or } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { additions, clients, products } from "@/src/db/schema";
@@ -80,11 +80,17 @@ export async function GET(request: Request) {
       productBaseFilters.push(isNotNull(products.priceCopInternational));
       productBaseFilters.push(isNotNull(products.priceUSD));
     } else {
-      productBaseFilters.push(isNotNull(products.priceCopR1));
-      productBaseFilters.push(isNotNull(products.priceCopR2));
-      productBaseFilters.push(isNotNull(products.priceCopR3));
-      productBaseFilters.push(isNotNull(products.priceColanta));
-      productBaseFilters.push(isNotNull(products.priceMayorista));
+      productBaseFilters.push(
+        or(
+          isNotNull(products.priceCopBase),
+          isNotNull(products.priceCopR1),
+          isNotNull(products.priceCopR2),
+          isNotNull(products.priceCopR3),
+          isNotNull(products.priceViomar),
+          isNotNull(products.priceColanta),
+          isNotNull(products.priceMayorista),
+        )!,
+      );
     }
 
     const productItems = await db

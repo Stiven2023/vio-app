@@ -125,10 +125,10 @@ function pickCopScaleByQuantity(
   row: typeof products.$inferSelect,
   quantity: number,
 ) {
-  if (quantity <= 499) return row.priceCopR1;
-  if (quantity <= 1000) return row.priceCopR2;
+  if (quantity <= 499) return row.priceCopR1 || row.priceCopBase;
+  if (quantity <= 1000) return row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 
-  return row.priceCopR3;
+  return row.priceCopR3 || row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 }
 
 function resolveUnitPriceByRule(args: {
@@ -165,9 +165,17 @@ function resolveUnitPriceByRule(args: {
     return null;
   }
 
-  if (clientPriceType === "VIOMAR" && row.priceViomar) return row.priceViomar;
-  if (clientPriceType === "COLANTA" && row.priceColanta) return row.priceColanta;
-  if (clientPriceType === "MAYORISTA" && row.priceMayorista) return row.priceMayorista;
+  if (clientPriceType === "VIOMAR") {
+    return row.priceViomar || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+  }
+
+  if (clientPriceType === "COLANTA") {
+    return row.priceColanta || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+  }
+
+  if (clientPriceType === "MAYORISTA") {
+    return row.priceMayorista || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+  }
 
   const copByScale = pickCopScaleByQuantity(row, quantity);
 

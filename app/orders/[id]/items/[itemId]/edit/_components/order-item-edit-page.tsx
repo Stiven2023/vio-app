@@ -31,6 +31,7 @@ type ProductPriceRow = {
   id: string;
   catalogType: "NACIONAL" | "INTERNACIONAL" | null;
   referenceCode: string;
+  priceCopBase: string | null;
   priceCopInternational: string | null;
   priceCopR1: string | null;
   priceCopR2: string | null;
@@ -52,10 +53,10 @@ function asNumber(v: unknown) {
 }
 
 function pickCopScaleByQuantity(row: ProductPriceRow, quantity: number) {
-  if (quantity <= 499) return row.priceCopR1;
-  if (quantity <= 1000) return row.priceCopR2;
+  if (quantity <= 499) return row.priceCopR1 || row.priceCopBase;
+  if (quantity <= 1000) return row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 
-  return row.priceCopR3;
+  return row.priceCopR3 || row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 }
 
 function resolveUnitPrice(args: {
@@ -68,9 +69,18 @@ function resolveUnitPrice(args: {
   const { currency, clientPriceType, quantity, row, manualUnitPrice } = args;
 
   if (currency === "USD") return row.priceUSD;
-  if (clientPriceType === "VIOMAR" && row.priceViomar) return row.priceViomar;
-  if (clientPriceType === "COLANTA" && row.priceColanta) return row.priceColanta;
-  if (clientPriceType === "MAYORISTA" && row.priceMayorista) return row.priceMayorista;
+
+  if (clientPriceType === "VIOMAR") {
+    return row.priceViomar || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+  }
+
+  if (clientPriceType === "COLANTA") {
+    return row.priceColanta || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+  }
+
+  if (clientPriceType === "MAYORISTA") {
+    return row.priceMayorista || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+  }
 
   if (clientPriceType === "AUTORIZADO") {
     const manual = String(manualUnitPrice ?? "").trim();

@@ -43,11 +43,11 @@ export function resolveCopUnitPrice(
   clientPriceType: ClientPriceType,
 ): number {
   if (clientPriceType === "MAYORISTA") {
-    return toNumber(product.priceMayorista || product.priceCopR1 || product.priceCopBase);
+    return toNumber(product.priceMayorista || product.priceCopBase || product.priceCopR1);
   }
 
   if (clientPriceType === "COLANTA") {
-    return toNumber(product.priceColanta || product.priceCopR1 || product.priceCopBase);
+    return toNumber(product.priceColanta || product.priceCopBase || product.priceCopR1);
   }
 
   if (clientPriceType === "VIOMAR") {
