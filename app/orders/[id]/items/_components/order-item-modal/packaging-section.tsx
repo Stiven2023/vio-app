@@ -125,7 +125,7 @@ export function PackagingSection({
         </div>
         <div className="rounded-medium border border-default-200 overflow-x-auto">
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-b border-default-200 bg-content2 px-2 py-2 text-xs font-semibold uppercase text-default-600">
-            <div>Talla</div>
+            <div>Niño</div>
             {KIDS_SIZES.map((size) => (
               <div key={`head-kid-${size}`} className="text-center">{size}</div>
             ))}
@@ -133,7 +133,7 @@ export function PackagingSection({
           </div>
 
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 px-2 py-2 items-center">
-            <div className="text-sm font-semibold">Niño</div>
+            <div className="text-sm font-semibold">Talla</div>
             {KIDS_SIZES.map((size) => (
               <Input
                 key={`kid-${size}`}
@@ -146,8 +146,16 @@ export function PackagingSection({
             <div className="text-center font-semibold rounded-small bg-primary text-primary-foreground py-2 px-1">{formatCount(kidsTotal) || "0"}</div>
           </div>
 
-          <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-t border-default-200 px-2 py-2 items-center">
-            <div className="text-sm font-semibold">Adulto</div>
+          <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-y border-default-200 bg-content2 px-2 py-2 text-xs font-semibold uppercase text-default-600">
+            <div>Adulto</div>
+            {ADULT_SIZES.map((size) => (
+              <div key={`head-adult-${size}`} className="text-center">{size}</div>
+            ))}
+            <div className="text-center rounded-small bg-primary text-primary-foreground">Total</div>
+          </div>
+
+          <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 px-2 py-2 items-center">
+            <div className="text-sm font-semibold">Talla</div>
             {ADULT_SIZES.map((size) => (
               <Input
                 key={`adult-${size}`}

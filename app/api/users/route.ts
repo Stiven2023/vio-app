@@ -1,7 +1,7 @@
 import crypto from "crypto";
 
 import bcrypt from "bcryptjs";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { users, employees, roles } from "@/src/db/schema";
@@ -154,7 +154,16 @@ export async function PUT(request: Request) {
       status: 400,
     });
   }
-  const user = await db.select().from(users).where(eq(users.email, email));
+  const identifier = String(email ?? "").trim().toLowerCase();
+
+  const candidates = identifier.includes("@")
+    ? [identifier]
+    : [identifier, `${identifier}@terceros.viomar.local`];
+
+  const user = await db
+    .select()
+    .from(users)
+    .where(inArray(users.email, candidates));
 
   if (user.length === 0) {
     return new Response("User not found", { status: 404 });

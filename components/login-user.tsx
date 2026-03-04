@@ -237,6 +237,38 @@ export default function LoginUser() {
     }
   };
 
+  const handleThirdPartySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!form.email || !form.password) {
+      setToast({ message: "Usuario y contraseña son obligatorios.", type: "error" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const identifier = form.email.trim();
+      const normalized = identifier.includes("@")
+        ? identifier
+        : identifier.toLowerCase().replace(/\s+/g, "") + "@terceros.viomar.local";
+
+      const ok = await login(normalized, form.password);
+
+      if (ok) {
+        setToast({ message: "Inicio de sesión exitoso.", type: "success" });
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1200);
+      } else {
+        setToast({ message: "Credenciales inválidas.", type: "error" });
+      }
+    } catch {
+      setToast({ message: "No se pudo iniciar sesión.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto mt-10 p-6">
       {toast && <AlertToast message={toast.message} type={toast.type} />}
@@ -321,14 +353,41 @@ export default function LoginUser() {
             </div>
           </Tab>
           <Tab key="tercero" title="Soy tercero/mensajero">
-            <div className="pt-2">
-              <ExternalAccessTab
-                audience="TERCERO"
-                loading={loading}
-                setLoading={setLoading}
-                setToast={setToast}
+            <form className="space-y-4 pt-2" onSubmit={handleThirdPartySubmit}>
+              <Input
+                required
+                autoComplete="username"
+                label="Usuario"
+                placeholder="Ej: mensajero1, confeccionista2"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
               />
-            </div>
+              <Input
+                required
+                autoComplete="current-password"
+                label="Contraseña"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                endContent={
+                  <Button
+                    aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                    className="min-w-10 px-0"
+                    size="sm"
+                    type="button"
+                    variant="light"
+                    onPress={() => setShowPassword((v) => !v)}
+                  >
+                    {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
+                  </Button>
+                }
+                value={form.password}
+                onChange={handleChange}
+              />
+              <Button className="w-full" color="primary" isDisabled={loading} isLoading={loading} type="submit">
+                Entrar como tercero
+              </Button>
+            </form>
           </Tab>
         </Tabs>
       </div>

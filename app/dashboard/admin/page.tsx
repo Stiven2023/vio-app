@@ -164,16 +164,18 @@ export default async function AdminDashboardPage() {
   const adjustmentApplied = Number(latestExchangeRate?.adjustmentApplied ?? 0);
 
   return (
-    <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold">Dashboard Admin</h1>
-        <p className="text-default-600">
-          Accesos rapidos y resumen general de la operacion.
-        </p>
+    <div className="container mx-auto max-w-7xl px-6 pt-16 pb-10">
+      <div className="rounded-large border border-default-200 bg-content1 p-5 shadow-sm">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold">Dashboard Administrativo</h1>
+          <p className="text-default-600">
+            Vista ejecutiva de operación, ventas y rendimiento diario.
+          </p>
+        </div>
       </div>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Metricas</h2>
+        <h2 className="text-lg font-semibold">Métricas clave</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-2">
@@ -195,7 +197,7 @@ export default async function AdminDashboardPage() {
               </div>
               <div className="text-2xl font-semibold">{unreadCount}</div>
               <div className="text-xs text-default-400">
-                Incluye todas las areas.
+                Incluye todas las áreas.
               </div>
             </CardBody>
           </Card>
@@ -206,7 +208,7 @@ export default async function AdminDashboardPage() {
                 {salesFormatter.format(monthSalesValue)}
               </div>
               <div className="text-xs text-default-400">
-                Pagos confirmados o parciales.
+                Pagos confirmados del mes actual.
               </div>
             </CardBody>
           </Card>
@@ -232,13 +234,13 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Accesos rapidos</h2>
+        <h2 className="text-lg font-semibold">Accesos rápidos</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {quickActions.map((action) => (
-            <Card key={action.href} className="border border-default-200">
+            <Card key={action.href} className="border border-default-200 transition-transform hover:-translate-y-0.5">
               <CardBody className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-medium bg-success-50 text-success">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-medium bg-primary-50 text-primary">
                     {action.icon}
                   </div>
                   <div>
@@ -260,7 +262,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Reportes visuales</h2>
+        <h2 className="text-lg font-semibold">Analítica visual</h2>
         <div className="mt-4">
           <AdminCharts />
         </div>

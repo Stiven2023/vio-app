@@ -261,7 +261,10 @@ export const Navbar = () => {
     }
 
     if (operarioOnly) {
-      return [{ name: "Dashboard", href: "/dashboard" }];
+      return [
+        { name: "Dashboard", href: "/dashboard" },
+        { name: "Envíos", href: "/envios" },
+      ];
     }
 
     const extra: { name: string; href: string }[] = [];
@@ -300,6 +303,7 @@ export const Navbar = () => {
       extra.push({ name: "Historial", href: "/status-history" });
     }
     if (isAuthenticated) {
+      extra.push({ name: "Envíos", href: "/envios" });
       extra.push({ name: "Notificaciones", href: "/notifications" });
       extra.push({ name: "Opciones", href: "/options" });
     }

@@ -246,6 +246,33 @@ export const inventoryLocationEnum = pgEnum("inventory_location", [
   "TIENDA",
 ]);
 
+export const shipmentModeEnum = pgEnum("shipment_mode", [
+  "INTERNAL",
+  "CLIENT",
+]);
+
+export const shipmentPaymentStatusEnum = pgEnum("shipment_payment_status", [
+  "PAGADO",
+  "PENDIENTE",
+  "NA",
+]);
+
+export const shipmentDocumentTypeEnum = pgEnum("shipment_document_type", [
+  "F",
+  "R",
+]);
+
+export const shipmentDocumentRefEnum = pgEnum("shipment_document_ref", [
+  "RECIBO_CAJA",
+  "PREFACTURA",
+]);
+
+export const shipmentEmailModeEnum = pgEnum("shipment_email_mode", [
+  "REGISTRADO",
+  "NUEVO",
+  "AMBOS",
+]);
+
 /* =========================
    USERS (AUTH)
 ========================= */
@@ -983,6 +1010,33 @@ export const inventoryOutputs = pgTable("inventory_outputs", {
   quantity: numeric("quantity", { precision: 12, scale: 2 }),
   reason: varchar("reason", { length: 100 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   SHIPMENTS
+========================= */
+export const shipments = pgTable("shipments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  mode: shipmentModeEnum("mode").notNull().default("INTERNAL"),
+  fromArea: varchar("from_area", { length: 80 }).notNull(),
+  toArea: varchar("to_area", { length: 80 }).notNull(),
+  sentBy: varchar("sent_by", { length: 120 }).notNull(),
+  orderCode: varchar("order_code", { length: 40 }).notNull(),
+  designName: varchar("design_name", { length: 255 }).notNull(),
+  size: varchar("size", { length: 50 }).notNull(),
+  routePath: varchar("route_path", { length: 255 }).notNull(),
+  isReceived: boolean("is_received").notNull().default(false),
+  receivedBy: varchar("received_by", { length: 120 }),
+  receivedAt: timestamp("received_at", { withTimezone: true }),
+  paymentStatus: shipmentPaymentStatusEnum("payment_status").default("NA"),
+  customerDocumentType: shipmentDocumentTypeEnum("customer_document_type"),
+  documentRef: shipmentDocumentRefEnum("document_ref"),
+  emailMode: shipmentEmailModeEnum("email_mode"),
+  emailTo: varchar("email_to", { length: 255 }),
+  clientId: uuid("client_id").references(() => clients.id),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================
