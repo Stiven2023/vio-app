@@ -12,6 +12,7 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
+import { BsBoxSeam, BsGeoAlt, BsHash, BsTruck } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryEntrySchema } from "../../_lib/schemas";
@@ -112,6 +113,7 @@ export function InventoryEntryModal({
             isDisabled={submitting || itemsLoading}
             isLoading={itemsLoading}
             label="Item"
+            startContent={<BsBoxSeam className="text-default-400" />}
             selectedKeys={
               inventoryItemId ? new Set([inventoryItemId]) : new Set([])
             }
@@ -131,6 +133,7 @@ export function InventoryEntryModal({
           <Select
             isDisabled={submitting}
             label="Ubicación"
+            startContent={<BsGeoAlt className="text-default-400" />}
             selectedKeys={new Set([location])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
@@ -156,6 +159,7 @@ export function InventoryEntryModal({
             isDisabled={submitting || suppliersLoading}
             isLoading={suppliersLoading}
             label="Proveedor (opcional)"
+            startContent={<BsTruck className="text-default-400" />}
             selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
@@ -174,6 +178,7 @@ export function InventoryEntryModal({
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
             label="Cantidad"
+            startContent={<BsHash className="text-default-400" />}
             type="number"
             value={quantity}
             onValueChange={setQuantity}

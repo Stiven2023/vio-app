@@ -2,9 +2,11 @@ import { desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  employees,
   inventoryItems,
   inventoryOutputs,
   orderItems,
+  orders,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { computeStockForItem, syncInventoryForItem } from "@/src/utils/inventory-sync";
@@ -70,6 +72,8 @@ export async function GET(request: Request) {
         inventoryItemId: inventoryOutputs.inventoryItemId,
         itemName: inventoryItems.name,
         orderItemId: inventoryOutputs.orderItemId,
+        orderCode: orders.orderCode,
+        requesterEmployeeName: employees.name,
         orderItemName: orderItems.name,
         location: inventoryOutputs.location,
         quantity: inventoryOutputs.quantity,
@@ -82,6 +86,8 @@ export async function GET(request: Request) {
         eq(inventoryOutputs.inventoryItemId, inventoryItems.id),
       )
       .leftJoin(orderItems, eq(inventoryOutputs.orderItemId, orderItems.id))
+      .leftJoin(orders, eq(orderItems.orderId, orders.id))
+      .leftJoin(employees, eq(orders.createdBy, employees.id))
       .orderBy(desc(inventoryOutputs.createdAt))
       .limit(pageSize)
       .offset(offset);
@@ -119,6 +125,7 @@ export async function POST(request: Request) {
   const r = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!ordId) return new Response("orderItemId required", { status: 400 });
   if (!loc) return new Response("location invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!r) return new Response("reason required", { status: 400 });
@@ -134,7 +141,7 @@ export async function POST(request: Request) {
       .insert(inventoryOutputs)
       .values({
         inventoryItemId: itemId,
-        orderItemId: ordId ? ordId : null,
+        orderItemId: ordId,
         location: loc,
         quantity: String(qty),
         reason: r,
@@ -185,6 +192,7 @@ export async function PUT(request: Request) {
   const r = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!ordId) return new Response("orderItemId required", { status: 400 });
   if (!loc) return new Response("location invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!r) return new Response("reason required", { status: 400 });
@@ -243,7 +251,7 @@ export async function PUT(request: Request) {
       .update(inventoryOutputs)
       .set({
         inventoryItemId: itemId,
-        orderItemId: ordId ? ordId : null,
+        orderItemId: ordId,
         location: loc,
         quantity: String(qty),
         reason: r,

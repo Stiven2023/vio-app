@@ -1,7 +1,7 @@
 import { desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { inventoryItems } from "@/src/db/schema";
+import { inventory, inventoryItems } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -41,11 +41,43 @@ export async function GET(request: Request) {
         price: inventoryItems.price,
         supplierId: inventoryItems.supplierId,
         minStock: inventoryItems.minStock,
+        currentStock: sql<string>`coalesce(${inventory.availableQty}, '0')::text`,
+        lastMovementType: sql<"ENTRADA" | "SALIDA" | null>`(
+          case
+            when (
+              select max(e.created_at)
+              from inventory_entries e
+              where e.inventory_item_id = ${inventoryItems.id}
+            ) is null
+            and (
+              select max(o.created_at)
+              from inventory_outputs o
+              where o.inventory_item_id = ${inventoryItems.id}
+            ) is null then null
+            when coalesce(
+              (
+                select max(e.created_at)
+                from inventory_entries e
+                where e.inventory_item_id = ${inventoryItems.id}
+              ),
+              to_timestamp(0)
+            ) >= coalesce(
+              (
+                select max(o.created_at)
+                from inventory_outputs o
+                where o.inventory_item_id = ${inventoryItems.id}
+              ),
+              to_timestamp(0)
+            ) then 'ENTRADA'
+            else 'SALIDA'
+          end
+        )`,
         isActive: inventoryItems.isActive,
         createdAt: inventoryItems.createdAt,
         updatedAt: inventoryItems.updatedAt,
       })
       .from(inventoryItems)
+      .leftJoin(inventory, eq(inventory.inventoryItemId, inventoryItems.id))
       .where(where)
       .orderBy(desc(inventoryItems.name))
       .limit(pageSize)

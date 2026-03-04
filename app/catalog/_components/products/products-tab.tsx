@@ -40,6 +40,7 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
 type CatalogType = "NACIONAL" | "INTERNACIONAL";
+type ProductSort = "codeAsc" | "codeDesc";
 
 function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
   const amount = Number(value ?? 0);
@@ -73,6 +74,7 @@ export function ProductsTab({
   const [searchCode, setSearchCode] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [sort, setSort] = useState<ProductSort>("codeAsc");
 
   const currentCatalog = activeCatalog ?? internalActiveCatalog;
   const currentCategories = categories ?? internalCategories;
@@ -81,6 +83,7 @@ export function ProductsTab({
       catalogType: currentCatalog,
       status,
       searchBy: "code",
+      sort,
     });
 
     const q = searchCode.trim();
@@ -94,7 +97,7 @@ export function ProductsTab({
     }
 
     return `/api/products?${params.toString()}`;
-  }, [categoryFilter, currentCatalog, searchCode, status]);
+  }, [categoryFilter, currentCatalog, searchCode, sort, status]);
 
   const {
     data: productsData,
@@ -129,7 +132,7 @@ export function ProductsTab({
 
   useEffect(() => {
     setProductsPage(1);
-  }, [currentCatalog, status, categoryFilter, searchCode, setProductsPage]);
+  }, [currentCatalog, status, categoryFilter, searchCode, sort, setProductsPage]);
 
   const emptyContent = useMemo(() => {
     if (productsLoading) return "";
@@ -272,6 +275,16 @@ export function ProductsTab({
             ]}
             value={status}
             onChange={(v) => setStatus(v as StatusFilter)}
+          />
+          <FilterSelect
+            className="sm:w-56"
+            label="Orden"
+            options={[
+              { value: "codeAsc", label: "Código (asc)" },
+              { value: "codeDesc", label: "Código (desc)" },
+            ]}
+            value={sort}
+            onChange={(v) => setSort(v as ProductSort)}
           />
         </div>
 

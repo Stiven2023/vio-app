@@ -14,6 +14,13 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
+import {
+  BsBoxSeam,
+  BsCardText,
+  BsGeoAlt,
+  BsHash,
+  BsPersonBadge,
+} from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryOutputSchema } from "../../_lib/schemas";
@@ -41,7 +48,13 @@ export function InventoryOutputModal({
   const [inventoryItemId, setInventoryItemId] = useState("");
   const [orderItemId, setOrderItemId] = useState("");
   const [orderItems, setOrderItems] = useState<
-    Array<{ id: string; orderCode: string | null; name: string | null; status: string | null }>
+    Array<{
+      id: string;
+      orderCode: string | null;
+      name: string | null;
+      status: string | null;
+      requesterEmployeeName: string | null;
+    }>
   >([]);
   const [orderItemsLoading, setOrderItemsLoading] = useState(false);
   const [quantity, setQuantity] = useState("");
@@ -72,8 +85,16 @@ export function InventoryOutputModal({
     if (!isOpen) return;
 
     setOrderItemsLoading(true);
-    apiJson<{ items: Array<{ id: string; orderCode: string | null; name: string | null; status: string | null }> }>(
-      `/api/order-items/options?pageSize=200`,
+    apiJson<{
+      items: Array<{
+        id: string;
+        orderCode: string | null;
+        name: string | null;
+        status: string | null;
+        requesterEmployeeName: string | null;
+      }>;
+    }>(
+      `/api/inventory-outputs/order-items-options?pageSize=200`,
     )
       .then((res) => {
         if (!active) return;
@@ -158,6 +179,9 @@ export function InventoryOutputModal({
     }
   };
 
+  const selectedOrderItem =
+    orderItems.find((orderItem) => orderItem.id === orderItemId) ?? null;
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
@@ -167,6 +191,7 @@ export function InventoryOutputModal({
             isDisabled={submitting || itemsLoading}
             isLoading={itemsLoading}
             label="Item"
+            startContent={<BsBoxSeam className="text-default-400" />}
             selectedKeys={
               inventoryItemId ? new Set([inventoryItemId]) : new Set([])
             }
@@ -187,6 +212,7 @@ export function InventoryOutputModal({
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
             label="Cantidad"
+            startContent={<BsHash className="text-default-400" />}
             type="number"
             value={quantity}
             onValueChange={setQuantity}
@@ -195,6 +221,7 @@ export function InventoryOutputModal({
           <Select
             isDisabled={submitting}
             label="Ubicación"
+            startContent={<BsGeoAlt className="text-default-400" />}
             selectedKeys={new Set([location])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
@@ -221,6 +248,7 @@ export function InventoryOutputModal({
             isInvalid={Boolean(error)}
             label="Motivo"
             minRows={2}
+            startContent={<BsCardText className="text-default-400" />}
             value={reason}
             onValueChange={setReason}
           />
@@ -228,7 +256,8 @@ export function InventoryOutputModal({
           <Select
             isDisabled={submitting || orderItemsLoading}
             isLoading={orderItemsLoading}
-            label="Diseño (opcional)"
+            label="Pedido y diseño"
+            startContent={<BsCardText className="text-default-400" />}
             selectedKeys={orderItemId ? new Set([orderItemId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
@@ -239,12 +268,19 @@ export function InventoryOutputModal({
             {(it) => (
               <SelectItem
                 key={it.id}
-                textValue={`${it.orderCode ?? "-"} - ${it.name ?? "(sin nombre)"}`}
+                textValue={`${it.orderCode ?? "-"} - ${it.name ?? "(sin nombre)"} - ${it.requesterEmployeeName ?? "Sin solicitante"}`}
               >
                 {it.orderCode ?? "-"} - {it.name ?? "(sin nombre)"}
               </SelectItem>
             )}
           </Select>
+
+          <Input
+            isReadOnly
+            label="Empleado solicitante"
+            startContent={<BsPersonBadge className="text-default-400" />}
+            value={selectedOrderItem?.requesterEmployeeName ?? ""}
+          />
 
           <div className="text-xs text-default-500">
             Disponible: {available === null ? "-" : available}

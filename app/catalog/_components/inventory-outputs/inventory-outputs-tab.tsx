@@ -157,7 +157,9 @@ export function InventoryOutputsTab({
             "Motivo",
             "Ubicación",
             "Cantidad",
-            "Orden",
+            "Pedido",
+            "Diseño",
+            "Solicitante",
             "Fecha",
             "Acciones",
           ]}
@@ -169,7 +171,9 @@ export function InventoryOutputsTab({
             <TableColumn>Motivo</TableColumn>
             <TableColumn>Ubicación</TableColumn>
             <TableColumn>Cantidad</TableColumn>
-            <TableColumn>Orden</TableColumn>
+            <TableColumn>Pedido</TableColumn>
+            <TableColumn>Diseño</TableColumn>
+            <TableColumn>Solicitante</TableColumn>
             <TableColumn>Fecha</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
@@ -180,7 +184,9 @@ export function InventoryOutputsTab({
                 <TableCell>{output.reason ?? "-"}</TableCell>
                 <TableCell>{locationLabel(output.location)}</TableCell>
                 <TableCell>{output.quantity ?? "-"}</TableCell>
+                <TableCell>{output.orderCode ?? "-"}</TableCell>
                 <TableCell>{output.orderItemName ?? output.orderItemId ?? "-"}</TableCell>
+                <TableCell>{output.requesterEmployeeName ?? "-"}</TableCell>
                 <TableCell>
                   {output.createdAt ? new Date(output.createdAt).toLocaleString() : "-"}
                 </TableCell>

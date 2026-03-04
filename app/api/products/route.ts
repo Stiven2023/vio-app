@@ -76,6 +76,7 @@ export async function GET(request: Request) {
     const status = String(searchParams.get("status") ?? "active").toLowerCase();
     const catalogType = String(searchParams.get("catalogType") ?? "").toUpperCase();
     const categoryId = String(searchParams.get("categoryId") ?? "").trim();
+    const sort = String(searchParams.get("sort") ?? "codeAsc").trim();
     const q = String(searchParams.get("q") ?? "").trim();
     const searchBy = String(searchParams.get("searchBy") ?? "all").toLowerCase();
 
@@ -133,10 +134,23 @@ export async function GET(request: Request) {
       .from(products)
       .where(whereClause);
 
+    const orderByCodeAsc = [
+      sql`regexp_replace(${products.productCode}, '[0-9]', '', 'g') asc`,
+      sql`coalesce(nullif(regexp_replace(${products.productCode}, '\\D', '', 'g'), '')::int, 0) asc`,
+      sql`${products.productCode} asc`,
+    ] as const;
+
+    const orderByCodeDesc = [
+      sql`regexp_replace(${products.productCode}, '[0-9]', '', 'g') desc`,
+      sql`coalesce(nullif(regexp_replace(${products.productCode}, '\\D', '', 'g'), '')::int, 0) desc`,
+      sql`${products.productCode} desc`,
+    ] as const;
+
     const items = await db
       .select()
       .from(products)
       .where(whereClause)
+      .orderBy(...(sort === "codeDesc" ? orderByCodeDesc : orderByCodeAsc))
       .limit(pageSize)
       .offset(offset);
 

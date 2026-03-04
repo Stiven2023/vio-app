@@ -182,7 +182,7 @@ export const createInventoryEntrySchema = z.object({
 
 export const createInventoryOutputSchema = z.object({
   inventoryItemId: z.string().uuid("Selecciona un item"),
-  orderItemId: z.string().uuid().optional(),
+  orderItemId: z.string().uuid("Selecciona pedido y diseño"),
   location: z.enum(["BODEGA_PRINCIPAL", "TIENDA"]),
   reason: z.string().trim().min(1, "Motivo requerido").max(100, "Máximo 100"),
   quantity: z

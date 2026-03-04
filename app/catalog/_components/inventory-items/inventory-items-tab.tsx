@@ -19,7 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash } from "react-icons/bs";
+import {
+  BsArrowDown,
+  BsArrowUp,
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+} from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { usePaginatedApi } from "../../_hooks/use-paginated-api";
@@ -122,12 +128,13 @@ export function InventoryItemsTab({
       </div>
 
       {loading ? (
-        <TableSkeleton ariaLabel="Inventario" headers={["Nombre", "Unidad", "Acciones"]} />
+        <TableSkeleton ariaLabel="Inventario" headers={["Nombre", "Unidad", "Stock actual", "Acciones"]} />
       ) : (
         <Table aria-label="Inventario">
           <TableHeader>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Unidad</TableColumn>
+            <TableColumn>Stock actual</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
@@ -135,6 +142,20 @@ export function InventoryItemsTab({
               <TableRow key={item.id}>
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.unit ?? "-"}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span>{item.currentStock ?? "0"}</span>
+                    {item.lastMovementType === "ENTRADA" ? (
+                      <span className="text-success" title="Último movimiento: entrada">
+                        <BsArrowUp />
+                      </span>
+                    ) : item.lastMovementType === "SALIDA" ? (
+                      <span className="text-danger" title="Último movimiento: salida">
+                        <BsArrowDown />
+                      </span>
+                    ) : null}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Dropdown>
                     <DropdownTrigger>

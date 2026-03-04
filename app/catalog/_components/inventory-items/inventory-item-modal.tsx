@@ -15,6 +15,14 @@ import {
   ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
+import {
+  BsBoxSeam,
+  BsHash,
+  BsRulers,
+  BsTag,
+  BsTextParagraph,
+  BsTruck,
+} from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryItemSchema } from "../../_lib/schemas";
@@ -136,6 +144,7 @@ export function InventoryItemModal({
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
             label="Nombre"
+            startContent={<BsBoxSeam className="text-default-400" />}
             value={name}
             onValueChange={setName}
           />
@@ -143,6 +152,7 @@ export function InventoryItemModal({
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
             label="Unidad de medida"
+            startContent={<BsRulers className="text-default-400" />}
             selectedKeys={unit ? [String(unit)] : []}
             onSelectionChange={(keys: any) => {
               const k = Array.from(keys as any)[0];
@@ -165,6 +175,7 @@ export function InventoryItemModal({
 
           <Input
             label="Descripción (opcional)"
+            startContent={<BsTextParagraph className="text-default-400" />}
             value={description}
             onValueChange={setDescription}
           />
@@ -172,12 +183,14 @@ export function InventoryItemModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Precio (opcional)"
+              startContent={<BsTag className="text-default-400" />}
               type="number"
               value={price}
               onValueChange={setPrice}
             />
             <Input
               label="Stock mínimo (opcional)"
+              startContent={<BsHash className="text-default-400" />}
               type="number"
               value={minStock}
               onValueChange={setMinStock}
@@ -188,6 +201,7 @@ export function InventoryItemModal({
             isDisabled={submitting || loadingSuppliers}
             isLoading={loadingSuppliers}
             label="Proveedor (opcional)"
+            startContent={<BsTruck className="text-default-400" />}
             selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];

@@ -77,6 +77,8 @@ export type InventoryItem = {
   id: string;
   name: string;
   unit: string | null;
+  currentStock?: string | null;
+  lastMovementType?: "ENTRADA" | "SALIDA" | null;
   description?: string | null;
   price?: string | null;
   supplierId?: string | null;
@@ -102,6 +104,8 @@ export type InventoryOutput = {
   inventoryItemId: string | null;
   itemName: string | null;
   orderItemId: string | null;
+  orderCode: string | null;
+  requesterEmployeeName: string | null;
   orderItemName: string | null;
   location: "BODEGA_PRINCIPAL" | "TIENDA" | null;
   quantity: string | null;

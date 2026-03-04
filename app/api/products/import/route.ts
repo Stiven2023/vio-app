@@ -27,9 +27,25 @@ type ImportRow = {
 
 function normalizeHeader(value: string) {
   return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]/g, "");
+}
+
+function decodeCsvTextFromBytes(bytes: Uint8Array) {
+  const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+
+  if (!utf8Text.includes("�")) {
+    return utf8Text;
+  }
+
+  try {
+    return new TextDecoder("windows-1252").decode(bytes);
+  } catch {
+    return utf8Text;
+  }
 }
 
 function detectDelimiter(headerLine: string) {
@@ -177,6 +193,34 @@ function normalizeCategoryName(value: string) {
     .trim();
 }
 
+function isEmptyToken(value: unknown) {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) return true;
+
+  const compact = raw
+    .toUpperCase()
+    .replace(/[\s._]/g, "")
+    .replace(/Á/g, "A")
+    .replace(/É/g, "E")
+    .replace(/Í/g, "I")
+    .replace(/Ó/g, "O")
+    .replace(/Ú/g, "U");
+
+  return [
+    "-",
+    "--",
+    "N/A",
+    "NA",
+    "NULL",
+    "NONE",
+    "NULO",
+    "NOAPLICA",
+    "S/D",
+    "SD",
+  ].includes(compact);
+}
+
 async function resolveCategoryIdFromRow(args: {
   row: ImportRow;
   categoryIdSet: Set<string>;
@@ -217,13 +261,22 @@ async function resolveCategoryIdFromRow(args: {
 function asNumber(value: unknown) {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
-  const normalized = raw.replace(/\./g, "").replace(",", ".");
+  if (isEmptyToken(raw)) return null;
+
+  const normalized = raw
+    .replace(/\$/g, "")
+    .replace(/\s+/g, "")
+    .replace(/COP|USD/gi, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  if (!normalized) return null;
   const number = Number(normalized);
   return Number.isFinite(number) ? number : null;
 }
 
 function hasValue(value: unknown) {
-  return String(value ?? "").trim().length > 0;
+  return !isEmptyToken(value);
 }
 
 function parseOptionalNumber(value: unknown, label: string) {
@@ -273,7 +326,8 @@ export async function POST(request: Request) {
       return new Response("CSV requerido en el campo file", { status: 400 });
     }
 
-    const csvText = await file.text();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const csvText = decodeCsvTextFromBytes(bytes);
     const rows = parseCsv(csvText);
 
     if (rows.length === 0) {
@@ -294,12 +348,6 @@ export async function POST(request: Request) {
       if (!categoryNameToId.has(normalizedName)) {
         categoryNameToId.set(normalizedName, String(category.id));
       }
-    }
-
-    if (!trm || trm <= 0) {
-      return new Response("No hay TRM vigente. Actualiza la tasa USD/COP antes de importar.", {
-        status: 400,
-      });
     }
 
     let createdCount = 0;
@@ -325,21 +373,20 @@ export async function POST(request: Request) {
             categoryNameToId,
           });
 
-          const priceCopR1 = asNumber(row.priceCopR1);
-          const priceCopR2 = asNumber(row.priceCopR2);
-          const priceCopR3 = asNumber(row.priceCopR3);
-          const priceMayorista = asNumber(row.priceMayorista);
-          const priceColanta = asNumber(row.priceColanta);
-          const priceCopBase = asNumber(row.priceCopBase);
+          const priceCopR1 = parseOptionalNumber(row.priceCopR1, "priceCopR1") ?? null;
+          const priceCopR2 = parseOptionalNumber(row.priceCopR2, "priceCopR2") ?? null;
+          const priceCopR3 = parseOptionalNumber(row.priceCopR3, "priceCopR3") ?? null;
+          const priceMayorista =
+            parseOptionalNumber(row.priceMayorista, "priceMayorista") ?? null;
+          const priceColanta = parseOptionalNumber(row.priceColanta, "priceColanta") ?? null;
+          const priceCopBase = parseOptionalNumber(row.priceCopBase, "priceCopBase") ?? null;
 
-          if (priceCopR1 === null) throw new Error("priceCopR1 requerido en creación");
-          if (priceCopR2 === null) throw new Error("priceCopR2 requerido en creación");
-          if (priceCopR3 === null) throw new Error("priceCopR3 requerido en creación");
-          if (priceMayorista === null) throw new Error("priceMayorista requerido en creación");
-          if (priceColanta === null) throw new Error("priceColanta requerido en creación");
-
-          const priceCopInternational = Number((priceCopR1 * 1.19).toFixed(2));
-          const priceUSD = Number((priceCopInternational / trm).toFixed(2));
+          const priceCopInternational =
+            priceCopR1 !== null ? Number((priceCopR1 * 1.19).toFixed(2)) : null;
+          const priceUSD =
+            priceCopInternational !== null && trm > 0
+              ? Number((priceCopInternational / trm).toFixed(2))
+              : null;
           const validity = buildAutomaticValidityDates();
 
           await db.transaction(async (tx) => {
@@ -350,16 +397,21 @@ export async function POST(request: Request) {
               name,
               description: String(row.description ?? "").trim() || null,
               categoryId,
-              priceCopBase: String(priceCopBase ?? priceCopR1),
-              priceCopR1: String(priceCopR1),
-              priceCopR2: String(priceCopR2),
-              priceCopR3: String(priceCopR3),
+              priceCopBase: priceCopBase !== null
+                ? String(priceCopBase)
+                : priceCopR1 !== null
+                  ? String(priceCopR1)
+                  : null,
+              priceCopR1: priceCopR1 !== null ? String(priceCopR1) : null,
+              priceCopR2: priceCopR2 !== null ? String(priceCopR2) : null,
+              priceCopR3: priceCopR3 !== null ? String(priceCopR3) : null,
               priceViomar: null,
-              priceColanta: String(priceColanta),
-              priceMayorista: String(priceMayorista),
-              priceCopInternational: String(priceCopInternational),
-              priceUSD: String(priceUSD),
-              trmUsed: String(trm),
+              priceColanta: priceColanta !== null ? String(priceColanta) : null,
+              priceMayorista: priceMayorista !== null ? String(priceMayorista) : null,
+              priceCopInternational:
+                priceCopInternational !== null ? String(priceCopInternational) : null,
+              priceUSD: priceUSD !== null ? String(priceUSD) : null,
+              trmUsed: priceUSD !== null ? String(trm) : null,
               startDate: validity.startDate,
               endDate: validity.endDate,
               isActive: true,
@@ -409,24 +461,31 @@ export async function POST(request: Request) {
         if (nextIsActive !== undefined) patch.isActive = nextIsActive;
 
         if (hasPriceInputs) {
-          if (nextPriceCopR1 === null) throw new Error("priceCopR1 inválido");
-          if (nextPriceCopR2 === null) throw new Error("priceCopR2 inválido");
-          if (nextPriceCopR3 === null) throw new Error("priceCopR3 inválido");
-          if (nextPriceMayorista === null) throw new Error("priceMayorista inválido");
-          if (nextPriceColanta === null) throw new Error("priceColanta inválido");
+          const priceCopInternational =
+            nextPriceCopR1 !== null
+              ? Number((nextPriceCopR1 * 1.19).toFixed(2))
+              : null;
+          const priceUSD =
+            priceCopInternational !== null && trm > 0
+              ? Number((priceCopInternational / trm).toFixed(2))
+              : null;
 
-          const priceCopInternational = Number((nextPriceCopR1 * 1.19).toFixed(2));
-          const priceUSD = Number((priceCopInternational / trm).toFixed(2));
-
-          patch.priceCopBase = String(nextPriceCopBase ?? nextPriceCopR1);
-          patch.priceCopR1 = String(nextPriceCopR1);
-          patch.priceCopR2 = String(nextPriceCopR2);
-          patch.priceCopR3 = String(nextPriceCopR3);
-          patch.priceMayorista = String(nextPriceMayorista);
-          patch.priceColanta = String(nextPriceColanta);
-          patch.priceCopInternational = String(priceCopInternational);
-          patch.priceUSD = String(priceUSD);
-          patch.trmUsed = String(trm);
+          patch.priceCopBase =
+            nextPriceCopBase !== null
+              ? String(nextPriceCopBase)
+              : nextPriceCopR1 !== null
+                ? String(nextPriceCopR1)
+                : null;
+          patch.priceCopR1 = nextPriceCopR1 !== null ? String(nextPriceCopR1) : null;
+          patch.priceCopR2 = nextPriceCopR2 !== null ? String(nextPriceCopR2) : null;
+          patch.priceCopR3 = nextPriceCopR3 !== null ? String(nextPriceCopR3) : null;
+          patch.priceMayorista =
+            nextPriceMayorista !== null ? String(nextPriceMayorista) : null;
+          patch.priceColanta = nextPriceColanta !== null ? String(nextPriceColanta) : null;
+          patch.priceCopInternational =
+            priceCopInternational !== null ? String(priceCopInternational) : null;
+          patch.priceUSD = priceUSD !== null ? String(priceUSD) : null;
+          patch.trmUsed = priceUSD !== null ? String(trm) : null;
         }
 
         if (Object.keys(patch).length === 0) {

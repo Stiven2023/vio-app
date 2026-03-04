@@ -127,8 +127,9 @@ export function AdminCharts() {
           </div>
           {loading ? <Spinner size="sm" /> : null}
         </CardHeader>
-        <CardBody className="h-72 min-w-0">
-          <ResponsiveContainerBase width="100%" height="100%">
+        <CardBody className="h-72 min-h-[18rem] min-w-0">
+          <div className="h-full min-h-[18rem] w-full min-w-0">
+          <ResponsiveContainerBase width="100%" height="100%" minWidth={280} minHeight={220}>
             <LineChartBase data={data?.series ?? []} margin={{ left: 8, right: 8 }}>
               <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
               <XAxisBase
@@ -161,6 +162,7 @@ export function AdminCharts() {
               />
             </LineChartBase>
           </ResponsiveContainerBase>
+          </div>
         </CardBody>
       </Card>
       <Card className="min-w-0 border border-default-200">
@@ -171,8 +173,9 @@ export function AdminCharts() {
           </div>
           {loading ? <Spinner size="sm" /> : null}
         </CardHeader>
-        <CardBody className="h-72 min-w-0">
-          <ResponsiveContainerBase width="100%" height="100%">
+        <CardBody className="h-72 min-h-[18rem] min-w-0">
+          <div className="h-full min-h-[18rem] w-full min-w-0">
+          <ResponsiveContainerBase width="100%" height="100%" minWidth={280} minHeight={220}>
             <BarChartBase data={data?.series ?? []} margin={{ left: 8, right: 8 }}>
               <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
               <XAxisBase
@@ -193,6 +196,7 @@ export function AdminCharts() {
               <BarBase dataKey="orders" name="Pedidos" fill="var(--viomar-primary-light)" />
             </BarChartBase>
           </ResponsiveContainerBase>
+          </div>
         </CardBody>
       </Card>
       </div>
