@@ -277,10 +277,12 @@ export function OrderItemModal(props: {
                 onError={(m) => setError(m)}
               />
 
-              {orderKind !== "COMPLETACION" ? (
+              {orderKind !== "COMPLETACION" && Boolean(item.requiresSocks) ? (
                 <SocksSection
                   disabled={uiDisabled}
                   garmentType={String(item.garmentType ?? "JUGADOR")}
+                  requiresSocks={Boolean(item.requiresSocks)}
+                  packaging={packaging}
                   orderId={orderId}
                   value={socks}
                   onChange={setSocks}

@@ -592,7 +592,7 @@ export function OrderItemEditPage(props: {
         </CardBody>
       </Card>
 
-      {orderKind !== "COMPLETACION" ? (
+      {orderKind !== "COMPLETACION" && Boolean(item.requiresSocks) ? (
         <Card>
           <CardHeader>
             <div className="font-semibold">Medias</div>
@@ -601,6 +601,8 @@ export function OrderItemEditPage(props: {
             <SocksSection
               disabled={uiDisabled}
               garmentType={String(item.garmentType ?? "JUGADOR")}
+              requiresSocks={Boolean(item.requiresSocks)}
+              packaging={packaging}
               orderId={orderId}
               value={socks}
               onChange={setSocks}

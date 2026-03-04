@@ -578,22 +578,26 @@ export function OrderItemCreatePage(props: {
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Medias</div>
-        </CardHeader>
-        <CardBody>
-          <SocksSection
-            disabled={uiDisabled}
-            garmentType={String(item.garmentType ?? "JUGADOR")}
-            orderId={orderId}
-            value={socks}
-            onChange={setSocks}
-            onUploadingChange={setIsUploadingAssets}
-            onError={(m) => setError(m)}
-          />
-        </CardBody>
-      </Card>
+      {Boolean(item.requiresSocks) ? (
+        <Card>
+          <CardHeader>
+            <div className="font-semibold">Medias</div>
+          </CardHeader>
+          <CardBody>
+            <SocksSection
+              disabled={uiDisabled}
+              garmentType={String(item.garmentType ?? "JUGADOR")}
+              requiresSocks={Boolean(item.requiresSocks)}
+              packaging={packaging}
+              orderId={orderId}
+              value={socks}
+              onChange={setSocks}
+              onUploadingChange={setIsUploadingAssets}
+              onError={(m) => setError(m)}
+            />
+          </CardBody>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

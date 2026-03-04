@@ -111,7 +111,7 @@ export async function GET(
       })
       .from(orderPayments)
       .where(
-        sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} <> 'ANULADO'`,
+        sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} = 'PAGADO'`,
       )
       .limit(1);
 

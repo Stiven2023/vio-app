@@ -129,7 +129,7 @@ export function PackagingSection({
             {KIDS_SIZES.map((size) => (
               <div key={`head-kid-${size}`} className="text-center">{size}</div>
             ))}
-            <div className="text-center rounded-small bg-default-900 text-white">Total</div>
+            <div className="text-center rounded-small bg-primary text-primary-foreground">Total</div>
           </div>
 
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 px-2 py-2 items-center">
@@ -143,7 +143,7 @@ export function PackagingSection({
                 onValueChange={(v: string) => setGroupedQty(size, v)}
               />
             ))}
-            <div className="text-center font-semibold rounded-small bg-default-900 text-white py-2 px-1">{formatCount(kidsTotal) || "0"}</div>
+            <div className="text-center font-semibold rounded-small bg-primary text-primary-foreground py-2 px-1">{formatCount(kidsTotal) || "0"}</div>
           </div>
 
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-t border-default-200 px-2 py-2 items-center">
@@ -157,7 +157,7 @@ export function PackagingSection({
                 onValueChange={(v: string) => setGroupedQty(size, v)}
               />
             ))}
-            <div className="text-center font-semibold rounded-small bg-default-900 text-white py-2 px-1">{formatCount(adultsTotal) || "0"}</div>
+            <div className="text-center font-semibold rounded-small bg-primary text-primary-foreground py-2 px-1">{formatCount(adultsTotal) || "0"}</div>
           </div>
         </div>
 

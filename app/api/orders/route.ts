@@ -259,7 +259,7 @@ export async function GET(request: Request) {
       discount: orders.discount,
       currency: orders.currency,
       shippingFee: (orders as any).shippingFee,
-      paidTotal: sql<string>`coalesce((select sum(op.amount) from order_payments op where op.order_id = ${orders.id} and op.status <> 'ANULADO'), 0)::text`,
+      paidTotal: sql<string>`coalesce((select sum(op.amount) from order_payments op where op.order_id = ${orders.id} and op.status = 'PAGADO'), 0)::text`,
       lastStatusAt: sql<string | null>`(
         select osh.created_at
         from order_status_history osh

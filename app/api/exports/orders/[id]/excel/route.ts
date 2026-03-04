@@ -419,7 +419,7 @@ export async function GET(
   const grandTotal = totalAfterDiscount + shippingFee;
 
   const paidTotal = payments.reduce(
-    (acc, pay) => (pay.status === "ANULADO" ? acc : acc + asNumber(pay.amount)),
+    (acc, pay) => (String(pay.status ?? "").toUpperCase() === "PAGADO" ? acc + asNumber(pay.amount) : acc),
     0,
   );
   const paidPercent =

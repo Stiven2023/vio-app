@@ -11,16 +11,19 @@ const PaymentsHubPageNoSSR = dynamic(
 );
 
 export function PaymentsHubClient({
+  canApprove,
   canCreate,
   canEdit,
   initialOrderId,
 }: {
+  canApprove: boolean;
   canCreate: boolean;
   canEdit: boolean;
   initialOrderId?: string;
 }) {
   return (
     <PaymentsHubPageNoSSR
+      canApprove={canApprove}
       canCreate={canCreate}
       canEdit={canEdit}
       initialOrderId={initialOrderId}

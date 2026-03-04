@@ -131,5 +131,10 @@ export function canRoleChangeStatus(
 export function isOperarioRole(role: string | null) {
   if (!role) return false;
 
-  return role.startsWith("OPERARIO_") || role === "EMPAQUE";
+  return (
+    role.startsWith("OPERARIO_") ||
+    role === "EMPAQUE" ||
+    role === "CONFECCIONISTA" ||
+    role === "MENSAJERO"
+  );
 }

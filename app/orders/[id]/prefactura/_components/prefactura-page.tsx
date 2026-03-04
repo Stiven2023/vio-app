@@ -117,7 +117,14 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
             href={`/api/exports/orders/${orderId}/prefactura-excel`}
             variant="flat"
           >
-            Descargar prefactura
+            Descargar prefactura Excel
+          </Button>
+          <Button
+            as={NextLink}
+            href={`/api/exports/orders/${orderId}/prefactura-pdf`}
+            variant="flat"
+          >
+            Descargar prefactura PDF
           </Button>
           <Button
             as={NextLink}

@@ -1,9 +1,10 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { orderPayments, orders, orderStatusHistory, prefacturas } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function toNullableNumericString(v: unknown) {
@@ -25,8 +26,6 @@ function toPositiveNumericString(v: unknown) {
 }
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
-const statuses = new Set(["PENDIENTE", "PARCIAL", "PAGADO", "ANULADO"]);
-
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
     .select({ id: orders.id, total: orders.total, status: orders.status })
@@ -36,18 +35,23 @@ async function syncOrderStatusByPayments(orderId: string) {
 
   if (!orderRow) return;
 
-  const [paidRow] = await db
+  const paidRows = await db
     .select({
-      paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
+      amount: orderPayments.amount,
+      status: orderPayments.status,
     })
     .from(orderPayments)
-    .where(
-      sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} <> 'ANULADO'`,
-    )
-    .limit(1);
+    .where(eq(orderPayments.orderId, orderId));
 
   const total = Math.max(0, Number(orderRow.total ?? 0));
-  const paidTotal = Math.max(0, Number(paidRow?.paidTotal ?? 0));
+  const paidTotal = Math.max(
+    0,
+    paidRows.reduce((acc, row) => {
+      if (!isConfirmedPaymentStatus(row.status)) return acc;
+      const amount = Number(row.amount ?? 0);
+      return acc + (Number.isFinite(amount) ? amount : 0);
+    }, 0),
+  );
   const paidPercent = total > 0 ? (paidTotal / total) * 100 : 0;
 
   const nextStatus =
@@ -126,11 +130,7 @@ export async function POST(request: Request) {
       return new Response("invalid method", { status: 400 });
     }
 
-    const status = String(body.status ?? "PENDIENTE").trim().toUpperCase();
-
-    if (!statuses.has(status)) {
-      return new Response("invalid status", { status: 400 });
-    }
+    const status = "PENDIENTE";
 
     const referenceCode =
       body.referenceCode === undefined || body.referenceCode === null

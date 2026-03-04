@@ -35,6 +35,7 @@ import { BsThreeDotsVertical, BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
 import { usePaginatedApi } from "@/app/orders/_hooks/use-paginated-api";
+import { normalizePaymentStatusLabel } from "@/src/utils/payment-status";
 
 type PaymentMethod = "EFECTIVO" | "TRANSFERENCIA" | "CREDITO";
 type PaymentStatus = "PENDIENTE" | "PARCIAL" | "PAGADO" | "ANULADO";
@@ -62,19 +63,11 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: "CREDITO", label: "Crédito" },
 ];
 
-const statusOptions: Array<{ value: PaymentStatus; label: string }> = [
-  { value: "PENDIENTE", label: "Pendiente" },
-  { value: "PARCIAL", label: "Parcial" },
-  { value: "PAGADO", label: "Pagado" },
-  { value: "ANULADO", label: "Anulado" },
-];
-
 type FormState = {
   amount: string;
   depositAmount: string;
   referenceCode: string;
   method: PaymentMethod;
-  status: PaymentStatus;
 };
 
 type PaymentsResponse = {
@@ -114,10 +107,12 @@ function getPastedImageFile(e: React.ClipboardEvent<HTMLElement>) {
 
 export function OrderPaymentsPage({
   orderId,
+  canApprove,
   canCreate,
   canEdit,
 }: {
   orderId: string;
+  canApprove: boolean;
   canCreate: boolean;
   canEdit: boolean;
 }) {
@@ -149,7 +144,6 @@ export function OrderPaymentsPage({
     depositAmount: "",
     referenceCode: "",
     method: "EFECTIVO",
-    status: "PENDIENTE",
   });
 
   const formatter = useMemo(() => {
@@ -287,7 +281,6 @@ export function OrderPaymentsPage({
           depositAmount: form.depositAmount ? Number(form.depositAmount) : amount,
           referenceCode: form.referenceCode.trim() || null,
           method: form.method,
-          status: form.status,
           proofImageUrl,
         }),
       });
@@ -299,7 +292,6 @@ export function OrderPaymentsPage({
         depositAmount: "",
         referenceCode: "",
         method: "EFECTIVO",
-        status: "PENDIENTE",
       });
       setFormErrors({});
       setProofFile(null);
@@ -320,6 +312,24 @@ export function OrderPaymentsPage({
         method: "DELETE",
       });
       toast.success("Pago eliminado");
+      refresh();
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    }
+  };
+
+  const updatePaymentStatus = async (
+    paymentId: string,
+    status: Extract<PaymentStatus, "PAGADO" | "ANULADO">,
+  ) => {
+    if (!canApprove) return;
+
+    try {
+      await apiJson(`/api/orders/${orderId}/payments/${paymentId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+      toast.success(status === "PAGADO" ? "Pago confirmado" : "Pago marcado como no llegó");
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -428,7 +438,9 @@ export function OrderPaymentsPage({
                 }
 
                 if (columnKey === "method") return <TableCell>{p.method ?? "-"}</TableCell>;
-                if (columnKey === "status") return <TableCell>{p.status ?? "-"}</TableCell>;
+                if (columnKey === "status") {
+                  return <TableCell>{normalizePaymentStatusLabel(p.status)}</TableCell>;
+                }
                 if (columnKey === "referenceCode") return <TableCell>{p.referenceCode ?? "-"}</TableCell>;
                 if (columnKey === "depositAmount") return <TableCell>{formatMoney(p.depositAmount)}</TableCell>;
                 if (columnKey === "amount") return <TableCell>{formatMoney(p.amount)}</TableCell>;
@@ -456,7 +468,7 @@ export function OrderPaymentsPage({
                 if (columnKey === "actions") {
                   return (
                     <TableCell>
-                      {canEdit ? (
+                      {canEdit || canApprove ? (
                         <Dropdown>
                           <DropdownTrigger>
                             <Button size="sm" variant="flat">
@@ -464,10 +476,27 @@ export function OrderPaymentsPage({
                             </Button>
                           </DropdownTrigger>
                           <DropdownMenu aria-label="Acciones">
+                            {canApprove ? (
+                              <DropdownItem
+                                key="confirm"
+                                onPress={() => updatePaymentStatus(p.id, "PAGADO")}
+                              >
+                                Confirmar pago
+                              </DropdownItem>
+                            ) : null}
+                            {canApprove ? (
+                              <DropdownItem
+                                key="not-arrived"
+                                onPress={() => updatePaymentStatus(p.id, "ANULADO")}
+                              >
+                                Marcar no llegó
+                              </DropdownItem>
+                            ) : null}
                             <DropdownItem
                               key="delete"
                               className="text-danger"
                               startContent={<BsTrash />}
+                              isDisabled={!canEdit}
                               onPress={() => removePayment(p.id)}
                             >
                               Eliminar
@@ -587,19 +616,11 @@ export function OrderPaymentsPage({
                   <SelectItem key={m.value}>{m.label}</SelectItem>
                 ))}
               </Select>
-              <Select
+              <Input
+                isReadOnly
                 label="Estado"
-                selectedKeys={[form.status]}
-                onSelectionChange={(keys) => {
-                  const first = Array.from(keys)[0] as PaymentStatus | undefined;
-
-                  setForm((s) => ({ ...s, status: first ?? "PENDIENTE" }));
-                }}
-              >
-                {statusOptions.map((s) => (
-                  <SelectItem key={s.value}>{s.label}</SelectItem>
-                ))}
-              </Select>
+                value="Por confirmar"
+              />
 
               <div className="sm:col-span-2">
                 <div className="text-sm text-default-600 mb-1">

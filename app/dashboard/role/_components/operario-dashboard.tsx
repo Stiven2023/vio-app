@@ -13,6 +13,7 @@ import {
 } from "@/src/utils/role-status";
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
 import { Pager } from "@/app/catalog/_components/ui/pager";
+import { OperarioWorklogTable } from "@/app/dashboard/role/_components/operario-worklog-table";
 
 type OperarioItem = {
   id: string;
@@ -84,6 +85,20 @@ export function OperarioDashboard({ role }: { role: string }) {
 
   useEffect(() => {
     let active = true;
+
+    if (allowedStatuses.length === 0) {
+      setLoading(false);
+      setData({
+        items: [],
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        hasNextPage: false,
+      });
+      return () => {
+        active = false;
+      };
+    }
 
     setLoading(true);
     apiJson<Paginated<OperarioItem>>(`/api/dashboard/operario-items?page=${page}`)
@@ -197,6 +212,20 @@ export function OperarioDashboard({ role }: { role: string }) {
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <div>
+            <div className="text-lg font-semibold">Dashboard operativo por rol</div>
+            <div className="text-sm text-default-500">
+              Operarios, confeccionistas, mensajería y empaque.
+            </div>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <OperarioWorklogTable role={role} />
+        </CardBody>
+      </Card>
+
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div>

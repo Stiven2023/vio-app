@@ -5,7 +5,14 @@ import path from "node:path";
 import type { Buffer as NodeBuffer } from "node:buffer";
 
 import { db } from "@/src/db";
-import { clients, orderItemPackaging, orderItems, orderPayments, orders } from "@/src/db/schema";
+import {
+  clients,
+  employees,
+  orderItemPackaging,
+  orderItems,
+  orderPayments,
+  orders,
+} from "@/src/db/schema";
 import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -156,6 +163,11 @@ function setLabelValue(
   valueCell.value = value;
 }
 
+function hasVisibleValue(value: unknown) {
+  const text = String(value ?? "").trim();
+  return text.length > 0 && text !== "-";
+}
+
 function applyDocumentHeader(
   worksheet: ExcelJS.Worksheet,
   info: HeaderInfo,
@@ -175,14 +187,8 @@ function applyDocumentHeader(
     },
   };
 
-  worksheet.getColumn(1).width = 18;
-  worksheet.getColumn(2).width = 28;
-  worksheet.getColumn(3).width = 4;
-  worksheet.getColumn(4).width = 18;
-  worksheet.getColumn(5).width = 28;
-
-  worksheet.mergeCells(1, 1, 1, 5);
-  worksheet.mergeCells(2, 1, 2, 5);
+  worksheet.mergeCells(1, 1, 1, 7);
+  worksheet.mergeCells(2, 1, 2, 7);
 
   const titleCell = worksheet.getCell(1, 1);
   titleCell.value = info.companyName;
@@ -198,30 +204,64 @@ function applyDocumentHeader(
   worksheet.getRow(2).height = 18;
   worksheet.getRow(3).height = 6;
 
-  setLabelValue(worksheet, 4, 1, 2, "Pedido", info.orderCode);
-  setLabelValue(worksheet, 4, 4, 5, "Fecha", info.orderDate);
-  setLabelValue(worksheet, 5, 1, 2, "Estado", info.orderStatus);
-  setLabelValue(worksheet, 5, 4, 5, "Tipo", info.orderType);
-  setLabelValue(worksheet, 6, 1, 2, "Kind", info.orderKind);
-  setLabelValue(worksheet, 6, 4, 5, "Moneda", info.currency);
-  setLabelValue(worksheet, 7, 1, 2, "Cliente", info.clientName);
-  setLabelValue(worksheet, 7, 4, 5, "NIT Cliente", info.clientNit);
-  setLabelValue(worksheet, 8, 1, 2, "NIT Empresa", info.companyNit);
+  const infoPairs: Array<{ label: string; value: string }> = [];
+  const pushPair = (label: string, value: unknown) => {
+    const safe = String(value ?? "").trim();
+    if (!hasVisibleValue(safe)) return;
+    infoPairs.push({ label, value: safe });
+  };
 
-  for (let col = 1; col <= 5; col += 1) {
-    for (let row = 1; row <= 9; row += 1) {
+  pushPair("Pedido", info.orderCode);
+  pushPair("Fecha", info.orderDate);
+  pushPair("Estado", info.orderStatus);
+  pushPair("Tipo", info.orderType);
+  pushPair("Kind", info.orderKind);
+  pushPair("Moneda", info.currency);
+  pushPair("Cliente", info.clientName);
+  pushPair("NIT Cliente", info.clientNit);
+  pushPair("NIT Empresa", info.companyNit);
+
+  let rowPointer = 4;
+  for (let index = 0; index < infoPairs.length; index += 2) {
+    const leftPair = infoPairs[index];
+    const rightPair = infoPairs[index + 1] ?? null;
+
+    worksheet.getCell(rowPointer, 1).value = leftPair.label;
+    worksheet.getCell(rowPointer, 1).font = { bold: true };
+
+    if (rightPair) {
+      worksheet.mergeCells(rowPointer, 2, rowPointer, 3);
+      worksheet.getCell(rowPointer, 2).value = leftPair.value;
+
+      worksheet.getCell(rowPointer, 4).value = rightPair.label;
+      worksheet.getCell(rowPointer, 4).font = { bold: true };
+      worksheet.mergeCells(rowPointer, 5, rowPointer, 7);
+      worksheet.getCell(rowPointer, 5).value = rightPair.value;
+    } else {
+      worksheet.mergeCells(rowPointer, 2, rowPointer, 7);
+      worksheet.getCell(rowPointer, 2).value = leftPair.value;
+    }
+
+    applyRowBorder(worksheet, rowPointer, 1, 7);
+    rowPointer += 1;
+  }
+
+  const headerBottomRow = Math.max(3, rowPointer);
+
+  for (let col = 1; col <= 7; col += 1) {
+    for (let row = 1; row <= headerBottomRow; row += 1) {
       applyThinBorder(worksheet.getCell(row, col));
     }
   }
 
   if (stickerImageId) {
     worksheet.addImage(stickerImageId, {
-      tl: { col: 3.9, row: 0.1 },
-      ext: { width: 120, height: 60 },
+      tl: { col: 5.15, row: 0.1 },
+      ext: { width: 132, height: 64 },
     });
   }
 
-  return 11;
+  return headerBottomRow + 2;
 }
 
 export async function GET(
@@ -250,6 +290,9 @@ export async function GET(
       id: orders.id,
       orderCode: orders.orderCode,
       createdBy: orders.createdBy,
+      sellerName: employees.name,
+      sellerSignatureImageUrl: employees.signatureImageUrl,
+      sellerCompanyImageUrl: employees.companyImageUrl,
       clientName: clients.name,
       clientNit: clients.identification,
       type: orders.type,
@@ -261,6 +304,7 @@ export async function GET(
     })
     .from(orders)
     .leftJoin(clients, eq(orders.clientId, clients.id))
+    .leftJoin(employees, eq(orders.createdBy, employees.id))
     .where(eq(orders.id, orderId))
     .limit(1);
 
@@ -337,7 +381,7 @@ export async function GET(
     })
     .from(orderPayments)
     .where(
-      sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} <> 'ANULADO'`,
+      sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} = 'PAGADO'`,
     )
     .limit(1);
 
@@ -365,12 +409,47 @@ export async function GET(
   workbook.creator = companyName;
   workbook.created = new Date();
 
+  const companyImage = orderRow.sellerCompanyImageUrl
+    ? await fetchImageBuffer(String(orderRow.sellerCompanyImageUrl))
+    : null;
+
+  const companyFallbackPath = path.join(process.cwd(), "public", "image.png");
+  const companyFallbackBuffer = await readFile(companyFallbackPath).catch(() => null);
+
   const stickerPath = path.join(process.cwd(), "public", "STICKER VIOMAR.png");
   const stickerBuffer = await readFile(stickerPath).catch(() => null);
-  const stickerImageId = stickerBuffer
+
+  const stickerImageId = companyImage
+    ? workbook.addImage({
+        base64: imageBase64(
+          companyImage.buffer as NodeBuffer,
+          companyImage.extension as ImageExtension,
+        ),
+        extension: companyImage.extension,
+      })
+    : companyFallbackBuffer
+      ? workbook.addImage({
+          base64: imageBase64(companyFallbackBuffer as NodeBuffer, "png"),
+          extension: "png",
+        })
+      : stickerBuffer
     ? workbook.addImage({
         base64: imageBase64(stickerBuffer as NodeBuffer, "png"),
         extension: "png",
+      })
+    : undefined;
+
+  const signatureImage = orderRow.sellerSignatureImageUrl
+    ? await fetchImageBuffer(String(orderRow.sellerSignatureImageUrl))
+    : null;
+
+  const signatureImageId = signatureImage
+    ? workbook.addImage({
+        base64: imageBase64(
+          signatureImage.buffer as NodeBuffer,
+          signatureImage.extension as ImageExtension,
+        ),
+        extension: signatureImage.extension,
       })
     : undefined;
 
@@ -389,7 +468,6 @@ export async function GET(
   };
 
   const sheet = workbook.addWorksheet("Prefactura");
-  let rowPointer = applyDocumentHeader(sheet, headerInfo, stickerImageId);
 
   sheet.getColumn(1).width = 24;
   sheet.getColumn(2).width = 16;
@@ -398,6 +476,8 @@ export async function GET(
   sheet.getColumn(5).width = 16;
   sheet.getColumn(6).width = 16;
   sheet.getColumn(7).width = 16;
+
+  let rowPointer = applyDocumentHeader(sheet, headerInfo, stickerImageId);
 
   rowPointer += 1;
   styleSectionTitle(sheet, rowPointer, 1, 7, "DETALLE DE PRODUCTOS");
@@ -565,6 +645,35 @@ export async function GET(
     } else {
       setCenteredCellValue(row.getCell(5), "Imagen no disponible");
     }
+  }
+
+  rowPointer += 1;
+  styleSectionTitle(sheet, rowPointer, 1, 7, "FIRMA Y APROBACIÓN");
+  rowPointer += 1;
+
+  sheet.mergeCells(rowPointer, 1, rowPointer, 3);
+  sheet.mergeCells(rowPointer, 4, rowPointer, 7);
+  sheet.getCell(rowPointer, 1).value = "Asesor";
+  sheet.getCell(rowPointer, 1).font = { bold: true };
+  sheet.getCell(rowPointer, 4).value = orderRow.sellerName ?? "-";
+  applyRowBorder(sheet, rowPointer, 1, 7);
+  rowPointer += 1;
+
+  sheet.mergeCells(rowPointer, 1, rowPointer, 7);
+  sheet.getCell(rowPointer, 1).value = "Firma autorizada";
+  sheet.getCell(rowPointer, 1).font = { bold: true };
+  sheet.getCell(rowPointer, 1).alignment = {
+    vertical: "middle",
+    horizontal: "center",
+  };
+  applyRowBorder(sheet, rowPointer, 1, 7);
+
+  if (signatureImageId) {
+    sheet.getRow(rowPointer).height = Math.max(sheet.getRow(rowPointer).height ?? 15, 95);
+    sheet.addImage(signatureImageId, {
+      tl: { col: 1.2, row: rowPointer - 1 + 0.05 },
+      ext: { width: 400, height: 90 },
+    });
   }
 
   const filename = `prefactura-${orderRow.orderCode}.xlsx`;

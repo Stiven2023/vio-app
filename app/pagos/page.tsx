@@ -22,6 +22,7 @@ export default async function PagosPage({
 
   const canCreate = !(await requirePermission(req, "CREAR_PAGO"));
   const canEdit = !(await requirePermission(req, "EDITAR_PAGO"));
+  const canApprove = !(await requirePermission(req, "APROBAR_PAGO"));
 
   const sp = (await searchParams) ?? {};
   const rawOrderId = Array.isArray(sp.orderId) ? sp.orderId[0] : sp.orderId;
@@ -35,6 +36,7 @@ export default async function PagosPage({
       </p>
       <div className="mt-6">
         <PaymentsHubClient
+          canApprove={canApprove}
           canCreate={canCreate}
           canEdit={canEdit}
           initialOrderId={initialOrderId}

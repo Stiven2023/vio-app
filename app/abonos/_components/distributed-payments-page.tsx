@@ -8,12 +8,12 @@ import { Card, CardBody } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { NumberInput } from "@heroui/react";
 import { Select, SelectItem } from "@heroui/select";
+import { Skeleton } from "@heroui/skeleton";
 import { BsPlusCircle, BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "@/app/orders/_lib/api";
 
 type PaymentMethod = "EFECTIVO" | "TRANSFERENCIA" | "CREDITO";
-type PaymentStatus = "PENDIENTE" | "PARCIAL" | "PAGADO" | "ANULADO";
 
 type OrderOption = {
   id: string;
@@ -33,13 +33,6 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: "EFECTIVO", label: "Efectivo" },
   { value: "TRANSFERENCIA", label: "Transferencia" },
   { value: "CREDITO", label: "Crédito" },
-];
-
-const statusOptions: Array<{ value: PaymentStatus; label: string }> = [
-  { value: "PENDIENTE", label: "Pendiente" },
-  { value: "PARCIAL", label: "Parcial" },
-  { value: "PAGADO", label: "Pagado" },
-  { value: "ANULADO", label: "Anulado" },
 ];
 
 function toAmountString(v: number | string | null | undefined) {
@@ -72,7 +65,13 @@ function focusById(id: string) {
   element?.focus();
 }
 
-export function DistributedPaymentsPage() {
+export function DistributedPaymentsPage({
+  preselectedOrderId,
+  preselectedOrderLabel,
+}: {
+  preselectedOrderId?: string;
+  preselectedOrderLabel?: string;
+}) {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
   const [orderOptions, setOrderOptions] = useState<OrderOption[]>([]);
@@ -80,7 +79,6 @@ export function DistributedPaymentsPage() {
   const [depositAmount, setDepositAmount] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("TRANSFERENCIA");
-  const [status, setStatus] = useState<PaymentStatus>("PENDIENTE");
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
@@ -122,6 +120,56 @@ export function DistributedPaymentsPage() {
       active = false;
     };
   }, [orderSearch]);
+
+  useEffect(() => {
+    const selectedId = String(preselectedOrderId ?? "").trim();
+    if (!selectedId) return;
+
+    let firstRowId: string | null = null;
+
+    setAllocations((rows) => {
+      const baseRows =
+        rows.length > 0
+          ? rows
+          : [{ id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" }];
+
+      const [first, ...rest] = baseRows;
+      if (!first) return baseRows;
+
+      firstRowId = first.id;
+
+      if (first.orderId === selectedId) return baseRows;
+
+      const option = orderOptions.find((item) => item.id === selectedId);
+      const nextSearch = option?.orderCode ?? preselectedOrderLabel ?? first.orderSearch;
+
+      return [
+        {
+          ...first,
+          orderId: selectedId,
+          orderSearch: nextSearch,
+        },
+        ...rest,
+      ];
+    });
+
+    if (firstRowId) {
+      setErrors((prev) => {
+        const firstId = String(firstRowId);
+
+        return {
+          ...prev,
+          allocations: {
+            ...prev.allocations,
+            [firstId]: {
+              ...(prev.allocations[firstId] ?? {}),
+              orderId: undefined,
+            },
+          },
+        };
+      });
+    }
+  }, [preselectedOrderId, preselectedOrderLabel, orderOptions]);
 
   useEffect(() => {
     if (!proofFile) {
@@ -299,7 +347,6 @@ export function DistributedPaymentsPage() {
         body: JSON.stringify({
           depositAmount: Number(depositAmount),
           method,
-          status,
           referenceCode: referenceCode.trim() || null,
           proofImageUrl,
           allocations: validAllocations.map((row) => ({
@@ -313,7 +360,6 @@ export function DistributedPaymentsPage() {
       setDepositAmount("");
       setReferenceCode("");
       setMethod("TRANSFERENCIA");
-      setStatus("PENDIENTE");
       setProofFile(null);
       setAllocations([
         { id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" },
@@ -363,18 +409,11 @@ export function DistributedPaymentsPage() {
                 <SelectItem key={m.value}>{m.label}</SelectItem>
               ))}
             </Select>
-            <Select
+            <Input
+              isReadOnly
               label="Estado"
-              selectedKeys={[status]}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0] as PaymentStatus | undefined;
-                setStatus(first ?? "PENDIENTE");
-              }}
-            >
-              {statusOptions.map((s) => (
-                <SelectItem key={s.value}>{s.label}</SelectItem>
-              ))}
-            </Select>
+              value="Por confirmar"
+            />
           </div>
 
           <div>
@@ -428,7 +467,23 @@ export function DistributedPaymentsPage() {
             </Button>
           </div>
 
-          {allocations.map((row, index) => (
+          {loadingOrders ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <div
+                  key={`allocation-skeleton-${idx}`}
+                  className="grid grid-cols-1 gap-3 rounded-medium border border-default-200 p-3 md:grid-cols-[2fr,1fr,auto]"
+                >
+                  <Skeleton className="h-12 w-full rounded-medium" />
+                  <Skeleton className="h-12 w-full rounded-medium" />
+                  <Skeleton className="h-10 w-10 rounded-medium" />
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {!loadingOrders
+            ? allocations.map((row, index) => (
             <div key={row.id} className="grid grid-cols-1 gap-3 rounded-medium border border-default-200 p-3 md:grid-cols-[2fr,1fr,auto]">
               <Autocomplete
                 defaultItems={orderOptions}
@@ -540,7 +595,8 @@ export function DistributedPaymentsPage() {
                 </Button>
               </div>
             </div>
-          ))}
+          ))
+            : null}
 
           <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
             <div className="rounded-medium border border-default-200 p-3">

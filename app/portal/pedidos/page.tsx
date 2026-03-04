@@ -15,6 +15,7 @@ import {
 } from "@heroui/table";
 
 import { AlertToast } from "@/components/alert-toast";
+import { normalizePaymentStatusLabel } from "@/src/utils/payment-status";
 
 type ExternalOrder = {
   id: string;
@@ -422,7 +423,7 @@ export default function PortalPedidosPage() {
                     <TableRow key={payment.id}>
                       <TableCell>{payment.createdAt ? new Date(payment.createdAt).toLocaleString("es-CO") : "-"}</TableCell>
                       <TableCell>{payment.method ?? "-"}</TableCell>
-                      <TableCell>{payment.status ?? "-"}</TableCell>
+                      <TableCell>{normalizePaymentStatusLabel(payment.status)}</TableCell>
                       <TableCell>{formatMoney(payment.amount)}</TableCell>
                       <TableCell>{payment.referenceCode ?? "-"}</TableCell>
                       <TableCell>

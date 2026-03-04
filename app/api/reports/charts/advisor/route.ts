@@ -97,7 +97,7 @@ export async function GET(request: Request) {
           sql`${orders.createdBy} = ${employeeId}`,
           gte(orderPayments.createdAt, range.start),
           lte(orderPayments.createdAt, range.end),
-          sql`${orderPayments.status} <> 'ANULADO'`,
+          sql`${orderPayments.status} = 'PAGADO'`,
         ),
       )
       .groupBy(sql`date_trunc('day', ${orderPayments.createdAt})`)

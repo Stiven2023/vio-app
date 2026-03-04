@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Key } from "react";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -17,10 +17,12 @@ type OrderOption = {
 };
 
 export function PaymentsHubPage({
+  canApprove,
   canCreate,
   canEdit,
   initialOrderId,
 }: {
+  canApprove: boolean;
   canCreate: boolean;
   canEdit: boolean;
   initialOrderId?: string;
@@ -51,6 +53,16 @@ export function PaymentsHubPage({
     }
   };
 
+  const onSelectOrder = (key: Key | null) => {
+    const nextId = String(key ?? "");
+    setSelectedOrderId(nextId);
+
+    const option = options.find((item) => item.id === nextId);
+    if (option) {
+      setQuery(option.orderCode);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -64,7 +76,7 @@ export function PaymentsHubPage({
             placeholder="Código pedido o cliente"
             selectedKey={selectedOrderId || null}
             onInputChange={onSearch}
-            onSelectionChange={(key) => setSelectedOrderId(String(key ?? ""))}
+            onSelectionChange={onSelectOrder}
           >
             {(item) => (
               <AutocompleteItem
@@ -101,6 +113,7 @@ export function PaymentsHubPage({
           <CardHeader className="font-semibold">Detalle de pagos por pedido</CardHeader>
           <CardBody>
             <OrderPaymentsPage
+              canApprove={canApprove}
               canCreate={canCreate}
               canEdit={canEdit}
               orderId={selectedOrderId}
@@ -112,7 +125,10 @@ export function PaymentsHubPage({
       <Card>
         <CardHeader className="font-semibold">Abonos distribuidos</CardHeader>
         <CardBody>
-          <DistributedPaymentsPage />
+          <DistributedPaymentsPage
+            preselectedOrderId={selectedOrderId || undefined}
+            preselectedOrderLabel={selectedOrder?.orderCode ?? undefined}
+          />
         </CardBody>
       </Card>
     </div>

@@ -1,8 +1,9 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { clients, orderItems, orderPayments, orders } from "@/src/db/schema";
 import { requireExternalAccessActiveClient } from "@/src/utils/external-auth";
+import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 
 export async function GET(
   request: Request,
@@ -72,12 +73,7 @@ export async function GET(
       createdAt: orderPayments.createdAt,
     })
     .from(orderPayments)
-    .where(
-      and(
-        eq(orderPayments.orderId, order.id),
-        sql`${orderPayments.status} <> 'ANULADO'`,
-      ),
-    )
+    .where(eq(orderPayments.orderId, order.id))
     .orderBy(desc(orderPayments.createdAt))
     .limit(200);
 
@@ -101,6 +97,7 @@ export async function GET(
   );
 
   const paidTotal = payments.reduce((acc, payment) => {
+    if (!isConfirmedPaymentStatus(payment.status)) return acc;
     const value = Number(payment.amount ?? "0");
     return acc + (Number.isFinite(value) ? value : 0);
   }, 0);

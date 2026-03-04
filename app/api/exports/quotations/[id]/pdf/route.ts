@@ -329,47 +329,65 @@ export async function GET(
       .toUpperCase();
     const isCreditPayment = paymentTermsNormalized === "CREDITO";
 
-    const rowsData: Array<[string, string, string, string]> = [];
+    const isPresentValue = (value: unknown) => {
+      const text = String(value ?? "").trim();
+      return text.length > 0 && text !== "-";
+    };
 
-    rowsData.push(["Codigo Cotizacion", String(header.quoteCode ?? "-"), "Fecha Emision", emissionDate]);
-    rowsData.push(["Cliente", String(header.clientName ?? "-"), "Codigo Cliente", String(header.clientCode ?? "-")]);
+    const infoPairs: Array<{ label: string; value: string }> = [];
+    const pushPair = (label: string, value: unknown) => {
+      const safeValue = String(value ?? "").trim();
+      if (!isPresentValue(safeValue)) return;
+      infoPairs.push({ label, value: safeValue });
+    };
+
+    pushPair("Codigo Cotizacion", String(header.quoteCode ?? "-"));
+    pushPair("Fecha Emision", emissionDate);
+    pushPair("Cliente", String(header.clientName ?? "-"));
+    pushPair("Codigo Cliente", String(header.clientCode ?? "-"));
 
     if (!isExternalPdf) {
-      rowsData.push(["NIT / CC", nitWithDv, "Email", String(header.clientEmail ?? "-")]);
+      pushPair("NIT / CC", nitWithDv);
+      pushPair("Email", String(header.clientEmail ?? "-"));
     } else {
-      rowsData.push(["Email", String(header.clientEmail ?? "-"), "Ciudad", String(header.clientCity ?? "-")]);
+      pushPair("Email", String(header.clientEmail ?? "-"));
+      pushPair("Ciudad", String(header.clientCity ?? "-"));
     }
 
-    rowsData.push([
-      "Nombre Contacto",
-      String(header.clientContactName ?? "-"),
-      "Numero Contacto",
-      String(header.clientContactPhone ?? "-"),
-    ]);
+    pushPair("Nombre Contacto", String(header.clientContactName ?? "-"));
+    pushPair("Numero Contacto", String(header.clientContactPhone ?? "-"));
+    pushPair("Moneda", String(header.currency ?? "COP"));
 
     if (!isExternalPdf) {
-      rowsData.push(["Moneda", String(header.currency ?? "COP"), "Tipo Documento", String(header.documentType ?? "P")]);
-    } else {
-      rowsData.push(["Moneda", String(header.currency ?? "COP"), "", ""]);
+      pushPair("Tipo Documento", String(header.documentType ?? "P"));
     }
 
-    rowsData.push(["Entrega", formatDate(header.deliveryDate), "Vencimiento", formatDate(header.expiryDate)]);
-    rowsData.push(["Condición Pago", String(header.paymentTerms ?? "-"), "Vendedor", String(header.sellerName ?? "-")]);
+    pushPair("Entrega", formatDate(header.deliveryDate));
+    pushPair("Vencimiento", formatDate(header.expiryDate));
+    pushPair("Condición Pago", String(header.paymentTerms ?? "-"));
+    pushPair("Vendedor", String(header.sellerName ?? "-"));
 
     if (isCreditPayment) {
-      rowsData.push(["N° Pagaré", String(header.promissoryNoteNumber ?? "-"), "Ciudad", String(header.clientCity ?? "-")]);
+      pushPair("N° Pagaré", String(header.promissoryNoteNumber ?? "-"));
+      pushPair("Ciudad", String(header.clientCity ?? "-"));
     }
 
-    rowsData.push([
+    pushPair(
       "Estado Prefactura",
       header.prefacturaApproved
         ? `APROBADA ${header.prefacturaCode ? `(${header.prefacturaCode})` : ""}`
         : "NO",
-      "",
-      "",
-    ]);
+    );
 
-    rowsData.forEach((row, idx) => {
+    const groupedRows: Array<
+      [{ label: string; value: string }, { label: string; value: string } | null]
+    > = [];
+
+    for (let index = 0; index < infoPairs.length; index += 2) {
+      groupedRows.push([infoPairs[index], infoPairs[index + 1] ?? null]);
+    }
+
+    groupedRows.forEach((row, idx) => {
       const rowY = boxTop - idx * rowH;
       page.drawRectangle({
         x: margin,
@@ -380,20 +398,28 @@ export async function GET(
         borderWidth: 1,
         color: rgb(1, 1, 1),
       });
-      page.drawLine({
-        start: { x: margin + colW, y: rowY },
-        end: { x: margin + colW, y: rowY - rowH },
-        color: lineColor,
-        thickness: 1,
-      });
 
-      drawText(row[0], margin + 6, rowY - 9, 8, false, mutedColor);
-      drawText(truncateText(row[1], 28), margin + 6, rowY - 19, 9, true);
-      drawText(row[2], margin + colW + 6, rowY - 9, 8, false, mutedColor);
-      drawText(truncateText(row[3], 28), margin + colW + 6, rowY - 19, 9, true);
+      const [leftPair, rightPair] = row;
+
+      if (rightPair) {
+        page.drawLine({
+          start: { x: margin + colW, y: rowY },
+          end: { x: margin + colW, y: rowY - rowH },
+          color: lineColor,
+          thickness: 1,
+        });
+      }
+
+      drawText(leftPair.label, margin + 6, rowY - 9, 8, false, mutedColor);
+      drawText(truncateText(leftPair.value, rightPair ? 28 : 70), margin + 6, rowY - 19, 9, true);
+
+      if (rightPair) {
+        drawText(rightPair.label, margin + colW + 6, rowY - 9, 8, false, mutedColor);
+        drawText(truncateText(rightPair.value, 28), margin + colW + 6, rowY - 19, 9, true);
+      }
     });
 
-    y = boxTop - rowsData.length * rowH - 12;
+    y = boxTop - groupedRows.length * rowH - 12;
   };
 
   const tableX = margin;

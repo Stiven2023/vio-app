@@ -1,5 +1,7 @@
 import ExcelJS from "exceljs";
 import type { Buffer as NodeBuffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 type ImageExtension = "png" | "jpeg";
 
@@ -27,12 +29,29 @@ export async function fetchImageBuffer(
   if (!url) return null;
 
   try {
-    const response = await fetch(url);
+    const normalized = String(url ?? "").trim();
+
+    if (!normalized) return null;
+
+    if (normalized.startsWith("/") || (!normalized.startsWith("http://") && !normalized.startsWith("https://"))) {
+      const relativePath = normalized.startsWith("/")
+        ? normalized.slice(1)
+        : normalized;
+      const diskPath = join(process.cwd(), "public", relativePath);
+      const buffer = await readFile(diskPath);
+      const extension = guessImageType(relativePath);
+
+      if (!extension) return null;
+
+      return { buffer: buffer as NodeBuffer, extension };
+    }
+
+    const response = await fetch(normalized);
 
     if (!response.ok) return null;
 
     const contentType = response.headers.get("content-type");
-    const extension = guessImageType(url, contentType);
+    const extension = guessImageType(normalized, contentType);
 
     if (!extension) return null;
 

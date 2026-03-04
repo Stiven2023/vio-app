@@ -171,7 +171,7 @@ export async function GET(request: Request) {
         .where(
           and(
             inArray(orderPayments.orderId, orderIds),
-            sql`${orderPayments.status} <> 'ANULADO'`,
+            sql`${orderPayments.status} = 'PAGADO'`,
           ),
         )
     : [];

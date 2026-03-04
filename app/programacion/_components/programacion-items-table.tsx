@@ -23,6 +23,7 @@ type ProgramacionItem = {
   orderCode: string;
   orderDate: string | null;
   clientName: string | null;
+  clientCode: string | null;
   deliveryDate: string | null;
   sellerName: string | null;
   design: string | null;
@@ -98,6 +99,7 @@ export function ProgramacionItemsTable({
 
       fetch(`/api/programacion/items?process=${process}&orderStatus=${orderStatus}&view=${view}&page=${page}&pageSize=${PAGE_SIZE}`, {
       credentials: "include",
+      cache: "force-cache",
     })
       .then(async (response) => {
         if (!response.ok) throw new Error(await response.text());
@@ -151,7 +153,7 @@ export function ProgramacionItemsTable({
       setLoading(true);
       const refreshed = await fetch(
         `/api/programacion/items?process=${process}&orderStatus=${orderStatus}&view=${view}&page=${page}&pageSize=${PAGE_SIZE}`,
-        { credentials: "include" },
+        { credentials: "include", cache: "no-store" },
       );
 
       if (refreshed.ok) {
@@ -282,7 +284,7 @@ export function ProgramacionItemsTable({
             </div>
           </TableCell>,
           <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-          <TableCell key="cliente">{item.clientName ?? "-"}</TableCell>,
+          <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
           <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
           <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
           <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
@@ -315,7 +317,7 @@ export function ProgramacionItemsTable({
             </div>
           </TableCell>,
           <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-          <TableCell key="cliente">{item.clientName ?? "-"}</TableCell>,
+          <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
           <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
           <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
           <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
@@ -342,7 +344,7 @@ export function ProgramacionItemsTable({
         [
           <TableCell key="pedido">{item.orderCode ?? "-"}</TableCell>,
           <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-          <TableCell key="cliente">{item.clientName ?? "-"}</TableCell>,
+          <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
           <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
           <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
           <TableCell key="diseno">{item.design ?? "-"}</TableCell>,
@@ -370,7 +372,7 @@ export function ProgramacionItemsTable({
       [
         <TableCell key="pedido">{item.orderCode ?? "-"}</TableCell>,
         <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-        <TableCell key="cliente">{item.clientName ?? "-"}</TableCell>,
+        <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
         <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
         <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
         <TableCell key="diseno">{item.design ?? "-"}</TableCell>,

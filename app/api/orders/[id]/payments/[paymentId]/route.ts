@@ -1,8 +1,12 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { orderPayments, orders, orderStatusHistory, prefacturas } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import {
+  canSetPaymentStatusOnApproval,
+  isConfirmedPaymentStatus,
+} from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function toNullableNumericString(v: unknown) {
@@ -35,18 +39,23 @@ async function syncOrderStatusByPayments(orderId: string) {
 
   if (!orderRow) return;
 
-  const [paidRow] = await db
+  const paidRows = await db
     .select({
-      paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
+      amount: orderPayments.amount,
+      status: orderPayments.status,
     })
     .from(orderPayments)
-    .where(
-      sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} <> 'ANULADO'`,
-    )
-    .limit(1);
+    .where(eq(orderPayments.orderId, orderId));
 
   const total = Math.max(0, Number(orderRow.total ?? 0));
-  const paidTotal = Math.max(0, Number(paidRow?.paidTotal ?? 0));
+  const paidTotal = Math.max(
+    0,
+    paidRows.reduce((acc, row) => {
+      if (!isConfirmedPaymentStatus(row.status)) return acc;
+      const amount = Number(row.amount ?? 0);
+      return acc + (Number.isFinite(amount) ? amount : 0);
+    }, 0),
+  );
   const paidPercent = total > 0 ? (paidTotal / total) * 100 : 0;
 
   const nextStatus =
@@ -102,16 +111,30 @@ export async function PUT(
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "EDITAR_PAGO");
-
-  if (forbidden) return forbidden;
-
   const { paymentId } = await params;
   const pid = String(paymentId ?? "").trim();
 
   if (!pid) return new Response("paymentId required", { status: 400 });
 
   const body = (await request.json()) as any;
+  const wantsStatusChange = body.status !== undefined;
+
+  if (wantsStatusChange) {
+    const forbiddenApprove = await requirePermission(request, "APROBAR_PAGO");
+    if (forbiddenApprove) return forbiddenApprove;
+  }
+
+  const wantsEditFields =
+    body.amount !== undefined ||
+    body.method !== undefined ||
+    body.proofImageUrl !== undefined ||
+    body.referenceCode !== undefined ||
+    body.depositAmount !== undefined;
+
+  if (wantsEditFields) {
+    const forbiddenEdit = await requirePermission(request, "EDITAR_PAGO");
+    if (forbiddenEdit) return forbiddenEdit;
+  }
 
   const patch: Partial<typeof orderPayments.$inferInsert> = {};
 
@@ -141,6 +164,10 @@ export async function PUT(
 
     if (!statuses.has(status))
       return new Response("invalid status", { status: 400 });
+
+    if (!canSetPaymentStatusOnApproval(status)) {
+      return new Response("status must be PAGADO or ANULADO", { status: 400 });
+    }
 
     patch.status = status as any;
   }

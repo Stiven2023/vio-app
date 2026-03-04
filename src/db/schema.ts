@@ -1025,6 +1025,28 @@ export const orderPayments = pgTable("order_payments", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+export const operativeDashboardLogs = pgTable("operative_dashboard_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  roleArea: varchar("role_area", { length: 30 }).notNull().default("OPERARIOS"),
+  operationType: varchar("operation_type", { length: 40 }),
+  orderCode: varchar("order_code", { length: 60 }).notNull(),
+  designName: varchar("design_name", { length: 255 }).notNull(),
+  details: text("details"),
+  size: varchar("size", { length: 40 }),
+  quantityOp: integer("quantity_op").notNull().default(0),
+  producedQuantity: integer("produced_quantity").notNull().default(0),
+  startAt: timestamp("start_at", { withTimezone: true }),
+  endAt: timestamp("end_at", { withTimezone: true }),
+  isComplete: boolean("is_complete").notNull().default(false),
+  isPartial: boolean("is_partial").notNull().default(false),
+  observations: text("observations"),
+  repoCheck: boolean("repo_check").notNull().default(false),
+  processCode: varchar("process_code", { length: 1 }).notNull().default("P"),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 /* =========================
    NOTIFICATIONS
 ========================= */

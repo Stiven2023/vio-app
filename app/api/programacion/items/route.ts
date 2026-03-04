@@ -22,6 +22,10 @@ type ProgramacionView = "GENERAL" | "ACTUALIZACION";
 const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
 const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "APROBACION_INICIAL"];
 const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
+const PROGRAMACION_CACHE_HEADERS = {
+  "Cache-Control": "private, max-age=30, stale-while-revalidate=120",
+  Vary: "Cookie",
+};
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -95,6 +99,7 @@ export async function GET(request: Request) {
       orderCode: orders.orderCode,
       orderDate: orders.createdAt,
       clientName: clients.name,
+      clientCode: clients.clientCode,
       deliveryDate: sql<string | null>`coalesce((date(${orders.createdAt}) + ${orderItems.estimatedLeadDays})::text, ${quotations.deliveryDate}::text)`,
       sellerName: employees.name,
       design: orderItems.name,
@@ -168,6 +173,7 @@ export async function GET(request: Request) {
     orderCode: string;
     orderDate: Date | null;
     clientName: string | null;
+    clientCode: string | null;
     deliveryDate: string | null;
     sellerName: string | null;
     design: string | null;
@@ -192,6 +198,7 @@ export async function GET(request: Request) {
         orderCode: String(item.orderCode ?? ""),
         orderDate: item.orderDate,
         clientName: item.clientName,
+        clientCode: item.clientCode,
         deliveryDate: item.deliveryDate,
         sellerName: item.sellerName,
         design: item.design,
@@ -216,6 +223,7 @@ export async function GET(request: Request) {
         orderCode: String(item.orderCode ?? ""),
         orderDate: item.orderDate,
         clientName: item.clientName,
+        clientCode: item.clientCode,
         deliveryDate: item.deliveryDate,
         sellerName: item.sellerName,
         design: item.design,
@@ -235,11 +243,16 @@ export async function GET(request: Request) {
 
   const hasNextPage = offset + items.length < total;
 
-  return Response.json({
-    items,
-    page,
-    pageSize,
-    total,
-    hasNextPage,
-  });
+  return Response.json(
+    {
+      items,
+      page,
+      pageSize,
+      total,
+      hasNextPage,
+    },
+    {
+      headers: PROGRAMACION_CACHE_HEADERS,
+    },
+  );
 }

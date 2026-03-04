@@ -107,7 +107,7 @@ export default async function AdminDashboardPage() {
     .where(
       and(
         sql`date_trunc('month', ${orderPayments.createdAt}) = date_trunc('month', now())`,
-        sql`${orderPayments.status} <> 'ANULADO'`,
+        sql`${orderPayments.status} = 'PAGADO'`,
       ),
     );
 

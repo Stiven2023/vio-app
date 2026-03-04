@@ -84,6 +84,11 @@ function styleHeaderRow(
   applyRowBorder(worksheet, rowNumber, fromCol, toCol);
 }
 
+function hasVisibleValue(value: unknown) {
+  const text = String(value ?? "").trim();
+  return text.length > 0 && text !== "-";
+}
+
 export async function GET(
   request: Request,
   props: { params: Promise<{ id: string }> },
@@ -195,23 +200,49 @@ export async function GET(
   sheet.getCell(1, 1).font = { bold: true, size: 16 };
   sheet.getCell(1, 1).alignment = { vertical: "middle", horizontal: "left" };
 
-  const infoRows: Array<[string, string, string, string]> = [
-    ["Cliente", header.clientName ?? "-", "Código", header.clientCode ?? "-"],
-    ["NIT/ID", header.clientIdentification ?? "-", "Vendedor", header.sellerName ?? "-"],
-    ["Moneda", header.currency ?? "COP", "Fecha", formatDate(header.createdAt)],
-    ["Entrega", formatDate(header.deliveryDate), "Vence", formatDate(header.expiryDate)],
-    ["Pago", header.paymentTerms ?? "-", "Prefactura", header.prefacturaCode ?? "-"],
-  ];
+  const infoPairs: Array<{ label: string; value: string }> = [];
+  const pushPair = (label: string, value: unknown) => {
+    const safe = String(value ?? "").trim();
+    if (!hasVisibleValue(safe)) return;
+    infoPairs.push({ label, value: safe });
+  };
+
+  pushPair("Cliente", header.clientName ?? "-");
+  pushPair("Código", header.clientCode ?? "-");
+  pushPair("NIT/ID", header.clientIdentification ?? "-");
+  pushPair("Vendedor", header.sellerName ?? "-");
+  pushPair("Moneda", header.currency ?? "COP");
+  pushPair("Fecha", formatDate(header.createdAt));
+  pushPair("Entrega", formatDate(header.deliveryDate));
+  pushPair("Vence", formatDate(header.expiryDate));
+  pushPair("Pago", header.paymentTerms ?? "-");
+  pushPair("Prefactura", header.prefacturaCode ?? "-");
+
+  const infoRows: Array<
+    [{ label: string; value: string }, { label: string; value: string } | null]
+  > = [];
+
+  for (let index = 0; index < infoPairs.length; index += 2) {
+    infoRows.push([infoPairs[index], infoPairs[index + 1] ?? null]);
+  }
 
   let rowPointer = 3;
-  for (const [l1, v1, l2, v2] of infoRows) {
-    sheet.getCell(rowPointer, 1).value = l1;
+  for (const [leftPair, rightPair] of infoRows) {
+    sheet.getCell(rowPointer, 1).value = leftPair.label;
     sheet.getCell(rowPointer, 1).font = { bold: true };
-    sheet.getCell(rowPointer, 2).value = v1;
-    sheet.getCell(rowPointer, 4).value = l2;
-    sheet.getCell(rowPointer, 4).font = { bold: true };
-    sheet.mergeCells(rowPointer, 5, rowPointer, 7);
-    sheet.getCell(rowPointer, 5).value = v2;
+
+    if (rightPair) {
+      sheet.mergeCells(rowPointer, 2, rowPointer, 3);
+      sheet.getCell(rowPointer, 2).value = leftPair.value;
+      sheet.getCell(rowPointer, 4).value = rightPair.label;
+      sheet.getCell(rowPointer, 4).font = { bold: true };
+      sheet.mergeCells(rowPointer, 5, rowPointer, 7);
+      sheet.getCell(rowPointer, 5).value = rightPair.value;
+    } else {
+      sheet.mergeCells(rowPointer, 2, rowPointer, 7);
+      sheet.getCell(rowPointer, 2).value = leftPair.value;
+    }
+
     applyRowBorder(sheet, rowPointer, 1, 7);
     rowPointer += 1;
   }
