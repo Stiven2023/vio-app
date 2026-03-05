@@ -26,6 +26,8 @@ function toPositiveNumericString(v: unknown) {
 }
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
+const transferCurrencies = new Set(["COP", "USD"]);
+const transferBanks = new Set(["GC 24-25", "O 29-52", "VIO-EXT."]);
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
     .select({ id: orders.id, total: orders.total, status: orders.status })
@@ -113,6 +115,8 @@ export async function POST(request: Request) {
       depositAmount?: unknown;
       method?: unknown;
       status?: unknown;
+      transferBank?: unknown;
+      transferCurrency?: unknown;
       referenceCode?: unknown;
       proofImageUrl?: unknown;
       allocations?: Array<{ orderId?: unknown; amount?: unknown }>;
@@ -131,6 +135,42 @@ export async function POST(request: Request) {
     }
 
     const status = "PENDIENTE";
+
+    const transferBank =
+      body.transferBank === undefined || body.transferBank === null
+        ? null
+        : String(body.transferBank).trim() || null;
+
+    const transferCurrency =
+      body.transferCurrency === undefined || body.transferCurrency === null
+        ? null
+        : String(body.transferCurrency).trim().toUpperCase() || null;
+
+    if (method === "TRANSFERENCIA") {
+      if (!transferBank || !transferBanks.has(transferBank)) {
+        return new Response("transferBank required for transfer method", {
+          status: 400,
+        });
+      }
+
+      if (!transferCurrency || !transferCurrencies.has(transferCurrency)) {
+        return new Response("transferCurrency must be COP or USD", {
+          status: 400,
+        });
+      }
+
+      if (transferCurrency === "USD" && transferBank !== "VIO-EXT.") {
+        return new Response("USD solo se acepta cuando el banco es VIO-EXT.", {
+          status: 400,
+        });
+      }
+
+      if (transferBank === "VIO-EXT." && transferCurrency !== "USD") {
+        return new Response("Con banco VIO-EXT. solo se acepta moneda USD.", {
+          status: 400,
+        });
+      }
+    }
 
     const referenceCode =
       body.referenceCode === undefined || body.referenceCode === null
@@ -169,7 +209,7 @@ export async function POST(request: Request) {
     const uniqueOrderIds = Array.from(new Set(allocations.map((a) => a.orderId)));
 
     const existingOrders = await db
-      .select({ id: orders.id })
+      .select({ id: orders.id, clientId: orders.clientId })
       .from(orders)
       .where(inArray(orders.id, uniqueOrderIds));
 
@@ -179,6 +219,17 @@ export async function POST(request: Request) {
 
     if (invalidOrder) {
       return new Response("invalid orderId in allocations", { status: 400 });
+    }
+
+    const clientIds = Array.from(
+      new Set(existingOrders.map((row) => String(row.clientId ?? ""))),
+    );
+
+    if (clientIds.length !== 1 || !clientIds[0]) {
+      return new Response(
+        "Todos los pedidos del abono distribuido deben ser del mismo cliente",
+        { status: 400 },
+      );
     }
 
     const inserted = await db.transaction(async (tx) => {
@@ -191,6 +242,9 @@ export async function POST(request: Request) {
             depositAmount,
             referenceCode,
             method: method as any,
+            transferBank: method === "TRANSFERENCIA" ? transferBank : null,
+            transferCurrency:
+              method === "TRANSFERENCIA" ? transferCurrency : null,
             status: status as any,
             proofImageUrl,
           })) as any,

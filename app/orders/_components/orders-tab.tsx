@@ -245,18 +245,6 @@ export function OrdersTab({
         </div>
 
         <div className="flex gap-2">
-          {canCreate ? (
-            <Button
-              color="primary"
-              isDisabled={optionsLoading}
-              onPress={() => {
-                setEditing(null);
-                setModalOpen(true);
-              }}
-            >
-              Crear pedido
-            </Button>
-          ) : null}
           <Button variant="flat" onPress={refresh}>
             Refrescar
           </Button>

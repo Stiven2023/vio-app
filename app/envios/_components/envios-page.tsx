@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
@@ -31,6 +32,8 @@ type Shipment = {
   mode: "INTERNAL" | "CLIENT";
   fromArea: string;
   toArea: string;
+  recipientId: string | null;
+  recipientName: string | null;
   sentBy: string;
   orderCode: string;
   designName: string;
@@ -57,10 +60,17 @@ export function EnviosPage() {
   const [q, setQ] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [recipientQuery, setRecipientQuery] = useState("");
+  const [recipientOptions, setRecipientOptions] = useState<
+    Array<{ id: string; code: string | null; name: string; contactName: string | null }>
+  >([]);
+
   const [form, setForm] = useState({
     mode: "INTERNAL",
     fromArea: "VIOMAR",
     toArea: "CONFECCIONISTA",
+    recipientId: "",
+    recipientName: "",
     sentBy: "",
     orderCode: "",
     designName: "",
@@ -82,8 +92,31 @@ export function EnviosPage() {
     10,
   );
 
+  const loadRecipients = async (query: string, area: string) => {
+    if (area !== "CONFECCIONISTA") {
+      setRecipientOptions([]);
+      return;
+    }
+
+    try {
+      const res = await apiJson<{
+        items: Array<{ id: string; code: string | null; name: string; contactName: string | null }>;
+      }>(
+        `/api/shipments/recipients?area=${encodeURIComponent(area)}&q=${encodeURIComponent(query.trim())}`,
+      );
+      setRecipientOptions(Array.isArray(res.items) ? res.items : []);
+    } catch {
+      setRecipientOptions([]);
+    }
+  };
+
   const createShipment = async () => {
     if (saving) return;
+
+    if (form.toArea === "CONFECCIONISTA" && !String(form.recipientId ?? "").trim()) {
+      toast.error("Selecciona un confeccionista destinatario");
+      return;
+    }
 
     try {
       setSaving(true);
@@ -95,6 +128,8 @@ export function EnviosPage() {
       setModalOpen(false);
       setForm((prev) => ({
         ...prev,
+        recipientId: "",
+        recipientName: "",
         sentBy: "",
         orderCode: "",
         designName: "",
@@ -154,6 +189,7 @@ export function EnviosPage() {
           <TableColumn>Diseño</TableColumn>
           <TableColumn>Talla</TableColumn>
           <TableColumn>Envía</TableColumn>
+          <TableColumn>A quién va</TableColumn>
           <TableColumn>Ruta</TableColumn>
           <TableColumn>Pago/Doc</TableColumn>
           <TableColumn>Estado</TableColumn>
@@ -170,6 +206,7 @@ export function EnviosPage() {
               <TableCell>{row.designName}</TableCell>
               <TableCell>{row.size}</TableCell>
               <TableCell>{row.sentBy}</TableCell>
+              <TableCell>{row.recipientName ?? "-"}</TableCell>
               <TableCell>
                 {row.fromArea} → {row.toArea}
               </TableCell>
@@ -232,9 +269,17 @@ export function EnviosPage() {
               <Select
                 label="Hacia"
                 selectedKeys={[form.toArea]}
-                onSelectionChange={(keys) =>
-                  setForm((prev) => ({ ...prev, toArea: String(Array.from(keys)[0] ?? "") }))
-                }
+                onSelectionChange={(keys) => {
+                  const toArea = String(Array.from(keys)[0] ?? "");
+                  setForm((prev) => ({
+                    ...prev,
+                    toArea,
+                    recipientId: "",
+                    recipientName: "",
+                  }));
+                  setRecipientQuery("");
+                  void loadRecipients("", toArea);
+                }}
                 items={AREA_OPTIONS}
               >
                 {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
@@ -242,6 +287,42 @@ export function EnviosPage() {
             </div>
 
             <Input label="Quién envía" value={form.sentBy} onValueChange={(v) => setForm((p) => ({ ...p, sentBy: v }))} />
+            {form.toArea === "CONFECCIONISTA" ? (
+              <Autocomplete
+                defaultItems={recipientOptions}
+                inputValue={recipientQuery}
+                label="A quién va (Confeccionista)"
+                placeholder="Buscar confeccionista"
+                selectedKey={form.recipientId || null}
+                onInputChange={(value) => {
+                  setRecipientQuery(value);
+                  void loadRecipients(value, "CONFECCIONISTA");
+                }}
+                onSelectionChange={(key) => {
+                  const id = String(key ?? "");
+                  const selected = recipientOptions.find((item) => item.id === id);
+                  setForm((prev) => ({
+                    ...prev,
+                    recipientId: id,
+                    recipientName: selected?.name ?? prev.recipientName,
+                  }));
+                }}
+              >
+                {(item) => (
+                  <AutocompleteItem
+                    key={item.id}
+                    textValue={`${item.code ?? ""} ${item.name} ${item.contactName ?? ""}`}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-medium">{item.code ?? "-"} · {item.name}</span>
+                      <span className="text-xs text-default-500">{item.contactName ?? "Sin contacto"}</span>
+                    </div>
+                  </AutocompleteItem>
+                )}
+              </Autocomplete>
+            ) : (
+              <Input label="A quién va" value={form.recipientName} onValueChange={(v) => setForm((p) => ({ ...p, recipientName: v, recipientId: "" }))} />
+            )}
             <Input label="Pedido" value={form.orderCode} onValueChange={(v) => setForm((p) => ({ ...p, orderCode: v }))} />
             <Input label="Diseño" value={form.designName} onValueChange={(v) => setForm((p) => ({ ...p, designName: v }))} />
             <Input label="Talla" value={form.size} onValueChange={(v) => setForm((p) => ({ ...p, size: v }))} />

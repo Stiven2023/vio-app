@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { PrefacturasTab } from "@/app/prefacturas/_components/prefacturas-tab";
+import { ContabilidadTabs } from "@/app/contabilidad/_components/contabilidad-tabs";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export default async function ContabilidadPage() {
@@ -17,19 +17,14 @@ export default async function ContabilidadPage() {
   if (forbidden) redirect("/unauthorized");
 
   const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));
+  const canApprovePayments = !(await requirePermission(req, "APROBAR_PAGO"));
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Contabilidad</h1>
-      <p className="text-default-600 mt-1">Prefacturas pendientes por revisión contable.</p>
+      <p className="text-default-600 mt-1">Prefacturas y consolidado de consignaciones.</p>
       <div className="mt-6">
-        <PrefacturasTab
-          canCreate={false}
-          canDelete={false}
-          canEdit={canEdit}
-          initialStatus="PENDIENTE_CONTABILIDAD"
-          lockStatusFilter
-        />
+        <ContabilidadTabs canApprovePayments={canApprovePayments} canEdit={canEdit} />
       </div>
     </div>
   );

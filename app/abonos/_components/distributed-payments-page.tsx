@@ -18,6 +18,7 @@ type PaymentMethod = "EFECTIVO" | "TRANSFERENCIA" | "CREDITO";
 type OrderOption = {
   id: string;
   orderCode: string;
+  clientId?: string | null;
   clientName: string | null;
   clientCode?: string | null;
 };
@@ -25,6 +26,7 @@ type OrderOption = {
 type AllocationRow = {
   id: string;
   orderId: string;
+  clientId: string;
   amount: string;
   orderSearch: string;
 };
@@ -34,6 +36,8 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: "TRANSFERENCIA", label: "Transferencia" },
   { value: "CREDITO", label: "Crédito" },
 ];
+
+const transferBankOptions = ["GC 24-25", "O 29-52", "VIO-EXT."] as const;
 
 function toAmountString(v: number | string | null | undefined) {
   const raw = String(v ?? "").trim().replace(/,/g, ".");
@@ -68,9 +72,13 @@ function focusById(id: string) {
 export function DistributedPaymentsPage({
   preselectedOrderId,
   preselectedOrderLabel,
+  fixedClientId,
+  fixedClientName,
 }: {
   preselectedOrderId?: string;
   preselectedOrderLabel?: string;
+  fixedClientId?: string;
+  fixedClientName?: string;
 }) {
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
@@ -79,12 +87,14 @@ export function DistributedPaymentsPage({
   const [depositAmount, setDepositAmount] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("TRANSFERENCIA");
+  const [transferBank, setTransferBank] = useState("");
+  const [transferCurrency, setTransferCurrency] = useState<"COP" | "USD">("COP");
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
 
   const [allocations, setAllocations] = useState<AllocationRow[]>([
-    { id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" },
+    { id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" },
   ]);
 
   const depositAmountRef = useRef<HTMLInputElement | null>(null);
@@ -94,6 +104,8 @@ export function DistributedPaymentsPage({
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{
     depositAmount?: string;
+    transferBank?: string;
+    transferCurrency?: string;
     allocations: Record<string, { orderId?: string; amount?: string }>;
   }>({ allocations: {} });
 
@@ -101,9 +113,13 @@ export function DistributedPaymentsPage({
     let active = true;
 
     setLoadingOrders(true);
-    apiJson<{ items: OrderOption[] }>(
-      `/api/pagos/orders?q=${encodeURIComponent(orderSearch.trim())}&limit=20`,
-    )
+    const query = orderSearch.trim();
+    const params = new URLSearchParams();
+    params.set("q", query);
+    params.set("limit", "20");
+    if (fixedClientId) params.set("clientId", fixedClientId);
+
+    apiJson<{ items: OrderOption[] }>(`/api/pagos/orders?${params.toString()}`)
       .then((res) => {
         if (!active) return;
         setOrderOptions(Array.isArray(res.items) ? res.items : []);
@@ -119,7 +135,7 @@ export function DistributedPaymentsPage({
     return () => {
       active = false;
     };
-  }, [orderSearch]);
+  }, [fixedClientId, orderSearch]);
 
   useEffect(() => {
     const selectedId = String(preselectedOrderId ?? "").trim();
@@ -131,7 +147,7 @@ export function DistributedPaymentsPage({
       const baseRows =
         rows.length > 0
           ? rows
-          : [{ id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" }];
+          : [{ id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" }];
 
       const [first, ...rest] = baseRows;
       if (!first) return baseRows;
@@ -147,6 +163,7 @@ export function DistributedPaymentsPage({
         {
           ...first,
           orderId: selectedId,
+          clientId: option?.clientId ? String(option.clientId) : first.clientId,
           orderSearch: nextSearch,
         },
         ...rest,
@@ -236,7 +253,7 @@ export function DistributedPaymentsPage({
   const addRow = () => {
     setAllocations((rows) => [
       ...rows,
-      { id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" },
+      { id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" },
     ]);
     setErrors((prev) => ({ ...prev, allocations: { ...prev.allocations } }));
   };
@@ -246,7 +263,7 @@ export function DistributedPaymentsPage({
       const next = rows.filter((row) => row.id !== id);
       return next.length > 0
         ? next
-        : [{ id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" }];
+        : [{ id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" }];
     });
     setErrors((prev) => {
       const nextAllocations = { ...prev.allocations };
@@ -260,6 +277,8 @@ export function DistributedPaymentsPage({
 
     const nextErrors: {
       depositAmount?: string;
+      transferBank?: string;
+      transferCurrency?: string;
       allocations: Record<string, { orderId?: string; amount?: string }>;
     } = { allocations: {} };
 
@@ -310,6 +329,31 @@ export function DistributedPaymentsPage({
       return;
     }
 
+    if (method === "TRANSFERENCIA") {
+      if (!transferBank.trim()) {
+        nextErrors.transferBank = "El banco es obligatorio para transferencias";
+      } else if (!transferBankOptions.includes(transferBank as any)) {
+        nextErrors.transferBank = "Selecciona un banco válido";
+      }
+      if (!transferCurrency) {
+        nextErrors.transferCurrency = "La moneda es obligatoria para transferencias";
+      }
+
+      if (transferCurrency === "USD" && transferBank !== "VIO-EXT.") {
+        nextErrors.transferCurrency = "USD solo se acepta con banco VIO-EXT.";
+      }
+
+      if (transferBank === "VIO-EXT." && transferCurrency !== "USD") {
+        nextErrors.transferCurrency = "Con banco VIO-EXT. solo se acepta USD.";
+      }
+
+      if (nextErrors.transferBank || nextErrors.transferCurrency) {
+        setErrors(nextErrors);
+        toast.error(nextErrors.transferBank ?? nextErrors.transferCurrency ?? "Completa los datos de transferencia");
+        return;
+      }
+    }
+
     const uniqueOrderIds = new Set(validAllocations.map((row) => row.orderId));
     if (uniqueOrderIds.size !== validAllocations.length) {
       const seen = new Set<string>();
@@ -333,6 +377,17 @@ export function DistributedPaymentsPage({
       return;
     }
 
+    const clientIds = new Set(
+      validAllocations
+        .map((row) => allocations.find((item) => item.id === row.id)?.clientId)
+        .filter((id): id is string => Boolean(id && id.trim())),
+    );
+
+    if (clientIds.size > 1) {
+      toast.error("No puedes distribuir entre pedidos de clientes diferentes");
+      return;
+    }
+
     setErrors({ allocations: {} });
 
     try {
@@ -347,6 +402,8 @@ export function DistributedPaymentsPage({
         body: JSON.stringify({
           depositAmount: Number(depositAmount),
           method,
+          transferBank: method === "TRANSFERENCIA" ? transferBank.trim() : null,
+          transferCurrency: method === "TRANSFERENCIA" ? transferCurrency : null,
           referenceCode: referenceCode.trim() || null,
           proofImageUrl,
           allocations: validAllocations.map((row) => ({
@@ -360,9 +417,11 @@ export function DistributedPaymentsPage({
       setDepositAmount("");
       setReferenceCode("");
       setMethod("TRANSFERENCIA");
+      setTransferBank("");
+      setTransferCurrency("COP");
       setProofFile(null);
       setAllocations([
-        { id: crypto.randomUUID(), orderId: "", amount: "", orderSearch: "" },
+        { id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" },
       ]);
       referenceCodeRef.current?.focus();
     } catch (error) {
@@ -398,6 +457,38 @@ export function DistributedPaymentsPage({
               onValueChange={setReferenceCode}
             />
             <Select
+              isRequired={method === "TRANSFERENCIA"}
+              isInvalid={Boolean(errors.transferBank)}
+              errorMessage={errors.transferBank}
+              label="Banco"
+              selectedKeys={transferBank ? [transferBank] : []}
+              onSelectionChange={(keys) => {
+                const first = String(Array.from(keys)[0] ?? "");
+                setTransferBank(first);
+                if (first === "VIO-EXT.") setTransferCurrency("USD");
+                setErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
+              }}
+            >
+              {transferBankOptions.map((bank) => (
+                <SelectItem key={bank}>{bank}</SelectItem>
+              ))}
+            </Select>
+            <Select
+              isRequired={method === "TRANSFERENCIA"}
+              isInvalid={Boolean(errors.transferCurrency)}
+              errorMessage={errors.transferCurrency}
+              label="Moneda"
+              selectedKeys={[transferCurrency]}
+              onSelectionChange={(keys) => {
+                const first = String(Array.from(keys)[0] ?? "COP").toUpperCase();
+                setTransferCurrency(first === "USD" ? "USD" : "COP");
+                setErrors((prev) => ({ ...prev, transferCurrency: undefined }));
+              }}
+            >
+              <SelectItem key="COP" isDisabled={transferBank === "VIO-EXT."}>COP</SelectItem>
+              <SelectItem key="USD" isDisabled={transferBank !== "VIO-EXT."}>USD</SelectItem>
+            </Select>
+            <Select
               label="Método"
               selectedKeys={[method]}
               onSelectionChange={(keys) => {
@@ -412,7 +503,7 @@ export function DistributedPaymentsPage({
             <Input
               isReadOnly
               label="Estado"
-              value="Por confirmar"
+              value="NO CONSIGNADO"
             />
           </div>
 
@@ -462,6 +553,11 @@ export function DistributedPaymentsPage({
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold">Asignación por pedidos</h2>
+            {fixedClientId ? (
+              <div className="text-xs text-default-500">
+                Cliente fijo: {fixedClientName ?? "seleccionado"}
+              </div>
+            ) : null}
             <Button size="sm" variant="flat" onPress={addRow}>
               <BsPlusCircle /> Agregar fila
             </Button>
@@ -515,12 +611,37 @@ export function DistributedPaymentsPage({
                 onSelectionChange={(key) => {
                   const selectedId = String(key ?? "");
                   const selected = orderOptions.find((opt) => opt.id === selectedId);
+
+                  if (
+                    fixedClientId &&
+                    selected &&
+                    String(selected.clientId ?? "") !== String(fixedClientId)
+                  ) {
+                    toast.error("Solo puedes seleccionar pedidos del cliente actual");
+                    return;
+                  }
+
+                  const existingClientId = allocations.find(
+                    (item) => item.id !== row.id && item.clientId,
+                  )?.clientId;
+
+                  if (
+                    !fixedClientId &&
+                    selected &&
+                    existingClientId &&
+                    String(selected.clientId ?? "") !== String(existingClientId)
+                  ) {
+                    toast.error("No puedes mezclar pedidos de clientes diferentes");
+                    return;
+                  }
+
                   setAllocations((rows) =>
                     rows.map((item) =>
                       item.id === row.id
                         ? {
                             ...item,
                             orderId: selectedId,
+                            clientId: String(selected?.clientId ?? ""),
                             orderSearch: selected
                               ? `${selected.orderCode} ${selected.clientName ?? ""}`.trim()
                               : item.orderSearch,

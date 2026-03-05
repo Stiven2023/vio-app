@@ -185,11 +185,11 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
         variant="light"
         onPress={() => setOpen(true)}
         aria-label="Notificaciones"
-        className="relative"
+        className="relative h-11 w-11 min-w-11"
       >
-        <BsBell />
+        <BsBell className="text-lg" />
         {unreadCount > 0 ? (
-          <span className="absolute -top-1 -right-1 min-w-[18px] rounded-full bg-success px-1 text-[10px] font-semibold text-white shadow-sm">
+          <span className="absolute -top-1.5 -right-1.5 flex min-h-[22px] min-w-[22px] items-center justify-center rounded-full bg-success px-1.5 text-[11px] font-semibold leading-none text-white shadow-sm">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         ) : null}

@@ -28,6 +28,8 @@ function toPositiveNumericString(v: unknown) {
 }
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
+const transferCurrencies = new Set(["COP", "USD"]);
+const transferBanks = new Set(["GC 24-25", "O 29-52", "VIO-EXT."]);
 
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
@@ -155,6 +157,8 @@ export async function GET(
         depositAmount: orderPayments.depositAmount,
         referenceCode: orderPayments.referenceCode,
         method: orderPayments.method,
+        transferBank: orderPayments.transferBank,
+        transferCurrency: orderPayments.transferCurrency,
         status: orderPayments.status,
         proofImageUrl: orderPayments.proofImageUrl,
         createdAt: orderPayments.createdAt,
@@ -233,6 +237,43 @@ export async function POST(
   const depositAmount =
     toPositiveNumericString(body.depositAmount) ?? amount;
 
+  const transferBank =
+    body.transferBank === undefined || body.transferBank === null
+      ? null
+      : String(body.transferBank).trim() || null;
+
+  const transferCurrencyRaw =
+    body.transferCurrency === undefined || body.transferCurrency === null
+      ? null
+      : String(body.transferCurrency).trim().toUpperCase() || null;
+  const transferCurrency = transferCurrencyRaw;
+
+  if (method === "TRANSFERENCIA") {
+    if (!transferBank || !transferBanks.has(transferBank)) {
+      return new Response("transferBank required for transfer method", {
+        status: 400,
+      });
+    }
+
+    if (!transferCurrency || !transferCurrencies.has(transferCurrency)) {
+      return new Response("transferCurrency must be COP or USD", {
+        status: 400,
+      });
+    }
+
+    if (transferCurrency === "USD" && transferBank !== "VIO-EXT.") {
+      return new Response("USD solo se acepta cuando el banco es VIO-EXT.", {
+        status: 400,
+      });
+    }
+
+    if (transferBank === "VIO-EXT." && transferCurrency !== "USD") {
+      return new Response("Con banco VIO-EXT. solo se acepta moneda USD.", {
+        status: 400,
+      });
+    }
+  }
+
   const created = await db.transaction(async (tx) => {
     const [o] = await tx
       .select({ id: orders.id, orderCode: orders.orderCode })
@@ -250,6 +291,11 @@ export async function POST(
         depositAmount,
         referenceCode,
         method: method as any,
+        transferBank: method === "TRANSFERENCIA" ? transferBank : null,
+        transferCurrency:
+          method === "TRANSFERENCIA" && transferCurrency
+            ? transferCurrency
+            : null,
         status: status as any,
         proofImageUrl,
       })

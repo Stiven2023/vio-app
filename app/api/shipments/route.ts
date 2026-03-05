@@ -56,6 +56,7 @@ export async function GET(request: Request) {
           ilike(shipments.size, `%${q}%`),
           ilike(shipments.fromArea, `%${q}%`),
           ilike(shipments.toArea, `%${q}%`),
+          ilike(shipments.recipientName, `%${q}%`),
           ilike(shipments.sentBy, `%${q}%`),
         )
       : undefined;
@@ -105,14 +106,22 @@ export async function POST(request: Request) {
   const mode = up(body.mode) === "CLIENT" ? "CLIENT" : "INTERNAL";
   const fromArea = str(body.fromArea);
   const toArea = str(body.toArea);
+  const recipientId = str(body.recipientId) || null;
   const sentBy = str(body.sentBy);
+  const recipientName = str(body.recipientName);
   const orderCode = up(body.orderCode);
   const designName = str(body.designName);
   const size = up(body.size);
   const routePath = str(body.routePath);
 
-  if (!fromArea || !toArea || !sentBy || !orderCode || !designName || !size || !routePath) {
+  if (!fromArea || !toArea || !sentBy || !recipientName || !orderCode || !designName || !size || !routePath) {
     return new Response("Faltan campos obligatorios del envío", { status: 400 });
+  }
+
+  if (toArea.toUpperCase() === "CONFECCIONISTA" && !recipientId) {
+    return new Response("recipientId es obligatorio cuando el destino es CONFECCIONISTA", {
+      status: 400,
+    });
   }
 
   let paymentStatus: "PAGADO" | "PENDIENTE" | "NA" = "NA";
@@ -154,6 +163,8 @@ export async function POST(request: Request) {
         mode,
         fromArea,
         toArea,
+        recipientId,
+        recipientName,
         sentBy,
         orderCode,
         designName,

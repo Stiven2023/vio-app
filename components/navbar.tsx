@@ -684,7 +684,19 @@ export const Navbar = () => {
         ) : null}
       </NavbarContent>
 
-      <NavbarContent className="sm:hidden basis-1 pl-4" justify="end">
+      <NavbarContent className="sm:hidden basis-1 pl-3 pr-1 gap-2" justify="end">
+        {isAuthenticated ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <Avatar
+              name={user?.name ?? "VIOMAR"}
+              size="sm"
+              src={user?.avatarUrl ?? undefined}
+            />
+            <div className="text-xs font-medium truncate max-w-[120px]">
+              {user?.name ?? "Usuario"}
+            </div>
+          </div>
+        ) : null}
         <ThemeSwitch />
         <NavbarMenuToggle />
       </NavbarContent>
@@ -698,6 +710,22 @@ export const Navbar = () => {
               </Link>
             </NavbarMenuItem>
           ))}
+
+          {isAuthenticated ? (
+            <NavbarMenuItem key="logout-mobile">
+              <Button
+                className="w-full"
+                color="danger"
+                variant="flat"
+                onPress={async () => {
+                  await logout();
+                  router.push("/login");
+                }}
+              >
+                Cerrar sesión
+              </Button>
+            </NavbarMenuItem>
+          ) : null}
         </div>
       </NavbarMenu>
     </HeroUINavbar>

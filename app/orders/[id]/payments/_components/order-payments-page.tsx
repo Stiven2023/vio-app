@@ -47,6 +47,8 @@ type PaymentRow = {
   depositAmount?: string | null;
   referenceCode?: string | null;
   method: PaymentMethod | null;
+  transferBank?: string | null;
+  transferCurrency?: string | null;
   status: PaymentStatus | null;
   proofImageUrl?: string | null;
   createdAt: string | null;
@@ -63,11 +65,15 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: "CREDITO", label: "Crédito" },
 ];
 
+const transferBankOptions = ["GC 24-25", "O 29-52", "VIO-EXT."] as const;
+
 type FormState = {
   amount: string;
   depositAmount: string;
   referenceCode: string;
   method: PaymentMethod;
+  transferBank: string;
+  transferCurrency: "COP" | "USD";
 };
 
 type PaymentsResponse = {
@@ -138,12 +144,16 @@ export function OrderPaymentsPage({
   const [formErrors, setFormErrors] = useState<{
     amount?: string;
     depositAmount?: string;
+    transferBank?: string;
+    transferCurrency?: string;
   }>({});
   const [form, setForm] = useState<FormState>({
     amount: "",
     depositAmount: "",
     referenceCode: "",
     method: "EFECTIVO",
+    transferBank: "",
+    transferCurrency: "COP",
   });
 
   const formatter = useMemo(() => {
@@ -245,6 +255,7 @@ export function OrderPaymentsPage({
     if (submitting) return;
 
     const nextErrors: { amount?: string; depositAmount?: string } = {};
+    const nextTransferErrors: { transferBank?: string; transferCurrency?: string } = {};
 
     const amount = form.amount ? Number(form.amount) : 0;
 
@@ -265,6 +276,32 @@ export function OrderPaymentsPage({
       return;
     }
 
+    if (form.method === "TRANSFERENCIA") {
+      if (!form.transferBank.trim()) {
+        nextTransferErrors.transferBank = "El banco es obligatorio para transferencias";
+      } else if (!transferBankOptions.includes(form.transferBank as any)) {
+        nextTransferErrors.transferBank = "Selecciona un banco válido";
+      }
+
+      if (!form.transferCurrency) {
+        nextTransferErrors.transferCurrency = "La moneda es obligatoria para transferencias";
+      }
+
+      if (form.transferCurrency === "USD" && form.transferBank !== "VIO-EXT.") {
+        nextTransferErrors.transferCurrency = "USD solo se acepta con banco VIO-EXT.";
+      }
+
+      if (form.transferBank === "VIO-EXT." && form.transferCurrency !== "USD") {
+        nextTransferErrors.transferCurrency = "Con banco VIO-EXT. solo se acepta USD.";
+      }
+
+      if (nextTransferErrors.transferBank || nextTransferErrors.transferCurrency) {
+        setFormErrors({ ...nextErrors, ...nextTransferErrors });
+        toast.error(nextTransferErrors.transferBank ?? nextTransferErrors.transferCurrency ?? "Completa los datos de transferencia");
+        return;
+      }
+    }
+
     setFormErrors({});
 
     try {
@@ -281,6 +318,8 @@ export function OrderPaymentsPage({
           depositAmount: form.depositAmount ? Number(form.depositAmount) : amount,
           referenceCode: form.referenceCode.trim() || null,
           method: form.method,
+          transferBank: form.method === "TRANSFERENCIA" ? form.transferBank.trim() : null,
+          transferCurrency: form.method === "TRANSFERENCIA" ? form.transferCurrency : null,
           proofImageUrl,
         }),
       });
@@ -292,6 +331,8 @@ export function OrderPaymentsPage({
         depositAmount: "",
         referenceCode: "",
         method: "EFECTIVO",
+        transferBank: "",
+        transferCurrency: "COP",
       });
       setFormErrors({});
       setProofFile(null);
@@ -329,7 +370,7 @@ export function OrderPaymentsPage({
         method: "PUT",
         body: JSON.stringify({ status }),
       });
-      toast.success(status === "PAGADO" ? "Pago confirmado" : "Pago marcado como no llegó");
+      toast.success(status === "PAGADO" ? "Pago marcado como consignado" : "Pago marcado como no consignado");
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -359,9 +400,6 @@ export function OrderPaymentsPage({
         </div>
 
         <div className="flex gap-2">
-          <Button as={NextLink} href="/orders" variant="flat">
-            Volver
-          </Button>
           <Button isDisabled={loading} variant="flat" onPress={refresh}>
             Refrescar
           </Button>
@@ -481,7 +519,7 @@ export function OrderPaymentsPage({
                                 key="confirm"
                                 onPress={() => updatePaymentStatus(p.id, "PAGADO")}
                               >
-                                Confirmar pago
+                                CONSIGNADO
                               </DropdownItem>
                             ) : null}
                             {canApprove ? (
@@ -489,7 +527,7 @@ export function OrderPaymentsPage({
                                 key="not-arrived"
                                 onPress={() => updatePaymentStatus(p.id, "ANULADO")}
                               >
-                                Marcar no llegó
+                                NO CONSIGNADO
                               </DropdownItem>
                             ) : null}
                             <DropdownItem
@@ -499,7 +537,7 @@ export function OrderPaymentsPage({
                               isDisabled={!canEdit}
                               onPress={() => removePayment(p.id)}
                             >
-                              Eliminar
+                              ANULAR
                             </DropdownItem>
                           </DropdownMenu>
                         </Dropdown>
@@ -604,12 +642,56 @@ export function OrderPaymentsPage({
                 onValueChange={(v) => setForm((s) => ({ ...s, referenceCode: v }))}
               />
               <Select
+                isRequired={form.method === "TRANSFERENCIA"}
+                isInvalid={Boolean(formErrors.transferBank)}
+                errorMessage={formErrors.transferBank}
+                label="Banco"
+                selectedKeys={form.transferBank ? [form.transferBank] : []}
+                onSelectionChange={(keys) => {
+                  const first = String(Array.from(keys)[0] ?? "");
+                  setForm((s) => ({
+                    ...s,
+                    transferBank: first,
+                    transferCurrency: first === "VIO-EXT." ? "USD" : s.transferCurrency,
+                  }));
+                  setFormErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
+                }}
+              >
+                {transferBankOptions.map((bank) => (
+                  <SelectItem key={bank}>{bank}</SelectItem>
+                ))}
+              </Select>
+              <Select
+                isRequired={form.method === "TRANSFERENCIA"}
+                isInvalid={Boolean(formErrors.transferCurrency)}
+                errorMessage={formErrors.transferCurrency}
+                label="Moneda"
+                selectedKeys={[form.transferCurrency]}
+                onSelectionChange={(keys) => {
+                  const first = String(Array.from(keys)[0] ?? "COP").toUpperCase();
+
+                  setForm((s) => ({
+                    ...s,
+                    transferCurrency: first === "USD" ? "USD" : "COP",
+                  }));
+                  setFormErrors((prev) => ({ ...prev, transferCurrency: undefined }));
+                }}
+              >
+                <SelectItem key="COP" isDisabled={form.transferBank === "VIO-EXT."}>COP</SelectItem>
+                <SelectItem key="USD" isDisabled={form.transferBank !== "VIO-EXT."}>USD</SelectItem>
+              </Select>
+              <Select
                 label="Método"
                 selectedKeys={[form.method]}
                 onSelectionChange={(keys) => {
                   const first = Array.from(keys)[0] as PaymentMethod | undefined;
 
-                  setForm((s) => ({ ...s, method: first ?? "EFECTIVO" }));
+                  setForm((s) => ({
+                    ...s,
+                    method: first ?? "EFECTIVO",
+                    transferCurrency:
+                      (first ?? "EFECTIVO") === "TRANSFERENCIA" ? s.transferCurrency : "COP",
+                  }));
                 }}
               >
                 {methodOptions.map((m) => (
@@ -619,7 +701,7 @@ export function OrderPaymentsPage({
               <Input
                 isReadOnly
                 label="Estado"
-                value="Por confirmar"
+                value="NO CONSIGNADO"
               />
 
               <div className="sm:col-span-2">

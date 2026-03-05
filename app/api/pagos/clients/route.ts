@@ -42,7 +42,7 @@ async function resolveAdvisorFilter(request: Request) {
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
-    key: "pagos:orders:get",
+    key: "pagos:clients:get",
     limit: 200,
     windowMs: 60_000,
   });
@@ -61,7 +61,6 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = String(searchParams.get("q") ?? "").trim();
-  const clientId = String(searchParams.get("clientId") ?? "").trim();
   const limitRaw = Number(String(searchParams.get("limit") ?? "20"));
   const limit = Number.isFinite(limitRaw)
     ? Math.min(100, Math.max(1, Math.floor(limitRaw)))
@@ -70,29 +69,30 @@ export async function GET(request: Request) {
   const filters: Array<any> = [
     q
       ? sql`(
-          ${orders.orderCode} ilike ${`%${q}%`}
-          or ${clients.clientCode} ilike ${`%${q}%`}
+          ${clients.clientCode} ilike ${`%${q}%`}
           or ${clients.name} ilike ${`%${q}%`}
+          or ${clients.identification} ilike ${`%${q}%`}
         )`
       : undefined,
     advisorScope ? eq(orders.createdBy, advisorScope) : undefined,
-    clientId ? eq(orders.clientId, clientId) : undefined,
   ].filter(Boolean);
 
   const where = filters.length ? and(...filters) : undefined;
 
   const query = db
     .select({
-      id: orders.id,
-      orderCode: orders.orderCode,
-      clientId: orders.clientId,
-      clientName: clients.name,
+      id: clients.id,
       clientCode: clients.clientCode,
-      createdAt: orders.createdAt,
+      name: clients.name,
+      identification: clients.identification,
+      email: clients.email,
+      lastOrderAt: sql<string | null>`max(${orders.createdAt})`,
+      ordersCount: sql<number>`count(distinct ${orders.id})::int`,
     })
-    .from(orders)
-    .leftJoin(clients, eq(orders.clientId, clients.id))
-    .orderBy(desc(orders.createdAt))
+    .from(clients)
+    .innerJoin(orders, eq(orders.clientId, clients.id))
+    .groupBy(clients.id, clients.clientCode, clients.name, clients.identification, clients.email)
+    .orderBy(desc(sql`max(${orders.createdAt})`))
     .limit(limit);
 
   const items = where ? await query.where(where) : await query;

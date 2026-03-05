@@ -8,10 +8,10 @@ export const PAYMENT_STATUS_VALUES = [
 export type PaymentStatus = (typeof PAYMENT_STATUS_VALUES)[number];
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  PENDIENTE: "Por confirmar",
-  PARCIAL: "Parcial",
-  PAGADO: "Pago confirmado",
-  ANULADO: "No llegó",
+  PENDIENTE: "NO CONSIGNADO",
+  PARCIAL: "CONSIGNADO",
+  PAGADO: "CONSIGNADO",
+  ANULADO: "ANULADO",
 };
 
 export function isConfirmedPaymentStatus(status: unknown) {

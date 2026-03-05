@@ -29,6 +29,8 @@ function toPositiveNumericString(v: unknown) {
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
 const statuses = new Set(["PENDIENTE", "PARCIAL", "PAGADO", "ANULADO"]);
+const transferCurrencies = new Set(["COP", "USD"]);
+const transferBanks = new Set(["GC 24-25", "O 29-52", "VIO-EXT."]);
 
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
@@ -129,7 +131,9 @@ export async function PUT(
     body.method !== undefined ||
     body.proofImageUrl !== undefined ||
     body.referenceCode !== undefined ||
-    body.depositAmount !== undefined;
+    body.depositAmount !== undefined ||
+    body.transferBank !== undefined ||
+    body.transferCurrency !== undefined;
 
   if (wantsEditFields) {
     const forbiddenEdit = await requirePermission(request, "EDITAR_PAGO");
@@ -194,6 +198,91 @@ export async function PUT(
     }
 
     patch.depositAmount = depositAmount;
+  }
+
+  if (body.transferBank !== undefined) {
+    const bank =
+      body.transferBank === null ? null : String(body.transferBank).trim() || null;
+
+    if (bank && !transferBanks.has(bank)) {
+      return new Response("transferBank inválido", { status: 400 });
+    }
+
+    patch.transferBank = bank;
+  }
+
+  if (body.transferCurrency !== undefined) {
+    const currency =
+      body.transferCurrency === null
+        ? null
+        : String(body.transferCurrency).trim().toUpperCase() || null;
+
+    if (currency && !transferCurrencies.has(currency)) {
+      return new Response("transferCurrency must be COP or USD", { status: 400 });
+    }
+
+    patch.transferCurrency = currency;
+  }
+
+  const methodAfterPatch = patch.method
+    ? String(patch.method)
+    : null;
+
+  if (
+    methodAfterPatch === "TRANSFERENCIA" ||
+    patch.transferBank !== undefined ||
+    patch.transferCurrency !== undefined
+  ) {
+    const [current] = await db
+      .select({
+        method: orderPayments.method,
+        transferBank: orderPayments.transferBank,
+        transferCurrency: orderPayments.transferCurrency,
+      })
+      .from(orderPayments)
+      .where(eq(orderPayments.id, pid))
+      .limit(1);
+
+    if (!current) return new Response("Not found", { status: 404 });
+
+    const effectiveMethod = methodAfterPatch ?? String(current.method ?? "");
+    const effectiveBank =
+      patch.transferBank !== undefined ? patch.transferBank : current.transferBank;
+    const effectiveCurrency =
+      patch.transferCurrency !== undefined
+        ? patch.transferCurrency
+        : current.transferCurrency;
+
+    if (effectiveMethod === "TRANSFERENCIA") {
+      if (!String(effectiveBank ?? "").trim() || !transferBanks.has(String(effectiveBank))) {
+        return new Response("transferBank required for transfer method", {
+          status: 400,
+        });
+      }
+
+      if (!effectiveCurrency || !transferCurrencies.has(String(effectiveCurrency))) {
+        return new Response("transferCurrency must be COP or USD", {
+          status: 400,
+        });
+      }
+
+      if (String(effectiveCurrency) === "USD" && String(effectiveBank) !== "VIO-EXT.") {
+        return new Response("USD solo se acepta cuando el banco es VIO-EXT.", {
+          status: 400,
+        });
+      }
+
+      if (String(effectiveBank) === "VIO-EXT." && String(effectiveCurrency) !== "USD") {
+        return new Response("Con banco VIO-EXT. solo se acepta moneda USD.", {
+          status: 400,
+        });
+      }
+    }
+
+    if (effectiveMethod !== "TRANSFERENCIA") {
+      patch.transferBank = null;
+      patch.transferCurrency = null;
+    }
   }
 
   if (Object.keys(patch).length === 0) {

@@ -5,7 +5,6 @@ import {
   clients,
   employees,
   orderItemPackaging,
-  orderItemSocks,
   orderItems,
   orders,
   prefacturas,
@@ -23,7 +22,7 @@ const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
 const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "APROBACION_INICIAL"];
 const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
 const PROGRAMACION_CACHE_HEADERS = {
-  "Cache-Control": "private, max-age=30, stale-while-revalidate=120",
+  "Cache-Control": "no-store",
   Vary: "Cookie",
 };
 
@@ -50,6 +49,12 @@ export async function GET(request: Request) {
   const viewRaw = String(searchParams.get("view") ?? "GENERAL")
     .trim()
     .toUpperCase();
+  const search = String(searchParams.get("search") ?? "").trim();
+  const genderRaw = String(searchParams.get("gender") ?? "")
+    .trim()
+    .toUpperCase();
+  const startDateRaw = String(searchParams.get("startDate") ?? "").trim();
+  const endDateRaw = String(searchParams.get("endDate") ?? "").trim();
 
   if (!VALID_PROCESSES.includes(processRaw as ProcessType)) {
     return new Response("process inválido. Usa: PRODUCCION, BODEGA, COMPRAS", {
@@ -72,11 +77,45 @@ export async function GET(request: Request) {
   const process = processRaw as ProcessType;
   const orderStatus = orderStatusRaw as OrderStatusFilter;
   const view = viewRaw as ProgramacionView;
+  const gender =
+    genderRaw === "HOMBRE" || genderRaw === "MUJER" || genderRaw === "UNISEX"
+      ? genderRaw
+      : "";
 
   const whereBase = and(
-    sql`coalesce(nullif(${orderItems.process}, ''), 'PRODUCCION') = ${process}`,
+    sql`(
+      case
+        when upper(trim(coalesce(${orderItems.process}, ''))) in ('PRODUCCION', 'BODEGA', 'COMPRAS')
+          then upper(trim(coalesce(${orderItems.process}, '')))
+        else 'PRODUCCION'
+      end
+    ) = ${process}`,
     eq(orders.status, orderStatus as any),
   );
+
+  const searchFilter = search
+    ? sql`(
+        ${orders.orderCode} ilike ${`%${search}%`}
+        or ${clients.name} ilike ${`%${search}%`}
+        or ${clients.clientCode} ilike ${`%${search}%`}
+        or ${employees.name} ilike ${`%${search}%`}
+        or ${orderItems.name} ilike ${`%${search}%`}
+        or exists (
+          select 1
+          from ${orderItemPackaging} oip_search
+          where oip_search.order_item_id = ${orderItems.id}
+            and oip_search.size ilike ${`%${search}%`}
+        )
+      )`
+    : undefined;
+
+  const genderFilter = gender ? eq(orderItems.gender, gender as any) : undefined;
+  const dateStartFilter = startDateRaw
+    ? sql`date(${orders.createdAt}) >= ${startDateRaw}::date`
+    : undefined;
+  const dateEndFilter = endDateRaw
+    ? sql`date(${orders.createdAt}) <= ${endDateRaw}::date`
+    : undefined;
 
   const where =
     view === "ACTUALIZACION"
@@ -88,8 +127,12 @@ export async function GET(request: Request) {
             where oish.order_item_id = ${orderItems.id}
               and oish.status in ('EN_REVISION_CAMBIO', 'APROBADO_CAMBIO', 'RECHAZADO_CAMBIO')
           )`,
+          searchFilter,
+          genderFilter,
+          dateStartFilter,
+          dateEndFilter,
         )
-      : whereBase;
+      : and(whereBase, searchFilter, genderFilter, dateStartFilter, dateEndFilter);
 
   const baseItems = await db
     .select({
@@ -136,25 +179,12 @@ export async function GET(request: Request) {
         .orderBy(orderItemPackaging.id)
     : [];
 
-  const socksSizes = baseItemIds.length
-    ? await db
-        .select({
-          orderItemId: orderItemSocks.orderItemId,
-          size: orderItemSocks.size,
-          quantity: orderItemSocks.quantity,
-          rowOrder: orderItemSocks.id,
-        })
-        .from(orderItemSocks)
-        .where(inArray(orderItemSocks.orderItemId, baseItemIds))
-        .orderBy(orderItemSocks.id)
-    : [];
-
   const sizesByItem = new Map<
     string,
     Array<{ size: string; quantity: number; rowOrder: string }>
   >();
 
-  for (const row of [...packagingSizes, ...socksSizes]) {
+  for (const row of packagingSizes) {
     const itemId = String(row.orderItemId ?? "").trim();
     const size = String(row.size ?? "").trim();
     const quantity = Number(row.quantity ?? 0);
@@ -186,6 +216,37 @@ export async function GET(request: Request) {
     process: string | null;
   }> = [];
 
+  const sizeWeight = (value: string | null | undefined) => {
+    const raw = String(value ?? "")
+      .trim()
+      .toUpperCase();
+
+    const mapped: Record<string, number> = {
+      XXXL: 120,
+      XXL: 110,
+      XL: 100,
+      L: 90,
+      M: 80,
+      S: 70,
+      XS: 60,
+      XXS: 50,
+    };
+
+    if (mapped[raw]) return mapped[raw];
+
+    const numericRange = raw.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
+    if (numericRange) {
+      return Number(numericRange[2]);
+    }
+
+    const numeric = raw.match(/^(\d+(?:\.\d+)?)$/);
+    if (numeric) {
+      return Number(numeric[1]);
+    }
+
+    return 0;
+  };
+
   for (const item of baseItems) {
     const itemId = String(item.id);
     const sizeRows = sizesByItem.get(itemId) ?? [];
@@ -213,7 +274,12 @@ export async function GET(request: Request) {
       continue;
     }
 
-    sizeRows.sort((a, b) => a.rowOrder.localeCompare(b.rowOrder));
+    sizeRows.sort((a, b) => {
+      const weight = sizeWeight(b.size) - sizeWeight(a.size);
+      if (weight !== 0) return weight;
+
+      return b.rowOrder.localeCompare(a.rowOrder);
+    });
 
     sizeRows.forEach((sizeRow, index) => {
       expandedItems.push({

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
 import { AlertToast } from "@/components/alert-toast";
 import {
@@ -90,16 +92,37 @@ export function ProgramacionItemsTable({
     type: "success" | "error" | "info";
   } | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [gender, setGender] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const activeActualizacionBasePath = actualizacionBasePath ?? `${basePath}/actualizacion`;
+
+  const buildQuery = () => {
+    const params = new URLSearchParams({
+      process,
+      orderStatus,
+      view,
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+    });
+
+    if (search.trim()) params.set("search", search.trim());
+    if (gender) params.set("gender", gender);
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+
+    return params.toString();
+  };
 
   useEffect(() => {
     let active = true;
     setLoading(true);
 
-      fetch(`/api/programacion/items?process=${process}&orderStatus=${orderStatus}&view=${view}&page=${page}&pageSize=${PAGE_SIZE}`, {
+      fetch(`/api/programacion/items?${buildQuery()}`, {
       credentials: "include",
-      cache: "force-cache",
+      cache: "no-store",
     })
       .then(async (response) => {
         if (!response.ok) throw new Error(await response.text());
@@ -120,7 +143,11 @@ export function ProgramacionItemsTable({
     return () => {
       active = false;
     };
-  }, [page, process, orderStatus, view]);
+  }, [page, process, orderStatus, view, search, gender, startDate, endDate]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [process, orderStatus, view, search, gender, startDate, endDate]);
 
   const title = useMemo(() => {
     if (process === "PRODUCCION") return labels?.principal ?? "Programación principal";
@@ -152,7 +179,7 @@ export function ProgramacionItemsTable({
       setToast({ message: "Estado actualizado correctamente.", type: "success" });
       setLoading(true);
       const refreshed = await fetch(
-        `/api/programacion/items?process=${process}&orderStatus=${orderStatus}&view=${view}&page=${page}&pageSize=${PAGE_SIZE}`,
+        `/api/programacion/items?${buildQuery()}`,
         { credentials: "include", cache: "no-store" },
       );
 
@@ -280,7 +307,9 @@ export function ProgramacionItemsTable({
           <TableCell key="pedido-diseno">
             <div className="leading-tight">
               <div className="font-medium">{item.orderCode ?? "-"}</div>
-              <div className="text-xs text-default-500">{item.design ?? "-"}</div>
+              <div className="max-w-[220px] truncate text-xs text-default-500" title={item.design ?? "-"}>
+                {item.design ?? "-"}
+              </div>
             </div>
           </TableCell>,
           <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
@@ -313,7 +342,9 @@ export function ProgramacionItemsTable({
           <TableCell key="pedido-diseno">
             <div className="leading-tight">
               <div className="font-medium">{item.orderCode ?? "-"}</div>
-              <div className="text-xs text-default-500">{item.design ?? "-"}</div>
+              <div className="max-w-[220px] truncate text-xs text-default-500" title={item.design ?? "-"}>
+                {item.design ?? "-"}
+              </div>
             </div>
           </TableCell>,
           <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
@@ -347,7 +378,11 @@ export function ProgramacionItemsTable({
           <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
           <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
           <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
-          <TableCell key="diseno">{item.design ?? "-"}</TableCell>,
+          <TableCell key="diseno">
+            <div className="max-w-[220px] truncate" title={item.design ?? "-"}>
+              {item.design ?? "-"}
+            </div>
+          </TableCell>,
           <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
           <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
           <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
@@ -375,7 +410,11 @@ export function ProgramacionItemsTable({
         <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
         <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
         <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
-        <TableCell key="diseno">{item.design ?? "-"}</TableCell>,
+        <TableCell key="diseno">
+          <div className="max-w-[220px] truncate" title={item.design ?? "-"}>
+            {item.design ?? "-"}
+          </div>
+        </TableCell>,
         <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
         <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
         <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
@@ -418,6 +457,29 @@ export function ProgramacionItemsTable({
       </div>
 
       <div className="text-sm text-default-600">{title}</div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+        <Input
+          label="Buscar"
+          placeholder="Pedido, cliente, diseño, vendedor, talla"
+          value={search}
+          onValueChange={setSearch}
+        />
+        <Select
+          label="Género"
+          selectedKeys={gender ? [gender] : []}
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+            setGender(first ? String(first) : "");
+          }}
+        >
+          <SelectItem key="HOMBRE">Hombre</SelectItem>
+          <SelectItem key="MUJER">Mujer</SelectItem>
+          <SelectItem key="UNISEX">Unisex</SelectItem>
+        </Select>
+        <Input label="Desde" type="date" value={startDate} onValueChange={setStartDate} />
+        <Input label="Hasta" type="date" value={endDate} onValueChange={setEndDate} />
+      </div>
 
       {loading ? (
         <div className="rounded-medium border border-default-200 bg-content1 p-4">
