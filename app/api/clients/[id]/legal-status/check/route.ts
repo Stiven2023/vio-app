@@ -1,6 +1,7 @@
 import { db } from "@/src/db";
 import { clientLegalStatusHistory } from "@/src/db/schema";
 import { desc, eq } from "drizzle-orm";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 /**
  * GET /api/clients/[id]/legal-status/check
@@ -12,6 +13,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_CLIENTE");
+    if (forbidden) return forbidden;
+
     const { id: clientId } = await params;
 
     // Obtener el estado jurídico más reciente

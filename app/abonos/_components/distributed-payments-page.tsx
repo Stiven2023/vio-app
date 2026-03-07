@@ -109,6 +109,16 @@ export function DistributedPaymentsPage({
     allocations: Record<string, { orderId?: string; amount?: string }>;
   }>({ allocations: {} });
 
+  const displayCurrency = method === "TRANSFERENCIA" ? transferCurrency : "COP";
+
+  const formatMoney = (value: number) =>
+    new Intl.NumberFormat("es-CO", {
+      style: "currency",
+      currency: displayCurrency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(value) ? value : 0);
+
   useEffect(() => {
     let active = true;
 
@@ -445,7 +455,7 @@ export function DistributedPaymentsPage({
               value={toNumberInputValue(depositAmount)}
               formatOptions={{
                 style: "currency",
-                currency: "COP",
+                currency: displayCurrency,
                 maximumFractionDigits: 2,
               }}
               onValueChange={(v) => setDepositAmount(toAmountString(v))}
@@ -465,7 +475,11 @@ export function DistributedPaymentsPage({
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "");
                 setTransferBank(first);
-                if (first === "VIO-EXT.") setTransferCurrency("USD");
+                if (first === "VIO-EXT.") {
+                  setTransferCurrency("USD");
+                } else if (transferCurrency === "USD") {
+                  setTransferCurrency("COP");
+                }
                 setErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
               }}
             >
@@ -481,8 +495,14 @@ export function DistributedPaymentsPage({
               selectedKeys={[transferCurrency]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "COP").toUpperCase();
-                setTransferCurrency(first === "USD" ? "USD" : "COP");
-                setErrors((prev) => ({ ...prev, transferCurrency: undefined }));
+                const nextCurrency = first === "USD" ? "USD" : "COP";
+                setTransferCurrency(nextCurrency);
+                setTransferBank((prev) => {
+                  if (nextCurrency === "USD") return "VIO-EXT.";
+                  if (prev === "VIO-EXT.") return "";
+                  return prev;
+                });
+                setErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
               }}
             >
               <SelectItem key="COP" isDisabled={transferBank === "VIO-EXT."}>COP</SelectItem>
@@ -687,7 +707,7 @@ export function DistributedPaymentsPage({
                 value={toNumberInputValue(row.amount)}
                 formatOptions={{
                   style: "currency",
-                  currency: "COP",
+                  currency: displayCurrency,
                   maximumFractionDigits: 2,
                 }}
                 onValueChange={(v) => {
@@ -722,11 +742,11 @@ export function DistributedPaymentsPage({
           <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
             <div className="rounded-medium border border-default-200 p-3">
               <div className="text-default-500">Consignación total</div>
-              <div className="font-semibold">{depositTotal.toFixed(2)}</div>
+              <div className="font-semibold">{formatMoney(depositTotal)}</div>
             </div>
             <div className="rounded-medium border border-default-200 p-3">
               <div className="text-default-500">Total asignado</div>
-              <div className="font-semibold">{assignedTotal.toFixed(2)}</div>
+              <div className="font-semibold">{formatMoney(assignedTotal)}</div>
             </div>
           </div>
 

@@ -157,13 +157,19 @@ export function OrderPaymentsPage({
   });
 
   const formatter = useMemo(() => {
-    const currency = (order?.currency ?? "COP").toUpperCase();
+    const orderCurrency = (order?.currency ?? "COP").toUpperCase();
+    const currency =
+      form.method === "TRANSFERENCIA"
+        ? form.transferCurrency
+        : orderCurrency === "USD"
+          ? "USD"
+          : "COP";
 
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: currency === "USD" ? "USD" : "COP",
     });
-  }, [order?.currency]);
+  }, [order?.currency, form.method, form.transferCurrency]);
 
   const formatMoney = (v: string | number | null | undefined) => {
     const n = typeof v === "number" ? v : Number(String(v ?? "0"));
@@ -652,7 +658,12 @@ export function OrderPaymentsPage({
                   setForm((s) => ({
                     ...s,
                     transferBank: first,
-                    transferCurrency: first === "VIO-EXT." ? "USD" : s.transferCurrency,
+                    transferCurrency:
+                      first === "VIO-EXT."
+                        ? "USD"
+                        : s.transferCurrency === "USD"
+                          ? "COP"
+                          : s.transferCurrency,
                   }));
                   setFormErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
                 }}
@@ -673,8 +684,14 @@ export function OrderPaymentsPage({
                   setForm((s) => ({
                     ...s,
                     transferCurrency: first === "USD" ? "USD" : "COP",
+                    transferBank:
+                      first === "USD"
+                        ? "VIO-EXT."
+                        : s.transferBank === "VIO-EXT."
+                          ? ""
+                          : s.transferBank,
                   }));
-                  setFormErrors((prev) => ({ ...prev, transferCurrency: undefined }));
+                  setFormErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
                 }}
               >
                 <SelectItem key="COP" isDisabled={form.transferBank === "VIO-EXT."}>COP</SelectItem>

@@ -43,6 +43,7 @@ export function ClientModal({
   onRequestCreateEmployee,
   onOpenChange,
   onSaved,
+  canChangeLegalStatus = true,
 }: {
   client: Client | null;
   isOpen: boolean;
@@ -50,6 +51,7 @@ export function ClientModal({
   onRequestCreateEmployee?: (prefill: EmployeeFormPrefill) => void;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+  canChangeLegalStatus?: boolean;
 }) {
   type EmployeeImportData = {
     identificationType: string;
@@ -590,6 +592,7 @@ export function ClientModal({
       />
 
       <ClientLegalStatusModal
+        canEdit={canChangeLegalStatus}
         client={client}
         isOpen={legalStatusModalOpen}
         onOpenChange={setLegalStatusModalOpen}

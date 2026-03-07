@@ -55,6 +55,7 @@ export function ClientsTab({
   canCreate = true,
   canEdit = true,
   canDelete = true,
+  canChangeLegalStatus = true,
   prefillCreate,
   onPrefillConsumed,
   onRequestCreateEmployee,
@@ -63,6 +64,7 @@ export function ClientsTab({
   canCreate?: boolean;
   canEdit?: boolean;
   canDelete?: boolean;
+  canChangeLegalStatus?: boolean;
   prefillCreate?: ClientFormPrefill | null;
   onPrefillConsumed?: () => void;
   onRequestCreateEmployee?: (prefill: EmployeeFormPrefill) => void;
@@ -632,6 +634,7 @@ export function ClientsTab({
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
       <ClientModal
+        canChangeLegalStatus={canChangeLegalStatus}
         client={editing}
         isOpen={modalOpen}
         onRequestCreateEmployee={onRequestCreateEmployee}
@@ -657,6 +660,7 @@ export function ClientsTab({
       />
 
       <ClientLegalStatusModal
+        canEdit={canChangeLegalStatus}
         client={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
         onOpenChange={setLegalStatusModalOpen}

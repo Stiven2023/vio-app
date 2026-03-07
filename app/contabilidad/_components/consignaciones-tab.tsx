@@ -225,7 +225,7 @@ export function ConsignacionesTab({
                           isDisabled={!canApprovePayments}
                           onPress={() => updateStatus(row.id, "ANULADO")}
                         >
-                          Desechar pago
+                          Anular pago
                         </DropdownItem>
                       </DropdownMenu>
                     </Dropdown>

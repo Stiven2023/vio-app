@@ -2,12 +2,16 @@ import { db } from "@/src/db";
 import { clientLegalStatusHistory, clients } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
 import { desc } from "drizzle-orm";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_CLIENTE");
+    if (forbidden) return forbidden;
+
     const { id: clientId } = await params;
     
     // Verificar que el cliente existe

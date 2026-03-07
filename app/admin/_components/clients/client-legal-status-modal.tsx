@@ -50,11 +50,13 @@ export function ClientLegalStatusModal({
   isOpen,
   onOpenChange,
   onSaved,
+  canEdit = true,
 }: {
   client: Client | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
+  canEdit?: boolean;
 }) {
   const [status, setStatus] = useState<"VIGENTE" | "EN_REVISION" | "BLOQUEADO">("VIGENTE");
   const [notes, setNotes] = useState("");
@@ -91,6 +93,11 @@ export function ClientLegalStatusModal({
   }, [isOpen, client]);
 
   const handleSave = async () => {
+    if (!canEdit) {
+      toast.error("Solo tienes permiso de visualización en estado jurídico.");
+      return;
+    }
+
     if (!client) return;
     
     setSaving(true);
@@ -150,6 +157,7 @@ export function ClientLegalStatusModal({
           {/* Formulario */}
           <div className="space-y-4">
             <Select
+              isDisabled={!canEdit}
               label="Cambiar Estado"
               selectedKeys={[status]}
               onSelectionChange={(keys) => {
@@ -165,6 +173,7 @@ export function ClientLegalStatusModal({
               ))}
             </Select>
             <Textarea
+              isDisabled={!canEdit}
               label="Notas / Observaciones"
               placeholder="Detalles del estado, motivo del cambio, etc."
               value={notes}
@@ -172,12 +181,13 @@ export function ClientLegalStatusModal({
               minRows={3}
             />
 
-            <input
+            <Input
               type="text"
+              isDisabled={!canEdit}
+              label="Revisado por"
               placeholder="Revisado por (usuario/nombre)"
               value={reviewedBy}
-              onChange={(e) => setReviewedBy(e.target.value)}
-              className="w-full px-3 py-2 bg-default-100 border border-default-200 rounded-lg text-sm"
+              onValueChange={setReviewedBy}
             />
           </div>
 
@@ -283,14 +293,16 @@ export function ClientLegalStatusModal({
           <Button color="default" onPress={() => onOpenChange(false)}>
             Cerrar
           </Button>
-          <Button
-            color="primary"
-            onPress={handleSave}
-            isLoading={saving}
-            isDisabled={loading}
-          >
-            Guardar Cambio
-          </Button>
+          {canEdit ? (
+            <Button
+              color="primary"
+              onPress={handleSave}
+              isLoading={saving}
+              isDisabled={loading}
+            >
+              Guardar Cambio
+            </Button>
+          ) : null}
         </ModalFooter>
       </ModalContent>
     </Modal>

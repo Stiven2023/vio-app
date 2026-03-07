@@ -20,6 +20,7 @@ export default async function ClientsPage() {
   const canCreate = !(await requirePermission(req, "CREAR_CLIENTE"));
   const canEdit = !(await requirePermission(req, "EDITAR_CLIENTE"));
   const canDelete = !(await requirePermission(req, "ELIMINAR_CLIENTE"));
+  const canChangeLegalStatus = !(await requirePermission(req, "CAMBIAR_ESTADO_JURIDICO_CLIENTE"));
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
@@ -32,6 +33,7 @@ export default async function ClientsPage() {
           canCreate={canCreate}
           canDelete={canDelete}
           canEdit={canEdit}
+          canChangeLegalStatus={canChangeLegalStatus}
         />
       </div>
     </div>
