@@ -9,7 +9,7 @@ export default async function AdminPage() {
   const token = (await cookies()).get("auth_token")?.value;
   const payload = token ? verifyAuthToken(token) : null;
 
-  if (!payload || typeof payload !== "object") redirect("/erp/login");
+  if (!payload || typeof payload !== "object") redirect("/login");
   const role =
     "role" in payload ? (payload as { role?: string }).role : undefined;
 

@@ -10,7 +10,7 @@ export default async function DashboardPage() {
   const token = (await cookies()).get("auth_token")?.value;
   const payload = token ? verifyAuthToken(token) : null;
 
-  if (!payload) redirect("/erp/login");
+  if (!payload) redirect("/login");
 
   const rates = await getLatestUsdCopRatePair();
   const history = await getUsdCopRateHistory(45);

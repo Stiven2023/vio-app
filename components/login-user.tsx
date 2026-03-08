@@ -5,11 +5,14 @@ import { Button } from "@heroui/button";
 import { Tab, Tabs } from "@heroui/tabs";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { BsEnvelopeFill, BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
 
 import { validateLogin } from "@/utils/validation";
 import { AlertToast } from "@/components/alert-toast";
 import { OtpInput } from "@/components/otp-input";
+import { ThemeSwitch } from "@/components/theme-switch";
+import { ViomarLogo } from "@/components/viomar-logo";
 import { useSessionStore } from "@/store/session";
 import {
   RequestPasswordResetModal,
@@ -17,6 +20,33 @@ import {
 } from "@/components/password-reset";
 
 type ExternalAudience = "CLIENTE" | "TERCERO";
+
+function JerseyIllustration() {
+  return (
+    <svg
+      viewBox="0 0 200 180"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ width: "100%", maxWidth: 220, opacity: 0.24 }}
+    >
+      <path
+        d="M55 35 L30 75 L60 80 L60 150 L140 150 L140 80 L170 75 L145 35 L122 50 C115 58 85 58 78 50 Z"
+        stroke="var(--viomar-primary)"
+        strokeWidth="2"
+        fill="color-mix(in srgb, var(--viomar-primary) 10%, transparent)"
+      />
+      <path
+        d="M78 50 C88 38 112 38 122 50"
+        stroke="var(--viomar-primary)"
+        strokeWidth="1.5"
+        fill="none"
+      />
+      <line x1="60" y1="95" x2="140" y2="95" stroke="var(--viomar-primary)" strokeWidth="0.8" strokeDasharray="5 4" opacity="0.4" />
+      <line x1="60" y1="118" x2="140" y2="118" stroke="var(--viomar-primary)" strokeWidth="0.8" strokeDasharray="5 4" opacity="0.25" />
+      <circle cx="100" cy="112" r="10" stroke="var(--viomar-primary)" strokeWidth="1.2" fill="none" opacity="0.85" />
+    </svg>
+  );
+}
 
 function ExternalAccessTab({
   audience,
@@ -218,7 +248,7 @@ export default function LoginUser() {
       if (ok) {
         setToast({ message: "Inicio de sesión exitoso.", type: "success" });
         setTimeout(() => {
-          router.push("/erp/dashboard");
+          router.push("/");
         }, 1200);
       } else {
         setToast({
@@ -270,126 +300,193 @@ export default function LoginUser() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto mt-10 p-6">
+    <div className="min-h-screen bg-[var(--viomar-bg)] text-[var(--viomar-fg)]">
       {toast && <AlertToast message={toast.message} type={toast.type} />}
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">Iniciar Sesión</h2>
-          <p className="text-sm text-default-500">Selecciona tu tipo de acceso.</p>
-        </div>
 
-        <Tabs
-          aria-label="Tipos de acceso"
-          selectedKey={selected}
-          variant="underlined"
-          onSelectionChange={(key) => setSelected(String(key))}
+      <div className="fixed right-3 top-3 z-50 rounded-medium border border-white/10 bg-content1/70 p-1 backdrop-blur sm:right-5 sm:top-5">
+        <ThemeSwitch />
+      </div>
+
+      <div className="grid min-h-screen lg:grid-cols-[42%_58%]">
+        <motion.aside
+          className="relative hidden overflow-hidden border-r border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_92%,black_8%)] p-10 lg:flex lg:flex-col lg:justify-between"
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         >
-          <Tab key="viomar" title="Soy Viomar">
-            <form className="space-y-4 pt-2" onSubmit={handleSubmit}>
-              <div className="space-y-3">
-                <Input
-                  required
-                  autoComplete="email"
-                  label="Correo electrónico"
-                  name="email"
-                  startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                />
-                <Input
-                  required
-                  autoComplete="current-password"
-                  endContent={
-                    <Button
-                      aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                      className="min-w-10 px-0"
-                      size="sm"
-                      type="button"
-                      variant="light"
-                      onPress={() => setShowPassword((v) => !v)}
-                    >
-                      {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
-                    </Button>
-                  }
-                  label="Contraseña"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={handleChange}
-                />
-              </div>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_30%_60%,color-mix(in_srgb,var(--viomar-primary)_12%,transparent)_0%,transparent_70%)]" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex w-8 gap-1 px-1 opacity-10">
+            <div className="flex-1 -skew-x-[8deg] bg-[var(--viomar-primary)]" />
+            <div className="flex-1 -skew-x-[8deg] bg-[var(--viomar-primary)]" />
+            <div className="flex-1 -skew-x-[8deg] bg-[var(--viomar-primary)]" />
+          </div>
 
-              <div className="space-y-2 pt-1">
-                <Button
-                  className="w-full"
-                  color="primary"
-                  isDisabled={loading}
-                  isLoading={loading}
-                  type="submit"
-                >
-                  Entrar
-                </Button>
+          <div className="relative z-10 inline-flex flex-col items-center text-center">
+            <ViomarLogo height={34} />
+            <p className="mt-3 text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[var(--viomar-primary)]">
+              Plataforma empresarial
+            </p>
+          </div>
 
-                <Button
-                  className="w-full"
-                  isDisabled={loading}
-                  variant="light"
-                  onPress={() => setResetRequestOpen(true)}
-                >
-                  ¿Olvidaste tu contraseña?
-                </Button>
-              </div>
-            </form>
-          </Tab>
-          <Tab key="cliente" title="Soy cliente">
-            <div className="pt-2">
-              <ExternalAccessTab
-                audience="CLIENTE"
-                loading={loading}
-                setLoading={setLoading}
-                setToast={setToast}
-              />
+          <div className="relative z-10 flex flex-col items-center gap-7 text-center">
+            <JerseyIllustration />
+            <div className="flex flex-col items-center">
+              <h2 className="text-4xl font-black leading-[1.02] tracking-tight text-[var(--viomar-fg)]">
+                Todo tu negocio.
+                <br />
+                <span className="text-[var(--viomar-primary)]">Un solo lugar.</span>
+              </h2>
+              <p className="mt-3 max-w-sm text-sm leading-relaxed text-default-500">
+                ERP, MES y CRM integrados para equipos de operaciones, producción y gestión comercial.
+              </p>
             </div>
-          </Tab>
-          <Tab key="tercero" title="Soy tercero/mensajero">
-            <form className="space-y-4 pt-2" onSubmit={handleThirdPartySubmit}>
-              <Input
-                required
-                autoComplete="username"
-                label="Usuario"
-                placeholder="Ej: mensajero1, confeccionista2"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-              />
-              <Input
-                required
-                autoComplete="current-password"
-                label="Contraseña"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                endContent={
-                  <Button
-                    aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                    className="min-w-10 px-0"
-                    size="sm"
-                    type="button"
-                    variant="light"
-                    onPress={() => setShowPassword((v) => !v)}
-                  >
-                    {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
-                  </Button>
-                }
-                value={form.password}
-                onChange={handleChange}
-              />
-              <Button className="w-full" color="primary" isDisabled={loading} isLoading={loading} type="submit">
-                Entrar como tercero
-              </Button>
-            </form>
-          </Tab>
-        </Tabs>
+          </div>
+
+          <div className="relative z-10 text-[0.62rem] uppercase tracking-[0.18em] text-default-500">
+            © {new Date().getFullYear()} Viomar
+          </div>
+        </motion.aside>
+
+        <div className="flex items-center justify-center p-4 sm:p-6 lg:p-10">
+          <motion.div
+            className="w-full max-w-[580px]"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
+          >
+            <Card className="border border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_88%,black_12%)] p-4 sm:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-black tracking-tight text-[var(--viomar-fg)]">Iniciar sesión</h2>
+                  <p className="text-sm text-default-500">Selecciona tu tipo de acceso.</p>
+                </div>
+
+                <Tabs
+                  aria-label="Tipos de acceso"
+                  classNames={{
+                    tabList: "rounded-none border-b border-default-200/30 bg-transparent p-0 gap-0 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
+                    tab: "rounded-none px-2 sm:px-3 min-w-max data-[selected=true]:text-[var(--viomar-primary)] data-[selected=true]:border-b-2 data-[selected=true]:border-[var(--viomar-primary)] text-[#8A93A3]",
+                    tabContent: "text-[10px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.15em] font-semibold",
+                    cursor: "hidden",
+                  }}
+                  selectedKey={selected}
+                  variant="underlined"
+                  onSelectionChange={(key) => setSelected(String(key))}
+                >
+                  <Tab key="viomar" title="Soy Viomar">
+                    <form className="space-y-4 pt-2" onSubmit={handleSubmit}>
+                      <div className="space-y-3">
+                        <Input
+                          required
+                          autoComplete="email"
+                          classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+                          label="Correo electrónico"
+                          name="email"
+                          startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
+                          type="email"
+                          value={form.email}
+                          onChange={handleChange}
+                        />
+                        <Input
+                          required
+                          autoComplete="current-password"
+                          classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+                          endContent={
+                            <Button
+                              aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                              className="min-w-10 px-0"
+                              size="sm"
+                              type="button"
+                              variant="light"
+                              onPress={() => setShowPassword((v) => !v)}
+                            >
+                              {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
+                            </Button>
+                          }
+                          label="Contraseña"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          value={form.password}
+                          onChange={handleChange}
+                        />
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        <Button
+                          className="w-full font-semibold uppercase tracking-[0.2em]"
+                          color="primary"
+                          isDisabled={loading}
+                          isLoading={loading}
+                          type="submit"
+                        >
+                          Entrar
+                        </Button>
+
+                        <Button
+                          className="w-full"
+                          isDisabled={loading}
+                          variant="light"
+                          onPress={() => setResetRequestOpen(true)}
+                        >
+                          ¿Olvidaste tu contraseña?
+                        </Button>
+                      </div>
+                    </form>
+                  </Tab>
+                  <Tab key="cliente" title="Soy cliente">
+                    <div className="pt-2">
+                      <ExternalAccessTab
+                        audience="CLIENTE"
+                        loading={loading}
+                        setLoading={setLoading}
+                        setToast={setToast}
+                      />
+                    </div>
+                  </Tab>
+                  <Tab key="tercero" title="Soy tercero/mensajero">
+                    <form className="space-y-4 pt-2" onSubmit={handleThirdPartySubmit}>
+                      <Input
+                        required
+                        autoComplete="username"
+                        classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+                        label="Usuario"
+                        placeholder="Ej: mensajero1, confeccionista2"
+                        name="email"
+                        value={form.email}
+                        onChange={handleChange}
+                      />
+                      <Input
+                        required
+                        autoComplete="current-password"
+                        classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+                        label="Contraseña"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        endContent={
+                          <Button
+                            aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                            className="min-w-10 px-0"
+                            size="sm"
+                            type="button"
+                            variant="light"
+                            onPress={() => setShowPassword((v) => !v)}
+                          >
+                            {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
+                          </Button>
+                        }
+                        value={form.password}
+                        onChange={handleChange}
+                      />
+                      <Button className="w-full" color="primary" isDisabled={loading} isLoading={loading} type="submit">
+                        Entrar como tercero
+                      </Button>
+                    </form>
+                  </Tab>
+                </Tabs>
+              </div>
+            </Card>
+          </motion.div>
+        </div>
       </div>
 
       <RequestPasswordResetModal
@@ -407,6 +504,6 @@ export default function LoginUser() {
         isOpen={resetOpen}
         onOpenChange={setResetOpen}
       />
-    </Card>
+    </div>
   );
 }

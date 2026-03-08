@@ -38,7 +38,7 @@ export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  if (pathname === "/" || pathname === "/login" || pathname === "/erp/login") {
     return null;
   }
 
@@ -217,7 +217,7 @@ export const Navbar = () => {
 
     if (actionKey === "logout") {
       await logout();
-      router.push("/erp/login");
+      router.push("/login");
     }
   };
 
@@ -445,7 +445,7 @@ export const Navbar = () => {
                   variant="flat"
                   onPress={async () => {
                     await logout();
-                    router.push("/erp/login");
+                    router.push("/login");
                   }}
                 >
                   Cierre de sesion

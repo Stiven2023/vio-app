@@ -8,5 +8,5 @@ export default async function ErpEntryPage() {
     redirect("/erp/dashboard");
   }
 
-  redirect("/erp/login");
+  redirect("/login");
 }

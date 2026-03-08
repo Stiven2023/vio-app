@@ -4,8 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Avatar } from "@heroui/avatar";
+import { Button } from "@heroui/button";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import { BsChevronDown } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
+import { ViomarLogo } from "@/components/viomar-logo";
+import { useSessionStore } from "@/store/session";
 
 const PRIMARY = "var(--viomar-primary)";
 const PRIMARY_DARK = "var(--viomar-primary-dark)";
@@ -30,7 +41,7 @@ const sections: Section[] = [
     fullTitle: "Enterprise Resource Planning",
     description:
       "Contabilidad, inventario y operaciones empresariales en un solo sistema unificado.",
-    route: "/erp/login",
+    route: "/erp/dashboard",
     accentWord: "GESTION",
     stat: "360°",
     statLabel: "Visibilidad total",
@@ -114,6 +125,9 @@ const sections: Section[] = [
 
 export function HomeModuleSelector() {
   const router = useRouter();
+  const user = useSessionStore((s) => s.user);
+  const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
+  const logout = useSessionStore((s) => s.clearSession);
   const [active, setActive] = useState<Section["id"] | null>("erp");
   const [loaded, setLoaded] = useState(false);
   const [time, setTime] = useState("");
@@ -297,8 +311,20 @@ export function HomeModuleSelector() {
             gap: 8px !important;
           }
 
+          .home-user-name {
+            display: inline;
+          }
+
           .home-logo {
             height: 24px !important;
+          }
+
+          .home-user-name {
+            display: none !important;
+          }
+
+          .home-user-trigger {
+            padding: 0 !important;
           }
 
           .home-system-label {
@@ -373,7 +399,7 @@ export function HomeModuleSelector() {
         }}
       >
         <div className="home-brand" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Image alt="Viomar" className="home-logo" height={36} src="/VIOMAR NEGRO.png" width={130} style={{ width: "auto", height: 30 }} priority />
+          <ViomarLogo className="home-logo" height={30} />
           <div style={{ width: 1, height: 22, background: "#C8C4BC" }} />
           <span
             className="home-system-label"
@@ -388,6 +414,49 @@ export function HomeModuleSelector() {
           >
             Sistema Empresarial
           </span>
+        </div>
+
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          {isAuthenticated ? (
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Button className="home-user-trigger h-auto px-2" variant="light">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+                    <span
+                      className="home-user-name"
+                      style={{
+                        fontFamily: "'Barlow', sans-serif",
+                        fontSize: "0.75rem",
+                        color: "#3E3E3E",
+                        maxWidth: 140,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {user?.name ?? "Usuario"}
+                    </span>
+                    <BsChevronDown className="text-xs text-default-500" />
+                  </div>
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Acciones de usuario home"
+                onAction={async (key) => {
+                  if (String(key) === "logout") {
+                    await logout();
+                    router.push("/login");
+                  }
+                }}
+              >
+                <DropdownItem key="logout" className="text-danger" color="danger">
+                  Cierre de sesion
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          ) : null}
+          <ThemeSwitch />
         </div>
       </motion.header>
 
@@ -568,7 +637,6 @@ export function HomeModuleSelector() {
         </span>
 
         <div className="footer-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <ThemeSwitch />
           <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.2em", color: "#A3A098" }}>
             {time} COL
           </span>

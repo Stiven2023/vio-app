@@ -8,7 +8,7 @@ import { verifyAuthToken } from "@/src/utils/auth";
 export default async function OrdersPage() {
   const token = (await cookies()).get("auth_token")?.value;
 
-  if (!token) redirect("/erp/login");
+  if (!token) redirect("/login");
 
   const payload = verifyAuthToken(token);
   const role =

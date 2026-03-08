@@ -13,7 +13,7 @@ export default async function OrderItemsRoute({
 }) {
   const token = (await cookies()).get("auth_token")?.value;
 
-  if (!token) redirect("/erp/login");
+  if (!token) redirect("/login");
 
   const payload = verifyAuthToken(token);
   const role =

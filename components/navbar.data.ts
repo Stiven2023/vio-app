@@ -203,8 +203,7 @@ export const buildNavbarOtherItems = ({
     if (!isAuthenticated) return [];
 
     const items: SectionItem[] = [
-
-
+        { name: "Home", href: "/" },
         { name: "Notificaciones", href: "/notifications" },
         { name: "Opciones", href: "/options" },
         { name: "Envios", href: "/envios" },

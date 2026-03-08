@@ -8,7 +8,7 @@ import { Navbar } from "@/components/navbar";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname === "/") {
+  if (pathname === "/" || pathname === "/login" || pathname === "/erp/login") {
     return <>{children}</>;
   }
 

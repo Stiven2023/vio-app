@@ -10,7 +10,7 @@ export default async function OrderPaymentsRoute({
 }) {
   const token = (await cookies()).get("auth_token")?.value;
 
-  if (!token) redirect("/erp/login");
+  if (!token) redirect("/login");
 
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),

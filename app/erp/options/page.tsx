@@ -8,7 +8,7 @@ export default async function OptionsPage() {
   const token = (await cookies()).get("auth_token")?.value;
   const payload = token ? verifyAuthToken(token) : null;
 
-  if (!payload) redirect("/erp/login");
+  if (!payload) redirect("/login");
 
   return <OptionsPageClient />;
 }
