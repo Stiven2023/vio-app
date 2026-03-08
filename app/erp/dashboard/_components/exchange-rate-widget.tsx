@@ -109,8 +109,10 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
       };
     });
 
-    const firstDate = points[0].at ? new Date(points[0].at) : null;
-    const lastDate = points[points.length - 1].at ? new Date(points[points.length - 1].at) : null;
+    const firstPoint = points[0];
+    const lastPoint = points.at(-1);
+    const firstDate = firstPoint?.at ? new Date(firstPoint.at) : null;
+    const lastDate = lastPoint?.at ? new Date(lastPoint.at) : null;
 
     const dateFmt = (date: Date | null) =>
       date
