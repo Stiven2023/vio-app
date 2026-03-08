@@ -1,0 +1,320 @@
+"use client";
+
+import type { Paginated } from "@/app/erp/catalog/_lib/types";
+
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-hot-toast";
+import { Tabs, Tab } from "@heroui/tabs";
+import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
+import { Input } from "@heroui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
+
+import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
+
+type OrderHistoryRow = {
+  id: string;
+  orderId: string | null;
+  orderCode: string | null;
+  status: string | null;
+  changedBy: string | null;
+  changedByName: string | null;
+  createdAt: string | null;
+};
+
+type ItemHistoryRow = {
+  id: string;
+  orderItemId: string | null;
+  itemName: string | null;
+  orderId: string | null;
+  orderCode: string | null;
+  status: string | null;
+  changedBy: string | null;
+  changedByName: string | null;
+  createdAt: string | null;
+};
+
+type TabKey = "orders" | "items";
+
+type ColumnDef = {
+  key: string;
+  name: string;
+};
+
+const orderStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
+  PENDIENTE: "warning",
+  PRODUCCION: "primary",
+  ATRASADO: "danger",
+  FINALIZADO: "success",
+  ENTREGADO: "success",
+  CANCELADO: "default",
+  REVISION: "warning",
+};
+
+const itemStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
+  PENDIENTE: "warning",
+  REVISION_ADMIN: "warning",
+  APROBACION_INICIAL: "primary",
+  PENDIENTE_PRODUCCION: "primary",
+  EN_MONTAJE: "primary",
+  EN_IMPRESION: "primary",
+  SUBLIMACION: "primary",
+  CORTE_MANUAL: "primary",
+  CORTE_LASER: "primary",
+  PENDIENTE_CONFECCION: "primary",
+  CONFECCION: "primary",
+  EN_BODEGA: "primary",
+  EMPAQUE: "primary",
+  ENVIADO: "success",
+  EN_REVISION_CAMBIO: "warning",
+  APROBADO_CAMBIO: "success",
+  RECHAZADO_CAMBIO: "danger",
+  COMPLETADO: "success",
+  CANCELADO: "default",
+};
+
+function formatStatus(status: string | null | undefined) {
+  if (!status) return "-";
+  return status.replace(/_/g, " ");
+}
+
+function formatRelative(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  const diffMs = date.getTime() - Date.now();
+  const diffSec = Math.round(diffMs / 1000);
+  const abs = Math.abs(diffSec);
+  const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+
+  if (abs < 60) return rtf.format(diffSec, "second");
+  if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
+  if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
+  return rtf.format(Math.round(diffSec / 86400), "day");
+}
+
+export function StatusHistoryClient() {
+  const [tab, setTab] = useState<TabKey>("orders");
+
+  const [orderId, setOrderId] = useState("");
+  const [orderItemId, setOrderItemId] = useState("");
+
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  const [dataOrders, setDataOrders] = useState<Paginated<OrderHistoryRow> | null>(
+    null,
+  );
+  const [dataItems, setDataItems] = useState<Paginated<ItemHistoryRow> | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const t = String(sp.get("tab") ?? "").trim();
+    const oid = String(sp.get("orderId") ?? "").trim();
+    const oiid = String(sp.get("orderItemId") ?? "").trim();
+
+    if (t === "items") setTab("items");
+    if (oid) setOrderId(oid);
+    if (oiid) setOrderItemId(oiid);
+  }, []);
+
+  const endpoint = useMemo(() => {
+    const sp = new URLSearchParams();
+
+    sp.set("page", String(page));
+    sp.set("pageSize", String(pageSize));
+
+    if (tab === "orders") {
+      if (orderId.trim()) sp.set("orderId", orderId.trim());
+      return `/api/status-history/orders?${sp.toString()}`;
+    }
+
+    if (orderItemId.trim()) sp.set("orderItemId", orderItemId.trim());
+    return `/api/status-history/order-items?${sp.toString()}`;
+  }, [orderId, orderItemId, page, tab]);
+
+  useEffect(() => {
+    let active = true;
+
+    setLoading(true);
+    apiJson<any>(endpoint)
+      .then((res) => {
+        if (!active) return;
+        if (tab === "orders") setDataOrders(res);
+        else setDataItems(res);
+      })
+      .catch((e) => toast.error(getErrorMessage(e)))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [endpoint, reloadKey, tab]);
+
+  const data = tab === "orders" ? dataOrders : dataItems;
+  const maxPage = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+  const columns: ColumnDef[] = useMemo(() => {
+    if (tab === "orders") {
+      return [
+        { key: "order", name: "Pedido" },
+        { key: "status", name: "Estado" },
+        { key: "user", name: "Usuario" },
+        { key: "date", name: "Fecha" },
+      ];
+    }
+
+    return [
+      { key: "order", name: "Pedido" },
+      { key: "item", name: "Diseño" },
+      { key: "status", name: "Estado" },
+      { key: "user", name: "Usuario" },
+      { key: "date", name: "Fecha" },
+    ];
+  }, [tab]);
+
+  return (
+    <div className="space-y-3">
+      <Tabs
+        aria-label="Historial de estados"
+        selectedKey={tab}
+        onSelectionChange={(k) => {
+          setTab(k as TabKey);
+          setPage(1);
+        }}
+      >
+        <Tab key="orders" title="Pedidos" />
+        <Tab key="items" title="Diseños" />
+      </Tabs>
+
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+          {tab === "orders" ? (
+            <Input
+              className="sm:w-96"
+              label="Order ID (opcional)"
+              value={orderId}
+              onValueChange={setOrderId}
+            />
+          ) : (
+            <Input
+              className="sm:w-96"
+              label="Order Item ID (opcional)"
+              value={orderItemId}
+              onValueChange={setOrderItemId}
+            />
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            isDisabled={loading}
+            variant="flat"
+            onPress={() => setReloadKey((v) => v + 1)}
+          >
+            Refrescar
+          </Button>
+        </div>
+      </div>
+
+      <Table removeWrapper aria-label="Historial">
+        <TableHeader columns={columns}>
+          {(column) => <TableColumn key={column.key}>{column.name}</TableColumn>}
+        </TableHeader>
+        <TableBody
+          emptyContent={loading ? "" : "Sin historial"}
+          items={data?.items ?? []}
+        >
+          {(row: any) => (
+            <TableRow key={row.id}>
+              {(columnKey) => {
+                if (columnKey === "order") {
+                  return <TableCell>{row.orderCode ?? row.orderId ?? "-"}</TableCell>;
+                }
+
+                if (columnKey === "item") {
+                  return (
+                    <TableCell className="text-default-600">
+                      {row.itemName ?? row.orderItemId ?? "-"}
+                    </TableCell>
+                  );
+                }
+
+                if (columnKey === "status") {
+                  const raw = String(row.status ?? "-");
+                  const map = tab === "orders" ? orderStatusColors : itemStatusColors;
+                  const color = map[raw] ?? "default";
+
+                  return (
+                    <TableCell>
+                      <Chip color={color} size="sm" variant="flat">
+                        {formatStatus(raw)}
+                      </Chip>
+                    </TableCell>
+                  );
+                }
+
+                if (columnKey === "user") {
+                  return <TableCell>{row.changedByName ?? "Sistema"}</TableCell>;
+                }
+
+                if (columnKey === "date") {
+                  return (
+                    <TableCell>
+                      <div className="text-sm">
+                        {formatRelative(row.createdAt)}
+                      </div>
+                      <div className="text-xs text-default-500">
+                        {row.createdAt ? new Date(row.createdAt).toLocaleString() : "-"}
+                      </div>
+                    </TableCell>
+                  );
+                }
+
+                return <TableCell>-</TableCell>;
+              }}
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      <div className="mt-3 flex items-center justify-between text-sm text-default-500">
+        <div>
+          Página {data?.page ?? page} / {maxPage}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            isDisabled={page <= 1 || loading}
+            size="sm"
+            variant="flat"
+            onPress={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Anterior
+          </Button>
+          <Button
+            isDisabled={!data?.hasNextPage || loading}
+            size="sm"
+            variant="flat"
+            onPress={() => setPage((p) => p + 1)}
+          >
+            Siguiente
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

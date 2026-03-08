@@ -10,7 +10,7 @@ import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { verifyEmailVerificationTicket } from "@/src/utils/auth";
-import { createUserSchema } from "@/app/admin/_lib/schemas";
+import { createUserSchema } from "@/app/erp/admin/_lib/schemas";
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, {

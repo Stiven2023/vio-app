@@ -6,7 +6,7 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
-import { detectCriticalFieldChanges, registerAutoRevisionOnClientChange } from "@/app/admin/_lib/sync-client-legal-status";
+import { detectCriticalFieldChanges, registerAutoRevisionOnClientChange } from "@/app/erp/admin/_lib/sync-client-legal-status";
 
 /**
  * Formatea un número de teléfono móvil con código internacional

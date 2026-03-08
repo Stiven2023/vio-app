@@ -196,6 +196,47 @@ export async function getLatestUsdCopRate() {
   } satisfies ExchangeRateUpdate;
 }
 
+export async function getLatestUsdCopRatePair() {
+  const latestTwo = await db
+    .select()
+    .from(exchangeRates)
+    .where(eq(exchangeRates.baseCurrency, "USD"))
+    .orderBy(desc(exchangeRates.createdAt))
+    .limit(2);
+
+  const [latest, previous] = latestTwo;
+
+  if (!latest) {
+    return {
+      latest: null,
+      previous: null,
+    };
+  }
+
+  return {
+    latest: {
+      provider: latest.provider,
+      sourceRate: Number(latest.sourceRate ?? 0),
+      floorRate: Number(latest.floorRate ?? 0),
+      effectiveRate: Number(latest.effectiveRate ?? 0),
+      adjustmentApplied: Number(latest.adjustmentApplied ?? 0),
+      sourceDate: latest.sourceDate ? new Date(latest.sourceDate).toISOString() : null,
+      createdAt: latest.createdAt ? new Date(latest.createdAt).toISOString() : null,
+    } satisfies ExchangeRateUpdate,
+    previous: previous
+      ? ({
+          provider: previous.provider,
+          sourceRate: Number(previous.sourceRate ?? 0),
+          floorRate: Number(previous.floorRate ?? 0),
+          effectiveRate: Number(previous.effectiveRate ?? 0),
+          adjustmentApplied: Number(previous.adjustmentApplied ?? 0),
+          sourceDate: previous.sourceDate ? new Date(previous.sourceDate).toISOString() : null,
+          createdAt: previous.createdAt ? new Date(previous.createdAt).toISOString() : null,
+        } satisfies ExchangeRateUpdate)
+      : null,
+  };
+}
+
 export function convertUsdToCopWithFloor(args: {
   usdAmount: number;
   sourceRate: number;

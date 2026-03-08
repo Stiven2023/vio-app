@@ -19,7 +19,7 @@ export default function NotFound() {
               <Button as={NextLink} href="/" variant="flat">
                 Ir al inicio
               </Button>
-              <Button as={NextLink} href="/dashboard" variant="flat">
+              <Button as={NextLink} href="/erp/dashboard" variant="flat">
                 Ir al dashboard
               </Button>
             </div>

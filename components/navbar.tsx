@@ -17,70 +17,31 @@ import {
   DropdownTrigger,
 } from "@heroui/dropdown";
 import { Link } from "@heroui/link";
-import { Tooltip } from "@heroui/tooltip";
 import NextLink from "next/link";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  BsCart4,
-  BsBoxSeam,
-  BsClipboardData,
-  BsClockHistory,
-  BsChevronDown,
-  BsGear,
-  BsPeople,
-  BsPerson,
-  BsReceipt,
-  BsTag,
-  BsTruck,
-  BsWindowStack,
-  BsCreditCard,
-} from "react-icons/bs";
+import { BsChevronDown } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
-import { NotificationBell } from "@/components/notifications/notification-bell";
+import {
+  buildNavbarOtherItems,
+  buildNavbarSections,
+  otherMenuIcon as OtherMenuIcon,
+} from "@/components/navbar.data";
 import { useSessionStore } from "@/store/session";
 import { isOperarioRole } from "@/src/utils/role-status";
 
-const publicMenuItems = [{ name: "Login", href: "/login" }];
-const baseMenuItems = [
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Inicio", href: "/" },
-];
 const permissionsStorageKey = "viomar.permissions.v1";
-const roleOptions = [
-  "ADMINISTRADOR",
-  "LIDER_JURIDICA",
-  "RH",
-  "AUXILIAR_RH",
-  "LIDER_FINANCIERA",
-  "AUXILIAR_CONTABLE",
-  "TESORERIA_Y_CARTERA",
-  "LIDER_COMERCIAL",
-  "ASESOR",
-  "LIDER_SUMINISTROS",
-  "COMPRA_NACIONAL",
-  "COMPRA_INTERNACIONAL",
-  "LIDER_DISEÑO",
-  "DISEÑADOR",
-  "LIDER_OPERACIONAL",
-  "PROGRAMACION",
-  "OPERARIO_DESPACHO",
-  "OPERARIO_BODEGA",
-  "OPERARIO_FLOTER",
-  "OPERARIO_INTEGRACION_CALIDAD",
-  "OPERARIO_CORTE_LASER",
-  "OPERARIO_CORTE_MANUAL",
-  "OPERARIO_MONTAJE",
-  "OPERARIO_SUBLIMACION",
-  "MENSAJERO",
-  "CONFECCIONISTA",
-  "EMPAQUE",
-];
 
 export const Navbar = () => {
   const router = useRouter();
+  const pathname = usePathname();
+
+  if (pathname === "/") {
+    return null;
+  }
+
   const user = useSessionStore((s) => s.user);
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const logout = useSessionStore((s) => s.clearSession);
@@ -96,13 +57,10 @@ export const Navbar = () => {
   const [canSeePackers, setCanSeePackers] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
   const [canSeePayments, setCanSeePayments] = useState(false);
+
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const [roleOverride, setRoleOverride] = useState("");
-  const pathname = usePathname();
-  const canOverrideRole =
-    isAuthenticated && isAdmin && process.env.NODE_ENV !== "production";
-  const effectiveRole = canOverrideRole && roleOverride ? roleOverride : role ?? null;
-  const displayedRole = roleOverride || user?.role || "Sin rol";
+
+  const effectiveRole = role ?? null;
   const operarioOnly = isOperarioRole(effectiveRole);
 
   const applyPermissions = (permissions?: Record<string, boolean>) => {
@@ -147,7 +105,6 @@ export const Navbar = () => {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(permissionsStorageKey);
       }
-
       return;
     }
 
@@ -158,12 +115,10 @@ export const Navbar = () => {
 
     fetch(
       `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_EMPAQUE,VER_HISTORIAL_ESTADO,VER_PAGO,CREAR_PAGO`,
-      {
-        credentials: "include",
-      },
+      { credentials: "include" },
     )
       .then(async (r) => {
-        if (!r.ok)
+        if (!r.ok) {
           return {
             permissions: {
               VER_CLIENTE: false,
@@ -178,6 +133,7 @@ export const Navbar = () => {
               CREAR_PAGO: false,
             },
           };
+        }
 
         return (await r.json()) as { permissions?: Record<string, boolean> };
       })
@@ -196,535 +152,306 @@ export const Navbar = () => {
     };
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    let active = true;
-
-    if (!canOverrideRole) {
-      setRoleOverride("");
-      return;
+  const toErpHref = (href: string) => {
+    if (!href.startsWith("/")) return href;
+    if (href === "/" || href.startsWith("/erp") || href.startsWith("/mes") || href.startsWith("/crm")) {
+      return href;
     }
 
-    fetch("/api/auth/role-override", { credentials: "include" })
-      .then(async (res) => {
-        if (!res.ok) return { roleOverride: "" };
-        return (await res.json()) as { roleOverride?: string };
-      })
-      .then((data) => {
-        if (!active) return;
-        setRoleOverride(String(data?.roleOverride ?? ""));
-      })
-      .catch(() => {
-        if (!active) return;
-        setRoleOverride("");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [canOverrideRole]);
-
-  const handleRoleOverride = async (roleValue: string) => {
-    if (!canOverrideRole) return;
-
-    const trimmed = roleValue.trim();
-
-    if (!trimmed) {
-      const res = await fetch("/api/auth/role-override", {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (res.ok) {
-        setRoleOverride("");
-        router.refresh();
-      }
-
-      return;
-    }
-
-    const res = await fetch("/api/auth/role-override", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ role: trimmed }),
-    });
-
-    if (res.ok) {
-      setRoleOverride(trimmed);
-      router.refresh();
-    }
+    return `/erp${href}`;
   };
 
-  const menuItems = useMemo(() => {
-    if (!isAuthenticated) {
-      return publicMenuItems;
-    }
+  const normalizedPathname = pathname.startsWith("/erp/")
+    ? pathname.replace(/^\/erp/, "") || "/"
+    : pathname;
 
-    if (operarioOnly) {
-      return [
-        { name: "Dashboard", href: "/dashboard" },
-        { name: "Envíos", href: "/envios" },
-      ];
-    }
+  const isActive = (href: string) =>
+    pathname === toErpHref(href) ||
+    pathname.startsWith(`${toErpHref(href)}/`) ||
+    normalizedPathname === href ||
+    normalizedPathname.startsWith(`${href}/`);
 
-    const extra: { name: string; href: string }[] = [];
-
-    if (isAuthenticated && canSeeClients) {
-      extra.push({ name: "Clientes", href: "/clients" });
-    }
-    if (isAuthenticated && canSeeOrders) {
-      extra.push({ name: "Pedidos", href: "/orders" });
-      extra.push({ name: "Pagos", href: "/pagos" });
-      extra.push({ name: "Cotizaciones", href: "/quotations" });
-      extra.push({ name: "Prefacturas", href: "/prefacturas" });
-      extra.push({ name: "Contabilidad", href: "/contabilidad" });
-      extra.push({ name: "Aprobación inicial", href: "/aprobacion-inicial" });
-      extra.push({ name: "Programación", href: "/programacion" });
-    }
-    if (isAuthenticated && canSeeCatalog) {
-      extra.push({ name: "Inventario", href: "/inventory" });
-    }
-    if (isAuthenticated && canSeeCatalog) {
-      extra.push({ name: "Catálogo", href: "/catalog" });
-    }
-    if (isAuthenticated && canSeePurchaseOrders) {
-      extra.push({ name: "Órdenes de compra", href: "/purchase-orders" });
-    }
-    if (isAuthenticated && canSeeSuppliers) {
-      extra.push({ name: "Proveedores", href: "/suppliers" });
-    }
-    if (isAuthenticated && canSeeConfectionists) {
-      extra.push({ name: "Confeccionistas", href: "/confectionists" });
-    }
-    if (isAuthenticated && canSeePackers) {
-      extra.push({ name: "Empaque", href: "/packers" });
-    }
-    if (isAuthenticated && canSeeStatusHistory) {
-      extra.push({ name: "Historial", href: "/status-history" });
-    }
-    if (isAuthenticated) {
-      extra.push({ name: "Envíos", href: "/envios" });
-      extra.push({ name: "Notificaciones", href: "/notifications" });
-      extra.push({ name: "Opciones", href: "/options" });
-    }
-    if (isAdmin) {
-      extra.push({ name: "Administración", href: "/admin" });
-    }
-
-    return [...baseMenuItems, ...extra];
-  }, [
+  const sections = useMemo(
+    () =>
+      buildNavbarSections({
+        isAuthenticated,
+        canSeeCatalog,
+        canSeeClients,
+        canSeeOrders,
+        canSeePayments,
+        canSeePurchaseOrders,
+        canSeeStatusHistory,
+        canSeeSuppliers,
+      }),
+    [
     canSeeCatalog,
     canSeeClients,
-    canSeeConfectionists,
-    canSeePackers,
     canSeeOrders,
+    canSeePayments,
     canSeePurchaseOrders,
     canSeeStatusHistory,
     canSeeSuppliers,
-    isAdmin,
     isAuthenticated,
-    operarioOnly,
-  ]);
+    ],
+  );
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(`${href}/`);
+  const otherItems = useMemo(
+    () => buildNavbarOtherItems({ isAuthenticated, isAdmin }),
+    [isAdmin, isAuthenticated],
+  );
 
-  const iconBase =
-    "flex h-9 w-9 items-center justify-center rounded-medium border border-transparent";
-  const activeClass = "text-success border-success/40 bg-success-50";
-  const idleClass = "text-default-600 hover:text-foreground hover:bg-default-100";
+  const visibleSections = sections.filter((section) => section.visible);
+
+  const handleUserMenuAction = async (actionKey: string) => {
+    if (actionKey === "notifications") {
+      router.push("/erp/notifications");
+
+      return;
+    }
+
+    if (actionKey === "options") {
+      router.push("/erp/options");
+
+      return;
+    }
+
+    if (actionKey === "logout") {
+      await logout();
+      router.push("/erp/login");
+    }
+  };
 
   return (
-    <HeroUINavbar maxWidth="xl" position="sticky">
-      <NavbarContent className="hidden sm:flex basis-1/4 pl-2" justify="start">
-        {isAuthenticated ? (
-          <NavbarItem>
-            <span className="rounded-medium border border-default-200 px-3 py-1 text-xs font-semibold text-default-700">
-              {displayedRole}
-            </span>
-          </NavbarItem>
-        ) : null}
+    <HeroUINavbar
+      maxWidth="full"
+      position="sticky"
+      className="overflow-x-hidden"
+      classNames={{
+        wrapper: "px-2 sm:px-4 xl:px-6 gap-1 sm:gap-3 xl:gap-4",
+      }}
+    >
+      <NavbarContent className="flex flex-none items-center" justify="start">
+        <NavbarItem>
+          <NextLink className="text-sm font-semibold text-default-700" href="/erp/dashboard">
+            ERP
+          </NextLink>
+        </NavbarItem>
       </NavbarContent>
 
-      <NavbarContent className="hidden lg:flex basis-2/4" justify="center">
-        <ul className="flex gap-2 justify-center">
-          {isAuthenticated ? (
-            <NavbarItem key="nav-dashboard">
-              <Tooltip content="Dashboard" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/dashboard") ? activeClass : idleClass,
-                  )}
-                  href="/dashboard"
-                >
-                  <BsWindowStack />
-                </NextLink>
-              </Tooltip>
+      <NavbarContent className="hidden xl:flex basis-2/4" justify="center">
+        {!isAuthenticated ? null : operarioOnly ? (
+          <ul className="flex gap-2 items-center">
+            <NavbarItem>
+              <Button as={NextLink} href="/erp/dashboard" size="sm" variant={isActive("/dashboard") ? "solid" : "light"}>
+                Dashboard
+              </Button>
             </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAuthenticated && canSeePayments ? (
-            <NavbarItem key="nav-payments">
-              <Tooltip content="Pagos" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/pagos") ? activeClass : idleClass,
-                  )}
-                  href="/pagos"
-                >
-                  <BsCreditCard />
-                </NextLink>
-              </Tooltip>
+            <NavbarItem>
+              <Button as={NextLink} href="/erp/envios" size="sm" variant={isActive("/envios") ? "solid" : "light"}>
+                Envíos
+              </Button>
             </NavbarItem>
-          ) : null}
+          </ul>
+        ) : (
+          <ul className="flex items-center gap-1">
+            {visibleSections.map((section) => (
+              section.key === "dashboard" ? (
+                <NavbarItem key={section.key}>
+                  <Button
+                    as={NextLink}
+                    href="/erp/dashboard"
+                    startContent={<section.icon className="text-sm" />}
+                    size="sm"
+                    variant={section.items.some((item) => isActive(item.href)) ? "solid" : "light"}
+                  >
+                    {section.label}
+                  </Button>
+                </NavbarItem>
+              ) : (
+                <NavbarItem key={section.key}>
+                  <Dropdown onOpenChange={(open) => setOpenGroup(open ? section.key : null)}>
+                    <DropdownTrigger>
+                      <Button
+                        startContent={<section.icon className="text-sm" />}
+                        endContent={<BsChevronDown className="text-xs" />}
+                        size="sm"
+                        variant={
+                          section.items.some((item) => isActive(item.href) && !item.href.startsWith("/en-construccion"))
+                            ? "solid"
+                            : "light"
+                        }
+                        className={clsx(openGroup === section.key ? "bg-default-200" : "")}
+                      >
+                        {section.label}
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label={section.label}>
+                      {section.items.map((item) => (
+                        <DropdownItem key={`${section.key}-${item.href}`} as={NextLink} href={toErpHref(item.href)}>
+                          {item.name}
+                        </DropdownItem>
+                      ))}
+                    </DropdownMenu>
+                  </Dropdown>
+                </NavbarItem>
+              )
+            ))}
 
-          {!operarioOnly && isAuthenticated && (canSeeOrders || canSeeStatusHistory) ? (
-            <NavbarItem key="nav-orders">
-              <Dropdown onOpenChange={(open) => setOpenGroup(open ? "orders" : null)}>
+            <NavbarItem key="others">
+              <Dropdown onOpenChange={(open) => setOpenGroup(open ? "others" : null)}>
                 <DropdownTrigger>
                   <Button
-                    isIconOnly
-                    variant="light"
-                    title="Pedidos"
-                    className={clsx(
-                      iconBase,
-                      isActive("/orders") ||
-                        isActive("/prefacturas") ||
-                        isActive("/contabilidad") ||
-                        isActive("/aprobacion-inicial") ||
-                        isActive("/programacion") ||
-                        isActive("/status-history")
-                        ? activeClass
-                        : idleClass,
-                      openGroup === "orders" ? activeClass : null,
-                    )}
+                    startContent={<OtherMenuIcon className="text-sm" />}
+                    endContent={<BsChevronDown className="text-xs" />}
+                    size="sm"
+                    variant={otherItems.some((item) => isActive(item.href)) ? "solid" : "light"}
+                    className={clsx(openGroup === "others" ? "bg-default-200" : "")}
                   >
-                    <BsCart4 />
+                    Otros
                   </Button>
                 </DropdownTrigger>
-                <DropdownMenu aria-label="Pedidos">
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="orders"
-                      as={NextLink}
-                      href="/orders"
-                      startContent={<BsCart4 />}
-                    >
-                      Pedidos
+                <DropdownMenu aria-label="Otros">
+                  {otherItems.map((item) => (
+                    <DropdownItem key={`others-${item.href}`} as={NextLink} href={toErpHref(item.href)}>
+                      {item.name}
                     </DropdownItem>
-                  ) : null}
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="quotations"
-                      as={NextLink}
-                      href="/quotations"
-                      startContent={<BsClipboardData />}
-                    >
-                      Cotizaciones
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="prefacturas"
-                      as={NextLink}
-                      href="/prefacturas"
-                      startContent={<BsReceipt />}
-                    >
-                      Prefacturas
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="contabilidad"
-                      as={NextLink}
-                      href="/contabilidad"
-                      startContent={<BsReceipt />}
-                    >
-                      Contabilidad
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="aprobacion-inicial"
-                      as={NextLink}
-                      href="/aprobacion-inicial"
-                      startContent={<BsClipboardData />}
-                    >
-                      Aprobación inicial
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeOrders ? (
-                    <DropdownItem
-                      key="programacion"
-                      as={NextLink}
-                      href="/programacion"
-                      startContent={<BsWindowStack />}
-                    >
-                      Programación
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeStatusHistory ? (
-                    <DropdownItem
-                      key="history"
-                      as={NextLink}
-                      href="/status-history"
-                      startContent={<BsClockHistory />}
-                    >
-                      Historial
-                    </DropdownItem>
-                  ) : null}
+                  ))}
                 </DropdownMenu>
               </Dropdown>
             </NavbarItem>
-          ) : null}
-
-          {!operarioOnly &&
-          isAuthenticated &&
-          (canSeePurchaseOrders ||
-            canSeeSuppliers ||
-            canSeeConfectionists ||
-            canSeePackers) ? (
-            <NavbarItem key="nav-supply">
-              <Dropdown
-                onOpenChange={(open) => setOpenGroup(open ? "supply" : null)}
-              >
-                <DropdownTrigger>
-                  <Button
-                    isIconOnly
-                    variant="light"
-                    className={clsx(
-                      iconBase,
-                      isActive("/purchase-orders") ||
-                        isActive("/suppliers") ||
-                        isActive("/confectionists") ||
-                        isActive("/packers")
-                        ? activeClass
-                        : idleClass,
-                      openGroup === "supply" ? activeClass : null,
-                    )}
-                  >
-                    <BsBoxSeam />
-                  </Button>
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Suministros">
-                  {canSeePurchaseOrders ? (
-                    <DropdownItem
-                      key="purchase-orders"
-                      as={NextLink}
-                      href="/purchase-orders"
-                      startContent={<BsBoxSeam />}
-                    >
-                      Órdenes de compra
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeSuppliers ? (
-                    <DropdownItem
-                      key="suppliers"
-                      as={NextLink}
-                      href="/suppliers"
-                      startContent={<BsTruck />}
-                    >
-                      Proveedores
-                    </DropdownItem>
-                  ) : null}
-                  {canSeeConfectionists ? (
-                    <DropdownItem
-                      key="confectionists"
-                      as={NextLink}
-                      href="/confectionists"
-                      startContent={<BsPerson />}
-                    >
-                      Confeccionistas
-                    </DropdownItem>
-                  ) : null}
-                  {canSeePackers ? (
-                    <DropdownItem
-                      key="packers"
-                      as={NextLink}
-                      href="/packers"
-                      startContent={<BsTruck />}
-                    >
-                      Empaque
-                    </DropdownItem>
-                  ) : null}
-                </DropdownMenu>
-              </Dropdown>
-            </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAuthenticated && canSeeClients ? (
-            <NavbarItem key="/clients">
-              <Tooltip content="Clientes" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/clients") ? activeClass : idleClass,
-                  )}
-                  href="/clients"
-                >
-                  <BsPeople />
-                </NextLink>
-              </Tooltip>
-            </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAuthenticated && canSeeCatalog ? (
-            <NavbarItem key="/inventory">
-              <Tooltip content="Inventario" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/inventory") ? activeClass : idleClass,
-                  )}
-                  href="/inventory"
-                >
-                  <BsClipboardData />
-                </NextLink>
-              </Tooltip>
-            </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAuthenticated && canSeeCatalog ? (
-            <NavbarItem key="/catalog">
-              <Tooltip content="Catálogo" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/catalog") ? activeClass : idleClass,
-                  )}
-                  href="/catalog"
-                >
-                  <BsTag />
-                </NextLink>
-              </Tooltip>
-            </NavbarItem>
-          ) : null}
-
-          {!operarioOnly && isAdmin ? (
-            <NavbarItem key="/admin">
-              <Tooltip content="Administración" placement="bottom">
-                <NextLink
-                  className={clsx(
-                    iconBase,
-                    isActive("/admin") ? activeClass : idleClass,
-                  )}
-                  href="/admin"
-                >
-                  <BsGear />
-                </NextLink>
-              </Tooltip>
-            </NavbarItem>
-          ) : null}
-        </ul>
+          </ul>
+        )}
       </NavbarContent>
 
-      <NavbarContent
-        className="hidden sm:flex basis-1/4 pr-2 lg:pr-4"
-        justify="end"
-      >
-        <NavbarItem className="hidden sm:flex gap-2 items-center">
-          {canOverrideRole ? (
-            <Dropdown>
-              <DropdownTrigger>
-                <Button size="sm" variant="flat">
-                  Rol: {displayedRole}
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu
-                aria-label="Cambiar rol"
-                onAction={(key) => handleRoleOverride(String(key))}
-                selectedKeys={roleOverride ? [roleOverride] : []}
-                selectionMode="single"
-                items={[{ key: "" }, ...roleOptions.map((role) => ({ key: role }))]}
-              >
-                {(item) => (
-                  <DropdownItem key={item.key}>
-                    {item.key || "Sin override"}
-                  </DropdownItem>
-                )}
-              </DropdownMenu>
-            </Dropdown>
-          ) : null}
-          <NotificationBell enabled={isAuthenticated} />
+      <NavbarContent className="hidden xl:flex basis-1/4 pr-2 lg:pr-4" justify="end">
+        <NavbarItem className="hidden xl:flex gap-2 items-center">
           <ThemeSwitch />
         </NavbarItem>
 
         {isAuthenticated ? (
-          <NavbarItem className="hidden sm:flex gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <Avatar
-                name={user?.name ?? "VIOMAR"}
-                size="sm"
-                src={user?.avatarUrl ?? undefined}
-              />
-              <div className="text-sm font-medium">{user?.name ?? "Usuario"}</div>
-            </div>
-
-            <Button
-              size="sm"
-              variant="flat"
-              onPress={() => router.push("/options")}
-            >
-              Opciones
-            </Button>
-
-            <Button
-              size="sm"
-              variant="flat"
-              onPress={async () => {
-                await logout();
-                router.push("/login");
-              }}
-            >
-              Logout
-            </Button>
+          <NavbarItem className="hidden xl:flex items-center">
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Button className="h-auto px-2" variant="light">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+                    <div className="text-sm font-medium">{user?.name ?? "Usuario"}</div>
+                    <BsChevronDown className="text-xs text-default-500" />
+                  </div>
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Menu de usuario" onAction={(key) => void handleUserMenuAction(String(key))}>
+                <DropdownItem key="notifications">Notificaciones</DropdownItem>
+                <DropdownItem key="options">Opciones</DropdownItem>
+                <DropdownItem key="logout" className="text-danger" color="danger">
+                  Cierre de sesion
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
           </NavbarItem>
         ) : null}
       </NavbarContent>
 
-      <NavbarContent className="sm:hidden basis-1 pl-3 pr-1 gap-2" justify="end">
+      <NavbarContent className="xl:hidden ml-auto flex-none gap-1 sm:gap-2 min-w-0" justify="end">
         {isAuthenticated ? (
           <div className="flex items-center gap-2 min-w-0">
-            <Avatar
-              name={user?.name ?? "VIOMAR"}
-              size="sm"
-              src={user?.avatarUrl ?? undefined}
-            />
-            <div className="text-xs font-medium truncate max-w-[120px]">
-              {user?.name ?? "Usuario"}
-            </div>
+            <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? "Usuario"}</div>
           </div>
         ) : null}
         <ThemeSwitch />
         <NavbarMenuToggle />
       </NavbarContent>
 
-      <NavbarMenu>
-        <div className="mx-4 mt-2 flex flex-col gap-2">
-          {menuItems.map((item) => (
-            <NavbarMenuItem key={item.href}>
-              <Link color="foreground" href={item.href} size="lg">
-                {item.name}
-              </Link>
-            </NavbarMenuItem>
-          ))}
+      <NavbarMenu className="overflow-x-hidden max-w-[100vw]">
+        <div className="mt-2 mb-3 px-3 flex w-full max-w-full flex-col gap-2 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden">
+          {!isAuthenticated ? null : operarioOnly ? (
+            <>
+              <NavbarMenuItem>
+                <Link color="foreground" href="/erp/dashboard" size="lg">
+                  Dashboard
+                </Link>
+              </NavbarMenuItem>
+              <NavbarMenuItem>
+                <Link color="foreground" href="/erp/envios" size="lg">
+                  Envíos
+                </Link>
+              </NavbarMenuItem>
+              <NavbarMenuItem>
+                <Link color="foreground" href="/erp/options" size="lg">
+                  Opciones
+                </Link>
+              </NavbarMenuItem>
+            </>
+          ) : (
+            <>
+              {visibleSections.map((section) => (
+                <div key={`mobile-${section.key}`} className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2">
+                  <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-default-500 flex items-center gap-2">
+                    <section.icon className="text-sm" />
+                    {section.label}
+                  </div>
+                  <div className="flex flex-col">
+                    {section.items.map((item) => (
+                      <NavbarMenuItem key={`mobile-${section.key}-${item.href}`} className="w-full min-w-0">
+                        <Link
+                          className="block w-full min-w-0 whitespace-normal break-words"
+                          color="foreground"
+                          href={toErpHref(item.href)}
+                          size="md"
+                        >
+                          {item.name}
+                        </Link>
+                      </NavbarMenuItem>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2">
+                <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-default-500 flex items-center gap-2">
+                  <OtherMenuIcon className="text-sm" />
+                  Otros
+                </div>
+                <div className="flex flex-col">
+                  {otherItems.map((item) => (
+                    <NavbarMenuItem key={`mobile-others-${item.href}`} className="w-full min-w-0">
+                      <Link
+                        className="block w-full min-w-0 whitespace-normal break-words"
+                        color="foreground"
+                        href={toErpHref(item.href)}
+                        size="md"
+                      >
+                        {item.name}
+                      </Link>
+                    </NavbarMenuItem>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {isAuthenticated ? (
-            <NavbarMenuItem key="logout-mobile">
-              <Button
-                className="w-full"
-                color="danger"
-                variant="flat"
-                onPress={async () => {
-                  await logout();
-                  router.push("/login");
-                }}
-              >
-                Cerrar sesión
-              </Button>
-            </NavbarMenuItem>
+            <>
+              <NavbarMenuItem>
+                <Link color="foreground" href="/erp/notifications" size="md">
+                  Notificaciones
+                </Link>
+              </NavbarMenuItem>
+              <NavbarMenuItem key="logout-mobile">
+                <Button
+                  className="w-full"
+                  color="danger"
+                  variant="flat"
+                  onPress={async () => {
+                    await logout();
+                    router.push("/erp/login");
+                  }}
+                >
+                  Cierre de sesion
+                </Button>
+              </NavbarMenuItem>
+            </>
           ) : null}
         </div>
       </NavbarMenu>

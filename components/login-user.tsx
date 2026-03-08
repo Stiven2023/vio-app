@@ -218,7 +218,7 @@ export default function LoginUser() {
       if (ok) {
         setToast({ message: "Inicio de sesión exitoso.", type: "success" });
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/erp/dashboard");
         }, 1200);
       } else {
         setToast({
@@ -257,7 +257,7 @@ export default function LoginUser() {
       if (ok) {
         setToast({ message: "Inicio de sesión exitoso.", type: "success" });
         setTimeout(() => {
-          router.push("/dashboard");
+          router.push("/erp/dashboard");
         }, 1200);
       } else {
         setToast({ message: "Credenciales inválidas.", type: "error" });
