@@ -237,6 +237,28 @@ export async function getLatestUsdCopRatePair() {
   };
 }
 
+export async function getUsdCopRateHistory(limit = 14) {
+  const safeLimit = Number.isFinite(limit) ? Math.max(2, Math.min(60, Math.floor(limit))) : 14;
+
+  const rows = await db
+    .select({
+      effectiveRate: exchangeRates.effectiveRate,
+      createdAt: exchangeRates.createdAt,
+    })
+    .from(exchangeRates)
+    .where(eq(exchangeRates.baseCurrency, "USD"))
+    .orderBy(desc(exchangeRates.createdAt))
+    .limit(safeLimit);
+
+  return rows
+    .map((row) => ({
+      value: Number(row.effectiveRate ?? 0),
+      at: row.createdAt ? new Date(row.createdAt).toISOString() : null,
+    }))
+    .filter((point) => Number.isFinite(point.value) && point.value > 0)
+    .reverse();
+}
+
 export function convertUsdToCopWithFloor(args: {
   usdAmount: number;
   sourceRate: number;

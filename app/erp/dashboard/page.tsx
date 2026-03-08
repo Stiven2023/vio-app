@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { ExchangeRateWidget } from "@/app/erp/dashboard/_components/exchange-rate-widget";
 import { DashboardSectionsSkeleton } from "@/app/erp/dashboard/_components/dashboard-sections-skeleton";
-import { getLatestUsdCopRatePair } from "@/src/utils/exchange-rate";
+import { getLatestUsdCopRatePair, getUsdCopRateHistory } from "@/src/utils/exchange-rate";
 import { verifyAuthToken } from "@/src/utils/auth";
 
 export default async function DashboardPage() {
@@ -13,6 +13,7 @@ export default async function DashboardPage() {
   if (!payload) redirect("/erp/login");
 
   const rates = await getLatestUsdCopRatePair();
+  const history = await getUsdCopRateHistory(45);
   const latest = rates.latest;
   const previous = rates.previous;
 
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
           sourceRate={latest?.sourceRate ?? null}
           floorRate={latest?.floorRate ?? 3600}
           adjustmentApplied={latest?.adjustmentApplied ?? null}
+          history={history}
         />
       </section>
 
