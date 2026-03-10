@@ -104,14 +104,16 @@ export async function POST(request: Request) {
   const forbidden = await requirePermission(request, "EDITAR_ITEM_INVENTARIO");
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, color, size, description, isActive } = await request.json();
+  const { inventoryItemId, sku, color, size, description, isActive } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
+  const providedSku = sanitizeSku(String(sku ?? "").trim());
   const c = String(color ?? "").trim();
   const s = String(size ?? "").trim();
   const d = String(description ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!providedSku) return new Response("sku required", { status: 400 });
 
   const [item] = await db
     .select({ id: inventoryItems.id, itemCode: inventoryItems.itemCode })
@@ -121,13 +123,21 @@ export async function POST(request: Request) {
 
   if (!item) return new Response("inventory item not found", { status: 404 });
 
-  const sku = await nextVariantSku(item.itemCode ?? "SKU");
+  const [existingSku] = await db
+    .select({ id: inventoryItemVariants.id })
+    .from(inventoryItemVariants)
+    .where(eq(inventoryItemVariants.sku, providedSku))
+    .limit(1);
+
+  if (existingSku) {
+    return new Response("sku already exists", { status: 409 });
+  }
 
   const created = await db
     .insert(inventoryItemVariants)
     .values({
       inventoryItemId: item.id,
-      sku,
+      sku: providedSku,
       color: c || null,
       size: s || null,
       description: d || null,
@@ -150,14 +160,35 @@ export async function PUT(request: Request) {
   const forbidden = await requirePermission(request, "EDITAR_ITEM_INVENTARIO");
   if (forbidden) return forbidden;
 
-  const { id, color, size, description, isActive } = await request.json();
+  const { id, sku, color, size, description, isActive } = await request.json();
 
   const variantId = String(id ?? "").trim();
+  const providedSku =
+    sku !== undefined ? sanitizeSku(String(sku ?? "").trim()) : undefined;
   if (!variantId) return new Response("id required", { status: 400 });
+  if (sku !== undefined && !providedSku) return new Response("sku required", { status: 400 });
+
+  if (providedSku) {
+    const [existingSku] = await db
+      .select({ id: inventoryItemVariants.id })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.sku, providedSku),
+          sql`${inventoryItemVariants.id} <> ${variantId}`,
+        ),
+      )
+      .limit(1);
+
+    if (existingSku) {
+      return new Response("sku already exists", { status: 409 });
+    }
+  }
 
   const updated = await db
     .update(inventoryItemVariants)
     .set({
+      sku: providedSku,
       color: color !== undefined ? (String(color ?? "").trim() || null) : undefined,
       size: size !== undefined ? (String(size ?? "").trim() || null) : undefined,
       description:

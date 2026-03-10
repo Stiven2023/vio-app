@@ -1,7 +1,8 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import {
   inventoryCategories,
+  inventoryItems,
   inventoryItemVariants,
   stockMovements,
   warehouseStock,
@@ -76,6 +77,7 @@ const BASE_WAREHOUSES = [
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
+
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -93,6 +95,7 @@ async function recomputeStock(
       and(
         eq(stockMovements.inventoryItemId, inventoryItemId),
         eq(stockMovements.toWarehouseId, warehouseId),
+        sql`${stockMovements.requestedAt} is null`,
       ),
     );
 
@@ -105,6 +108,7 @@ async function recomputeStock(
       and(
         eq(stockMovements.inventoryItemId, inventoryItemId),
         eq(stockMovements.fromWarehouseId, warehouseId),
+        sql`${stockMovements.requestedAt} is null`,
       ),
     );
 
@@ -125,6 +129,7 @@ async function recomputeVariantStock(
       and(
         eq(stockMovements.variantId, variantId),
         eq(stockMovements.toWarehouseId, warehouseId),
+        sql`${stockMovements.requestedAt} is null`,
       ),
     );
 
@@ -137,6 +142,7 @@ async function recomputeVariantStock(
       and(
         eq(stockMovements.variantId, variantId),
         eq(stockMovements.fromWarehouseId, warehouseId),
+        sql`${stockMovements.requestedAt} is null`,
       ),
     );
 
@@ -153,6 +159,22 @@ export async function ensureInventoryBaseData(dbOrTx: any) {
     .insert(warehouses)
     .values(BASE_WAREHOUSES)
     .onConflictDoNothing({ target: warehouses.code });
+
+  // Repair legacy rows where variant stock existed without direct item linkage.
+  await dbOrTx.execute(sql`
+    update warehouse_stock ws
+    set inventory_item_id = iv.inventory_item_id
+    from inventory_item_variants iv
+    where ws.inventory_item_id is null
+      and ws.variant_id = iv.id
+  `);
+
+  // Drop fully orphan stock rows with no resolvable item or variant reference.
+  await dbOrTx.execute(sql`
+    delete from warehouse_stock
+    where inventory_item_id is null
+      and variant_id is null
+  `);
 }
 
 async function getWarehouseIdByCode(dbOrTx: any, code: string) {
@@ -188,6 +210,7 @@ async function syncWarehouseStockForItem(
     .where(
       and(
         eq(warehouseStock.inventoryItemId, inventoryItemId),
+        isNull(warehouseStock.variantId),
         eq(warehouseStock.warehouseId, warehouseId),
       ),
     )
@@ -222,10 +245,13 @@ export async function computeStockForItem(
 ) {
   if (location) {
     const warehouseId = await resolveWarehouseIdByLocation(dbOrTx, location);
+
     if (!warehouseId) return 0;
 
     const [row] = await dbOrTx
-      .select({ availableQty: warehouseStock.availableQty })
+      .select({
+        total: sql<string>`coalesce(sum(${warehouseStock.availableQty}), 0)::text`,
+      })
       .from(warehouseStock)
       .where(
         and(
@@ -235,7 +261,7 @@ export async function computeStockForItem(
       )
       .limit(1);
 
-    return asNumber(row?.availableQty);
+    return asNumber(row?.total);
   }
 
   const [row] = await dbOrTx
@@ -254,7 +280,9 @@ export async function computeStockForItemInWarehouse(
   warehouseId: string,
 ) {
   const [row] = await dbOrTx
-    .select({ availableQty: warehouseStock.availableQty })
+    .select({
+      total: sql<string>`coalesce(sum(${warehouseStock.availableQty}), 0)::text`,
+    })
     .from(warehouseStock)
     .where(
       and(
@@ -264,7 +292,7 @@ export async function computeStockForItemInWarehouse(
     )
     .limit(1);
 
-  return asNumber(row?.availableQty);
+  return asNumber(row?.total);
 }
 
 export async function computeStockForVariantInWarehouse(
@@ -291,6 +319,14 @@ async function syncWarehouseStockForVariant(
   variantId: string,
   warehouseId: string,
 ) {
+  const [variant] = await dbOrTx
+    .select({ inventoryItemId: inventoryItemVariants.inventoryItemId })
+    .from(inventoryItemVariants)
+    .where(eq(inventoryItemVariants.id, variantId))
+    .limit(1);
+
+  if (!variant?.inventoryItemId) return;
+
   const stock = await recomputeVariantStock(dbOrTx, variantId, warehouseId);
 
   const [existing] = await dbOrTx
@@ -307,7 +343,7 @@ async function syncWarehouseStockForVariant(
   if (!existing) {
     await dbOrTx.insert(warehouseStock).values({
       warehouseId,
-      inventoryItemId: null,
+      inventoryItemId: variant.inventoryItemId,
       variantId,
       availableQty: String(stock),
       reservedQty: "0",
@@ -321,6 +357,7 @@ async function syncWarehouseStockForVariant(
   await dbOrTx
     .update(warehouseStock)
     .set({
+      inventoryItemId: variant.inventoryItemId,
       availableQty: String(stock),
       lastUpdated: new Date(),
     })
@@ -329,6 +366,7 @@ async function syncWarehouseStockForVariant(
 
 export async function syncInventoryForVariant(dbOrTx: any, variantId: string) {
   const id = String(variantId ?? "").trim();
+
   if (!id) return;
 
   await ensureInventoryBaseData(dbOrTx);
@@ -358,6 +396,12 @@ export async function syncInventoryForVariant(dbOrTx: any, variantId: string) {
   for (const warehouseId of warehouseIds) {
     await syncWarehouseStockForVariant(dbOrTx, id, warehouseId);
   }
+
+  const [variant] = await dbOrTx
+    .select({ inventoryItemId: inventoryItemVariants.inventoryItemId })
+    .from(inventoryItemVariants)
+    .where(eq(inventoryItemVariants.id, id))
+    .limit(1);
 
   // WEB mirrors TIENDA stock for same variant.
   if (tiendaWarehouseId && webWarehouseId) {
@@ -400,7 +444,7 @@ export async function syncInventoryForVariant(dbOrTx: any, variantId: string) {
     } else {
       await dbOrTx.insert(warehouseStock).values({
         warehouseId: webWarehouseId,
-        inventoryItemId: null,
+        inventoryItemId: variant.inventoryItemId,
         variantId: id,
         availableQty: tiendaRow?.availableQty ?? "0",
         reservedQty: tiendaRow?.reservedQty ?? "0",
@@ -410,22 +454,42 @@ export async function syncInventoryForVariant(dbOrTx: any, variantId: string) {
     }
   }
 
-  const [variant] = await dbOrTx
-    .select({ inventoryItemId: inventoryItemVariants.inventoryItemId })
-    .from(inventoryItemVariants)
-    .where(eq(inventoryItemVariants.id, id))
-    .limit(1);
-
   if (variant?.inventoryItemId) {
     await syncInventoryForItem(dbOrTx, variant.inventoryItemId);
   }
 }
 
-export async function syncInventoryForItem(dbOrTx: any, inventoryItemId: string) {
+export async function syncInventoryForItem(
+  dbOrTx: any,
+  inventoryItemId: string,
+) {
   const id = String(inventoryItemId ?? "").trim();
+
   if (!id) return;
 
   await ensureInventoryBaseData(dbOrTx);
+
+  const [item] = await dbOrTx
+    .select({ hasVariants: inventoryItems.hasVariants })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.id, id))
+    .limit(1);
+
+  const itemHasVariants = item?.hasVariants === true;
+
+  if (itemHasVariants) {
+    // For variant-managed items, stock lives in variant rows only.
+    await dbOrTx
+      .delete(warehouseStock)
+      .where(
+        and(
+          eq(warehouseStock.inventoryItemId, id),
+          isNull(warehouseStock.variantId),
+        ),
+      );
+
+    return;
+  }
 
   const [principalWarehouseId, tiendaWarehouseId] = await Promise.all([
     resolveWarehouseIdByLocation(dbOrTx, "BODEGA_PRINCIPAL"),

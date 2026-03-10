@@ -23,6 +23,8 @@ import {
   BsTag,
   BsTextParagraph,
   BsTruck,
+  BsPlus,
+  BsTrash,
 } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
@@ -43,6 +45,15 @@ type Paginated<T> = {
   pageSize: number;
   total: number;
   hasNextPage: boolean;
+};
+
+type DraftVariant = {
+  id: string;
+  sku: string;
+  color: string;
+  size: string;
+  description: string;
+  isActive: boolean;
 };
 
 export function InventoryItemModal({
@@ -67,6 +78,11 @@ export function InventoryItemModal({
   const [supplierId, setSupplierId] = useState("");
   const [minStock, setMinStock] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [draftColor, setDraftColor] = useState("");
+  const [draftSize, setDraftSize] = useState("");
+  const [draftVariantDescription, setDraftVariantDescription] = useState("");
+  const [draftVariantSku, setDraftVariantSku] = useState("");
+  const [initialVariants, setInitialVariants] = useState<DraftVariant[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -86,7 +102,52 @@ export function InventoryItemModal({
     setSupplierId(item?.supplierId ?? "");
     setMinStock(item?.minStock ?? "");
     setIsActive(item?.isActive ?? true);
+    setDraftColor("");
+    setDraftSize("");
+    setDraftVariantDescription("");
+    setDraftVariantSku("");
+    setInitialVariants([]);
   }, [item, isOpen]);
+
+  const addDraftVariant = () => {
+    const sku = draftVariantSku.trim().toUpperCase();
+    const color = draftColor.trim();
+    const size = draftSize.trim();
+    const description = draftVariantDescription.trim();
+
+    if (!sku) {
+      setError("El codigo de variante es obligatorio");
+      return;
+    }
+
+    if (!color && !size) {
+      setError("Para agregar variante inicial, define color o talla");
+      return;
+    }
+
+    if (initialVariants.some((variant) => variant.sku.toUpperCase() === sku)) {
+      setError("El codigo de variante ya fue agregado en esta lista");
+      return;
+    }
+
+    setError(null);
+    setInitialVariants((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        sku,
+        color,
+        size,
+        description,
+        isActive: true,
+      },
+    ]);
+
+    setDraftColor("");
+    setDraftSize("");
+    setDraftVariantDescription("");
+    setDraftVariantSku("");
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -139,7 +200,20 @@ export function InventoryItemModal({
       await apiJson(`/api/inventory-items`, {
         method: item ? "PUT" : "POST",
         body: JSON.stringify(
-          item ? { id: item.id, ...parsed.data } : parsed.data,
+          item
+            ? { id: item.id, ...parsed.data }
+            : {
+                ...parsed.data,
+                initialVariants: hasVariants
+                  ? initialVariants.map((variant) => ({
+                          sku: variant.sku,
+                      color: variant.color,
+                      size: variant.size,
+                      description: variant.description,
+                      isActive: variant.isActive,
+                    }))
+                  : [],
+              },
         ),
       });
       toast.success(item ? "Item actualizado" : "Item creado");
@@ -271,6 +345,70 @@ export function InventoryItemModal({
           <Switch isSelected={hasVariants} onValueChange={setHasVariants}>
             Maneja variantes (color/talla)
           </Switch>
+
+          {hasVariants && !item ? (
+            <div className="space-y-2 rounded-lg border border-default-200 p-3">
+              <p className="text-sm font-semibold">Variantes iniciales (opcional)</p>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                <Input
+                  label="Codigo variante"
+                  value={draftVariantSku}
+                  onValueChange={setDraftVariantSku}
+                />
+                <Input
+                  label="Color"
+                  value={draftColor}
+                  onValueChange={setDraftColor}
+                />
+                <Input
+                  label="Talla"
+                  value={draftSize}
+                  onValueChange={setDraftSize}
+                />
+                <Input
+                  className="md:col-span-1"
+                  label="Descripcion"
+                  value={draftVariantDescription}
+                  onValueChange={setDraftVariantDescription}
+                />
+              </div>
+              <Button
+                size="sm"
+                startContent={<BsPlus />}
+                variant="flat"
+                onPress={addDraftVariant}
+              >
+                Agregar variante inicial
+              </Button>
+
+              <div className="space-y-1">
+                {initialVariants.length === 0 ? (
+                  <p className="text-xs text-default-500">Sin variantes iniciales.</p>
+                ) : (
+                  initialVariants.map((variant, index) => (
+                    <div
+                      key={variant.id}
+                      className="flex items-center justify-between rounded-md border border-default-200 px-2 py-1"
+                    >
+                      <p className="text-xs">
+                        {`#${index + 1}  Cod: ${variant.sku} / Color: ${variant.color || "-"} / Talla: ${variant.size || "-"}${variant.description ? ` / ${variant.description}` : ""}`}
+                      </p>
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        size="sm"
+                        startContent={<BsTrash />}
+                        variant="light"
+                        onPress={() => {
+                          setInitialVariants((prev) => prev.filter((v) => v.id !== variant.id));
+                        }}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : null}
         </ModalBody>
         <ModalFooter>
           <Button

@@ -22,6 +22,7 @@ import {
 import {
   BsArrowDown,
   BsArrowUp,
+  BsGrid,
   BsEye,
   BsPencilSquare,
   BsThreeDotsVertical,
@@ -182,6 +183,32 @@ export function InventoryItemsTab({
                       >
                         Ver mas
                       </DropdownItem>
+                      {item.hasVariants ? (
+                        <DropdownItem
+                          key="sku-breakdown"
+                          startContent={<BsEye />}
+                          onPress={() => {
+                            setDetailItem(item);
+                            setDetailOpen(true);
+                          }}
+                        >
+                          Ver independencia SKU
+                        </DropdownItem>
+                      ) : null}
+                      {canEdit ? (
+                        item.hasVariants ? (
+                          <DropdownItem
+                            key="edit-variants"
+                            startContent={<BsGrid />}
+                            onPress={() => {
+                              setDetailItem(item);
+                              setDetailOpen(true);
+                            }}
+                          >
+                            Editar variantes
+                          </DropdownItem>
+                        ) : null
+                      ) : null}
                       {canEdit ? (
                         <DropdownItem
                           key="edit"

@@ -38,6 +38,7 @@ export function InventoryVariantModal({
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
 }) {
+  const [sku, setSku] = useState("");
   const [color, setColor] = useState("");
   const [size, setSize] = useState("");
   const [description, setDescription] = useState("");
@@ -47,6 +48,7 @@ export function InventoryVariantModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    setSku(variant?.sku ?? "");
     setColor(variant?.color ?? "");
     setSize(variant?.size ?? "");
     setDescription(variant?.description ?? "");
@@ -58,13 +60,35 @@ export function InventoryVariantModal({
     if (submitting) return;
 
     try {
+      const normalizedSku = sku.trim().toUpperCase();
+
+      if (!normalizedSku) {
+        toast.error("El codigo de variante es obligatorio");
+
+        return;
+      }
+
       setSubmitting(true);
       await apiJson("/api/inventory-item-variants", {
         method: variant ? "PUT" : "POST",
         body: JSON.stringify(
           variant
-            ? { id: variant.id, color, size, description, isActive }
-            : { inventoryItemId: itemId, color, size, description, isActive },
+            ? {
+                id: variant.id,
+                sku: normalizedSku,
+                color,
+                size,
+                description,
+                isActive,
+              }
+            : {
+                inventoryItemId: itemId,
+                sku: normalizedSku,
+                color,
+                size,
+                description,
+                isActive,
+              },
         ),
       });
 
@@ -81,13 +105,26 @@ export function InventoryVariantModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{variant ? "Editar variante" : "Crear variante"}</ModalHeader>
+        <ModalHeader>
+          {variant ? "Editar variante" : "Crear variante"}
+        </ModalHeader>
         <ModalBody>
-          {variant?.sku ? (
-            <Input isReadOnly label="SKU" value={variant.sku} />
-          ) : null}
-          <Input label="Color (opcional)" value={color} onValueChange={setColor} />
-          <Input label="Talla (opcional)" value={size} onValueChange={setSize} />
+          <Input
+            isRequired
+            label="Codigo variante (SKU)"
+            value={sku}
+            onValueChange={setSku}
+          />
+          <Input
+            label="Color (opcional)"
+            value={color}
+            onValueChange={setColor}
+          />
+          <Input
+            label="Talla (opcional)"
+            value={size}
+            onValueChange={setSize}
+          />
           <Input
             label="Descripcion (opcional)"
             value={description}

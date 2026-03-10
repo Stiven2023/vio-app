@@ -55,10 +55,11 @@ export async function GET(request: Request, { params }: Params) {
   const products = await db
     .select({
       stockId: warehouseStock.id,
-      inventoryItemId: warehouseStock.inventoryItemId,
+      inventoryItemId: sql<string | null>`coalesce(${warehouseStock.inventoryItemId}, ${inventoryItemVariants.inventoryItemId})`,
       variantId: warehouseStock.variantId,
       itemCode: inventoryItems.itemCode,
       itemName: inventoryItems.name,
+      hasVariants: inventoryItems.hasVariants,
       variantSku: inventoryItemVariants.sku,
       variantColor: inventoryItemVariants.color,
       variantSize: inventoryItemVariants.size,
@@ -68,13 +69,110 @@ export async function GET(request: Request, { params }: Params) {
       lastUpdated: warehouseStock.lastUpdated,
     })
     .from(warehouseStock)
-    .leftJoin(inventoryItems, eq(warehouseStock.inventoryItemId, inventoryItems.id))
     .leftJoin(
       inventoryItemVariants,
       eq(warehouseStock.variantId, inventoryItemVariants.id),
     )
+    .leftJoin(
+      inventoryItems,
+      sql`${inventoryItems.id} = coalesce(${warehouseStock.inventoryItemId}, ${inventoryItemVariants.inventoryItemId})`,
+    )
     .where(eq(warehouseStock.warehouseId, warehouseId))
     .orderBy(desc(warehouseStock.lastUpdated));
+
+  const missingVariantItemIds = Array.from(
+    new Set(
+      products
+        .filter((row) => row.hasVariants && !row.variantId && row.inventoryItemId)
+        .map((row) => row.inventoryItemId as string),
+    ),
+  );
+
+  const variantsByItem = new Map<
+    string,
+    Array<{ id: string; sku: string | null; color: string | null; size: string | null }>
+  >();
+
+  if (missingVariantItemIds.length > 0) {
+    const variants = await db
+      .select({
+        id: inventoryItemVariants.id,
+        inventoryItemId: inventoryItemVariants.inventoryItemId,
+        sku: inventoryItemVariants.sku,
+        color: inventoryItemVariants.color,
+        size: inventoryItemVariants.size,
+      })
+      .from(inventoryItemVariants)
+      .where(inArray(inventoryItemVariants.inventoryItemId, missingVariantItemIds));
+
+    for (const variant of variants) {
+      const current = variantsByItem.get(variant.inventoryItemId) ?? [];
+
+      current.push({
+        id: variant.id,
+        sku: variant.sku,
+        color: variant.color,
+        size: variant.size,
+      });
+
+      variantsByItem.set(variant.inventoryItemId, current);
+    }
+  }
+
+  const mappedProducts = products.map((row) => {
+    if (!row.hasVariants || row.variantId || !row.inventoryItemId) {
+      return {
+        stockId: row.stockId,
+        inventoryItemId: row.inventoryItemId,
+        variantId: row.variantId,
+        itemCode: row.itemCode,
+        itemName: row.itemName,
+        variantSku: row.variantSku,
+        variantColor: row.variantColor,
+        variantSize: row.variantSize,
+        availableQty: row.availableQty,
+        reservedQty: row.reservedQty,
+        minStock: row.minStock,
+        lastUpdated: row.lastUpdated,
+      };
+    }
+
+    const candidates = variantsByItem.get(row.inventoryItemId) ?? [];
+
+    if (candidates.length === 1) {
+      const [inferred] = candidates;
+
+      return {
+        stockId: row.stockId,
+        inventoryItemId: row.inventoryItemId,
+        variantId: inferred.id,
+        itemCode: row.itemCode,
+        itemName: row.itemName,
+        variantSku: inferred.sku,
+        variantColor: inferred.color,
+        variantSize: inferred.size,
+        availableQty: row.availableQty,
+        reservedQty: row.reservedQty,
+        minStock: row.minStock,
+        lastUpdated: row.lastUpdated,
+      };
+    }
+
+    return {
+      stockId: row.stockId,
+      inventoryItemId: row.inventoryItemId,
+      variantId: row.variantId,
+      itemCode: row.itemCode,
+      itemName: row.itemName,
+      variantSku: row.variantSku,
+      variantColor: row.variantColor,
+      variantSize: row.variantSize,
+      availableQty: row.availableQty,
+      reservedQty: row.reservedQty,
+      minStock: row.minStock,
+      lastUpdated: row.lastUpdated,
+    };
+  });
 
   const entries = await db
     .select({
@@ -85,10 +183,17 @@ export async function GET(request: Request, { params }: Params) {
       notes: stockMovements.notes,
       itemCode: inventoryItems.itemCode,
       itemName: inventoryItems.name,
+      variantSku: inventoryItemVariants.sku,
+      variantColor: inventoryItemVariants.color,
+      variantSize: inventoryItemVariants.size,
       fromWarehouseId: stockMovements.fromWarehouseId,
     })
     .from(stockMovements)
     .leftJoin(inventoryItems, eq(stockMovements.inventoryItemId, inventoryItems.id))
+    .leftJoin(
+      inventoryItemVariants,
+      eq(stockMovements.variantId, inventoryItemVariants.id),
+    )
     .where(
       and(
         eq(stockMovements.toWarehouseId, warehouseId),
@@ -107,10 +212,17 @@ export async function GET(request: Request, { params }: Params) {
       notes: stockMovements.notes,
       itemCode: inventoryItems.itemCode,
       itemName: inventoryItems.name,
+      variantSku: inventoryItemVariants.sku,
+      variantColor: inventoryItemVariants.color,
+      variantSize: inventoryItemVariants.size,
       toWarehouseId: stockMovements.toWarehouseId,
     })
     .from(stockMovements)
     .leftJoin(inventoryItems, eq(stockMovements.inventoryItemId, inventoryItems.id))
+    .leftJoin(
+      inventoryItemVariants,
+      eq(stockMovements.variantId, inventoryItemVariants.id),
+    )
     .where(
       and(
         eq(stockMovements.fromWarehouseId, warehouseId),
@@ -163,7 +275,7 @@ export async function GET(request: Request, { params }: Params) {
 
   return Response.json({
     warehouse,
-    products,
+    products: mappedProducts,
     entries: mappedEntries,
     outputs: mappedOutputs,
   });

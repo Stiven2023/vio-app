@@ -199,6 +199,7 @@ export function InventoryEntriesTab({
           ariaLabel="Entradas"
           headers={[
             "Item",
+            "SKU variante",
             "Proveedor",
             "Ubicación",
             "Cantidad",
@@ -210,6 +211,7 @@ export function InventoryEntriesTab({
         <Table aria-label="Entradas">
           <TableHeader>
             <TableColumn>Item</TableColumn>
+            <TableColumn>SKU variante</TableColumn>
             <TableColumn>Proveedor</TableColumn>
             <TableColumn>Ubicación</TableColumn>
             <TableColumn>Cantidad</TableColumn>
@@ -220,6 +222,7 @@ export function InventoryEntriesTab({
             {(entry) => (
               <TableRow key={entry.id}>
                 <TableCell>{entry.itemName ?? entry.inventoryItemId ?? "-"}</TableCell>
+                <TableCell>{entry.variantSku ?? "-"}</TableCell>
                 <TableCell>{entry.supplierName ?? "-"}</TableCell>
                 <TableCell>{warehouseLabel(entry)}</TableCell>
                 <TableCell>{entry.quantity ?? "-"}</TableCell>
@@ -242,7 +245,7 @@ export function InventoryEntriesTab({
                         key="details"
                         onPress={() => setDetailEntry(entry)}
                       >
-                        Ver mas
+                        Ver independencia SKU
                       </DropdownItem>
 
                       {canEdit ? (

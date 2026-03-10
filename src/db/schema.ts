@@ -57,9 +57,9 @@ export const thirdPartyTypeEnum = pgEnum("third_party_type", [
 
 // Enum de estado jurídico
 export const legalStatusEnum = pgEnum("legal_status_status", [
-  "VIGENTE",           // Sin problemas, puede operar
-  "EN_REVISION",       // Bajo revisión, operación pendiente
-  "BLOQUEADO",         // Bloqueado, no puede operar
+  "VIGENTE", // Sin problemas, puede operar
+  "EN_REVISION", // Bajo revisión, operación pendiente
+  "BLOQUEADO", // Bloqueado, no puede operar
 ]);
 
 // Enum de tipo documento (Persona / Razón social)
@@ -70,7 +70,6 @@ export const documentTypeEnum = pgEnum("document_type", [
 
 import {
   boolean,
-  check,
   date,
   integer,
   numeric,
@@ -83,7 +82,6 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 // Enum de roles
 export const roleEnum = pgEnum("role", [
@@ -287,18 +285,12 @@ export const stockMovementReasonEnum = pgEnum("stock_movement_reason", [
   "OTRO",
 ]);
 
-export const stockMovementReferenceTypeEnum = pgEnum("stock_movement_reference_type", [
-  "ORDER_ITEM",
-  "PURCHASE_ORDER",
-  "CONFECTIONIST",
-  "MANUAL",
-  "SHIPMENT",
-]);
+export const stockMovementReferenceTypeEnum = pgEnum(
+  "stock_movement_reference_type",
+  ["ORDER_ITEM", "PURCHASE_ORDER", "CONFECTIONIST", "MANUAL", "SHIPMENT"],
+);
 
-export const shipmentModeEnum = pgEnum("shipment_mode", [
-  "INTERNAL",
-  "CLIENT",
-]);
+export const shipmentModeEnum = pgEnum("shipment_mode", ["INTERNAL", "CLIENT"]);
 
 export const shipmentPaymentStatusEnum = pgEnum("shipment_payment_status", [
   "PAGADO",
@@ -329,7 +321,9 @@ export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   passwordHash: text("password_hash").notNull(),
-  preferredLanguage: varchar("preferred_language", { length: 10 }).default("es"),
+  preferredLanguage: varchar("preferred_language", { length: 10 }).default(
+    "es",
+  ),
   emailVerified: boolean("email_verified").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -362,7 +356,9 @@ export const externalAccessOtps = pgTable("external_access_otps", {
   audience: varchar("audience", { length: 20 }).notNull(),
   token: varchar("token", { length: 10 }).notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  resendAvailableAt: timestamp("resend_available_at", { withTimezone: true }).notNull(),
+  resendAvailableAt: timestamp("resend_available_at", {
+    withTimezone: true,
+  }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -383,8 +379,12 @@ export const permissions = pgTable("permissions", {
 export const rolePermissions = pgTable(
   "role_permissions",
   {
-    roleId: uuid("role_id").notNull().references(() => roles.id),
-    permissionId: uuid("permission_id").notNull().references(() => permissions.id),
+    roleId: uuid("role_id")
+      .notNull()
+      .references(() => roles.id),
+    permissionId: uuid("permission_id")
+      .notNull()
+      .references(() => permissions.id),
   },
   (t) => ({
     pk: primaryKey({ columns: [t.roleId, t.permissionId] }),
@@ -404,9 +404,13 @@ export const employees = pgTable("employees", {
   // --- DOCUMENTOS (Igual que clientes) ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de comercio
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+    length: 500,
+  }), // Cámara de comercio
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
+    length: 500,
+  }), // Certificado tributario
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa
 
   // --- DOCUMENTOS DEL EMPLEADO ---
@@ -466,9 +470,13 @@ export const clients = pgTable("clients", {
 
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE / Cédula rep. legal (NIT)
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT (CC, NIT)
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }), // Cámara de Comercio (NIT)
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+    length: 500,
+  }), // Cámara de Comercio (NIT)
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte/PPT (CE, PAS, EMPRESA_EXTERIOR)
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }), // Certificado tributario (EMPRESA_EXTERIOR)
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
+    length: 500,
+  }), // Certificado tributario (EMPRESA_EXTERIOR)
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa (EMPRESA_EXTERIOR)
 
   // --- IDENTIFICACIÓN Y NOMBRE (Imagen 1 y 2) ---
@@ -542,12 +550,17 @@ export const categories = pgTable("categories", {
 export const products = pgTable("products", {
   id: uuid("id").defaultRandom().primaryKey(),
   productCode: varchar("product_code", { length: 10 }).unique().notNull(),
-  productKind: varchar("product_kind", { length: 20 }).default("REGULAR").notNull(),
+  productKind: varchar("product_kind", { length: 20 })
+    .default("REGULAR")
+    .notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   categoryId: uuid("category_id").references(() => categories.id),
   priceCopBase: numeric("price_cop_base", { precision: 14, scale: 2 }),
-  priceCopInternational: numeric("price_cop_international", { precision: 14, scale: 2 }),
+  priceCopInternational: numeric("price_cop_international", {
+    precision: 14,
+    scale: 2,
+  }),
   priceCopR1: numeric("price_cop_r1", { precision: 14, scale: 2 }),
   priceCopR2: numeric("price_cop_r2", { precision: 14, scale: 2 }),
   priceCopR3: numeric("price_cop_r3", { precision: 14, scale: 2 }),
@@ -565,14 +578,21 @@ export const products = pgTable("products", {
 export const additions = pgTable("additions", {
   id: uuid("id").defaultRandom().primaryKey(),
   additionCode: varchar("addition_code", { length: 10 }).unique().notNull(),
-  catalogType: varchar("catalog_type", { length: 20 }).default("NACIONAL").notNull(),
-  productKind: varchar("product_kind", { length: 20 }).default("REGULAR").notNull(),
+  catalogType: varchar("catalog_type", { length: 20 })
+    .default("NACIONAL")
+    .notNull(),
+  productKind: varchar("product_kind", { length: 20 })
+    .default("REGULAR")
+    .notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   categoryId: uuid("category_id").references(() => categories.id),
   // Precios integrados
   priceCopBase: numeric("price_cop_base", { precision: 14, scale: 2 }),
-  priceCopInternational: numeric("price_cop_international", { precision: 14, scale: 2 }),
+  priceCopInternational: numeric("price_cop_international", {
+    precision: 14,
+    scale: 2,
+  }),
   priceUSD: numeric("price_usd", { precision: 14, scale: 2 }),
   trmUsed: numeric("trm_used", { precision: 14, scale: 2 }),
   startDate: timestamp("start_date"),
@@ -585,8 +605,12 @@ export const additions = pgTable("additions", {
 export const quotations = pgTable("quotations", {
   id: uuid("id").defaultRandom().primaryKey(),
   quoteCode: varchar("quote_code", { length: 20 }).unique().notNull(),
-  clientId: uuid("client_id").notNull().references(() => clients.id),
-  sellerId: uuid("seller_id").notNull().references(() => users.id),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id),
+  sellerId: uuid("seller_id")
+    .notNull()
+    .references(() => users.id),
   clientPriceType: varchar("client_price_type", { length: 20 }),
   documentType: documentTypeEnum("document_type").default("P").notNull(), // P = Persona, R = Razón social
   currency: varchar("currency", { length: 5 }).default("COP").notNull(),
@@ -594,15 +618,24 @@ export const quotations = pgTable("quotations", {
   expiryDate: date("expiry_date"),
   paymentTerms: varchar("payment_terms", { length: 120 }),
   promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // Solo si paymentTerms es CREDITO
-  totalProducts: numeric("total_products", { precision: 14, scale: 2 }).default("0"),
+  totalProducts: numeric("total_products", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
   subtotal: numeric("subtotal", { precision: 14, scale: 2 }).default("0"),
   iva: numeric("iva", { precision: 14, scale: 2 }).default("0"),
   shippingEnabled: boolean("shipping_enabled").default(false),
-  shippingFee: numeric("shipping_fee", { precision: 14, scale: 2 }).default("0"),
+  shippingFee: numeric("shipping_fee", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
   insuranceEnabled: boolean("insurance_enabled").default(false),
-  insuranceFee: numeric("insurance_fee", { precision: 14, scale: 2 }).default("0"),
+  insuranceFee: numeric("insurance_fee", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
   total: numeric("total", { precision: 14, scale: 2 }).default("0"),
-  advancePayment: numeric("advance_payment", { precision: 14, scale: 2 }).default("0"),
+  advancePayment: numeric("advance_payment", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
   prefacturaApproved: boolean("prefactura_approved").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -614,7 +647,9 @@ export const quotationItems = pgTable("quotation_items", {
   quotationId: uuid("quotation_id")
     .notNull()
     .references(() => quotations.id, { onDelete: "cascade" }),
-  productId: uuid("product_id").notNull().references(() => products.id),
+  productId: uuid("product_id")
+    .notNull()
+    .references(() => products.id),
   orderType: varchar("order_type", { length: 20 }).notNull(),
   negotiation: varchar("negotiation", { length: 20 }),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
@@ -630,13 +665,13 @@ export const quotationItemAdditions = pgTable("quotation_item_additions", {
   quotationItemId: uuid("quotation_item_id")
     .notNull()
     .references(() => quotationItems.id, { onDelete: "cascade" }),
-  additionId: uuid("addition_id").notNull().references(() => additions.id),
+  additionId: uuid("addition_id")
+    .notNull()
+    .references(() => additions.id),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
   unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
-
-
 
 /* =========================
    ORDERS
@@ -664,10 +699,18 @@ export const orders = pgTable("orders", {
 export const prefacturas = pgTable("prefacturas", {
   id: uuid("id").defaultRandom().primaryKey(),
   prefacturaCode: varchar("prefactura_code", { length: 20 }).unique().notNull(),
-  quotationId: uuid("quotation_id").references(() => quotations.id, { onDelete: "cascade" }),
-  orderId: uuid("order_id").references(() => orders.id, { onDelete: "set null" }),
-  status: varchar("status", { length: 40 }).default("PENDIENTE_CONTABILIDAD").notNull(),
-  totalProducts: numeric("total_products", { precision: 14, scale: 2 }).default("0"),
+  quotationId: uuid("quotation_id").references(() => quotations.id, {
+    onDelete: "cascade",
+  }),
+  orderId: uuid("order_id").references(() => orders.id, {
+    onDelete: "set null",
+  }),
+  status: varchar("status", { length: 40 })
+    .default("PENDIENTE_CONTABILIDAD")
+    .notNull(),
+  totalProducts: numeric("total_products", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
   subtotal: numeric("subtotal", { precision: 14, scale: 2 }).default("0"),
   total: numeric("total", { precision: 14, scale: 2 }).default("0"),
   approvedAt: timestamp("approved_at", { withTimezone: true }).defaultNow(),
@@ -680,8 +723,12 @@ export const prefacturas = pgTable("prefacturas", {
 export const orderItems = pgTable("order_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").references(() => orders.id),
-  productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
-  additionId: uuid("addition_id").references(() => additions.id, { onDelete: "set null" }),
+  productId: uuid("product_id").references(() => products.id, {
+    onDelete: "set null",
+  }),
+  additionId: uuid("addition_id").references(() => additions.id, {
+    onDelete: "set null",
+  }),
   name: varchar("name", { length: 255 }),
   garmentType: varchar("garment_type", { length: 30 }),
   quantity: integer("quantity").notNull(),
@@ -723,8 +770,12 @@ export const orderItemAdditions = pgTable("order_item_additions", {
   additionId: uuid("addition_id")
     .notNull()
     .references(() => additions.id, { onDelete: "cascade" }),
-  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull().default("1"),
-  unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull().default("0"),
+  quantity: numeric("quantity", { precision: 12, scale: 2 })
+    .notNull()
+    .default("1"),
+  unitPrice: numeric("unit_price", { precision: 14, scale: 2 })
+    .notNull()
+    .default("0"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -750,7 +801,9 @@ export const orderItemSocks = pgTable("order_item_socks", {
 export const orderItemMaterials = pgTable("order_item_materials", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderItemId: uuid("order_item_id").references(() => orderItems.id),
-  inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+  inventoryItemId: uuid("inventory_item_id").references(
+    () => inventoryItems.id,
+  ),
   quantity: numeric("quantity", { precision: 12, scale: 2 }),
   note: text("note"),
 });
@@ -801,14 +854,20 @@ export const confectionists = pgTable("confectionists", {
   id: uuid("id").defaultRandom().primaryKey(),
 
   // --- CÓDIGO AUTOGENERADO ---
-  confectionistCode: varchar("confectionist_code", { length: 20 }).unique().notNull(),
+  confectionistCode: varchar("confectionist_code", { length: 20 })
+    .unique()
+    .notNull(),
 
   // --- DOCUMENTOS ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+    length: 500,
+  }),
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
+    length: 500,
+  }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
 
@@ -857,7 +916,6 @@ export const orderItemConfection = pgTable("order_item_confection", {
   finishedAt: timestamp("finished_at", { withTimezone: true }),
 });
 
-
 /* =========================
    SUPPLIERS (Proveedores)
 ========================= */
@@ -870,9 +928,13 @@ export const suppliers = pgTable("suppliers", {
   // --- DOCUMENTOS ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+    length: 500,
+  }),
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
+    length: 500,
+  }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
   bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
 
@@ -925,9 +987,13 @@ export const packers = pgTable("packers", {
   // --- DOCUMENTOS ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+    length: 500,
+  }),
   passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", { length: 500 }),
+  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
+    length: 500,
+  }),
   companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
 
   // --- IDENTIFICACIÓN Y NOMBRE ---
@@ -1036,7 +1102,9 @@ export const warehouseStock = pgTable(
     warehouseId: uuid("warehouse_id")
       .notNull()
       .references(() => warehouses.id),
-    inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+    inventoryItemId: uuid("inventory_item_id").references(
+      () => inventoryItems.id,
+    ),
     variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
     availableQty: numeric("available_qty", { precision: 12, scale: 2 })
       .notNull()
@@ -1050,16 +1118,7 @@ export const warehouseStock = pgTable(
     lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  (t) => ({
-    onlyOneRef: check(
-      "warehouse_stock_only_one_ref",
-      sql`(
-        (${t.inventoryItemId} IS NOT NULL AND ${t.variantId} IS NULL)
-        OR
-        (${t.inventoryItemId} IS NULL AND ${t.variantId} IS NOT NULL)
-      )`,
-    ),
-  }),
+  () => ({}),
 );
 
 /* =========================
@@ -1090,7 +1149,9 @@ export const stockMovements = pgTable("stock_movements", {
   movementType: stockMovementTypeEnum("movement_type").notNull(),
   reason: stockMovementReasonEnum("reason").notNull(),
   notes: text("notes"),
-  inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+  inventoryItemId: uuid("inventory_item_id").references(
+    () => inventoryItems.id,
+  ),
   variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
   fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
   toWarehouseId: uuid("to_warehouse_id").references(() => warehouses.id),
@@ -1140,7 +1201,9 @@ export const orderSupplies = pgTable(
   "order_supplies",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    orderItemId: uuid("order_item_id").notNull().references(() => orderItems.id),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id),
     inventoryItemId: uuid("inventory_item_id")
       .notNull()
       .references(() => inventoryItems.id),
@@ -1216,12 +1279,23 @@ export const notifications = pgTable("notifications", {
 export const exchangeRates = pgTable("exchange_rates", {
   id: uuid("id").defaultRandom().primaryKey(),
   provider: varchar("provider", { length: 100 }).notNull(),
-  baseCurrency: varchar("base_currency", { length: 3 }).notNull().default("USD"),
-  targetCurrency: varchar("target_currency", { length: 3 }).notNull().default("COP"),
+  baseCurrency: varchar("base_currency", { length: 3 })
+    .notNull()
+    .default("USD"),
+  targetCurrency: varchar("target_currency", { length: 3 })
+    .notNull()
+    .default("COP"),
   sourceRate: numeric("source_rate", { precision: 14, scale: 4 }).notNull(),
-  floorRate: numeric("floor_rate", { precision: 14, scale: 4 }).notNull().default("3600"),
-  effectiveRate: numeric("effective_rate", { precision: 14, scale: 4 }).notNull(),
-  adjustmentApplied: numeric("adjustment_applied", { precision: 14, scale: 4 }).notNull().default("0"),
+  floorRate: numeric("floor_rate", { precision: 14, scale: 4 })
+    .notNull()
+    .default("3600"),
+  effectiveRate: numeric("effective_rate", {
+    precision: 14,
+    scale: 4,
+  }).notNull(),
+  adjustmentApplied: numeric("adjustment_applied", { precision: 14, scale: 4 })
+    .notNull()
+    .default("0"),
   sourceDate: timestamp("source_date", { withTimezone: true }),
   rawPayload: text("raw_payload"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

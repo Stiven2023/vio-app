@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -33,9 +34,9 @@ import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 import { WarehouseModal, type WarehouseRow } from "./warehouse-modal";
-import { WarehouseDetailsModal } from "./warehouse-details-modal";
 
 export function WarehousesTab({ canManage }: { canManage: boolean }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
 
   const endpoint = useMemo(() => {
@@ -58,9 +59,6 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<WarehouseRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<WarehouseRow | null>(null);
-
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (search.trim()) return "Sin resultados";
@@ -158,8 +156,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                           key="view"
                           startContent={<BsEye />}
                           onPress={() => {
-                            setSelectedWarehouse(warehouse);
-                            setDetailsOpen(true);
+                            router.push(`/erp/compras/bodega/${warehouse.id}`);
                           }}
                         >
                           Ver detalle
@@ -193,11 +190,10 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                       startContent={<BsArrowsMove />}
                       variant="flat"
                       onPress={() => {
-                        setSelectedWarehouse(warehouse);
-                        setDetailsOpen(true);
+                        router.push(`/erp/compras/bodega/${warehouse.id}`);
                       }}
                     >
-                      Ver detalle
+                      Ir a detalle
                     </Button>
                   )}
                 </TableCell>
@@ -230,15 +226,6 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
         }}
       />
 
-      <WarehouseDetailsModal
-        warehouse={selectedWarehouse}
-        isOpen={detailsOpen}
-        onChanged={refresh}
-        onOpenChange={(open) => {
-          if (!open) setSelectedWarehouse(null);
-          setDetailsOpen(open);
-        }}
-      />
     </div>
   );
 }

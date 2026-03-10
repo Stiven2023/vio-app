@@ -182,6 +182,7 @@ export function InventoryOutputsTab({
           ariaLabel="Salidas"
           headers={[
             "Item",
+            "SKU variante",
             "Motivo",
             "Ubicación",
             "Cantidad",
@@ -196,6 +197,7 @@ export function InventoryOutputsTab({
         <Table aria-label="Salidas">
           <TableHeader>
             <TableColumn>Item</TableColumn>
+            <TableColumn>SKU variante</TableColumn>
             <TableColumn>Motivo</TableColumn>
             <TableColumn>Ubicación</TableColumn>
             <TableColumn>Cantidad</TableColumn>
@@ -209,6 +211,7 @@ export function InventoryOutputsTab({
             {(output) => (
               <TableRow key={output.id}>
                 <TableCell>{output.itemName ?? output.inventoryItemId ?? "-"}</TableCell>
+                <TableCell>{output.variantSku ?? "-"}</TableCell>
                 <TableCell>{output.reason ?? "-"}</TableCell>
                 <TableCell>{warehouseLabel(output)}</TableCell>
                 <TableCell>{output.quantity ?? "-"}</TableCell>
@@ -234,7 +237,7 @@ export function InventoryOutputsTab({
                         key="details"
                         onPress={() => setDetailOutput(output)}
                       >
-                        Ver mas
+                        Ver independencia SKU
                       </DropdownItem>
 
                       {canEdit ? (

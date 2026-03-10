@@ -14,6 +14,7 @@
     "start": "next start",
     "lint": "eslint --fix",
     "db:migrate": "drizzle-kit push",
+    "db:repair:stock-links": "tsx src/db/repair-warehouse-stock-links.ts",
     "db:seed:roles": "tsx src/db/seed-roles-perms.ts",
     "db:seed": "tsx src/db/seed.ts"
   },

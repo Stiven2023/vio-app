@@ -19,7 +19,6 @@ import { BsBoxSeam, BsGeoAlt, BsHash, BsTruck } from "react-icons/bs";
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryEntrySchema } from "../../_lib/schemas";
 
-
 type SupplierRow = { id: string; name: string };
 type WarehouseRow = {
   id: string;
@@ -69,8 +68,10 @@ export function InventoryEntryModal({
   const [loadingVariants, setLoadingVariants] = useState(false);
 
   const itemOptions = items;
-  const selectedItem = itemOptions.find((item) => item.id === inventoryItemId) ?? null;
-  const variantRequired = selectedItem?.hasVariants === true && variants.length > 0;
+  const selectedItem =
+    itemOptions.find((item) => item.id === inventoryItemId) ?? null;
+  const variantRequired =
+    selectedItem?.hasVariants === true && variants.length > 0;
   const supplierOptions = [
     { id: "__none", name: "Sin proveedor" },
     ...suppliers,
@@ -234,7 +235,8 @@ export function InventoryEntryModal({
                 key={variant.id}
                 textValue={`${variant.sku} ${variant.color ?? ""} ${variant.size ?? ""}`}
               >
-                {variant.sku} {variant.color ? `- ${variant.color}` : ""} {variant.size ? `- ${variant.size}` : ""}
+                {variant.sku} {variant.color ? `- ${variant.color}` : ""}{" "}
+                {variant.size ? `- ${variant.size}` : ""}
               </SelectItem>
             )}
           </Select>
