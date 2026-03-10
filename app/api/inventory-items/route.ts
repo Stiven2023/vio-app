@@ -1,11 +1,74 @@
-import { desc, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { inventory, inventoryItems } from "@/src/db/schema";
+import {
+  inventoryCategories,
+  inventoryItems,
+  stockMovements,
+  warehouseStock,
+  warehouses,
+} from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { ensureInventoryBaseData, resolveWarehouseIdByLocation } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+const CATEGORY_PREFIX: Record<string, string> = {
+  INSUMOS_PRODUCCION: "INS",
+  PAPELERIA: "PAP",
+  ASEO: "ASE",
+  REPUESTOS: "REP",
+  REVENTA: "REV",
+};
+
+function sanitizeCode(value: string) {
+  return value.replace(/[^A-Z0-9]/g, "");
+}
+
+async function resolveCategoryId(
+  dbOrTx: any,
+  categoryType?: unknown,
+) {
+  await ensureInventoryBaseData(dbOrTx);
+
+  const normalized = String(categoryType ?? "INSUMOS_PRODUCCION")
+    .trim()
+    .toUpperCase();
+
+  const [categoryRow] = await dbOrTx
+    .select({ id: inventoryCategories.id, type: inventoryCategories.type })
+    .from(inventoryCategories)
+    .where(eq(inventoryCategories.type, normalized as typeof inventoryCategories.$inferSelect.type))
+    .limit(1);
+
+  if (categoryRow) {
+    return categoryRow;
+  }
+
+  const [fallback] = await dbOrTx
+    .select({ id: inventoryCategories.id, type: inventoryCategories.type })
+    .from(inventoryCategories)
+    .where(eq(inventoryCategories.type, "INSUMOS_PRODUCCION"))
+    .limit(1);
+
+  return fallback ?? null;
+}
+
+async function nextItemCode(dbOrTx: any, categoryType: string) {
+  const prefix = CATEGORY_PREFIX[categoryType] ?? "INV";
+
+  const [row] = await dbOrTx
+    .select({
+      total: sql<number>`count(*)::int`,
+    })
+    .from(inventoryItems)
+    .where(sql`${inventoryItems.itemCode} like ${`${prefix}-%`}`);
+
+  const next = (row?.total ?? 0) + 1;
+
+  return `${sanitizeCode(prefix)}-${String(next).padStart(4, "0")}`;
+}
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -35,38 +98,26 @@ export async function GET(request: Request) {
     const items = await db
       .select({
         id: inventoryItems.id,
+        itemCode: inventoryItems.itemCode,
         name: inventoryItems.name,
         description: inventoryItems.description,
         unit: inventoryItems.unit,
         price: inventoryItems.price,
         supplierId: inventoryItems.supplierId,
-        minStock: inventoryItems.minStock,
-        currentStock: sql<string>`coalesce(${inventory.availableQty}, '0')::text`,
+        categoryId: inventoryItems.categoryId,
+        hasVariants: inventoryItems.hasVariants,
+        currentStock: sql<string>`coalesce(sum(${warehouseStock.availableQty}), 0)::text`,
+        minStock: sql<string>`coalesce(max(case when ${warehouses.code} = 'BODEGA_PRINCIPAL' then ${warehouseStock.minStock} end), '0')::text`,
         lastMovementType: sql<"ENTRADA" | "SALIDA" | null>`(
           case
-            when (
-              select max(e.created_at)
-              from inventory_entries e
-              where e.inventory_item_id = ${inventoryItems.id}
-            ) is null
-            and (
-              select max(o.created_at)
-              from inventory_outputs o
-              where o.inventory_item_id = ${inventoryItems.id}
-            ) is null then null
+            when max(case when ${stockMovements.movementType} = 'ENTRADA' then ${stockMovements.createdAt} end) is null
+             and max(case when ${stockMovements.movementType} = 'SALIDA' then ${stockMovements.createdAt} end) is null
+              then null
             when coalesce(
-              (
-                select max(e.created_at)
-                from inventory_entries e
-                where e.inventory_item_id = ${inventoryItems.id}
-              ),
+              max(case when ${stockMovements.movementType} = 'ENTRADA' then ${stockMovements.createdAt} end),
               to_timestamp(0)
             ) >= coalesce(
-              (
-                select max(o.created_at)
-                from inventory_outputs o
-                where o.inventory_item_id = ${inventoryItems.id}
-              ),
+              max(case when ${stockMovements.movementType} = 'SALIDA' then ${stockMovements.createdAt} end),
               to_timestamp(0)
             ) then 'ENTRADA'
             else 'SALIDA'
@@ -77,8 +128,24 @@ export async function GET(request: Request) {
         updatedAt: inventoryItems.updatedAt,
       })
       .from(inventoryItems)
-      .leftJoin(inventory, eq(inventory.inventoryItemId, inventoryItems.id))
+      .leftJoin(warehouseStock, eq(warehouseStock.inventoryItemId, inventoryItems.id))
+      .leftJoin(stockMovements, eq(stockMovements.inventoryItemId, inventoryItems.id))
+      .leftJoin(warehouses, eq(warehouseStock.warehouseId, warehouses.id))
       .where(where)
+      .groupBy(
+        inventoryItems.id,
+        inventoryItems.itemCode,
+        inventoryItems.name,
+        inventoryItems.description,
+        inventoryItems.unit,
+        inventoryItems.price,
+        inventoryItems.supplierId,
+        inventoryItems.categoryId,
+        inventoryItems.hasVariants,
+        inventoryItems.isActive,
+        inventoryItems.createdAt,
+        inventoryItems.updatedAt,
+      )
       .orderBy(desc(inventoryItems.name))
       .limit(pageSize)
       .offset(offset);
@@ -106,8 +173,17 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { name, unit, description, price, supplierId, minStock, isActive } =
-    await request.json();
+  const {
+    name,
+    unit,
+    description,
+    price,
+    supplierId,
+    minStock,
+    isActive,
+    categoryType,
+    hasVariants,
+  } = await request.json();
 
   const n = String(name ?? "").trim();
   const u = String(unit ?? "").trim();
@@ -127,18 +203,66 @@ export async function POST(request: Request) {
     return new Response("minStock invalid", { status: 400 });
   }
 
-  const created = await db
-    .insert(inventoryItems)
-    .values({
-      name: n,
-      unit: u,
-      description: d ? d : null,
-      price: p ? p : undefined,
-      supplierId: s ? s : null,
-      minStock: ms ? ms : undefined,
-      isActive: isActive ?? true,
-    })
-    .returning();
+  const created = await db.transaction(async (tx) => {
+    const category = await resolveCategoryId(tx, categoryType);
+
+    if (!category?.id) {
+      throw new Error("No se pudo resolver categoria de inventario");
+    }
+
+    const itemCode = await nextItemCode(tx, category.type);
+
+    const [created] = await tx
+      .insert(inventoryItems)
+      .values({
+        itemCode,
+        name: n,
+        unit: u,
+        categoryId: category.id,
+        description: d ? d : null,
+        price: p ? p : undefined,
+        supplierId: s ? s : null,
+        hasVariants: Boolean(hasVariants),
+        isActive: isActive ?? true,
+      })
+      .returning();
+
+    if (created?.id && ms !== undefined) {
+      const principalWarehouseId = await resolveWarehouseIdByLocation(tx, "BODEGA_PRINCIPAL");
+
+      if (principalWarehouseId) {
+        const [existingStock] = await tx
+          .select({ id: warehouseStock.id })
+          .from(warehouseStock)
+          .where(
+            and(
+              eq(warehouseStock.inventoryItemId, created.id),
+              eq(warehouseStock.warehouseId, principalWarehouseId),
+            ),
+          )
+          .limit(1);
+
+        if (existingStock?.id) {
+          await tx
+            .update(warehouseStock)
+            .set({ minStock: ms ? ms : "0", lastUpdated: new Date() })
+            .where(eq(warehouseStock.id, existingStock.id));
+        } else {
+          await tx.insert(warehouseStock).values({
+            warehouseId: principalWarehouseId,
+            inventoryItemId: created.id,
+            variantId: null,
+            availableQty: "0",
+            reservedQty: "0",
+            minStock: ms ? ms : "0",
+            lastUpdated: new Date(),
+          });
+        }
+      }
+    }
+
+    return [created];
+  });
 
   return Response.json(created, { status: 201 });
 }
@@ -156,8 +280,18 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, name, unit, description, price, supplierId, minStock, isActive } =
-    await request.json();
+  const {
+    id,
+    name,
+    unit,
+    description,
+    price,
+    supplierId,
+    minStock,
+    isActive,
+    categoryType,
+    hasVariants,
+  } = await request.json();
 
   if (!id) return new Response("Inventory item ID required", { status: 400 });
 
@@ -180,20 +314,61 @@ export async function PUT(request: Request) {
     return new Response("minStock invalid", { status: 400 });
   }
 
-  const updated = await db
-    .update(inventoryItems)
-    .set({
-      name: n,
-      unit: u,
-      description: d !== undefined ? (d ? d : null) : undefined,
-      price: p !== undefined ? (p ? p : null) : undefined,
-      supplierId: s !== undefined ? (s ? s : null) : undefined,
-      minStock: ms !== undefined ? (ms ? ms : null) : undefined,
-      isActive: isActive !== undefined ? Boolean(isActive) : undefined,
-      updatedAt: new Date(),
-    })
-    .where(eq(inventoryItems.id, String(id)))
-    .returning();
+  const category = await resolveCategoryId(db, categoryType);
+
+  const updated = await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(inventoryItems)
+      .set({
+        name: n,
+        unit: u,
+        categoryId: category?.id,
+        description: d !== undefined ? (d ? d : null) : undefined,
+        price: p !== undefined ? (p ? p : null) : undefined,
+        supplierId: s !== undefined ? (s ? s : null) : undefined,
+        hasVariants: hasVariants !== undefined ? Boolean(hasVariants) : undefined,
+        isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventoryItems.id, String(id)))
+      .returning();
+
+    if (ms !== undefined) {
+      const principalWarehouseId = await resolveWarehouseIdByLocation(tx, "BODEGA_PRINCIPAL");
+
+      if (principalWarehouseId) {
+        const [existingStock] = await tx
+          .select({ id: warehouseStock.id })
+          .from(warehouseStock)
+          .where(
+            and(
+              eq(warehouseStock.inventoryItemId, String(id)),
+              eq(warehouseStock.warehouseId, principalWarehouseId),
+            ),
+          )
+          .limit(1);
+
+        if (existingStock?.id) {
+          await tx
+            .update(warehouseStock)
+            .set({ minStock: ms ? ms : "0", lastUpdated: new Date() })
+            .where(eq(warehouseStock.id, existingStock.id));
+        } else {
+          await tx.insert(warehouseStock).values({
+            warehouseId: principalWarehouseId,
+            inventoryItemId: String(id),
+            variantId: null,
+            availableQty: "0",
+            reservedQty: "0",
+            minStock: ms ? ms : "0",
+            lastUpdated: new Date(),
+          });
+        }
+      }
+    }
+
+    return rows;
+  });
 
   return Response.json(updated);
 }

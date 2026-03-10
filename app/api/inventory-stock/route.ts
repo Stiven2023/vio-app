@@ -1,8 +1,9 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { inventoryEntries, inventoryOutputs } from "@/src/db/schema";
+import { warehouseStock } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { resolveWarehouseIdByLocation } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -36,39 +37,45 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const itemId = String(searchParams.get("inventoryItemId") ?? "").trim();
+    const variantId = String(searchParams.get("variantId") ?? "").trim();
+    const warehouseIdParam = String(searchParams.get("warehouseId") ?? "").trim();
     const location = toLocation(searchParams.get("location"));
 
-    if (!itemId)
-      return new Response("inventoryItemId required", { status: 400 });
-    if (!location) return new Response("location invalid", { status: 400 });
+    if (!itemId && !variantId) {
+      return new Response("inventoryItemId or variantId required", { status: 400 });
+    }
 
-    const [entriesRow] = await db
-      .select({
-        total: sql<string>`coalesce(sum(${inventoryEntries.quantity}), 0)::text`,
-      })
-      .from(inventoryEntries)
+    const warehouseId = warehouseIdParam
+      ? warehouseIdParam
+      : location
+        ? await resolveWarehouseIdByLocation(db, location)
+        : null;
+
+    if (!warehouseId) {
+      return new Response("warehouse invalid", { status: 400 });
+    }
+
+    const [row] = await db
+      .select({ stock: warehouseStock.availableQty })
+      .from(warehouseStock)
       .where(
         and(
-          eq(inventoryEntries.inventoryItemId, itemId),
-          eq(inventoryEntries.location, location),
+          variantId
+            ? eq(warehouseStock.variantId, variantId)
+            : eq(warehouseStock.inventoryItemId, itemId),
+          eq(warehouseStock.warehouseId, warehouseId),
         ),
-      );
+      )
+      .limit(1);
 
-    const [outputsRow] = await db
-      .select({
-        total: sql<string>`coalesce(sum(${inventoryOutputs.quantity}), 0)::text`,
-      })
-      .from(inventoryOutputs)
-      .where(
-        and(
-          eq(inventoryOutputs.inventoryItemId, itemId),
-          eq(inventoryOutputs.location, location),
-        ),
-      );
+    const stock = asNumber(row?.stock);
 
-    const stock = asNumber(entriesRow?.total) - asNumber(outputsRow?.total);
-
-    return Response.json({ inventoryItemId: itemId, location, stock });
+    return Response.json({
+      inventoryItemId: itemId,
+      warehouseId,
+      location,
+      stock,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;

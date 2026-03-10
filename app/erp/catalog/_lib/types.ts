@@ -75,8 +75,18 @@ export type Addition = {
 
 export type InventoryItem = {
   id: string;
+  itemCode?: string | null;
   name: string;
   unit: string | null;
+  categoryId?: string | null;
+  categoryType?:
+    | "INSUMOS_PRODUCCION"
+    | "PAPELERIA"
+    | "ASEO"
+    | "REPUESTOS"
+    | "REVENTA"
+    | null;
+  hasVariants?: boolean | null;
   currentStock?: string | null;
   lastMovementType?: "ENTRADA" | "SALIDA" | null;
   description?: string | null;
@@ -91,9 +101,16 @@ export type InventoryItem = {
 export type InventoryEntry = {
   id: string;
   inventoryItemId: string | null;
+  variantId?: string | null;
   itemName: string | null;
+  variantSku?: string | null;
+  variantColor?: string | null;
+  variantSize?: string | null;
   supplierId: string | null;
   supplierName: string | null;
+  warehouseId?: string | null;
+  warehouseCode?: string | null;
+  warehouseName?: string | null;
   location: "BODEGA_PRINCIPAL" | "TIENDA" | null;
   quantity: string | null;
   createdAt: string | null;
@@ -102,11 +119,18 @@ export type InventoryEntry = {
 export type InventoryOutput = {
   id: string;
   inventoryItemId: string | null;
+  variantId?: string | null;
   itemName: string | null;
+  variantSku?: string | null;
+  variantColor?: string | null;
+  variantSize?: string | null;
   orderItemId: string | null;
   orderCode: string | null;
   requesterEmployeeName: string | null;
   orderItemName: string | null;
+  warehouseId?: string | null;
+  warehouseCode?: string | null;
+  warehouseName?: string | null;
   location: "BODEGA_PRINCIPAL" | "TIENDA" | null;
   quantity: string | null;
   reason: string | null;

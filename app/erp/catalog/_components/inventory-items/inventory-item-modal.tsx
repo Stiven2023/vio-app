@@ -18,6 +18,7 @@ import {
 import {
   BsBoxSeam,
   BsHash,
+  BsGrid,
   BsRulers,
   BsTag,
   BsTextParagraph,
@@ -28,6 +29,14 @@ import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryItemSchema } from "../../_lib/schemas";
 
 type SupplierRow = { id: string; name: string; isActive?: boolean | null };
+
+const CATEGORY_OPTIONS = [
+  { id: "INSUMOS_PRODUCCION", name: "Insumos de produccion" },
+  { id: "PAPELERIA", name: "Papeleria" },
+  { id: "ASEO", name: "Aseo" },
+  { id: "REPUESTOS", name: "Repuestos" },
+  { id: "REVENTA", name: "Reventa" },
+] as const;
 type Paginated<T> = {
   items: T[];
   page: number;
@@ -49,6 +58,10 @@ export function InventoryItemModal({
 }) {
   const [name, setName] = useState("");
   const [unit, setUnit] = useState("");
+  const [categoryType, setCategoryType] = useState<
+    "INSUMOS_PRODUCCION" | "PAPELERIA" | "ASEO" | "REPUESTOS" | "REVENTA"
+  >("INSUMOS_PRODUCCION");
+  const [hasVariants, setHasVariants] = useState(false);
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [supplierId, setSupplierId] = useState("");
@@ -66,6 +79,8 @@ export function InventoryItemModal({
     setError(null);
     setName(item?.name ?? "");
     setUnit(item?.unit ?? "");
+    setCategoryType(item?.categoryType ?? "INSUMOS_PRODUCCION");
+    setHasVariants(Boolean(item?.hasVariants));
     setDescription(item?.description ?? "");
     setPrice(item?.price ?? "");
     setSupplierId(item?.supplierId ?? "");
@@ -102,6 +117,8 @@ export function InventoryItemModal({
     const parsed = createInventoryItemSchema.safeParse({
       name,
       unit,
+      categoryType,
+      hasVariants,
       description,
       price,
       supplierId: supplierId ? supplierId : undefined,
@@ -148,6 +165,37 @@ export function InventoryItemModal({
             value={name}
             onValueChange={setName}
           />
+          <Select
+            errorMessage={error ?? undefined}
+            isInvalid={Boolean(error)}
+            label="Categoria"
+            startContent={<BsGrid className="text-default-400" />}
+            selectedKeys={new Set([categoryType])}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              const value = String(first ?? "INSUMOS_PRODUCCION").trim().toUpperCase();
+
+              if (
+                value === "PAPELERIA" ||
+                value === "ASEO" ||
+                value === "REPUESTOS" ||
+                value === "REVENTA"
+              ) {
+                setCategoryType(value);
+                return;
+              }
+
+              setCategoryType("INSUMOS_PRODUCCION");
+            }}
+            items={CATEGORY_OPTIONS}
+          >
+            {(category) => (
+              <SelectItem key={category.id} textValue={category.name}>
+                {category.name}
+              </SelectItem>
+            )}
+          </Select>
+
           <Select
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
@@ -218,6 +266,10 @@ export function InventoryItemModal({
 
           <Switch isSelected={isActive} onValueChange={setIsActive}>
             Activo
+          </Switch>
+
+          <Switch isSelected={hasVariants} onValueChange={setHasVariants}>
+            Maneja variantes (color/talla)
           </Switch>
         </ModalBody>
         <ModalFooter>

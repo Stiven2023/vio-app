@@ -28,12 +28,23 @@ import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 
 import { InventoryOutputModal } from "./inventory-output-modal";
+import { DetailModal } from "../ui/detail-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 function locationLabel(value: InventoryOutput["location"]) {
   return value === "TIENDA" ? "Tienda" : "Bodega principal";
 }
+
+function warehouseLabel(output: InventoryOutput) {
+  if (output.warehouseCode || output.warehouseName) {
+    return `${output.warehouseCode ?? "SIN-COD"} - ${output.warehouseName ?? "Bodega"}`;
+  }
+
+  return locationLabel(output.location);
+}
+
+type WarehouseRow = { id: string; code: string; name: string; isActive?: boolean | null };
 
 export function InventoryOutputsTab({
   canCreate,
@@ -46,7 +57,9 @@ export function InventoryOutputsTab({
 }) {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseRow[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -63,6 +76,20 @@ export function InventoryOutputsTab({
       })
       .finally(() => {
         if (active) setLoadingItems(false);
+      });
+
+    setLoadingWarehouses(true);
+    apiJson<{ items: WarehouseRow[] }>(`/api/warehouses?page=1&pageSize=300`)
+      .then((res) => {
+        if (!active) return;
+        setWarehouses(res.items ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setWarehouses([]);
+      })
+      .finally(() => {
+        if (active) setLoadingWarehouses(false);
       });
 
     return () => {
@@ -90,6 +117,7 @@ export function InventoryOutputsTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<InventoryOutput | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [detailOutput, setDetailOutput] = useState<InventoryOutput | null>(null);
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
@@ -182,7 +210,7 @@ export function InventoryOutputsTab({
               <TableRow key={output.id}>
                 <TableCell>{output.itemName ?? output.inventoryItemId ?? "-"}</TableCell>
                 <TableCell>{output.reason ?? "-"}</TableCell>
-                <TableCell>{locationLabel(output.location)}</TableCell>
+                <TableCell>{warehouseLabel(output)}</TableCell>
                 <TableCell>{output.quantity ?? "-"}</TableCell>
                 <TableCell>{output.orderCode ?? "-"}</TableCell>
                 <TableCell>{output.orderItemName ?? output.orderItemId ?? "-"}</TableCell>
@@ -202,6 +230,13 @@ export function InventoryOutputsTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="details"
+                        onPress={() => setDetailOutput(output)}
+                      >
+                        Ver mas
+                      </DropdownItem>
+
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -244,6 +279,8 @@ export function InventoryOutputsTab({
         isOpen={modalOpen}
         items={items}
         itemsLoading={loadingItems}
+        warehouses={warehouses}
+        warehousesLoading={loadingWarehouses}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
@@ -264,6 +301,38 @@ export function InventoryOutputsTab({
           if (!open) setPendingDelete(null);
           setConfirmOpen(open);
         }}
+      />
+
+      <DetailModal
+        isOpen={Boolean(detailOutput)}
+        title="Detalle de salida"
+        onOpenChange={(open) => {
+          if (!open) setDetailOutput(null);
+        }}
+        items={
+          detailOutput
+            ? [
+                { label: "Item", value: detailOutput.itemName ?? detailOutput.inventoryItemId ?? "-" },
+                {
+                  label: "Variante",
+                  value:
+                    detailOutput.variantSku
+                      ? `${detailOutput.variantSku}${detailOutput.variantColor ? ` - ${detailOutput.variantColor}` : ""}${detailOutput.variantSize ? ` - ${detailOutput.variantSize}` : ""}`
+                      : "-",
+                },
+                { label: "Bodega", value: warehouseLabel(detailOutput) },
+                { label: "Cantidad", value: detailOutput.quantity ?? "0" },
+                { label: "Motivo", value: detailOutput.reason ?? "-" },
+                { label: "Pedido", value: detailOutput.orderCode ?? "-" },
+                { label: "Diseno", value: detailOutput.orderItemName ?? detailOutput.orderItemId ?? "-" },
+                { label: "Solicitante", value: detailOutput.requesterEmployeeName ?? "-" },
+                {
+                  label: "Fecha",
+                  value: detailOutput.createdAt ? new Date(detailOutput.createdAt).toLocaleString() : "-",
+                },
+              ]
+            : []
+        }
       />
     </div>
   );

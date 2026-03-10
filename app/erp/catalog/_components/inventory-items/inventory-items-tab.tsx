@@ -22,6 +22,7 @@ import {
 import {
   BsArrowDown,
   BsArrowUp,
+  BsEye,
   BsPencilSquare,
   BsThreeDotsVertical,
   BsTrash,
@@ -34,6 +35,7 @@ import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 
 import { InventoryItemModal } from "./inventory-item-modal";
+import { InventoryItemDetailsModal } from "./inventory-item-details-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -65,6 +67,8 @@ export function InventoryItemsTab({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryItem | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -168,6 +172,16 @@ export function InventoryItemsTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="view"
+                        startContent={<BsEye />}
+                        onPress={() => {
+                          setDetailItem(item);
+                          setDetailOpen(true);
+                        }}
+                      >
+                        Ver mas
+                      </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -225,6 +239,15 @@ export function InventoryItemsTab({
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
           setConfirmOpen(open);
+        }}
+      />
+
+      <InventoryItemDetailsModal
+        item={detailItem}
+        isOpen={detailOpen}
+        onOpenChange={(open) => {
+          if (!open) setDetailItem(null);
+          setDetailOpen(open);
         }}
       />
     </div>

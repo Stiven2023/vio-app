@@ -2,14 +2,14 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
-  inventoryEntries,
   inventoryItems,
   purchaseOrderItems,
   purchaseOrders,
+  stockMovements,
   suppliers,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { syncInventoryForItem } from "@/src/utils/inventory-sync";
+import { resolveWarehouseIdByLocation, syncInventoryForItem } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -138,11 +138,22 @@ export async function PUT(
         return { kind: "no-items" as const };
       }
 
-      await tx.insert(inventoryEntries).values(
+      const warehouseId = await resolveWarehouseIdByLocation(tx, "BODEGA_PRINCIPAL");
+
+      if (!warehouseId) {
+        return { kind: "warehouse-not-found" as const };
+      }
+
+      await tx.insert(stockMovements).values(
         items.map((it) => ({
+          movementType: "ENTRADA" as const,
+          reason: "COMPRA_PROVEEDOR" as const,
           inventoryItemId: it.inventoryItemId,
-          supplierId: order.supplierId,
+          fromWarehouseId: null,
+          toWarehouseId: warehouseId,
           quantity: it.quantity,
+          referenceType: "PURCHASE_ORDER" as const,
+          referenceId: orderId,
         })),
       );
 
@@ -170,6 +181,7 @@ export async function PUT(
     if (result.kind === "not-found") return new Response("Not found", { status: 404 });
     if (result.kind === "already") return new Response("Ya finalizada", { status: 409 });
     if (result.kind === "no-items") return new Response("Sin items", { status: 409 });
+    if (result.kind === "warehouse-not-found") return new Response("Bodega no encontrada", { status: 409 });
     if (result.kind === "invalid-status") return new Response("Estado inválido", { status: 409 });
 
     return Response.json(result.updated);

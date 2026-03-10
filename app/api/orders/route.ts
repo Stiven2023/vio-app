@@ -4,7 +4,6 @@ import { db } from "@/src/db";
 import {
   clients,
   employees,
-  inventoryOutputs,
   orderItemConfection,
   orderItemMaterials,
   orderItemPackaging,
@@ -13,6 +12,7 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
+  stockMovements,
   orderPayments,
   orderStatusHistory,
   prefacturas,
@@ -747,8 +747,13 @@ export async function PUT(request: Request) {
           .delete(orderItemConfection)
           .where(inArray(orderItemConfection.orderItemId, existingIds));
         await tx
-          .delete(inventoryOutputs)
-          .where(inArray(inventoryOutputs.orderItemId, existingIds));
+          .delete(stockMovements)
+          .where(
+            and(
+              eq(stockMovements.referenceType, "ORDER_ITEM"),
+              inArray(stockMovements.referenceId, existingIds),
+            ),
+          );
         await tx.delete(orderItems).where(inArray(orderItems.id, existingIds));
       }
 

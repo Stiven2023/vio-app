@@ -26,15 +26,25 @@ import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
 
 import { InventoryEntryModal } from "./inventory-entry-modal";
+import { DetailModal } from "../ui/detail-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 import type { InventoryEntry, InventoryItem } from "../../_lib/types";
 
 type SupplierRow = { id: string; name: string };
+type WarehouseRow = { id: string; code: string; name: string; isActive?: boolean | null };
 
 function locationLabel(value: InventoryEntry["location"]) {
   return value === "TIENDA" ? "Tienda" : "Bodega principal";
+}
+
+function warehouseLabel(entry: InventoryEntry) {
+  if (entry.warehouseCode || entry.warehouseName) {
+    return `${entry.warehouseCode ?? "SIN-COD"} - ${entry.warehouseName ?? "Bodega"}`;
+  }
+
+  return locationLabel(entry.location);
 }
 
 export function InventoryEntriesTab({
@@ -49,8 +59,10 @@ export function InventoryEntriesTab({
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseRow[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -83,6 +95,20 @@ export function InventoryEntriesTab({
         if (active) setLoadingSuppliers(false);
       });
 
+    setLoadingWarehouses(true);
+    apiJson<{ items: WarehouseRow[] }>(`/api/warehouses?page=1&pageSize=300`)
+      .then((res) => {
+        if (!active) return;
+        setWarehouses(res.items ?? []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setWarehouses([]);
+      })
+      .finally(() => {
+        if (active) setLoadingWarehouses(false);
+      });
+
     return () => {
       active = false;
     };
@@ -108,6 +134,7 @@ export function InventoryEntriesTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<InventoryEntry | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [detailEntry, setDetailEntry] = useState<InventoryEntry | null>(null);
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
@@ -194,7 +221,7 @@ export function InventoryEntriesTab({
               <TableRow key={entry.id}>
                 <TableCell>{entry.itemName ?? entry.inventoryItemId ?? "-"}</TableCell>
                 <TableCell>{entry.supplierName ?? "-"}</TableCell>
-                <TableCell>{locationLabel(entry.location)}</TableCell>
+                <TableCell>{warehouseLabel(entry)}</TableCell>
                 <TableCell>{entry.quantity ?? "-"}</TableCell>
                 <TableCell>
                   {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-"}
@@ -211,6 +238,13 @@ export function InventoryEntriesTab({
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label="Acciones">
+                      <DropdownItem
+                        key="details"
+                        onPress={() => setDetailEntry(entry)}
+                      >
+                        Ver mas
+                      </DropdownItem>
+
                       {canEdit ? (
                         <DropdownItem
                           key="edit"
@@ -255,6 +289,8 @@ export function InventoryEntriesTab({
         itemsLoading={loadingItems}
         suppliers={suppliers}
         suppliersLoading={loadingSuppliers}
+        warehouses={warehouses}
+        warehousesLoading={loadingWarehouses}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
@@ -275,6 +311,35 @@ export function InventoryEntriesTab({
           if (!open) setPendingDelete(null);
           setConfirmOpen(open);
         }}
+      />
+
+      <DetailModal
+        isOpen={Boolean(detailEntry)}
+        title="Detalle de entrada"
+        onOpenChange={(open) => {
+          if (!open) setDetailEntry(null);
+        }}
+        items={
+          detailEntry
+            ? [
+                { label: "Item", value: detailEntry.itemName ?? detailEntry.inventoryItemId ?? "-" },
+                {
+                  label: "Variante",
+                  value:
+                    detailEntry.variantSku
+                      ? `${detailEntry.variantSku}${detailEntry.variantColor ? ` - ${detailEntry.variantColor}` : ""}${detailEntry.variantSize ? ` - ${detailEntry.variantSize}` : ""}`
+                      : "-",
+                },
+                { label: "Proveedor", value: detailEntry.supplierName ?? "-" },
+                { label: "Bodega", value: warehouseLabel(detailEntry) },
+                { label: "Cantidad", value: detailEntry.quantity ?? "0" },
+                {
+                  label: "Fecha",
+                  value: detailEntry.createdAt ? new Date(detailEntry.createdAt).toLocaleString() : "-",
+                },
+              ]
+            : []
+        }
       />
     </div>
   );

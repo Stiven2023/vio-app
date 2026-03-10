@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
@@ -8,7 +8,7 @@ import {
   employees,
   inventoryItems,
   orderItemAdditions,
-  inventoryOutputs,
+  stockMovements,
   orderItemMaterials,
   orderItemPackaging,
   orderItemSocks,
@@ -156,12 +156,18 @@ export async function GET(
 
   const deliveredRows = await db
     .select({
-      inventoryItemId: inventoryOutputs.inventoryItemId,
-      deliveredQty: sql<string>`coalesce(sum(coalesce(${inventoryOutputs.quantity}, 0)::numeric), 0)::text`,
+      inventoryItemId: stockMovements.inventoryItemId,
+      deliveredQty: sql<string>`coalesce(sum(coalesce(${stockMovements.quantity}, 0)::numeric), 0)::text`,
     })
-    .from(inventoryOutputs)
-    .where(eq(inventoryOutputs.orderItemId, orderItemId))
-    .groupBy(inventoryOutputs.inventoryItemId);
+    .from(stockMovements)
+    .where(
+      and(
+        eq(stockMovements.referenceType, "ORDER_ITEM"),
+        eq(stockMovements.referenceId, orderItemId),
+        eq(stockMovements.movementType, "SALIDA"),
+      ),
+    )
+    .groupBy(stockMovements.inventoryItemId);
 
   const deliveredByItem = new Map(
     deliveredRows

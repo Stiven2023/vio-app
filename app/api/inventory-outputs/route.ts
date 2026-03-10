@@ -1,15 +1,23 @@
-import { desc, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
   employees,
+  inventoryItemVariants,
   inventoryItems,
-  inventoryOutputs,
   orderItems,
   orders,
+  stockMovements,
+  warehouses,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { computeStockForItem, syncInventoryForItem } from "@/src/utils/inventory-sync";
+import {
+  computeStockForItemInWarehouse,
+  computeStockForVariantInWarehouse,
+  resolveWarehouseIdByLocation,
+  syncInventoryForItem,
+  syncInventoryForVariant,
+} from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -35,6 +43,34 @@ function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
     : null;
 }
 
+async function resolveSourceWarehouseId(payload: {
+  warehouseId?: unknown;
+  location?: unknown;
+}) {
+  const wId = String(payload.warehouseId ?? "").trim();
+  if (wId) return wId;
+
+  const loc = toLocation(payload.location);
+  if (!loc) return null;
+
+  return resolveWarehouseIdByLocation(db, loc);
+}
+
+function mapReasonToEnum(reason: string) {
+  const r = reason.trim().toUpperCase();
+
+  if (r.includes("PRODUC")) return "PRODUCCION" as const;
+  if (r.includes("VENTA")) return "VENTA" as const;
+  if (r.includes("CONFECCION")) return "DESPACHO_CONFECCIONISTA" as const;
+  if (r.includes("AJUSTE")) return "AJUSTE_INVENTARIO" as const;
+  if (r.includes("DEVOLUCION PROVEEDOR")) return "DEVOLUCION_PROVEEDOR" as const;
+  if (r.includes("DEVOLUCION CLIENTE")) return "DEVOLUCION_CLIENTE" as const;
+  if (r.includes("TRASLADO")) return "TRASLADO_INTERNO" as const;
+  if (r.includes("MUESTRA")) return "MUESTRA" as const;
+  if (r.includes("BAJA")) return "BAJA" as const;
+
+  return "OTRO" as const;
+}
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -54,45 +90,62 @@ export async function GET(request: Request) {
     const { page, pageSize, offset } = parsePagination(searchParams);
     const q = String(searchParams.get("q") ?? "").trim();
 
-    const where = q ? ilike(inventoryItems.name, `%${q}%`) : undefined;
+    const where = and(
+      eq(stockMovements.movementType, "SALIDA"),
+      q ? ilike(inventoryItems.name, `%${q}%`) : undefined,
+    );
 
-    const totalQuery = db
+    const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
-      .from(inventoryOutputs)
+      .from(stockMovements)
       .leftJoin(
         inventoryItems,
-        eq(inventoryOutputs.inventoryItemId, inventoryItems.id),
-      );
+        eq(stockMovements.inventoryItemId, inventoryItems.id),
+      )
+      .where(where);
 
-    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
-
-    const itemsQuery = db
+    const items = await db
       .select({
-        id: inventoryOutputs.id,
-        inventoryItemId: inventoryOutputs.inventoryItemId,
+        id: stockMovements.id,
+        inventoryItemId: stockMovements.inventoryItemId,
+        variantId: stockMovements.variantId,
         itemName: inventoryItems.name,
-        orderItemId: inventoryOutputs.orderItemId,
+        variantSku: inventoryItemVariants.sku,
+        variantColor: inventoryItemVariants.color,
+        variantSize: inventoryItemVariants.size,
+        orderItemId: stockMovements.referenceId,
         orderCode: orders.orderCode,
         requesterEmployeeName: employees.name,
         orderItemName: orderItems.name,
-        location: inventoryOutputs.location,
-        quantity: inventoryOutputs.quantity,
-        reason: inventoryOutputs.reason,
-        createdAt: inventoryOutputs.createdAt,
+        warehouseId: warehouses.id,
+        warehouseCode: warehouses.code,
+        warehouseName: warehouses.name,
+        location: sql<"BODEGA_PRINCIPAL" | "TIENDA" | null>`(
+          case
+            when ${warehouses.code} = 'TIENDA' then 'TIENDA'
+            when ${warehouses.code} = 'BODEGA_PRINCIPAL' then 'BODEGA_PRINCIPAL'
+            else null
+          end
+        )`,
+        quantity: stockMovements.quantity,
+        reason: stockMovements.notes,
+        createdAt: stockMovements.createdAt,
       })
-      .from(inventoryOutputs)
+      .from(stockMovements)
       .leftJoin(
         inventoryItems,
-        eq(inventoryOutputs.inventoryItemId, inventoryItems.id),
+        eq(stockMovements.inventoryItemId, inventoryItems.id),
       )
-      .leftJoin(orderItems, eq(inventoryOutputs.orderItemId, orderItems.id))
+      .leftJoin(orderItems, eq(stockMovements.referenceId, orderItems.id))
       .leftJoin(orders, eq(orderItems.orderId, orders.id))
       .leftJoin(employees, eq(orders.createdBy, employees.id))
-      .orderBy(desc(inventoryOutputs.createdAt))
+      .leftJoin(inventoryItemVariants, eq(stockMovements.variantId, inventoryItemVariants.id))
+      .leftJoin(warehouses, eq(stockMovements.fromWarehouseId, warehouses.id))
+      .where(where)
+      .orderBy(desc(stockMovements.createdAt))
       .limit(pageSize)
       .offset(offset);
 
-    const items = where ? await itemsQuery.where(where) : await itemsQuery;
     const hasNextPage = offset + items.length < total;
 
     return Response.json({ items, page, pageSize, total, hasNextPage });
@@ -116,21 +169,70 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, orderItemId, location, quantity, reason } = await request.json();
+  const { inventoryItemId, variantId, orderItemId, warehouseId, location, quantity, reason } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
+  const vId = String(variantId ?? "").trim();
   const ordId = String(orderItemId ?? "").trim();
-  const loc = toLocation(location);
+  const sourceWarehouseId = await resolveSourceWarehouseId({ warehouseId, location });
   const qty = toPositiveNumber(quantity);
-  const r = String(reason ?? "").trim();
+  const reasonText = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!ordId) return new Response("orderItemId required", { status: 400 });
-  if (!loc) return new Response("location invalid", { status: 400 });
+  if (!sourceWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
-  if (!r) return new Response("reason required", { status: 400 });
+  if (!reasonText) return new Response("reason required", { status: 400 });
 
-  const stock = await computeStockForItem(db, itemId, loc);
+  const [itemRow] = await db
+    .select({ hasVariants: inventoryItems.hasVariants, name: inventoryItems.name })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.id, itemId))
+    .limit(1);
+
+  if (!itemRow) return new Response("inventory item not found", { status: 404 });
+  if (itemRow.hasVariants && !vId) {
+    const [{ totalVariants }] = await db
+      .select({ totalVariants: sql<number>`count(*)::int` })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+          eq(inventoryItemVariants.isActive, true),
+        ),
+      );
+
+    if ((totalVariants ?? 0) > 0) {
+      return new Response("variant required for this item", { status: 400 });
+    }
+  }
+
+  const [warehouseRow] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, sourceWarehouseId))
+    .limit(1);
+
+  if (!warehouseRow) return new Response("warehouse not found", { status: 404 });
+
+  if (vId) {
+    const [variantRow] = await db
+      .select({ id: inventoryItemVariants.id })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.id, vId),
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+        ),
+      )
+      .limit(1);
+
+    if (!variantRow) return new Response("variant not found", { status: 404 });
+  }
+
+  const stock = vId
+    ? await computeStockForVariantInWarehouse(db, vId, sourceWarehouseId)
+    : await computeStockForItemInWarehouse(db, itemId, sourceWarehouseId);
 
   if (qty > stock) {
     return new Response("Stock insuficiente", { status: 400 });
@@ -138,30 +240,31 @@ export async function POST(request: Request) {
 
   const created = await db.transaction(async (tx) => {
     const rows = await tx
-      .insert(inventoryOutputs)
+      .insert(stockMovements)
       .values({
+        movementType: "SALIDA",
+        reason: mapReasonToEnum(reasonText),
+        notes: reasonText,
         inventoryItemId: itemId,
-        orderItemId: ordId,
-        location: loc,
+        variantId: vId || null,
+        fromWarehouseId: sourceWarehouseId,
+        toWarehouseId: null,
         quantity: String(qty),
-        reason: r,
+        referenceType: "ORDER_ITEM",
+        referenceId: ordId,
       })
       .returning();
 
     await syncInventoryForItem(tx, itemId);
+    if (vId) await syncInventoryForVariant(tx, vId);
+
     return rows;
   });
 
-  const [itemRow] = await db
-    .select({ name: inventoryItems.name })
-    .from(inventoryItems)
-    .where(eq(inventoryItems.id, itemId))
-    .limit(1);
-
   await createNotificationsForPermission("VER_INVENTARIO", {
     title: "Salida de inventario",
-    message: `Salida registrada: ${itemRow?.name ?? "Item"} -${qty}.`,
-    href: "/catalog",
+    message: `Salida registrada: ${itemRow.name ?? "Item"} -${qty}.`,
+    href: "/erp/inventory",
   });
 
   return Response.json(created, { status: 201 });
@@ -180,40 +283,95 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, inventoryItemId, orderItemId, location, quantity, reason } =
+  const { id, inventoryItemId, variantId, orderItemId, warehouseId, location, quantity, reason } =
     await request.json();
 
   if (!id) return new Response("Inventory output ID required", { status: 400 });
 
   const itemId = String(inventoryItemId ?? "").trim();
+  const vId = String(variantId ?? "").trim();
   const ordId = String(orderItemId ?? "").trim();
-  const loc = toLocation(location);
+  const sourceWarehouseId = await resolveSourceWarehouseId({ warehouseId, location });
   const qty = toPositiveNumber(quantity);
-  const r = String(reason ?? "").trim();
+  const reasonText = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!ordId) return new Response("orderItemId required", { status: 400 });
-  if (!loc) return new Response("location invalid", { status: 400 });
+  if (!sourceWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
-  if (!r) return new Response("reason required", { status: 400 });
+  if (!reasonText) return new Response("reason required", { status: 400 });
+
+  const [itemRow] = await db
+    .select({ hasVariants: inventoryItems.hasVariants })
+    .from(inventoryItems)
+    .where(eq(inventoryItems.id, itemId))
+    .limit(1);
+
+  if (!itemRow) return new Response("inventory item not found", { status: 404 });
+  if (itemRow.hasVariants && !vId) {
+    const [{ totalVariants }] = await db
+      .select({ totalVariants: sql<number>`count(*)::int` })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+          eq(inventoryItemVariants.isActive, true),
+        ),
+      );
+
+    if ((totalVariants ?? 0) > 0) {
+      return new Response("variant required for this item", { status: 400 });
+    }
+  }
+
+  const [warehouseRow] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, sourceWarehouseId))
+    .limit(1);
+
+  if (!warehouseRow) return new Response("warehouse not found", { status: 404 });
+
+  if (vId) {
+    const [variantRow] = await db
+      .select({ id: inventoryItemVariants.id })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.id, vId),
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+        ),
+      )
+      .limit(1);
+
+    if (!variantRow) return new Response("variant not found", { status: 404 });
+  }
 
   const [existing] = await db
     .select({
-      quantity: inventoryOutputs.quantity,
-      inventoryItemId: inventoryOutputs.inventoryItemId,
-      location: inventoryOutputs.location,
+      quantity: stockMovements.quantity,
+      inventoryItemId: stockMovements.inventoryItemId,
+      variantId: stockMovements.variantId,
+      fromWarehouseId: stockMovements.fromWarehouseId,
+      movementType: stockMovements.movementType,
     })
-    .from(inventoryOutputs)
-    .where(eq(inventoryOutputs.id, String(id)))
+    .from(stockMovements)
+    .where(eq(stockMovements.id, String(id)))
     .limit(1);
 
-  if (!existing) return new Response("Not found", { status: 404 });
+  if (!existing || existing.movementType !== "SALIDA") {
+    return new Response("Not found", { status: 404 });
+  }
 
-  const stock = await computeStockForItem(db, itemId, loc);
+  const stock = vId
+    ? await computeStockForVariantInWarehouse(db, vId, sourceWarehouseId)
+    : await computeStockForItemInWarehouse(db, itemId, sourceWarehouseId);
   const currentQty = asNumber(existing.quantity);
   const available =
     stock +
-    (existing.inventoryItemId === itemId && existing.location === loc
+    (existing.inventoryItemId === itemId &&
+    existing.fromWarehouseId === sourceWarehouseId &&
+    (existing.variantId ?? "") === vId
       ? currentQty
       : 0);
 
@@ -222,52 +380,62 @@ export async function PUT(request: Request) {
   }
 
   const updated = await db.transaction(async (tx) => {
-    const [existing] = await tx
+    const [existingTx] = await tx
       .select({
-        inventoryItemId: inventoryOutputs.inventoryItemId,
-        quantity: inventoryOutputs.quantity,
-        location: inventoryOutputs.location,
+        inventoryItemId: stockMovements.inventoryItemId,
+        variantId: stockMovements.variantId,
+        quantity: stockMovements.quantity,
+        fromWarehouseId: stockMovements.fromWarehouseId,
+        movementType: stockMovements.movementType,
       })
-      .from(inventoryOutputs)
-      .where(eq(inventoryOutputs.id, String(id)))
+      .from(stockMovements)
+      .where(eq(stockMovements.id, String(id)))
       .limit(1);
 
-    if (!existing) return [];
+    if (!existingTx || existingTx.movementType !== "SALIDA") return [];
 
-    // Revalidar stock con el estado más reciente dentro de la tx
-    const stock = await computeStockForItem(tx, itemId, loc);
-    const currentQty = asNumber(existing.quantity);
-    const available =
-      stock +
-      (existing.inventoryItemId === itemId && existing.location === loc
-        ? currentQty
+    const stockNow = vId
+      ? await computeStockForVariantInWarehouse(tx, vId, sourceWarehouseId)
+      : await computeStockForItemInWarehouse(tx, itemId, sourceWarehouseId);
+    const availableNow =
+      stockNow +
+      (existingTx.inventoryItemId === itemId &&
+      existingTx.fromWarehouseId === sourceWarehouseId &&
+      (existingTx.variantId ?? "") === vId
+        ? asNumber(existingTx.quantity)
         : 0);
 
-    if (qty > available) {
+    if (qty > availableNow) {
       throw new Error("Stock insuficiente");
     }
 
     const rows = await tx
-      .update(inventoryOutputs)
+      .update(stockMovements)
       .set({
         inventoryItemId: itemId,
-        orderItemId: ordId,
-        location: loc,
+        fromWarehouseId: sourceWarehouseId,
+        toWarehouseId: null,
         quantity: String(qty),
-        reason: r,
+        reason: mapReasonToEnum(reasonText),
+        notes: reasonText,
+        variantId: vId || null,
+        referenceType: "ORDER_ITEM",
+        referenceId: ordId,
       })
-      .where(eq(inventoryOutputs.id, String(id)))
+      .where(eq(stockMovements.id, String(id)))
       .returning();
 
-    await syncInventoryForItem(tx, existing.inventoryItemId ?? itemId);
-    if (existing.inventoryItemId && existing.inventoryItemId !== itemId) {
+    await syncInventoryForItem(tx, existingTx.inventoryItemId ?? itemId);
+    if (existingTx.variantId) await syncInventoryForVariant(tx, existingTx.variantId);
+    if (vId && existingTx.variantId !== vId) await syncInventoryForVariant(tx, vId);
+    if (existingTx.inventoryItemId && existingTx.inventoryItemId !== itemId) {
       await syncInventoryForItem(tx, itemId);
     }
 
     return rows;
   }).catch((e) => {
-    if (String((e as any)?.message ?? "") === "Stock insuficiente") {
-      return "__stock" as any;
+    if (String((e as { message?: string })?.message ?? "") === "Stock insuficiente") {
+      return "__stock" as const;
     }
     throw e;
   });
@@ -302,21 +470,29 @@ export async function DELETE(request: Request) {
 
   const deleted = await db.transaction(async (tx) => {
     const [existing] = await tx
-      .select({ inventoryItemId: inventoryOutputs.inventoryItemId })
-      .from(inventoryOutputs)
-      .where(eq(inventoryOutputs.id, String(id)))
+      .select({
+        inventoryItemId: stockMovements.inventoryItemId,
+        variantId: stockMovements.variantId,
+        movementType: stockMovements.movementType,
+      })
+      .from(stockMovements)
+      .where(eq(stockMovements.id, String(id)))
       .limit(1);
 
-    if (!existing) return [];
+    if (!existing || existing.movementType !== "SALIDA") return [];
 
     const rows = await tx
-      .delete(inventoryOutputs)
-      .where(eq(inventoryOutputs.id, String(id)))
+      .delete(stockMovements)
+      .where(eq(stockMovements.id, String(id)))
       .returning();
 
     if (existing.inventoryItemId) {
       await syncInventoryForItem(tx, existing.inventoryItemId);
     }
+    if (existing.variantId) {
+      await syncInventoryForVariant(tx, existing.variantId);
+    }
+
     return rows;
   });
 

@@ -25,15 +25,15 @@ import {
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryOutputSchema } from "../../_lib/schemas";
 
-const LOCATION_OPTIONS = [
-  { id: "BODEGA_PRINCIPAL", name: "Bodega principal" },
-  { id: "TIENDA", name: "Tienda" },
-] as const;
+type WarehouseRow = { id: string; code: string; name: string; isActive?: boolean | null };
+type VariantRow = { id: string; sku: string; color: string | null; size: string | null; isActive?: boolean | null };
 
 export function InventoryOutputModal({
   output,
   items,
   itemsLoading,
+  warehouses,
+  warehousesLoading,
   isOpen,
   onOpenChange,
   onSaved,
@@ -41,6 +41,8 @@ export function InventoryOutputModal({
   output: InventoryOutput | null;
   items: InventoryItem[];
   itemsLoading: boolean;
+  warehouses: WarehouseRow[];
+  warehousesLoading: boolean;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -57,24 +59,28 @@ export function InventoryOutputModal({
     }>
   >([]);
   const [orderItemsLoading, setOrderItemsLoading] = useState(false);
+  const [variantId, setVariantId] = useState("");
+  const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [loadingVariants, setLoadingVariants] = useState(false);
   const [quantity, setQuantity] = useState("");
-  const [location, setLocation] = useState<"BODEGA_PRINCIPAL" | "TIENDA">(
-    "BODEGA_PRINCIPAL",
-  );
+  const [warehouseId, setWarehouseId] = useState("");
   const [reason, setReason] = useState("");
   const [available, setAvailable] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const itemOptions = items;
+  const selectedItem = itemOptions.find((item) => item.id === inventoryItemId) ?? null;
+  const variantRequired = selectedItem?.hasVariants === true && variants.length > 0;
 
   useEffect(() => {
     if (!isOpen) return;
     setSubmitting(false);
     setError(null);
     setInventoryItemId(output?.inventoryItemId ?? "");
+    setVariantId(output?.variantId ?? "");
     setOrderItemId(output?.orderItemId ?? "");
-    setLocation(output?.location ?? "BODEGA_PRINCIPAL");
+    setWarehouseId(output?.warehouseId ?? "");
     setQuantity(output?.quantity ? String(output.quantity) : "");
     setReason(output?.reason ?? "");
   }, [output, isOpen]);
@@ -115,20 +121,59 @@ export function InventoryOutputModal({
 
   useEffect(() => {
     const id = String(inventoryItemId ?? "").trim();
+    if (!id || !isOpen) {
+      setVariants([]);
+      setVariantId("");
+      return;
+    }
+
+    let active = true;
+    setLoadingVariants(true);
+    apiJson<{ items: VariantRow[] }>(`/api/inventory-item-variants?inventoryItemId=${id}&page=1&pageSize=200`)
+      .then((res) => {
+        if (!active) return;
+        const rows = (res.items ?? []).filter((v) => v.isActive !== false);
+        setVariants(rows);
+        if (rows.length === 0) setVariantId("");
+      })
+      .catch(() => {
+        if (!active) return;
+        setVariants([]);
+        setVariantId("");
+      })
+      .finally(() => {
+        if (active) setLoadingVariants(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [inventoryItemId, isOpen]);
+
+  useEffect(() => {
+    const id = String(inventoryItemId ?? "").trim();
 
     if (!id) {
       setAvailable(null);
       return;
     }
 
+    if (!warehouseId) {
+      setAvailable(null);
+      return;
+    }
+
     apiJson<{ stock: number }>(
-      `/api/inventory-stock?inventoryItemId=${id}&location=${location}`,
+      variantId
+        ? `/api/inventory-stock?variantId=${variantId}&warehouseId=${warehouseId}`
+        : `/api/inventory-stock?inventoryItemId=${id}&warehouseId=${warehouseId}`,
     )
       .then((res) => {
         const base = res.stock ?? 0;
         const current =
           output?.inventoryItemId === id &&
-          output?.location === location &&
+          output?.warehouseId === warehouseId &&
+          (output?.variantId ?? "") === variantId &&
           output?.quantity
             ? Number(output.quantity)
             : 0;
@@ -138,19 +183,27 @@ export function InventoryOutputModal({
       .catch(() => setAvailable(null));
   }, [
     inventoryItemId,
-    location,
+    variantId,
+    warehouseId,
     output?.inventoryItemId,
-    output?.location,
+    output?.variantId,
+    output?.warehouseId,
     output?.quantity,
   ]);
 
   const submit = async () => {
     if (submitting) return;
 
+    if (variantRequired && !variantId) {
+      setError("Este item requiere seleccionar una variante");
+      return;
+    }
+
     const parsed = createInventoryOutputSchema.safeParse({
       inventoryItemId,
+      variantId: variantId || undefined,
       orderItemId: orderItemId || undefined,
-      location,
+      warehouseId,
       quantity,
       reason,
     });
@@ -219,26 +272,39 @@ export function InventoryOutputModal({
           />
 
           <Select
-            isDisabled={submitting}
-            label="Ubicación"
-            startContent={<BsGeoAlt className="text-default-400" />}
-            selectedKeys={new Set([location])}
+            isDisabled={submitting || loadingVariants || variants.length === 0}
+            isLoading={loadingVariants}
+            isRequired={variantRequired}
+            label={variantRequired ? "Variante" : "Variante (opcional)"}
+            selectedKeys={variantId ? new Set([variantId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
-              const value = String(first ?? "").trim().toUpperCase();
-
-              if (value === "TIENDA") {
-                setLocation("TIENDA");
-                return;
-              }
-
-              setLocation("BODEGA_PRINCIPAL");
+              setVariantId(first ? String(first) : "");
             }}
-            items={LOCATION_OPTIONS}
+            items={variants}
           >
-            {(loc) => (
-              <SelectItem key={loc.id} textValue={loc.name}>
-                {loc.name}
+            {(variant) => (
+              <SelectItem key={variant.id} textValue={`${variant.sku} ${variant.color ?? ""} ${variant.size ?? ""}`}>
+                {variant.sku} {variant.color ? `- ${variant.color}` : ""} {variant.size ? `- ${variant.size}` : ""}
+              </SelectItem>
+            )}
+          </Select>
+
+          <Select
+            isDisabled={submitting || warehousesLoading}
+            isLoading={warehousesLoading}
+            label="Bodega"
+            startContent={<BsGeoAlt className="text-default-400" />}
+            selectedKeys={warehouseId ? new Set([warehouseId]) : new Set([])}
+            onSelectionChange={(keys) => {
+              const first = Array.from(keys)[0];
+              setWarehouseId(first ? String(first) : "");
+            }}
+            items={warehouses.filter((w) => w.isActive !== false)}
+          >
+            {(w) => (
+              <SelectItem key={w.id} textValue={`${w.code} ${w.name}`}>
+                {w.code} - {w.name}
               </SelectItem>
             )}
           </Select>

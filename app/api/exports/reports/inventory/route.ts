@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Buffer as NodeBuffer } from "node:buffer";
 
 import { db } from "@/src/db";
-import { inventoryEntries, inventoryItems, inventoryOutputs } from "@/src/db/schema";
+import { inventoryItems } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { workbookToXlsxResponse } from "@/src/utils/exceljs-export";
@@ -115,9 +115,31 @@ export async function GET(request: Request) {
       id: inventoryItems.id,
       name: inventoryItems.name,
       unit: inventoryItems.unit,
-      minStock: inventoryItems.minStock,
-      entriesTotal: sql<string>`coalesce((select sum(${inventoryEntries.quantity}) from inventory_entries ie where ie.inventory_item_id = ${inventoryItems.id}), 0)::text`,
-      outputsTotal: sql<string>`coalesce((select sum(${inventoryOutputs.quantity}) from inventory_outputs io where io.inventory_item_id = ${inventoryItems.id}), 0)::text`,
+      minStock: sql<string>`coalesce((
+        select ws.min_stock::text
+        from warehouse_stock ws
+        join warehouses w on w.id = ws.warehouse_id
+        where ws.inventory_item_id = ${inventoryItems.id}
+          and w.code = 'BODEGA_PRINCIPAL'
+        limit 1
+      ), '0')`,
+      entriesTotal: sql<string>`coalesce((
+        select sum(sm.quantity)
+        from stock_movements sm
+        where sm.inventory_item_id = ${inventoryItems.id}
+          and sm.movement_type = 'ENTRADA'
+      ), 0)::text`,
+      outputsTotal: sql<string>`coalesce((
+        select sum(sm.quantity)
+        from stock_movements sm
+        where sm.inventory_item_id = ${inventoryItems.id}
+          and sm.movement_type = 'SALIDA'
+      ), 0)::text`,
+      currentStock: sql<string>`coalesce((
+        select sum(ws.available_qty)
+        from warehouse_stock ws
+        where ws.inventory_item_id = ${inventoryItems.id}
+      ), 0)::text`,
     })
     .from(inventoryItems)
     .orderBy(inventoryItems.name);
@@ -203,7 +225,7 @@ export async function GET(request: Request) {
   for (const item of items) {
     const entries = Number(item.entriesTotal ?? 0);
     const outputs = Number(item.outputsTotal ?? 0);
-    const stock = entries - outputs;
+    const stock = Number(item.currentStock ?? entries - outputs);
 
     const row = sheet.addRow([
       item.name ?? "-",

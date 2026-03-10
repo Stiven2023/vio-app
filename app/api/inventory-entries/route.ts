@@ -1,9 +1,19 @@
-import { desc, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { inventoryEntries, inventoryItems, suppliers } from "@/src/db/schema";
+import {
+  inventoryItemVariants,
+  inventoryItems,
+  stockMovements,
+  suppliers,
+  warehouses,
+} from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { syncInventoryForItem } from "@/src/utils/inventory-sync";
+import {
+  resolveWarehouseIdByLocation,
+  syncInventoryForItem,
+  syncInventoryForVariant,
+} from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -21,6 +31,19 @@ function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
   return location === "BODEGA_PRINCIPAL" || location === "TIENDA"
     ? (location as "BODEGA_PRINCIPAL" | "TIENDA")
     : null;
+}
+
+async function resolveTargetWarehouseId(payload: {
+  warehouseId?: unknown;
+  location?: unknown;
+}) {
+  const wId = String(payload.warehouseId ?? "").trim();
+  if (wId) return wId;
+
+  const loc = toLocation(payload.location);
+  if (!loc) return null;
+
+  return resolveWarehouseIdByLocation(db, loc);
 }
 
 export async function GET(request: Request) {
@@ -41,40 +64,57 @@ export async function GET(request: Request) {
     const { page, pageSize, offset } = parsePagination(searchParams);
     const q = String(searchParams.get("q") ?? "").trim();
 
-    const where = q ? ilike(inventoryItems.name, `%${q}%`) : undefined;
+    const where = and(
+      eq(stockMovements.movementType, "ENTRADA"),
+      q ? ilike(inventoryItems.name, `%${q}%`) : undefined,
+    );
 
-    const totalQuery = db
+    const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
-      .from(inventoryEntries)
+      .from(stockMovements)
       .leftJoin(
         inventoryItems,
-        eq(inventoryEntries.inventoryItemId, inventoryItems.id),
-      );
-
-    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
-
-    const itemsQuery = db
-      .select({
-        id: inventoryEntries.id,
-        inventoryItemId: inventoryEntries.inventoryItemId,
-        itemName: inventoryItems.name,
-        supplierId: inventoryEntries.supplierId,
-        supplierName: suppliers.name,
-        location: inventoryEntries.location,
-        quantity: inventoryEntries.quantity,
-        createdAt: inventoryEntries.createdAt,
-      })
-      .from(inventoryEntries)
-      .leftJoin(
-        inventoryItems,
-        eq(inventoryEntries.inventoryItemId, inventoryItems.id),
+        eq(stockMovements.inventoryItemId, inventoryItems.id),
       )
-      .leftJoin(suppliers, eq(inventoryEntries.supplierId, suppliers.id))
-      .orderBy(desc(inventoryEntries.createdAt))
+      .where(where);
+
+    const items = await db
+      .select({
+        id: stockMovements.id,
+        inventoryItemId: stockMovements.inventoryItemId,
+        variantId: stockMovements.variantId,
+        itemName: inventoryItems.name,
+        variantSku: inventoryItemVariants.sku,
+        variantColor: inventoryItemVariants.color,
+        variantSize: inventoryItemVariants.size,
+        supplierId: inventoryItems.supplierId,
+        supplierName: suppliers.name,
+        warehouseId: warehouses.id,
+        warehouseCode: warehouses.code,
+        warehouseName: warehouses.name,
+        location: sql<"BODEGA_PRINCIPAL" | "TIENDA" | null>`(
+          case
+            when ${warehouses.code} = 'TIENDA' then 'TIENDA'
+            when ${warehouses.code} = 'BODEGA_PRINCIPAL' then 'BODEGA_PRINCIPAL'
+            else null
+          end
+        )`,
+        quantity: stockMovements.quantity,
+        createdAt: stockMovements.createdAt,
+      })
+      .from(stockMovements)
+      .leftJoin(
+        inventoryItems,
+        eq(stockMovements.inventoryItemId, inventoryItems.id),
+      )
+      .leftJoin(suppliers, eq(inventoryItems.supplierId, suppliers.id))
+      .leftJoin(inventoryItemVariants, eq(stockMovements.variantId, inventoryItemVariants.id))
+      .leftJoin(warehouses, eq(stockMovements.toWarehouseId, warehouses.id))
+      .where(where)
+      .orderBy(desc(stockMovements.createdAt))
       .limit(pageSize)
       .offset(offset);
 
-    const items = where ? await itemsQuery.where(where) : await itemsQuery;
     const hasNextPage = offset + items.length < total;
 
     return Response.json({ items, page, pageSize, total, hasNextPage });
@@ -98,42 +138,97 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, supplierId, location, quantity } = await request.json();
+  const { inventoryItemId, variantId, warehouseId, location, quantity } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
-  const supId = String(supplierId ?? "").trim();
-  const loc = toLocation(location);
+  const vId = String(variantId ?? "").trim();
+  const targetWarehouseId = await resolveTargetWarehouseId({ warehouseId, location });
   const qty = toPositiveNumber(quantity);
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
-  if (!loc) return new Response("location invalid", { status: 400 });
+  if (!targetWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
-  const created = await db.transaction(async (tx) => {
-    const rows = await tx
-      .insert(inventoryEntries)
-      .values({
-        inventoryItemId: itemId,
-        supplierId: supId ? supId : null,
-        location: loc,
-        quantity: String(qty),
-      })
-      .returning();
+  const [warehouseRow] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, targetWarehouseId))
+    .limit(1);
 
-    await syncInventoryForItem(tx, itemId);
-    return rows;
-  });
+  if (!warehouseRow) return new Response("warehouse not found", { status: 404 });
+
+  if (vId) {
+    const [variantRow] = await db
+      .select({ id: inventoryItemVariants.id })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.id, vId),
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+        ),
+      )
+      .limit(1);
+
+    if (!variantRow) return new Response("variant not found", { status: 404 });
+  }
 
   const [itemRow] = await db
-    .select({ name: inventoryItems.name })
+    .select({
+      name: inventoryItems.name,
+      price: inventoryItems.price,
+      hasVariants: inventoryItems.hasVariants,
+    })
     .from(inventoryItems)
     .where(eq(inventoryItems.id, itemId))
     .limit(1);
 
+  if (!itemRow) {
+    return new Response("inventory item not found", { status: 404 });
+  }
+
+  if (itemRow.hasVariants && !vId) {
+    const [{ totalVariants }] = await db
+      .select({ totalVariants: sql<number>`count(*)::int` })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+          eq(inventoryItemVariants.isActive, true),
+        ),
+      );
+
+    if ((totalVariants ?? 0) > 0) {
+      return new Response("variant required for this item", { status: 400 });
+    }
+  }
+
+  const created = await db.transaction(async (tx) => {
+    const rows = await tx
+      .insert(stockMovements)
+      .values({
+        movementType: "ENTRADA",
+        reason: "COMPRA_PROVEEDOR",
+        inventoryItemId: itemId,
+        variantId: vId || null,
+        fromWarehouseId: null,
+        toWarehouseId: targetWarehouseId,
+        quantity: String(qty),
+        unitCost: itemRow.price ?? null,
+        referenceType: "MANUAL",
+        referenceId: null,
+      })
+      .returning();
+
+    await syncInventoryForItem(tx, itemId);
+    if (vId) await syncInventoryForVariant(tx, vId);
+
+    return rows;
+  });
+
   await createNotificationsForPermission("VER_INVENTARIO", {
     title: "Entrada de inventario",
-    message: `Entrada registrada: ${itemRow?.name ?? "Item"} +${qty}.`,
-    href: "/catalog",
+    message: `Entrada registrada: ${itemRow.name ?? "Item"} +${qty}.`,
+    href: "/erp/inventory",
   });
 
   return Response.json(created, { status: 201 });
@@ -152,46 +247,116 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, inventoryItemId, supplierId, location, quantity } = await request.json();
+  const { id, inventoryItemId, variantId, warehouseId, location, quantity } = await request.json();
 
   if (!id) return new Response("Inventory entry ID required", { status: 400 });
 
   const itemId = String(inventoryItemId ?? "").trim();
-  const supId = String(supplierId ?? "").trim();
-  const loc = toLocation(location);
+  const vId = String(variantId ?? "").trim();
+  const targetWarehouseId = await resolveTargetWarehouseId({ warehouseId, location });
   const qty = toPositiveNumber(quantity);
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
-  if (!loc) return new Response("location invalid", { status: 400 });
+  if (!targetWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
-  const updated = await db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select({ inventoryItemId: inventoryEntries.inventoryItemId })
-      .from(inventoryEntries)
-      .where(eq(inventoryEntries.id, String(id)))
+  const [warehouseRow] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, targetWarehouseId))
+    .limit(1);
+
+  if (!warehouseRow) return new Response("warehouse not found", { status: 404 });
+
+  if (vId) {
+    const [variantRow] = await db
+      .select({ id: inventoryItemVariants.id })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.id, vId),
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+        ),
+      )
       .limit(1);
 
-    if (!existing) return [];
+    if (!variantRow) return new Response("variant not found", { status: 404 });
+  }
+
+  const updated = await db.transaction(async (tx) => {
+    const [itemRow] = await tx
+      .select({ hasVariants: inventoryItems.hasVariants })
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, itemId))
+      .limit(1);
+
+    if (!itemRow) {
+      throw new Error("inventory item not found");
+    }
+
+    if (itemRow.hasVariants && !vId) {
+      const [{ totalVariants }] = await tx
+        .select({ totalVariants: sql<number>`count(*)::int` })
+        .from(inventoryItemVariants)
+        .where(
+          and(
+            eq(inventoryItemVariants.inventoryItemId, itemId),
+            eq(inventoryItemVariants.isActive, true),
+          ),
+        );
+
+      if ((totalVariants ?? 0) > 0) {
+        throw new Error("variant required for this item");
+      }
+    }
+
+    const [existing] = await tx
+      .select({
+        inventoryItemId: stockMovements.inventoryItemId,
+        variantId: stockMovements.variantId,
+        movementType: stockMovements.movementType,
+      })
+      .from(stockMovements)
+      .where(eq(stockMovements.id, String(id)))
+      .limit(1);
+
+    if (!existing || existing.movementType !== "ENTRADA") return [];
 
     const rows = await tx
-      .update(inventoryEntries)
+      .update(stockMovements)
       .set({
         inventoryItemId: itemId,
-        supplierId: supId ? supId : null,
-        location: loc,
+        variantId: vId || null,
+        fromWarehouseId: null,
+        toWarehouseId: targetWarehouseId,
         quantity: String(qty),
+        reason: "COMPRA_PROVEEDOR",
       })
-      .where(eq(inventoryEntries.id, String(id)))
+      .where(eq(stockMovements.id, String(id)))
       .returning();
 
     await syncInventoryForItem(tx, existing.inventoryItemId ?? itemId);
+    if (existing.variantId) await syncInventoryForVariant(tx, existing.variantId);
+    if (vId && existing.variantId !== vId) await syncInventoryForVariant(tx, vId);
     if (existing.inventoryItemId && existing.inventoryItemId !== itemId) {
       await syncInventoryForItem(tx, itemId);
     }
 
     return rows;
+  }).catch((e) => {
+    const msg = String((e as { message?: string })?.message ?? "");
+    if (msg === "inventory item not found") return "__item" as const;
+    if (msg === "variant required for this item") return "__variant_required" as const;
+    throw e;
   });
+
+  if (updated === "__item") {
+    return new Response("inventory item not found", { status: 404 });
+  }
+
+  if (updated === "__variant_required") {
+    return new Response("variant required for this item", { status: 400 });
+  }
 
   if (updated.length === 0) return new Response("Not found", { status: 404 });
 
@@ -217,21 +382,29 @@ export async function DELETE(request: Request) {
 
   const deleted = await db.transaction(async (tx) => {
     const [existing] = await tx
-      .select({ inventoryItemId: inventoryEntries.inventoryItemId })
-      .from(inventoryEntries)
-      .where(eq(inventoryEntries.id, String(id)))
+      .select({
+        inventoryItemId: stockMovements.inventoryItemId,
+        variantId: stockMovements.variantId,
+        movementType: stockMovements.movementType,
+      })
+      .from(stockMovements)
+      .where(eq(stockMovements.id, String(id)))
       .limit(1);
 
-    if (!existing) return [];
+    if (!existing || existing.movementType !== "ENTRADA") return [];
 
     const rows = await tx
-      .delete(inventoryEntries)
-      .where(eq(inventoryEntries.id, String(id)))
+      .delete(stockMovements)
+      .where(eq(stockMovements.id, String(id)))
       .returning();
 
     if (existing.inventoryItemId) {
       await syncInventoryForItem(tx, existing.inventoryItemId);
     }
+    if (existing.variantId) {
+      await syncInventoryForVariant(tx, existing.variantId);
+    }
+
     return rows;
   });
 

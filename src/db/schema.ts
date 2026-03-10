@@ -70,6 +70,7 @@ export const documentTypeEnum = pgEnum("document_type", [
 
 import {
   boolean,
+  check,
   date,
   integer,
   numeric,
@@ -82,6 +83,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Enum de roles
 export const roleEnum = pgEnum("role", [
@@ -244,6 +246,45 @@ export const paymentStatusEnum = pgEnum("payment_status", [
 export const inventoryLocationEnum = pgEnum("inventory_location", [
   "BODEGA_PRINCIPAL",
   "TIENDA",
+]);
+
+export const inventoryCategoryTypeEnum = pgEnum("inventory_category_type", [
+  "INSUMOS_PRODUCCION",
+  "PAPELERIA",
+  "ASEO",
+  "REPUESTOS",
+  "REVENTA",
+]);
+
+export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
+  "ENTRADA",
+  "SALIDA",
+  "TRASLADO",
+  "AJUSTE_POSITIVO",
+  "AJUSTE_NEGATIVO",
+  "DEVOLUCION",
+]);
+
+export const stockMovementReasonEnum = pgEnum("stock_movement_reason", [
+  "PRODUCCION",
+  "VENTA",
+  "DESPACHO_CONFECCIONISTA",
+  "COMPRA_PROVEEDOR",
+  "AJUSTE_INVENTARIO",
+  "DEVOLUCION_PROVEEDOR",
+  "DEVOLUCION_CLIENTE",
+  "TRASLADO_INTERNO",
+  "MUESTRA",
+  "BAJA",
+  "OTRO",
+]);
+
+export const stockMovementReferenceTypeEnum = pgEnum("stock_movement_reference_type", [
+  "ORDER_ITEM",
+  "PURCHASE_ORDER",
+  "CONFECTIONIST",
+  "MANUAL",
+  "SHIPMENT",
 ]);
 
 export const shipmentModeEnum = pgEnum("shipment_mode", [
@@ -926,39 +967,92 @@ export const orderItemPacker = pgTable("order_item_packer", {
 /* =========================
    INVENTORY ITEMS
 ========================= */
+export const inventoryCategories = pgTable("inventory_categories", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  type: inventoryCategoryTypeEnum("type").notNull().unique(),
+  name: varchar("name", { length: 150 }).notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const warehouses = pgTable("warehouses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: varchar("code", { length: 30 }).unique().notNull(),
+  name: varchar("name", { length: 150 }).notNull(),
+  description: text("description"),
+  isVirtual: boolean("is_virtual").default(false),
+  isExternal: boolean("is_external").default(false),
+  mirroredWarehouseId: uuid("mirrored_warehouse_id"),
+  address: varchar("address", { length: 255 }),
+  city: varchar("city", { length: 100 }).default("Medellín"),
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const inventoryItems = pgTable("inventory_items", {
   id: uuid("id").defaultRandom().primaryKey(),
+  itemCode: varchar("item_code", { length: 30 }).unique().notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  unit: varchar("unit", { length: 50 }),
+  categoryId: uuid("category_id")
+    .notNull()
+    .references(() => inventoryCategories.id),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  hasVariants: boolean("has_variants").default(false),
   price: numeric("price", { precision: 14, scale: 2 }).default("0"),
   supplierId: uuid("supplier_id").references(() => suppliers.id),
-  minStock: numeric("min_stock", { precision: 12, scale: 2 }).default("0"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
-/* =========================
-   INVENTORY (STATE)
-========================= */
-export const inventory = pgTable("inventory", {
+export const inventoryItemVariants = pgTable("inventory_item_variants", {
   id: uuid("id").defaultRandom().primaryKey(),
   inventoryItemId: uuid("inventory_item_id")
     .notNull()
-    .unique()
-    .references(() => inventoryItems.id),
-  availableQty: numeric("available_qty", { precision: 12, scale: 2 }).default(
-    "0",
-  ),
-  color: varchar("color", { length: 50 }),
+    .references(() => inventoryItems.id, { onDelete: "cascade" }),
+  sku: varchar("sku", { length: 50 }).unique().notNull(),
+  color: varchar("color", { length: 80 }),
   size: varchar("size", { length: 50 }),
-  unit: varchar("unit", { length: 50 }).default("unit"),
-  lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  description: varchar("description", { length: 255 }),
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+export const warehouseStock = pgTable(
+  "warehouse_stock",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouses.id),
+    inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+    variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
+    availableQty: numeric("available_qty", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    reservedQty: numeric("reserved_qty", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    minStock: numeric("min_stock", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    onlyOneRef: check(
+      "warehouse_stock_only_one_ref",
+      sql`(
+        (${t.inventoryItemId} IS NOT NULL AND ${t.variantId} IS NULL)
+        OR
+        (${t.inventoryItemId} IS NULL AND ${t.variantId} IS NOT NULL)
+      )`,
+    ),
+  }),
+);
 
 /* =========================
    PURCHASE ORDERS
@@ -983,32 +1077,22 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
 });
 
-/* =========================
-   INVENTORY ENTRIES
-========================= */
-export const inventoryEntries = pgTable("inventory_entries", {
+export const stockMovements = pgTable("stock_movements", {
   id: uuid("id").defaultRandom().primaryKey(),
-  inventoryItemId: uuid("inventory_item_id").references(
-    () => inventoryItems.id,
-  ),
-  supplierId: uuid("supplier_id").references(() => suppliers.id),
-  location: inventoryLocationEnum("location").default("BODEGA_PRINCIPAL"),
-  quantity: numeric("quantity", { precision: 12, scale: 2 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
-
-/* =========================
-   INVENTORY OUTPUTS
-========================= */
-export const inventoryOutputs = pgTable("inventory_outputs", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  inventoryItemId: uuid("inventory_item_id").references(
-    () => inventoryItems.id,
-  ),
-  orderItemId: uuid("order_item_id").references(() => orderItems.id),
-  location: inventoryLocationEnum("location").default("BODEGA_PRINCIPAL"),
-  quantity: numeric("quantity", { precision: 12, scale: 2 }),
-  reason: varchar("reason", { length: 100 }),
+  movementType: stockMovementTypeEnum("movement_type").notNull(),
+  reason: stockMovementReasonEnum("reason").notNull(),
+  notes: text("notes"),
+  inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+  variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
+  fromWarehouseId: uuid("from_warehouse_id").references(() => warehouses.id),
+  toWarehouseId: uuid("to_warehouse_id").references(() => warehouses.id),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  unitCost: numeric("unit_cost", { precision: 14, scale: 2 }),
+  referenceType: stockMovementReferenceTypeEnum("reference_type"),
+  referenceId: uuid("reference_id"),
+  requestedBy: uuid("requested_by").references(() => employees.id),
+  requestedAt: timestamp("requested_at", { withTimezone: true }),
+  createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

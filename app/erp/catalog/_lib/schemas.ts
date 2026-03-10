@@ -143,6 +143,14 @@ export const createProductPriceSchema = z.object({
 export const createInventoryItemSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido").max(255, "Máximo 255"),
   unit: z.string().trim().min(1, "Unidad requerida").max(50, "Máximo 50"),
+  categoryType: z.enum([
+    "INSUMOS_PRODUCCION",
+    "PAPELERIA",
+    "ASEO",
+    "REPUESTOS",
+    "REVENTA",
+  ]),
+  hasVariants: z.boolean().optional(),
   description: z
     .string()
     .trim()
@@ -171,8 +179,9 @@ export const createInventoryItemSchema = z.object({
 
 export const createInventoryEntrySchema = z.object({
   inventoryItemId: z.string().uuid("Selecciona un item"),
+  variantId: z.string().uuid().optional(),
   supplierId: z.string().uuid().optional(),
-  location: z.enum(["BODEGA_PRINCIPAL", "TIENDA"]),
+  warehouseId: z.string().uuid("Selecciona una bodega"),
   quantity: z
     .string()
     .trim()
@@ -182,8 +191,9 @@ export const createInventoryEntrySchema = z.object({
 
 export const createInventoryOutputSchema = z.object({
   inventoryItemId: z.string().uuid("Selecciona un item"),
+  variantId: z.string().uuid().optional(),
   orderItemId: z.string().uuid("Selecciona pedido y diseño"),
-  location: z.enum(["BODEGA_PRINCIPAL", "TIENDA"]),
+  warehouseId: z.string().uuid("Selecciona una bodega"),
   reason: z.string().trim().min(1, "Motivo requerido").max(100, "Máximo 100"),
   quantity: z
     .string()
