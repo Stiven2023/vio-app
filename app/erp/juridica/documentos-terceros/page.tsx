@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/en-construccion?modulo=erp&area=juridica-terceros");
+  redirect("/erp/juridica?tab=terceros");
 }

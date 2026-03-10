@@ -1,6 +1,7 @@
 import { db } from "@/src/db";
 import { legalStatusRecords } from "@/src/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 /**
  * GET /api/employees/[id]/legal-status/check
@@ -12,11 +13,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_EMPLEADO");
+    if (forbidden) return forbidden;
+
     const { id: employeeId } = await params;
 
     // Obtener el estado jurídico más reciente
     const latestStatus = await db.query.legalStatusRecords.findFirst({
-      where: eq(legalStatusRecords.thirdPartyId, employeeId),
+      where: and(
+        eq(legalStatusRecords.thirdPartyId, employeeId),
+        eq(legalStatusRecords.thirdPartyType, "EMPLEADO"),
+      ),
       orderBy: desc(legalStatusRecords.createdAt),
       columns: {
         status: true,

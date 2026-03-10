@@ -79,10 +79,14 @@ export function SuppliersTab({
   canCreate,
   canEdit,
   canDelete,
+  canChangeLegalStatus = true,
+  legalOnlyMode = false,
 }: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canChangeLegalStatus?: boolean;
+  legalOnlyMode?: boolean;
 }) {
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<Supplier>("/api/suppliers", 10);
@@ -434,16 +438,18 @@ export function SuppliersTab({
                       >
                         Ver información completa
                       </DropdownItem>
-                      <DropdownItem
-                        key={`legal-status-${s.id}`}
-                        startContent={<BsShieldCheck />}
-                        onPress={() => {
-                          setViewingLegalStatus(s);
-                          setLegalStatusModalOpen(true);
-                        }}
-                      >
-                        Ver estado jurídico
-                      </DropdownItem>
+                      {canChangeLegalStatus ? (
+                        <DropdownItem
+                          key={`legal-status-${s.id}`}
+                          startContent={<BsShieldCheck />}
+                          onPress={() => {
+                            setViewingLegalStatus(s);
+                            setLegalStatusModalOpen(true);
+                          }}
+                        >
+                          Ver estado jurídico
+                        </DropdownItem>
+                      ) : null}
                       <DropdownItem
                         key="view-docs"
                         startContent={<BsEyeFill />}
@@ -507,10 +513,18 @@ export function SuppliersTab({
           setDetailsOpen(open);
           if (!open) setViewing(null);
         }}
-        onRequestCreateClient={() => viewing && createAsClient(viewing)}
-        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
-        onRequestCreateConfectionist={() => viewing && createAsConfectionist(viewing)}
-        onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
+        onRequestCreateClient={
+          legalOnlyMode ? undefined : () => viewing && createAsClient(viewing)
+        }
+        onRequestCreateEmployee={
+          legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
+        }
+        onRequestCreateConfectionist={
+          legalOnlyMode ? undefined : () => viewing && createAsConfectionist(viewing)
+        }
+        onRequestCreatePacker={
+          legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
+        }
       />
 
       <SupplierLegalStatusModal

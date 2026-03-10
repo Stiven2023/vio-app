@@ -56,6 +56,7 @@ export function ClientsTab({
   canEdit = true,
   canDelete = true,
   canChangeLegalStatus = true,
+  legalOnlyMode = false,
   prefillCreate,
   onPrefillConsumed,
   onRequestCreateEmployee,
@@ -65,6 +66,7 @@ export function ClientsTab({
   canEdit?: boolean;
   canDelete?: boolean;
   canChangeLegalStatus?: boolean;
+  legalOnlyMode?: boolean;
   prefillCreate?: ClientFormPrefill | null;
   onPrefillConsumed?: () => void;
   onRequestCreateEmployee?: (prefill: EmployeeFormPrefill) => void;
@@ -521,94 +523,90 @@ export function ClientsTab({
                           Editar
                         </DropdownItem>
                       ) : null}
-                      <DropdownItem
-                        key="to-employee"
-                        startContent={<BsPersonPlus />}
-                        onPress={() => {
-                          if (!onRequestCreateEmployee) {
-                            toast("Disponible desde el módulo Admin", {
-                              icon: "ℹ️",
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-employee"
+                          startContent={<BsPersonPlus />}
+                          onPress={() => {
+                            if (!onRequestCreateEmployee) {
+                              toast("Disponible desde el módulo Admin", {
+                                icon: "ℹ️",
+                              });
+                              return;
+                            }
+
+                            onRequestCreateEmployee({
+                              name: c.name,
+                              identificationType: c.identificationType,
+                              identification: c.identification,
+                              dv: c.dv ?? "",
+                              email: c.email,
+                              intlDialCode: c.intlDialCode ?? "57",
+                              mobile: c.mobile ?? "",
+                              landline: c.landline ?? "",
+                              extension: c.extension ?? "",
+                              address: c.address ?? "",
+                              city: c.city ?? "",
+                              department: c.department ?? "",
+                              isActive: Boolean(c.isActive ?? true),
+                              createUserEmail: c.email,
                             });
-                            return;
-                          }
+                          }}
+                        >
+                          Crear como empleado
+                        </DropdownItem>
+                      ) : null}
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-supplier"
+                          startContent={<BsTruck />}
+                          onPress={() => {
+                            toast("Próximamente: crear como proveedor", {
+                              icon: "🧩",
+                            });
+                          }}
+                        >
+                          Crear como proveedor
+                        </DropdownItem>
+                      ) : null}
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-confectionist"
+                          startContent={<BsScissors />}
+                          onPress={() => {
+                            if (!onRequestCreateConfectionist) {
+                              toast(
+                                "Navega a la página de confeccionistas para crear desde un cliente",
+                                { icon: "🚧" },
+                              );
 
-                          onRequestCreateEmployee({
-                            name: c.name,
-                            identificationType: c.identificationType,
-                            identification: c.identification,
-                            dv: c.dv ?? "",
-                            email: c.email,
-                            intlDialCode: c.intlDialCode ?? "57",
-                            mobile: c.mobile ?? "",
-                            landline: c.landline ?? "",
-                            extension: c.extension ?? "",
-                            address: c.address ?? "",
-                            city: c.city ?? "",
-                            department: c.department ?? "",
-                            isActive: Boolean(c.isActive ?? true),
-                            createUserEmail: c.email,
-                          });
-                        }}
-                      >
-                        Crear como empleado
-                      </DropdownItem>
-                      <DropdownItem
-                        key="to-supplier"
-                        startContent={<BsTruck />}
-                        onPress={() => {
-                          toast("Próximamente: crear como proveedor", {
-                            icon: "🧩",
-                          });
-                        }}
-                      >
-                        Crear como proveedor
-                      </DropdownItem>
-                      <DropdownItem
-                        key="to-confectionist"
-                        startContent={<BsScissors />}
-                        onPress={() => {
-                          if (!onRequestCreateConfectionist) {
-                            toast(
-                              "Navega a la página de confeccionistas para crear desde un cliente",
-                              { icon: "🚧" },
-                            );
+                              return;
+                            }
 
-                            return;
-                          }
-
-                          onRequestCreateConfectionist({
-                            name: c.name,
-                            identificationType: c.identificationType,
-                            identification: c.identification,
-                            dv: c.dv ?? "",
-                            taxRegime: c.taxRegime,
-                            contactName: c.contactName,
-                            email: c.email,
-                            intlDialCode: c.intlDialCode ?? "57",
-                            mobile: c.mobile ?? "",
-                            landline: c.landline ?? "",
-                            extension: c.extension ?? "",
-                            address: c.address,
-                            postalCode: c.postalCode ?? "",
-                            country: c.country ?? "COLOMBIA",
-                            department: c.department ?? "ANTIOQUIA",
-                            city: c.city ?? "Medellín",
-                            isActive: Boolean(c.isActive ?? true),
-                          });
-                        }}
-                      >
-                        Crear como confeccionista
-                      </DropdownItem>
-                      <DropdownItem
-                        key="legal-status"
-                        startContent={<BsShieldCheck />}
-                        onPress={() => {
-                          setViewingLegalStatus(c);
-                          setLegalStatusModalOpen(true);
-                        }}
-                      >
-                        Ver estado jurídico
-                      </DropdownItem>
+                            onRequestCreateConfectionist({
+                              name: c.name,
+                              identificationType: c.identificationType,
+                              identification: c.identification,
+                              dv: c.dv ?? "",
+                              taxRegime: c.taxRegime,
+                              contactName: c.contactName,
+                              email: c.email,
+                              intlDialCode: c.intlDialCode ?? "57",
+                              mobile: c.mobile ?? "",
+                              landline: c.landline ?? "",
+                              extension: c.extension ?? "",
+                              address: c.address,
+                              postalCode: c.postalCode ?? "",
+                              country: c.country ?? "COLOMBIA",
+                              department: c.department ?? "ANTIOQUIA",
+                              city: c.city ?? "Medellín",
+                              isActive: Boolean(c.isActive ?? true),
+                            });
+                          }}
+                        >
+                          Crear como confeccionista
+                        </DropdownItem>
+                      ) : null}
                       {canDelete ? (
                         <DropdownItem
                           key="delete"
@@ -647,10 +645,18 @@ export function ClientsTab({
         client={viewing}
         isOpen={detailsOpen}
         onOpenChange={setDetailsOpen}
-        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
-        onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
-        onRequestCreateConfectionist={() => viewing && createAsConfectionist(viewing)}
-        onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
+        onRequestCreateEmployee={
+          legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
+        }
+        onRequestCreateConfectionist={
+          legalOnlyMode ? undefined : () => viewing && createAsConfectionist(viewing)
+        }
+        onRequestCreatePacker={
+          legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
+        }
       />
 
       <ClientDocumentsModal

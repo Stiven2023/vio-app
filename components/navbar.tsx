@@ -267,6 +267,18 @@ export const Navbar = () => {
                     {section.label}
                   </Button>
                 </NavbarItem>
+              ) : section.items.length === 1 ? (
+                <NavbarItem key={section.key}>
+                  <Button
+                    as={NextLink}
+                    href={toErpHref(section.items[0].href)}
+                    startContent={<section.icon className="text-sm" />}
+                    size="sm"
+                    variant={isActive(section.items[0].href) ? "solid" : "light"}
+                  >
+                    {section.label}
+                  </Button>
+                </NavbarItem>
               ) : (
                 <NavbarItem key={section.key}>
                   <Dropdown onOpenChange={(open) => setOpenGroup(open ? section.key : null)}>
@@ -333,14 +345,22 @@ export const Navbar = () => {
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
                 <Button className="h-auto px-2" variant="light">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
-                    <div className="text-sm font-medium">{user?.name ?? "Usuario"}</div>
                     <BsChevronDown className="text-xs text-default-500" />
                   </div>
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label="Menu de usuario" onAction={(key) => void handleUserMenuAction(String(key))}>
+                <DropdownItem key="user-header" isReadOnly className="opacity-100 cursor-default" textValue="Usuario actual">
+                  <div className="flex items-center gap-3 py-1">
+                    <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium leading-tight">{user?.name ?? "Usuario"}</span>
+                      <span className="text-xs text-default-500 leading-tight">{role ?? "SIN_ROL"}</span>
+                    </div>
+                  </div>
+                </DropdownItem>
                 <DropdownItem key="notifications">Notificaciones</DropdownItem>
                 <DropdownItem key="options">Opciones</DropdownItem>
                 <DropdownItem key="logout" className="text-danger" color="danger">

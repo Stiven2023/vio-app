@@ -138,6 +138,8 @@ export const buildNavbarSections = ({
                 { name: "Proveedores", href: "/maestros/proveedores" },
                 { name: "Confeccionistas", href: "/confectionists" },
                 { name: "Empaque", href: "/packers" },
+                { name: "Tablero molderia", href: "/molderia/tablero" },
+                { name: "Trazos y moldes", href: "/molderia/trazos-moldes" },
                 { name: "Bancos", href: "/maestros/bancos" },
             ],
         },
@@ -154,19 +156,7 @@ export const buildNavbarSections = ({
             icon: FiShield,
             visible: true,
             items: [
-                { name: "Documentos clientes", href: "/juridica/documentos-clientes" },
-                { name: "Documentos empleados", href: "/juridica/documentos-empleados" },
-                { name: "Documentos terceros", href: "/juridica/documentos-terceros" },
-            ],
-        },
-        {
-            key: "molderia",
-            label: "Molderia",
-            icon: FiGrid,
-            visible: true,
-            items: [
-                { name: "Tablero molderia", href: "/molderia/tablero" },
-                { name: "Trazos y moldes", href: "/molderia/trazos-moldes" },
+                { name: "Juridica", href: "/juridica" },
             ],
         },
         {

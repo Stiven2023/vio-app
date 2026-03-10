@@ -47,8 +47,18 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 type StatusFilter = "all" | "active" | "inactive";
 
 export function EmployeesTab({
+  canCreate = true,
+  canEdit = true,
+  canDelete = true,
+  canChangeLegalStatus = true,
+  legalOnlyMode = false,
   onRequestCreateClient,
 }: {
+  canCreate?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canChangeLegalStatus?: boolean;
+  legalOnlyMode?: boolean;
   onRequestCreateClient?: (prefill: ClientFormPrefill) => void;
 } = {}) {
   const { roleNameById, refresh: refreshRefs } = useReferenceData();
@@ -342,14 +352,16 @@ export function EmployeesTab({
         </div>
 
         <div className="flex gap-2">
-          <Button
-            color="primary"
-            onPress={() => {
-              window.location.href = "/employee-register";
-            }}
-          >
-            Crear empleado
-          </Button>
+          {canCreate ? (
+            <Button
+              color="primary"
+              onPress={() => {
+                window.location.href = "/employee-register";
+              }}
+            >
+              Crear empleado
+            </Button>
+          ) : null}
           <Button variant="flat" onPress={onSaved}>
             Refrescar
           </Button>
@@ -417,15 +429,17 @@ export function EmployeesTab({
                       >
                         Ver detalles completos
                       </DropdownItem>
-                      <DropdownItem
-                        key="edit"
-                        startContent={<BsPencilSquare />}
-                        onPress={() => {
-                          window.location.href = `/employee-register?id=${e.id}`;
-                        }}
-                      >
-                        Editar
-                      </DropdownItem>
+                      {canEdit ? (
+                        <DropdownItem
+                          key="edit"
+                          startContent={<BsPencilSquare />}
+                          onPress={() => {
+                            window.location.href = `/employee-register?id=${e.id}`;
+                          }}
+                        >
+                          Editar
+                        </DropdownItem>
+                      ) : null}
                       <DropdownItem
                         key="view-docs"
                         startContent={<BsEyeFill />}
@@ -436,55 +450,61 @@ export function EmployeesTab({
                       >
                         Ver documentos
                       </DropdownItem>
-                      <DropdownItem
-                        key={`legal-status-${e.id}`}
-                        startContent={<BsShieldCheck />}
-                        onPress={() => {
-                          setViewingLegalStatus(e);
-                          setLegalStatusModalOpen(true);
-                        }}
-                      >
-                        Ver estado jurídico
-                      </DropdownItem>
-                      <DropdownItem
-                        key="to-client"
-                        startContent={<BsPersonPlus />}
-                        onPress={() => {
-                          onRequestCreateClient?.({
-                            clientType: "EMPLEADO",
-                            priceClientType: "VIOMAR",
-                            name: e.name,
-                            identificationType: e.identificationType,
-                            identification: e.identification,
-                            dv: e.dv ?? "",
-                            taxRegime: "REGIMEN_COMUN",
-                            contactName: e.name,
-                            email: e.email,
-                            address: e.address ?? "",
-                            city: e.city ?? "",
-                            department: e.department ?? "",
-                            intlDialCode: e.intlDialCode ?? "57",
-                            mobile: e.mobile ?? "",
-                            landline: e.landline ?? "",
-                            extension: e.extension ?? "",
-                            isActive: Boolean(e.isActive ?? true),
-                            status: e.isActive ? "ACTIVO" : "INACTIVO",
-                          });
-                        }}
-                      >
-                        Crear como cliente
-                      </DropdownItem>
-                      <DropdownItem
-                        key="delete"
-                        className="text-danger"
-                        startContent={<BsTrash />}
-                        onPress={() => {
-                          setPendingDelete(e);
-                          setConfirmOpen(true);
-                        }}
-                      >
-                        Eliminar
-                      </DropdownItem>
+                      {canChangeLegalStatus ? (
+                        <DropdownItem
+                          key={`legal-status-${e.id}`}
+                          startContent={<BsShieldCheck />}
+                          onPress={() => {
+                            setViewingLegalStatus(e);
+                            setLegalStatusModalOpen(true);
+                          }}
+                        >
+                          Ver estado jurídico
+                        </DropdownItem>
+                      ) : null}
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-client"
+                          startContent={<BsPersonPlus />}
+                          onPress={() => {
+                            onRequestCreateClient?.({
+                              clientType: "EMPLEADO",
+                              priceClientType: "VIOMAR",
+                              name: e.name,
+                              identificationType: e.identificationType,
+                              identification: e.identification,
+                              dv: e.dv ?? "",
+                              taxRegime: "REGIMEN_COMUN",
+                              contactName: e.name,
+                              email: e.email,
+                              address: e.address ?? "",
+                              city: e.city ?? "",
+                              department: e.department ?? "",
+                              intlDialCode: e.intlDialCode ?? "57",
+                              mobile: e.mobile ?? "",
+                              landline: e.landline ?? "",
+                              extension: e.extension ?? "",
+                              isActive: Boolean(e.isActive ?? true),
+                              status: e.isActive ? "ACTIVO" : "INACTIVO",
+                            });
+                          }}
+                        >
+                          Crear como cliente
+                        </DropdownItem>
+                      ) : null}
+                      {canDelete ? (
+                        <DropdownItem
+                          key="delete"
+                          className="text-danger"
+                          startContent={<BsTrash />}
+                          onPress={() => {
+                            setPendingDelete(e);
+                            setConfirmOpen(true);
+                          }}
+                        >
+                          Eliminar
+                        </DropdownItem>
+                      ) : null}
                     </DropdownMenu>
                   </Dropdown>
                 </TableCell>
@@ -503,10 +523,20 @@ export function EmployeesTab({
           if (!open) setDetail(null);
           setDetailsOpen(open);
         }}
-        onRequestCreateClient={() => detail?.employee && createAsClient(detail.employee)}
-        onRequestCreateSupplier={() => detail?.employee && createAsSupplier(detail.employee)}
-        onRequestCreateConfectionist={() => detail?.employee && createAsConfectionist(detail.employee)}
-        onRequestCreatePacker={() => detail?.employee && createAsPacker(detail.employee)}
+        onRequestCreateClient={
+          legalOnlyMode ? undefined : () => detail?.employee && createAsClient(detail.employee)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => detail?.employee && createAsSupplier(detail.employee)
+        }
+        onRequestCreateConfectionist={
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsConfectionist(detail.employee)
+        }
+        onRequestCreatePacker={
+          legalOnlyMode ? undefined : () => detail?.employee && createAsPacker(detail.employee)
+        }
       />
 
       <EmployeeDocumentsModal

@@ -50,6 +50,8 @@ export function ConfectionistsTab({
   canCreate,
   canEdit,
   canDelete,
+  canChangeLegalStatus = true,
+  legalOnlyMode = false,
   prefillCreate,
   onPrefillConsumed,
   onRequestCreateClient,
@@ -57,6 +59,8 @@ export function ConfectionistsTab({
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canChangeLegalStatus?: boolean;
+  legalOnlyMode?: boolean;
   prefillCreate?: ConfectionistFormPrefill | null;
   onPrefillConsumed?: () => void;
   onRequestCreateClient?: (prefill: ClientFormPrefill) => void;
@@ -413,61 +417,65 @@ export function ConfectionistsTab({
                         Ver documentos
                       </DropdownItem>
 
-                      <DropdownItem
-                        key={`legal-status-${c.id}`}
-                        startContent={<BsShieldCheck />}
-                        onPress={() => {
-                          setViewingLegalStatus(c);
-                          setLegalStatusModalOpen(true);
-                        }}
-                      >
-                        Ver estado jurídico
-                      </DropdownItem>
+                      {canChangeLegalStatus ? (
+                        <DropdownItem
+                          key={`legal-status-${c.id}`}
+                          startContent={<BsShieldCheck />}
+                          onPress={() => {
+                            setViewingLegalStatus(c);
+                            setLegalStatusModalOpen(true);
+                          }}
+                        >
+                          Ver estado jurídico
+                        </DropdownItem>
+                      ) : null}
 
-                      <DropdownItem
-                        key="to-client"
-                        startContent={<BsPersonPlus />}
-                        onPress={() => {
-                          if (!onRequestCreateClient) {
-                            toast(
-                              "Navega a la página de administración para crear desde un confeccionista",
-                              { icon: "🚧" },
-                            );
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-client"
+                          startContent={<BsPersonPlus />}
+                          onPress={() => {
+                            if (!onRequestCreateClient) {
+                              toast(
+                                "Navega a la página de administración para crear desde un confeccionista",
+                                { icon: "🚧" },
+                              );
 
-                            return;
-                          }
+                              return;
+                            }
 
-                          onRequestCreateClient({
-                            clientType: "NACIONAL",
-                            name: c.name,
-                            identificationType: c.identificationType,
-                            identification: c.identification,
-                            dv: c.dv ?? "",
-                            branch: "01",
-                            taxRegime: c.taxRegime,
-                            contactName: c.contactName ?? c.name,
-                            email: c.email ?? "",
-                            address: c.address,
-                            postalCode: c.postalCode ?? "",
-                            country: c.country ?? "COLOMBIA",
-                            department: c.department ?? "ANTIOQUIA",
-                            city: c.city ?? "Medellín",
-                            intlDialCode: c.intlDialCode ?? "57",
-                            mobile: c.mobile ?? "",
-                            localDialCode: "",
-                            landline: c.landline ?? "",
-                            extension: c.extension ?? "",
-                            status: "ACTIVO",
-                            priceClientType: "VIOMAR",
-                            isActive: Boolean(c.isActive ?? true),
-                            hasCredit: false,
-                            promissoryNoteNumber: "",
-                            promissoryNoteDate: "",
-                          });
-                        }}
-                      >
-                        Crear como cliente
-                      </DropdownItem>
+                            onRequestCreateClient({
+                              clientType: "NACIONAL",
+                              name: c.name,
+                              identificationType: c.identificationType,
+                              identification: c.identification,
+                              dv: c.dv ?? "",
+                              branch: "01",
+                              taxRegime: c.taxRegime,
+                              contactName: c.contactName ?? c.name,
+                              email: c.email ?? "",
+                              address: c.address,
+                              postalCode: c.postalCode ?? "",
+                              country: c.country ?? "COLOMBIA",
+                              department: c.department ?? "ANTIOQUIA",
+                              city: c.city ?? "Medellín",
+                              intlDialCode: c.intlDialCode ?? "57",
+                              mobile: c.mobile ?? "",
+                              localDialCode: "",
+                              landline: c.landline ?? "",
+                              extension: c.extension ?? "",
+                              status: "ACTIVO",
+                              priceClientType: "VIOMAR",
+                              isActive: Boolean(c.isActive ?? true),
+                              hasCredit: false,
+                              promissoryNoteNumber: "",
+                              promissoryNoteDate: "",
+                            });
+                          }}
+                        >
+                          Crear como cliente
+                        </DropdownItem>
+                      ) : null}
 
                       {canEdit ? (
                         <DropdownItem
@@ -534,7 +542,7 @@ export function ConfectionistsTab({
           if (!open) setViewing(null);
         }}
         onRequestCreateClient={
-          onRequestCreateClient
+          !legalOnlyMode && onRequestCreateClient
             ? () => {
                 if (!viewing) return;
                 onRequestCreateClient({
@@ -568,9 +576,15 @@ export function ConfectionistsTab({
               }
             : undefined
         }
-        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
-        onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
-        onRequestCreatePacker={() => viewing && createAsPacker(viewing)}
+        onRequestCreateEmployee={
+          legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
+        }
+        onRequestCreatePacker={
+          legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
+        }
       />
 
       <ConfectionistLegalStatusModal

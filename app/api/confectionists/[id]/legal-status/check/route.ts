@@ -1,16 +1,23 @@
 import { db } from "@/src/db";
 import { legalStatusRecords } from "@/src/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_CONFECCIONISTA");
+    if (forbidden) return forbidden;
+
     const { id: confectionistId } = await params;
 
     const latestStatus = await db.query.legalStatusRecords.findFirst({
-      where: eq(legalStatusRecords.thirdPartyId, confectionistId),
+      where: and(
+        eq(legalStatusRecords.thirdPartyId, confectionistId),
+        eq(legalStatusRecords.thirdPartyType, "CONFECCIONISTA"),
+      ),
       orderBy: desc(legalStatusRecords.createdAt),
       columns: {
         status: true,

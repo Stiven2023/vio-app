@@ -2,6 +2,7 @@ import { db } from "@/src/db";
 import { legalStatusRecords, packers } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function POST(
   request: Request,
@@ -16,6 +17,9 @@ export async function POST(
   });
 
   if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "CAMBIAR_ESTADO_JURIDICO_EMPAQUE");
+  if (forbidden) return forbidden;
 
   try {
     const packer = await db.query.packers.findFirst({

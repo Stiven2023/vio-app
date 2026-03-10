@@ -1,16 +1,28 @@
+import { and, desc, eq } from "drizzle-orm";
+
 import { db } from "@/src/db";
 import { legalStatusRecords } from "@/src/db/schema";
-import { desc, eq } from "drizzle-orm";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const forbidden = await requirePermission(
+      request,
+      "VER_ESTADO_JURIDICO_EMPAQUE",
+    );
+
+    if (forbidden) return forbidden;
+
     const { id: packerId } = await params;
 
     const latestStatus = await db.query.legalStatusRecords.findFirst({
-      where: eq(legalStatusRecords.thirdPartyId, packerId),
+      where: and(
+        eq(legalStatusRecords.thirdPartyId, packerId),
+        eq(legalStatusRecords.thirdPartyType, "EMPAQUE"),
+      ),
       orderBy: desc(legalStatusRecords.createdAt),
       columns: {
         status: true,
@@ -43,15 +55,14 @@ export async function GET(
       notes: latestStatus.notes,
       reviewedBy: latestStatus.reviewedBy,
     });
-  } catch (error) {
-    console.error("❌ Error al verificar estado jurídico:", error);
+  } catch {
     return Response.json(
       {
         status: null,
         canOperate: false,
         reason: "Error al verificar el estado jurídico",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

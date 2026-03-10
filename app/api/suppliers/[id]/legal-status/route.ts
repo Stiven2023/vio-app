@@ -2,6 +2,7 @@ import { db } from "@/src/db";
 import { legalStatusRecords, suppliers } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function POST(
   request: Request,
@@ -16,6 +17,9 @@ export async function POST(
   });
 
   if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "CAMBIAR_ESTADO_JURIDICO_PROVEEDOR");
+  if (forbidden) return forbidden;
 
   try {
     const supplier = await db.query.suppliers.findFirst({

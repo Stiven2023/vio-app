@@ -33,6 +33,8 @@ import {
   BsTruck,
 } from "react-icons/bs";
 
+import { PackerModal } from "./packer-modal";
+
 import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
@@ -41,8 +43,6 @@ import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
 import { PackerDetailsModal } from "@/app/erp/packers/_components/packer-details-modal";
-
-import { PackerModal } from "./packer-modal";
 import { PackerLegalStatusModal } from "@/app/erp/admin/_components/packers/packer-legal-status-modal";
 
 export type Packer = AdminPacker & {
@@ -55,13 +55,19 @@ export function PackersTab({
   canCreate,
   canEdit,
   canDelete,
+  canChangeLegalStatus = true,
+  legalOnlyMode = false,
 }: {
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
+  canChangeLegalStatus?: boolean;
+  legalOnlyMode?: boolean;
 }) {
-  const { data, loading, page, setPage, refresh } =
-    usePaginatedApi<Packer>("/api/packers", 10);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Packer>(
+    "/api/packers",
+    10,
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Packer | null>(null);
@@ -76,7 +82,9 @@ export function PackersTab({
   const [documentsOpen, setDocumentsOpen] = useState(false);
   const [viewingDocuments, setViewingDocuments] = useState<Packer | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Packer | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Packer | null>(
+    null,
+  );
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -130,7 +138,10 @@ export function PackersTab({
 
   const createAsClient = async (packer: Packer) => {
     if (!packer.mobile || !packer.email) {
-      toast.error("Para crear como cliente, el empaque debe tener email y móvil.");
+      toast.error(
+        "Para crear como cliente, el empaque debe tener email y móvil.",
+      );
+
       return;
     }
 
@@ -175,6 +186,7 @@ export function PackersTab({
   const createAsEmployee = async (packer: Packer) => {
     if (!packer.email) {
       toast.error("Para crear como empleado, el empaque debe tener email.");
+
       return;
     }
 
@@ -207,6 +219,7 @@ export function PackersTab({
   const createAsSupplier = async (packer: Packer) => {
     if (!packer.email) {
       toast.error("Para crear como proveedor, el empaque debe tener email.");
+
       return;
     }
 
@@ -251,12 +264,12 @@ export function PackersTab({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Input
+            isClearable
             className="sm:w-72"
             placeholder="Buscar por código, nombre, email o contacto…"
             value={search}
-            onValueChange={setSearch}
-            isClearable
             onClear={() => setSearch("")}
+            onValueChange={setSearch}
           />
           <FilterSelect
             className="sm:w-56"
@@ -324,11 +337,21 @@ export function PackersTab({
               <TableRow key={p.id}>
                 <TableCell className="font-medium">{p.packerCode}</TableCell>
                 <TableCell className="font-medium">{p.name}</TableCell>
-                <TableCell className="text-default-500">{p.identificationType}</TableCell>
-                <TableCell className="text-default-500">{p.email ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{p.packerType ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{p.specialty ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{p.city ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {p.identificationType}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {p.email ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {p.packerType ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {p.specialty ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {p.city ?? "-"}
+                </TableCell>
                 <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
                 <TableCell>
                   {p.legalStatus ? (
@@ -378,16 +401,18 @@ export function PackersTab({
                         Ver información completa
                       </DropdownItem>
 
-                      <DropdownItem
-                        key={`legal-status-${p.id}`}
-                        startContent={<BsShieldCheck />}
-                        onPress={() => {
-                          setViewingLegalStatus(p);
-                          setLegalStatusModalOpen(true);
-                        }}
-                      >
-                        Ver estado jurídico
-                      </DropdownItem>
+                      {canChangeLegalStatus ? (
+                        <DropdownItem
+                          key={`legal-status-${p.id}`}
+                          startContent={<BsShieldCheck />}
+                          onPress={() => {
+                            setViewingLegalStatus(p);
+                            setLegalStatusModalOpen(true);
+                          }}
+                        >
+                          Ver estado jurídico
+                        </DropdownItem>
+                      ) : null}
 
                       <DropdownItem
                         key="view-docs"
@@ -400,29 +425,35 @@ export function PackersTab({
                         Ver documentos
                       </DropdownItem>
 
-                      <DropdownItem
-                        key="to-client"
-                        startContent={<BsPeople />}
-                        onPress={() => createAsClient(p)}
-                      >
-                        Crear como cliente
-                      </DropdownItem>
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-client"
+                          startContent={<BsPeople />}
+                          onPress={() => createAsClient(p)}
+                        >
+                          Crear como cliente
+                        </DropdownItem>
+                      ) : null}
 
-                      <DropdownItem
-                        key="to-employee"
-                        startContent={<BsPersonPlus />}
-                        onPress={() => createAsEmployee(p)}
-                      >
-                        Crear como empleado
-                      </DropdownItem>
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-employee"
+                          startContent={<BsPersonPlus />}
+                          onPress={() => createAsEmployee(p)}
+                        >
+                          Crear como empleado
+                        </DropdownItem>
+                      ) : null}
 
-                      <DropdownItem
-                        key="to-supplier"
-                        startContent={<BsTruck />}
-                        onPress={() => createAsSupplier(p)}
-                      >
-                        Crear como proveedor
-                      </DropdownItem>
+                      {!legalOnlyMode ? (
+                        <DropdownItem
+                          key="to-supplier"
+                          startContent={<BsTruck />}
+                          onPress={() => createAsSupplier(p)}
+                        >
+                          Crear como proveedor
+                        </DropdownItem>
+                      ) : null}
 
                       {canEdit ? (
                         <DropdownItem
@@ -459,51 +490,78 @@ export function PackersTab({
         </Table>
       )}
 
-      {data ? <Pager data={data as Paginated<Packer>} page={page} onChange={setPage} /> : null}
+      {data ? (
+        <Pager
+          data={data as Paginated<Packer>}
+          page={page}
+          onChange={setPage}
+        />
+      ) : null}
 
       <PackerModal
-        packer={editing}
         isOpen={modalOpen}
+        packer={editing}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
 
       <PackerDetailsModal
-        packer={viewing}
         isOpen={detailsOpen}
+        packer={viewing}
         onOpenChange={setDetailsOpen}
-        onRequestCreateClient={() => viewing && createAsClient(viewing)}
-        onRequestCreateEmployee={() => viewing && createAsEmployee(viewing)}
-        onRequestCreateSupplier={() => viewing && createAsSupplier(viewing)}
+        onRequestCreateClient={
+          legalOnlyMode ? undefined : () => viewing && createAsClient(viewing)
+        }
+        onRequestCreateEmployee={
+          legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
+        }
       />
 
       <PackerLegalStatusModal
-        packer={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
+        packer={viewingLegalStatus}
         onOpenChange={setLegalStatusModalOpen}
       />
 
       <ThirdPartyDocumentsModal
-        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        documents={
+          viewingDocuments
+            ? [
+                {
+                  label: "Documento de identidad",
+                  url: viewingDocuments.identityDocumentUrl,
+                },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                {
+                  label: "Cámara de comercio",
+                  url: viewingDocuments.commerceChamberDocumentUrl,
+                },
+                {
+                  label: "Pasaporte",
+                  url: viewingDocuments.passportDocumentUrl,
+                },
+                {
+                  label: "Certificado tributario",
+                  url: viewingDocuments.taxCertificateDocumentUrl,
+                },
+                {
+                  label: "Documento empresa",
+                  url: viewingDocuments.companyIdDocumentUrl,
+                },
+              ]
+            : []
+        }
+        emptyMessage="Este empaque no tiene documentos cargados."
+        isOpen={documentsOpen}
         subtitle={
           viewingDocuments
             ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
             : undefined
         }
-        emptyMessage="Este empaque no tiene documentos cargados."
-        documents={
-          viewingDocuments
-            ? [
-                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
-                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
-                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
-                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
-                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
-                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
-              ]
-            : []
-        }
-        isOpen={documentsOpen}
+        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
         onOpenChange={(open) => {
           setDocumentsOpen(open);
           if (!open) setViewingDocuments(null);
@@ -514,7 +572,9 @@ export function PackersTab({
         cancelLabel="Cancelar"
         confirmLabel="Eliminar"
         description={
-          pendingDelete ? `¿Eliminar el empacador ${pendingDelete.name}?` : undefined
+          pendingDelete
+            ? `¿Eliminar el empacador ${pendingDelete.name}?`
+            : undefined
         }
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
