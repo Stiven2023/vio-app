@@ -74,6 +74,10 @@ type TransferRequestRow = {
   fromWarehouseId: string | null;
   toWarehouseId: string | null;
   requestedAt: string | null;
+  requesterEmployeeCode: string | null;
+  requesterEmployeeName: string | null;
+  approverEmployeeCode: string | null;
+  approverEmployeeName: string | null;
 };
 
 type TransferRequestsResponse = {
@@ -97,14 +101,12 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
   const [transferToWarehouseId, setTransferToWarehouseId] = useState("");
   const [transferQty, setTransferQty] = useState("");
   const [transferNotes, setTransferNotes] = useState("");
-  const [transferRequesterCode, setTransferRequesterCode] = useState("");
   const [transferring, setTransferring] = useState(false);
 
   const [requestFromWarehouseId, setRequestFromWarehouseId] = useState("");
   const [requestStockId, setRequestStockId] = useState("");
   const [requestQty, setRequestQty] = useState("");
   const [requestNotes, setRequestNotes] = useState("");
-  const [requestRequesterCode, setRequestRequesterCode] = useState("");
   const [requestSourceProducts, setRequestSourceProducts] = useState<
     WarehouseProductRow[]
   >([]);
@@ -233,7 +235,9 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
       .then((res) => {
         if (!active) return;
         const candidates = (res.products ?? []).filter(
-          (row) => Number(String(row.availableQty ?? "0")) > 0,
+          (row) =>
+            Number(String(row.availableQty ?? "0")) > 0 &&
+            Boolean(row.variantId),
         );
 
         setRequestSourceProducts(candidates);
@@ -251,7 +255,9 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
   const transferCandidates = useMemo(() => {
     const rows = details?.products ?? [];
 
-    return rows.filter((p) => Number(String(p.availableQty ?? "0")) > 0);
+    return rows.filter(
+      (p) => Number(String(p.availableQty ?? "0")) > 0 && Boolean(p.variantId),
+    );
   }, [details?.products]);
 
   const destinationWarehouses = useMemo(
@@ -376,10 +382,6 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
     if (!Number.isFinite(qty) || qty <= 0)
       return toast.error("Cantidad invalida");
 
-    if (!transferRequesterCode.trim()) {
-      return toast.error("Codigo solicitante requerido");
-    }
-
     try {
       setTransferring(true);
       await apiJson("/api/warehouse-transfers", {
@@ -391,7 +393,6 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
           toWarehouseId: transferToWarehouseId,
           quantity: qty,
           notes: transferNotes.trim() || undefined,
-          requesterCode: transferRequesterCode.trim().toUpperCase(),
         }),
       });
 
@@ -425,10 +426,6 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
     if (!Number.isFinite(qty) || qty <= 0)
       return toast.error("Cantidad invalida");
 
-    if (!requestRequesterCode.trim()) {
-      return toast.error("Codigo solicitante requerido");
-    }
-
     try {
       setRequestingTransfer(true);
       await apiJson("/api/warehouse-transfers", {
@@ -441,7 +438,6 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
           quantity: qty,
           notes: requestNotes.trim() || undefined,
           isRequest: true,
-          requesterCode: requestRequesterCode.trim().toUpperCase(),
         }),
       });
 
@@ -558,7 +554,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
 
       <div className="space-y-3 rounded-lg border border-default-200 p-3">
         <p className="text-sm font-semibold">Traslado a otra bodega</p>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <Select
             isDisabled={loading || transferring}
             items={transferCandidates}
@@ -609,13 +605,6 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
 
           <Input
             isDisabled={transferring}
-            label="Codigo solicitante"
-            value={transferRequesterCode}
-            onValueChange={setTransferRequesterCode}
-          />
-
-          <Input
-            isDisabled={transferring}
             label="Nota (opcional)"
             value={transferNotes}
             onValueChange={setTransferNotes}
@@ -636,7 +625,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         <p className="text-sm font-semibold">
           Solicitar traslado hacia esta bodega
         </p>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <Select
             isDisabled={loadingWarehouses || requestingTransfer}
             items={requestSourceWarehouses}
@@ -687,13 +676,6 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
 
           <Input
             isDisabled={requestingTransfer}
-            label="Codigo solicitante"
-            value={requestRequesterCode}
-            onValueChange={setRequestRequesterCode}
-          />
-
-          <Input
-            isDisabled={requestingTransfer}
             label="Nota (opcional)"
             value={requestNotes}
             onValueChange={setRequestNotes}
@@ -722,6 +704,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
               <TableColumn>Item</TableColumn>
               <TableColumn>Cantidad</TableColumn>
               <TableColumn>Destino</TableColumn>
+              <TableColumn>Solicita</TableColumn>
               <TableColumn>Estado</TableColumn>
               <TableColumn>Solicitada</TableColumn>
               <TableColumn>Accion</TableColumn>
@@ -740,6 +723,11 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                     {row.toWarehouseId
                       ? (warehouseNameById.get(row.toWarehouseId) ??
                         row.toWarehouseId)
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {row.requesterEmployeeCode || row.requesterEmployeeName
+                      ? `${row.requesterEmployeeCode ?? ""}${row.requesterEmployeeCode && row.requesterEmployeeName ? " - " : ""}${row.requesterEmployeeName ?? ""}`
                       : "-"}
                   </TableCell>
                   <TableCell>{row.status ?? "PENDIENTE"}</TableCell>
@@ -784,6 +772,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
               <TableColumn>Item</TableColumn>
               <TableColumn>Cantidad</TableColumn>
               <TableColumn>Origen</TableColumn>
+              <TableColumn>Solicita</TableColumn>
               <TableColumn>Estado</TableColumn>
               <TableColumn>Solicitada</TableColumn>
               <TableColumn>Accion</TableColumn>
@@ -802,6 +791,11 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                     {row.fromWarehouseId
                       ? (warehouseNameById.get(row.fromWarehouseId) ??
                         row.fromWarehouseId)
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {row.requesterEmployeeCode || row.requesterEmployeeName
+                      ? `${row.requesterEmployeeCode ?? ""}${row.requesterEmployeeCode && row.requesterEmployeeName ? " - " : ""}${row.requesterEmployeeName ?? ""}`
                       : "-"}
                   </TableCell>
                   <TableCell>{row.status ?? "PENDIENTE"}</TableCell>
@@ -837,6 +831,8 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
               <TableColumn>Cantidad</TableColumn>
               <TableColumn>Tipo</TableColumn>
               <TableColumn>Contraparte</TableColumn>
+              <TableColumn>Solicita</TableColumn>
+              <TableColumn>Aprueba</TableColumn>
               <TableColumn>Estado</TableColumn>
             </TableHeader>
             <TableBody
@@ -869,6 +865,16 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                         ? (warehouseNameById.get(row.fromWarehouseId) ??
                           row.fromWarehouseId)
                         : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {row.requesterEmployeeCode || row.requesterEmployeeName
+                      ? `${row.requesterEmployeeCode ?? ""}${row.requesterEmployeeCode && row.requesterEmployeeName ? " - " : ""}${row.requesterEmployeeName ?? ""}`
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    {row.approverEmployeeCode || row.approverEmployeeName
+                      ? `${row.approverEmployeeCode ?? ""}${row.approverEmployeeCode && row.approverEmployeeName ? " - " : ""}${row.approverEmployeeName ?? ""}`
+                      : "-"}
                   </TableCell>
                   <TableCell>{row.status ?? "-"}</TableCell>
                 </TableRow>
@@ -915,7 +921,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                         {(row) => (
                           <TableRow key={row.stockId}>
                             <TableCell>
-                              {row.variantSku ?? "BASE-SIN-SKU"}
+                              {row.variantSku ?? "VARIANTE-REQUERIDA"}
                             </TableCell>
                             <TableCell>{row.variantColor ?? "-"}</TableCell>
                             <TableCell>{row.variantSize ?? "-"}</TableCell>
@@ -1057,7 +1063,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                   label: "Variante SKU",
                   value: productDetail.variantSku
                     ? `${productDetail.variantSku}${productDetail.variantColor ? ` - ${productDetail.variantColor}` : ""}${productDetail.variantSize ? ` - ${productDetail.variantSize}` : ""}`
-                    : "-",
+                    : "VARIANTE-REQUERIDA",
                 },
                 {
                   label: "Disponible",

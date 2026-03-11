@@ -5,12 +5,10 @@ import {
   inventoryCategories,
   inventoryItemVariants,
   inventoryItems,
-  warehouseStock,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {
   ensureInventoryBaseData,
-  resolveWarehouseIdByLocation,
 } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -112,7 +110,7 @@ export async function GET(request: Request) {
       categoryId: string | null;
       hasVariants: boolean;
       currentStock: string;
-      minStock: string;
+      minStock?: string;
       lastMovementType: "ENTRADA" | "SALIDA" | null;
       isActive: boolean | null;
       createdAt: Date | null;
@@ -130,101 +128,31 @@ export async function GET(request: Request) {
           price: inventoryItems.price,
           supplierId: inventoryItems.supplierId,
           categoryId: inventoryItems.categoryId,
-          hasVariants: sql<boolean>`(
-            coalesce(${inventoryItems.hasVariants}, false)
-            or exists (
-              select 1
-              from inventory_item_variants iv
-              where iv.inventory_item_id = ${inventoryItems.id}
-            )
-          )`,
+          hasVariants: sql<true>`true`,
           currentStock: sql<string>`(
             case
               when (
-                coalesce(${inventoryItems.hasVariants}, false)
-                or exists (
-                  select 1
-                  from inventory_item_variants iv
-                  where iv.inventory_item_id = ${inventoryItems.id}
-                )
-              ) then (
-                case
-                  when (
-                    select count(*)
-                    from warehouse_stock ws
-                    where ws.variant_id is not null
-                      and ws.inventory_item_id = ${inventoryItems.id}
-                  ) > 0 then (
-                    select coalesce(sum(ws.available_qty), 0)::text
-                    from warehouse_stock ws
-                    where ws.variant_id is not null
-                      and ws.inventory_item_id = ${inventoryItems.id}
-                  )
-                  else (
-                    select coalesce(
-                      sum(case when sm.to_warehouse_id is not null then sm.quantity else 0 end)
-                      -
-                      sum(case when sm.from_warehouse_id is not null then sm.quantity else 0 end),
-                      0
-                    )::text
-                    from stock_movements sm
-                    where sm.inventory_item_id = ${inventoryItems.id}
-                      and sm.variant_id is not null
-                      and sm.movement_type in ('ENTRADA', 'SALIDA', 'TRASLADO', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DEVOLUCION')
-                  )
-                end
+                select count(*)
+                from warehouse_stock ws
+                inner join inventory_item_variants iv on iv.id = ws.variant_id
+                where iv.inventory_item_id = ${inventoryItems.id}
+              ) > 0 then (
+                select coalesce(sum(ws.available_qty), 0)::text
+                from warehouse_stock ws
+                inner join inventory_item_variants iv on iv.id = ws.variant_id
+                where iv.inventory_item_id = ${inventoryItems.id}
               )
               else (
-                case
-                  when (
-                    select count(*)
-                    from warehouse_stock ws
-                    where ws.inventory_item_id = ${inventoryItems.id}
-                      and ws.variant_id is null
-                  ) > 0 then (
-                    select coalesce(sum(ws.available_qty), 0)::text
-                    from warehouse_stock ws
-                    where ws.inventory_item_id = ${inventoryItems.id}
-                      and ws.variant_id is null
-                  )
-                  else (
-                    select coalesce(
-                      sum(case when sm.to_warehouse_id is not null then sm.quantity else 0 end)
-                      -
-                      sum(case when sm.from_warehouse_id is not null then sm.quantity else 0 end),
-                      0
-                    )::text
-                    from stock_movements sm
-                    where sm.inventory_item_id = ${inventoryItems.id}
-                      and sm.variant_id is null
-                      and sm.movement_type in ('ENTRADA', 'SALIDA', 'TRASLADO', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DEVOLUCION')
-                  )
-                end
-              )
-            end
-          )`,
-          minStock: sql<string>`(
-            case
-                when (
-                  coalesce(${inventoryItems.hasVariants}, false)
-                  or exists (
-                    select 1
-                    from inventory_item_variants iv
-                    where iv.inventory_item_id = ${inventoryItems.id}
-                  )
-                ) then (
-                select coalesce(sum(ws.min_stock), 0)::text
-                from warehouse_stock ws
-                where ws.variant_id is not null
-                  and ws.inventory_item_id = ${inventoryItems.id}
-              )
-              else (
-                select coalesce(max(ws.min_stock), '0')::text
-                from warehouse_stock ws
-                join warehouses w on w.id = ws.warehouse_id
-                where ws.inventory_item_id = ${inventoryItems.id}
-                  and ws.variant_id is null
-                  and w.code = 'BODEGA_PRINCIPAL'
+                select coalesce(
+                  sum(case when sm.to_warehouse_id is not null then sm.quantity else 0 end)
+                  -
+                  sum(case when sm.from_warehouse_id is not null then sm.quantity else 0 end),
+                  0
+                )::text
+                from stock_movements sm
+                inner join inventory_item_variants iv on iv.id = sm.variant_id
+                where iv.inventory_item_id = ${inventoryItems.id}
+                  and sm.movement_type in ('ENTRADA', 'SALIDA', 'TRASLADO', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DEVOLUCION')
               )
             end
           )`,
@@ -264,18 +192,12 @@ export async function GET(request: Request) {
             price: inventoryItems.price,
             supplierId: inventoryItems.supplierId,
             categoryId: inventoryItems.categoryId,
-            hasVariants: sql<boolean>`(
-              coalesce(${inventoryItems.hasVariants}, false)
-              or exists (
-                select 1
-                from inventory_item_variants iv
-                where iv.inventory_item_id = ${inventoryItems.id}
-              )
-            )`,
+            hasVariants: sql<true>`true`,
             currentStock: sql<string>`(
               select coalesce(sum(ws.available_qty), 0)::text
               from warehouse_stock ws
-              where ws.inventory_item_id = ${inventoryItems.id}
+              inner join inventory_item_variants iv on iv.id = ws.variant_id
+              where iv.inventory_item_id = ${inventoryItems.id}
             )`,
             isActive: inventoryItems.isActive,
             createdAt: inventoryItems.createdAt,
@@ -289,7 +211,6 @@ export async function GET(request: Request) {
 
         items = basicItems.map((row) => ({
           ...row,
-          minStock: "0",
           lastMovementType: null,
         }));
       } catch {
@@ -315,9 +236,8 @@ export async function GET(request: Request) {
 
         items = basicItems.map((row) => ({
           ...row,
-          hasVariants: false,
+          hasVariants: true,
           currentStock: "0",
-          minStock: "0",
           lastMovementType: null,
         }));
       }
@@ -354,10 +274,8 @@ export async function POST(request: Request) {
     description,
     price,
     supplierId,
-    minStock,
     isActive,
     categoryType,
-    hasVariants,
     initialVariants,
   } = await request.json();
 
@@ -368,7 +286,6 @@ export async function POST(request: Request) {
   const p = price !== undefined ? String(price ?? "").trim() : undefined;
   const s =
     supplierId !== undefined ? String(supplierId ?? "").trim() : undefined;
-  const ms = minStock !== undefined ? String(minStock ?? "").trim() : undefined;
 
   if (!n) return new Response("name required", { status: 400 });
   if (!u) return new Response("unit required", { status: 400 });
@@ -377,123 +294,93 @@ export async function POST(request: Request) {
     return new Response("price invalid", { status: 400 });
   }
 
-  if (ms && Number.isNaN(Number(ms))) {
-    return new Response("minStock invalid", { status: 400 });
+  try {
+    const created = await db.transaction(async (tx) => {
+      const category = await resolveCategoryId(tx, categoryType);
+
+      if (!category?.id) {
+        throw new Error("No se pudo resolver categoria de inventario");
+      }
+
+      const itemCode = await nextItemCode(tx, category.type);
+
+      const [created] = await tx
+        .insert(inventoryItems)
+        .values({
+          itemCode,
+          name: n,
+          unit: u,
+          categoryId: category.id,
+          description: d ? d : null,
+          price: p ? p : undefined,
+          supplierId: s ? s : null,
+          hasVariants: true,
+          isActive: isActive ?? true,
+        })
+        .returning();
+
+      const normalizedInitialVariants = Array.isArray(initialVariants)
+        ? initialVariants
+            .map((row) => ({
+              sku: sanitizeCode(
+                String(row?.sku ?? "")
+                  .trim()
+                  .toUpperCase(),
+              ),
+              color: String(row?.color ?? "").trim(),
+              size: String(row?.size ?? "").trim(),
+              description: String(row?.description ?? "").trim(),
+              isActive:
+                row?.isActive !== undefined ? Boolean(row.isActive) : true,
+            }))
+            .filter((row) => row.sku || row.color || row.size || row.description)
+        : [];
+
+      if (normalizedInitialVariants.length === 0) {
+        throw new Error("Cada item debe tener al menos una variante inicial");
+      }
+
+      if (created?.id && normalizedInitialVariants.length > 0) {
+        const seenSku = new Set<string>();
+
+        for (const variant of normalizedInitialVariants) {
+          if (!variant.sku) {
+            throw new Error("codigo de variante requerido");
+          }
+
+          if (seenSku.has(variant.sku)) {
+            throw new Error("codigo de variante duplicado");
+          }
+
+          seenSku.add(variant.sku);
+        }
+
+        const variantsToInsert = normalizedInitialVariants.map((row) => ({
+          inventoryItemId: created.id,
+          sku: row.sku,
+          color: row.color || null,
+          size: row.size || null,
+          description: row.description || null,
+          isActive: row.isActive,
+        }));
+
+        await tx.insert(inventoryItemVariants).values(variantsToInsert);
+      }
+
+      return [created];
+    });
+
+    return Response.json(created, { status: 201 });
+  } catch (error) {
+    const message = String((error as { message?: string })?.message ?? "");
+    if (message.includes("variante") || message.includes("categoria") || message.includes("codigo")) {
+      return new Response(message, { status: 400 });
+    }
+
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("No se pudo crear item de inventario", { status: 500 });
   }
-
-  const created = await db.transaction(async (tx) => {
-    const category = await resolveCategoryId(tx, categoryType);
-
-    if (!category?.id) {
-      throw new Error("No se pudo resolver categoria de inventario");
-    }
-
-    const itemCode = await nextItemCode(tx, category.type);
-
-    const [created] = await tx
-      .insert(inventoryItems)
-      .values({
-        itemCode,
-        name: n,
-        unit: u,
-        categoryId: category.id,
-        description: d ? d : null,
-        price: p ? p : undefined,
-        supplierId: s ? s : null,
-        hasVariants: Boolean(hasVariants),
-        isActive: isActive ?? true,
-      })
-      .returning();
-
-    const normalizedInitialVariants = Array.isArray(initialVariants)
-      ? initialVariants
-          .map((row) => ({
-            sku: sanitizeCode(
-              String(row?.sku ?? "")
-                .trim()
-                .toUpperCase(),
-            ),
-            color: String(row?.color ?? "").trim(),
-            size: String(row?.size ?? "").trim(),
-            description: String(row?.description ?? "").trim(),
-            isActive:
-              row?.isActive !== undefined ? Boolean(row.isActive) : true,
-          }))
-          .filter((row) => row.sku || row.color || row.size || row.description)
-      : [];
-
-    if (
-      created?.id &&
-      Boolean(hasVariants) &&
-      normalizedInitialVariants.length > 0
-    ) {
-      const seenSku = new Set<string>();
-
-      for (const variant of normalizedInitialVariants) {
-        if (!variant.sku) {
-          throw new Error("codigo de variante requerido");
-        }
-
-        if (seenSku.has(variant.sku)) {
-          throw new Error("codigo de variante duplicado");
-        }
-
-        seenSku.add(variant.sku);
-      }
-
-      const variantsToInsert = normalizedInitialVariants.map((row) => ({
-        inventoryItemId: created.id,
-        sku: row.sku,
-        color: row.color || null,
-        size: row.size || null,
-        description: row.description || null,
-        isActive: row.isActive,
-      }));
-
-      await tx.insert(inventoryItemVariants).values(variantsToInsert);
-    }
-
-    if (created?.id && ms !== undefined) {
-      const principalWarehouseId = await resolveWarehouseIdByLocation(
-        tx,
-        "BODEGA_PRINCIPAL",
-      );
-
-      if (principalWarehouseId) {
-        const [existingStock] = await tx
-          .select({ id: warehouseStock.id })
-          .from(warehouseStock)
-          .where(
-            and(
-              eq(warehouseStock.inventoryItemId, created.id),
-              eq(warehouseStock.warehouseId, principalWarehouseId),
-            ),
-          )
-          .limit(1);
-
-        if (existingStock?.id) {
-          await tx
-            .update(warehouseStock)
-            .set({ minStock: ms ? ms : "0", lastUpdated: new Date() })
-            .where(eq(warehouseStock.id, existingStock.id));
-        } else {
-          await tx.insert(warehouseStock).values({
-            warehouseId: principalWarehouseId,
-            inventoryItemId: created.id,
-            variantId: null,
-            availableQty: "0",
-            reservedQty: "0",
-            minStock: ms ? ms : "0",
-            lastUpdated: new Date(),
-          });
-        }
-      }
-    }
-
-    return [created];
-  });
-
-  return Response.json(created, { status: 201 });
 }
 
 export async function PUT(request: Request) {
@@ -516,10 +403,8 @@ export async function PUT(request: Request) {
     description,
     price,
     supplierId,
-    minStock,
     isActive,
     categoryType,
-    hasVariants,
   } = await request.json();
 
   if (!id) return new Response("Inventory item ID required", { status: 400 });
@@ -532,17 +417,12 @@ export async function PUT(request: Request) {
   const p = price !== undefined ? String(price ?? "").trim() : undefined;
   const s =
     supplierId !== undefined ? String(supplierId ?? "").trim() : undefined;
-  const ms = minStock !== undefined ? String(minStock ?? "").trim() : undefined;
 
   if (!n) return new Response("name required", { status: 400 });
   if (!u) return new Response("unit required", { status: 400 });
 
   if (p && Number.isNaN(Number(p))) {
     return new Response("price invalid", { status: 400 });
-  }
-
-  if (ms && Number.isNaN(Number(ms))) {
-    return new Response("minStock invalid", { status: 400 });
   }
 
   const category = await resolveCategoryId(db, categoryType);
@@ -557,50 +437,12 @@ export async function PUT(request: Request) {
         description: d !== undefined ? (d ? d : null) : undefined,
         price: p !== undefined ? (p ? p : null) : undefined,
         supplierId: s !== undefined ? (s ? s : null) : undefined,
-        hasVariants:
-          hasVariants !== undefined ? Boolean(hasVariants) : undefined,
+        hasVariants: true,
         isActive: isActive !== undefined ? Boolean(isActive) : undefined,
         updatedAt: new Date(),
       })
       .where(eq(inventoryItems.id, String(id)))
       .returning();
-
-    if (ms !== undefined) {
-      const principalWarehouseId = await resolveWarehouseIdByLocation(
-        tx,
-        "BODEGA_PRINCIPAL",
-      );
-
-      if (principalWarehouseId) {
-        const [existingStock] = await tx
-          .select({ id: warehouseStock.id })
-          .from(warehouseStock)
-          .where(
-            and(
-              eq(warehouseStock.inventoryItemId, String(id)),
-              eq(warehouseStock.warehouseId, principalWarehouseId),
-            ),
-          )
-          .limit(1);
-
-        if (existingStock?.id) {
-          await tx
-            .update(warehouseStock)
-            .set({ minStock: ms ? ms : "0", lastUpdated: new Date() })
-            .where(eq(warehouseStock.id, existingStock.id));
-        } else {
-          await tx.insert(warehouseStock).values({
-            warehouseId: principalWarehouseId,
-            inventoryItemId: String(id),
-            variantId: null,
-            availableQty: "0",
-            reservedQty: "0",
-            minStock: ms ? ms : "0",
-            lastUpdated: new Date(),
-          });
-        }
-      }
-    }
 
     return rows;
   });

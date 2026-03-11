@@ -179,33 +179,19 @@ export async function POST(request: Request) {
   const reasonText = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!vId) return new Response("variantId required", { status: 400 });
   if (!ordId) return new Response("orderItemId required", { status: 400 });
   if (!sourceWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!reasonText) return new Response("reason required", { status: 400 });
 
   const [itemRow] = await db
-    .select({ hasVariants: inventoryItems.hasVariants, name: inventoryItems.name })
+    .select({ name: inventoryItems.name })
     .from(inventoryItems)
     .where(eq(inventoryItems.id, itemId))
     .limit(1);
 
   if (!itemRow) return new Response("inventory item not found", { status: 404 });
-  if (itemRow.hasVariants && !vId) {
-    const [{ totalVariants }] = await db
-      .select({ totalVariants: sql<number>`count(*)::int` })
-      .from(inventoryItemVariants)
-      .where(
-        and(
-          eq(inventoryItemVariants.inventoryItemId, itemId),
-          eq(inventoryItemVariants.isActive, true),
-        ),
-      );
-
-    if ((totalVariants ?? 0) > 0) {
-      return new Response("variant required for this item", { status: 400 });
-    }
-  }
 
   const [warehouseRow] = await db
     .select({ id: warehouses.id })
@@ -296,33 +282,19 @@ export async function PUT(request: Request) {
   const reasonText = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!vId) return new Response("variantId required", { status: 400 });
   if (!ordId) return new Response("orderItemId required", { status: 400 });
   if (!sourceWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!reasonText) return new Response("reason required", { status: 400 });
 
   const [itemRow] = await db
-    .select({ hasVariants: inventoryItems.hasVariants })
+    .select({ id: inventoryItems.id })
     .from(inventoryItems)
     .where(eq(inventoryItems.id, itemId))
     .limit(1);
 
   if (!itemRow) return new Response("inventory item not found", { status: 404 });
-  if (itemRow.hasVariants && !vId) {
-    const [{ totalVariants }] = await db
-      .select({ totalVariants: sql<number>`count(*)::int` })
-      .from(inventoryItemVariants)
-      .where(
-        and(
-          eq(inventoryItemVariants.inventoryItemId, itemId),
-          eq(inventoryItemVariants.isActive, true),
-        ),
-      );
-
-    if ((totalVariants ?? 0) > 0) {
-      return new Response("variant required for this item", { status: 400 });
-    }
-  }
 
   const [warehouseRow] = await db
     .select({ id: warehouses.id })

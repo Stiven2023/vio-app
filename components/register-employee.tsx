@@ -21,19 +21,19 @@ export default function RegisterEmployee() {
       {hydrated ? (
         <>
           <h1 className="text-2xl font-bold mb-6">
-            {isEditMode ? "Editar empleado" : "Registrar empleado"}
+            {isEditMode ? "Edit employee" : "Register employee"}
           </h1>
           <EmployeeRegisterForm
             employeeId={employeeId || undefined}
             onSuccess={() => router.push("/admin")}
-            submitLabel={isEditMode ? "Guardar" : "Registrar"}
+            submitLabel={isEditMode ? "Save" : "Register"}
           />
           <button
             className="mt-6 text-primary underline"
             type="button"
             onClick={() => router.push("/admin/employees")}
           >
-            ← Volver a empleados
+            ← Back to employees
           </button>
         </>
       ) : (

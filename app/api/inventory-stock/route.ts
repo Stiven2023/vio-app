@@ -36,13 +36,12 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const itemId = String(searchParams.get("inventoryItemId") ?? "").trim();
     const variantId = String(searchParams.get("variantId") ?? "").trim();
     const warehouseIdParam = String(searchParams.get("warehouseId") ?? "").trim();
     const location = toLocation(searchParams.get("location"));
 
-    if (!itemId && !variantId) {
-      return new Response("inventoryItemId or variantId required", { status: 400 });
+    if (!variantId) {
+      return new Response("variantId required", { status: 400 });
     }
 
     const warehouseId = warehouseIdParam
@@ -60,9 +59,7 @@ export async function GET(request: Request) {
       .from(warehouseStock)
       .where(
         and(
-          variantId
-            ? eq(warehouseStock.variantId, variantId)
-            : eq(warehouseStock.inventoryItemId, itemId),
+          eq(warehouseStock.variantId, variantId),
           eq(warehouseStock.warehouseId, warehouseId),
         ),
       )
@@ -71,7 +68,7 @@ export async function GET(request: Request) {
     const stock = asNumber(row?.stock);
 
     return Response.json({
-      inventoryItemId: itemId,
+      variantId,
       warehouseId,
       location,
       stock,

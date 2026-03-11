@@ -46,12 +46,12 @@ export default function RegisterUser() {
     const token = otp.trim();
 
     if (!email) {
-      setToast({ message: "El correo es obligatorio.", type: "error" });
+      setToast({ message: "Email is required.", type: "error" });
 
       return;
     }
     if (!/^[0-9]{6}$/.test(token)) {
-      setToast({ message: "Ingresa un código de 6 dígitos.", type: "error" });
+      setToast({ message: "Enter a 6-digit code.", type: "error" });
 
       return;
     }
@@ -67,16 +67,16 @@ export default function RegisterUser() {
       if (!res.ok) {
         const text = await res.text();
 
-        setToast({ message: text || "Token inválido.", type: "error" });
+        setToast({ message: text || "Invalid token.", type: "error" });
 
         return;
       }
 
-      setToast({ message: "Correo verificado.", type: "success" });
+      setToast({ message: "Email verified.", type: "success" });
       setOtpVisible(false);
       setEmployeeOpen(true);
     } catch {
-      setToast({ message: "No se pudo verificar el correo.", type: "error" });
+      setToast({ message: "Could not verify email.", type: "error" });
     } finally {
       setVerifying(false);
     }
@@ -86,7 +86,7 @@ export default function RegisterUser() {
     const email = createdUser?.email?.trim() || form.email.trim();
 
     if (!email) {
-      setToast({ message: "El correo es obligatorio.", type: "error" });
+      setToast({ message: "Email is required.", type: "error" });
 
       return;
     }
@@ -103,16 +103,16 @@ export default function RegisterUser() {
         const text = await res.text();
 
         setToast({
-          message: text || "No se pudo reenviar el token.",
+          message: text || "Could not resend token.",
           type: "error",
         });
 
         return;
       }
 
-      setToast({ message: "Token reenviado.", type: "success" });
+      setToast({ message: "Token resent.", type: "success" });
     } catch {
-      setToast({ message: "No se pudo reenviar el token.", type: "error" });
+      setToast({ message: "Could not resend token.", type: "error" });
     } finally {
       setVerifying(false);
     }
@@ -143,7 +143,7 @@ export default function RegisterUser() {
         const text = await res.text();
 
         setToast({
-          message: text || "No se pudo crear el usuario.",
+          message: text || "Could not create user.",
           type: "error",
         });
 
@@ -155,7 +155,7 @@ export default function RegisterUser() {
 
       if (!u?.id) {
         setToast({
-          message: "Respuesta inválida del servidor.",
+          message: "Invalid server response.",
           type: "error",
         });
 
@@ -166,15 +166,15 @@ export default function RegisterUser() {
         message:
           // emailSent es opcional (compatibilidad)
           (u as any)?.emailSent === false
-            ? "Usuario creado, pero no se pudo enviar el token. Usa Reenviar."
-            : "Usuario creado. Verifica el correo con el token.",
+            ? "User created, but token could not be sent. Use Resend."
+            : "User created. Verify the email with the token.",
         type: "success",
       });
       setCreatedUser({ id: u.id, email: u.email ?? form.email.trim() });
       setOtp("");
       setOtpVisible(true);
     } catch {
-      setToast({ message: "No se pudo crear el usuario.", type: "error" });
+      setToast({ message: "Could not create user.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -184,10 +184,10 @@ export default function RegisterUser() {
     <Card className="max-w-md mx-auto mt-8">
       {toast ? <AlertToast message={toast.message} type={toast.type} /> : null}
       <form onSubmit={handleSubmit}>
-        <h2 className="text-xl font-bold mb-4">Registro de Usuario</h2>
+        <h2 className="text-xl font-bold mb-4">User Registration</h2>
         <Input
           required
-          label="Correo electrónico"
+          label="Email"
           name="email"
           startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
           type="email"
@@ -199,7 +199,7 @@ export default function RegisterUser() {
           endContent={
             <Button
               aria-label={
-                showPassword ? "Ocultar contraseña" : "Ver contraseña"
+                showPassword ? "Hide password" : "Show password"
               }
               size="sm"
               type="button"
@@ -213,7 +213,7 @@ export default function RegisterUser() {
               )}
             </Button>
           }
-          label="Contraseña"
+          label="Password"
           name="password"
           type={showPassword ? "text" : "password"}
           value={form.password}
@@ -225,18 +225,18 @@ export default function RegisterUser() {
           disabled={loading}
           type="submit"
         >
-          {loading ? <Skeleton className="w-6 h-6 mx-auto" /> : "Registrar"}
+          {loading ? <Skeleton className="w-6 h-6 mx-auto" /> : "Register"}
         </Button>
       </form>
 
       {otpVisible ? (
         <div className="mt-4 space-y-3">
-          <h3 className="text-sm font-medium">Verifica tu correo</h3>
+          <h3 className="text-sm font-medium">Verify your email</h3>
           <p className="text-sm text-default-500">
-            Te enviamos un código de 6 dígitos al correo.
+            We sent a 6-digit code to your email.
           </p>
           <div className="space-y-2">
-            <div className="text-sm">Código (6 dígitos)</div>
+            <div className="text-sm">Code (6 digits)</div>
             <OtpInput
               focusOnMount
               isDisabled={verifying}
@@ -246,14 +246,14 @@ export default function RegisterUser() {
           </div>
           <div className="flex gap-2">
             <Button isDisabled={verifying} variant="flat" onPress={resendOtp}>
-              Reenviar
+              Resend
             </Button>
             <Button
               color="primary"
               isDisabled={verifying}
               onPress={verifyEmail}
             >
-              Verificar
+              Verify
             </Button>
           </div>
         </div>
@@ -261,19 +261,19 @@ export default function RegisterUser() {
 
       <Modal isOpen={employeeOpen} onOpenChange={setEmployeeOpen}>
         <ModalContent>
-          <ModalHeader>Registro de Empleado</ModalHeader>
+          <ModalHeader>Employee Registration</ModalHeader>
           <ModalBody>
             {createdUser ? (
               <EmployeeRegisterForm
                 initialUser={createdUser}
-                submitLabel="Crear empleado"
+                submitLabel="Create employee"
                 onSuccess={() => setEmployeeOpen(false)}
               />
             ) : null}
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setEmployeeOpen(false)}>
-              Cerrar
+              Close
             </Button>
           </ModalFooter>
         </ModalContent>

@@ -71,7 +71,7 @@ export function InventoryOutputModal({
 
   const itemOptions = items;
   const selectedItem = itemOptions.find((item) => item.id === inventoryItemId) ?? null;
-  const variantRequired = selectedItem?.hasVariants === true && variants.length > 0;
+  const variantRequired = Boolean(selectedItem?.id);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -151,9 +151,7 @@ export function InventoryOutputModal({
   }, [inventoryItemId, isOpen]);
 
   useEffect(() => {
-    const id = String(inventoryItemId ?? "").trim();
-
-    if (!id) {
+    if (!variantId) {
       setAvailable(null);
       return;
     }
@@ -164,14 +162,12 @@ export function InventoryOutputModal({
     }
 
     apiJson<{ stock: number }>(
-      variantId
-        ? `/api/inventory-stock?variantId=${variantId}&warehouseId=${warehouseId}`
-        : `/api/inventory-stock?inventoryItemId=${id}&warehouseId=${warehouseId}`,
+      `/api/inventory-stock?variantId=${variantId}&warehouseId=${warehouseId}`,
     )
       .then((res) => {
         const base = res.stock ?? 0;
         const current =
-          output?.inventoryItemId === id &&
+          output?.inventoryItemId === inventoryItemId &&
           output?.warehouseId === warehouseId &&
           (output?.variantId ?? "") === variantId &&
           output?.quantity
@@ -182,9 +178,9 @@ export function InventoryOutputModal({
       })
       .catch(() => setAvailable(null));
   }, [
-    inventoryItemId,
     variantId,
     warehouseId,
+    inventoryItemId,
     output?.inventoryItemId,
     output?.variantId,
     output?.warehouseId,
@@ -275,7 +271,7 @@ export function InventoryOutputModal({
             isDisabled={submitting || loadingVariants || variants.length === 0}
             isLoading={loadingVariants}
             isRequired={variantRequired}
-            label={variantRequired ? "Variante" : "Variante (opcional)"}
+            label="Variante"
             selectedKeys={variantId ? new Set([variantId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];

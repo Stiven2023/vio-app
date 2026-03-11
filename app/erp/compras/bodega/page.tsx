@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { InventoryTabs } from "@/app/erp/inventory/_components/inventory-tabs";
+import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export default async function ComprasBodegaPage() {
@@ -12,6 +13,11 @@ export default async function ComprasBodegaPage() {
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),
   });
+
+  const role = getRoleFromRequest(req);
+  const allowedRole = role === "ADMINISTRADOR" || role === "LIDER_SUMINISTROS";
+
+  if (!allowedRole) redirect("/unauthorized");
 
   const forbiddenInventory = await requirePermission(req, "VER_INVENTARIO");
   const forbiddenItems = await requirePermission(req, "VER_ITEM_INVENTARIO");

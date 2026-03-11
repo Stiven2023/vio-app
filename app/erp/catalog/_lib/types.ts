@@ -86,13 +86,12 @@ export type InventoryItem = {
     | "REPUESTOS"
     | "REVENTA"
     | null;
-  hasVariants?: boolean | null;
+  hasVariants?: true;
   currentStock?: string | null;
   lastMovementType?: "ENTRADA" | "SALIDA" | null;
   description?: string | null;
   price?: string | null;
   supplierId?: string | null;
-  minStock?: string | null;
   isActive?: boolean | null;
   createdAt?: string | null;
   updatedAt?: string | null;

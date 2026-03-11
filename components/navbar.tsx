@@ -248,7 +248,7 @@ export const Navbar = () => {
             </NavbarItem>
             <NavbarItem>
               <Button as={NextLink} href="/erp/envios" size="sm" variant={isActive("/envios") ? "solid" : "light"}>
-                Envíos
+                Shipments
               </Button>
             </NavbarItem>
           </ul>
@@ -319,10 +319,10 @@ export const Navbar = () => {
                     variant={otherItems.some((item) => isActive(item.href)) ? "solid" : "light"}
                     className={clsx(openGroup === "others" ? "bg-default-200" : "")}
                   >
-                    Otros
+                    More
                   </Button>
                 </DropdownTrigger>
-                <DropdownMenu aria-label="Otros">
+                <DropdownMenu aria-label="More">
                   {otherItems.map((item) => (
                     <DropdownItem key={`others-${item.href}`} as={NextLink} href={toErpHref(item.href)}>
                       {item.name}
@@ -351,20 +351,20 @@ export const Navbar = () => {
                   </div>
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu aria-label="Menu de usuario" onAction={(key) => void handleUserMenuAction(String(key))}>
-                <DropdownItem key="user-header" isReadOnly className="opacity-100 cursor-default" textValue="Usuario actual">
+              <DropdownMenu aria-label="User menu" onAction={(key) => void handleUserMenuAction(String(key))}>
+                <DropdownItem key="user-header" isReadOnly className="opacity-100 cursor-default" textValue="Current user">
                   <div className="flex items-center gap-3 py-1">
                     <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium leading-tight">{user?.name ?? "Usuario"}</span>
+                      <span className="text-sm font-medium leading-tight">{user?.name ?? "User"}</span>
                       <span className="text-xs text-default-500 leading-tight">{role ?? "SIN_ROL"}</span>
                     </div>
                   </div>
                 </DropdownItem>
-                <DropdownItem key="notifications">Notificaciones</DropdownItem>
-                <DropdownItem key="options">Opciones</DropdownItem>
+                <DropdownItem key="notifications">Notifications</DropdownItem>
+                <DropdownItem key="options">Options</DropdownItem>
                 <DropdownItem key="logout" className="text-danger" color="danger">
-                  Cierre de sesion
+                  Log out
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
@@ -376,7 +376,7 @@ export const Navbar = () => {
         {isAuthenticated ? (
           <div className="flex items-center gap-2 min-w-0">
             <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
-            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? "Usuario"}</div>
+            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? "User"}</div>
           </div>
         ) : null}
         <ThemeSwitch />
@@ -394,12 +394,12 @@ export const Navbar = () => {
               </NavbarMenuItem>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/envios" size="lg">
-                  Envíos
+                  Shipments
                 </Link>
               </NavbarMenuItem>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/options" size="lg">
-                  Opciones
+                  Options
                 </Link>
               </NavbarMenuItem>
             </>
@@ -431,7 +431,7 @@ export const Navbar = () => {
               <div className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2">
                 <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-default-500 flex items-center gap-2">
                   <OtherMenuIcon className="text-sm" />
-                  Otros
+                  More
                 </div>
                 <div className="flex flex-col">
                   {otherItems.map((item) => (
@@ -455,7 +455,7 @@ export const Navbar = () => {
             <>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/notifications" size="md">
-                  Notificaciones
+                  Notifications
                 </Link>
               </NavbarMenuItem>
               <NavbarMenuItem key="logout-mobile">
@@ -468,7 +468,7 @@ export const Navbar = () => {
                     router.push("/login");
                   }}
                 >
-                  Cierre de sesion
+                  Log out
                 </Button>
               </NavbarMenuItem>
             </>

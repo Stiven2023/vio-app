@@ -11,19 +11,19 @@ export default function UnauthorizedPage() {
           <div className="flex flex-col gap-4">
             <div>
               <div className="text-2xl font-semibold text-success">
-                Acceso restringido
+                Access restricted
               </div>
               <div className="text-default-600 mt-2">
-                No estas autorizado para ver esta pagina. Si crees que es un
-                error, contacta al administrador.
+                You are not authorized to view this page. If you think this is
+                an error, contact an administrator.
               </div>
             </div>
             <div className="flex gap-2">
               <Button as={NextLink} href="/erp/dashboard" variant="flat">
-                Ir al dashboard
+                Go to dashboard
               </Button>
               <Button as={NextLink} href="/" variant="flat">
-                Ir al inicio
+                Go to home
               </Button>
             </div>
           </div>

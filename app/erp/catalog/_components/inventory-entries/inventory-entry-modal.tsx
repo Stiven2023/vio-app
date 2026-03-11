@@ -70,8 +70,7 @@ export function InventoryEntryModal({
   const itemOptions = items;
   const selectedItem =
     itemOptions.find((item) => item.id === inventoryItemId) ?? null;
-  const variantRequired =
-    selectedItem?.hasVariants === true && variants.length > 0;
+  const variantRequired = Boolean(selectedItem?.id);
   const supplierOptions = [
     { id: "__none", name: "Sin proveedor" },
     ...suppliers,
@@ -222,7 +221,7 @@ export function InventoryEntryModal({
             isLoading={loadingVariants}
             isRequired={variantRequired}
             items={variants}
-            label={variantRequired ? "Variante" : "Variante (opcional)"}
+            label="Variante"
             selectedKeys={variantId ? new Set([variantId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];

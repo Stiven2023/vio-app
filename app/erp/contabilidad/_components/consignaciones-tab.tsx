@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -20,17 +20,27 @@ import { usePaginatedApi } from "@/app/erp/orders/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 import { normalizePaymentStatusLabel } from "@/src/utils/payment-status";
 
-type ConsignacionRow = {
+type DepositRow = {
   id: string;
+  bankId: string | null;
+  bankCode: string | null;
+  bankName: string | null;
+  bankAccountRef: string | null;
   orderCode: string | null;
-  transferBank: string | null;
   referenceCode: string | null;
   status: string | null;
   transferCurrency: string | null;
   depositAmount: string | null;
   orderTotal: string | null;
-  valorAFavor: string;
+  creditBalance: string;
   createdAt: string | null;
+};
+
+type BankOption = {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean | null;
 };
 
 function formatMoney(value: string | number | null | undefined, currency: string) {
@@ -45,7 +55,7 @@ function formatMoney(value: string | number | null | undefined, currency: string
   }).format(Number.isFinite(n) ? n : 0);
 }
 
-export function ConsignacionesTab({
+export function DepositsTab({
   canApprovePayments,
 }: {
   canApprovePayments: boolean;
@@ -55,19 +65,32 @@ export function ConsignacionesTab({
   const [currency, setCurrency] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-
-  const bankOptions = [
-    { value: "all", label: "Todos" },
-    { value: "GC 24-25", label: "GC 24-25" },
-    { value: "O 29-52", label: "O 29-52" },
-    { value: "VIO-EXT.", label: "VIO-EXT." },
-  ];
+  const [bankOptions, setBankOptions] = useState<
+    Array<{ value: string; label: string }>
+  >([{ value: "all", label: "All" }]);
 
   const currencyOptions = [
-    { value: "all", label: "Todas" },
+    { value: "all", label: "All" },
     { value: "COP", label: "COP" },
     { value: "USD", label: "USD" },
   ];
+
+  useEffect(() => {
+    apiJson<{ items: BankOption[] }>("/api/banks?page=1&pageSize=200")
+      .then((res) => {
+        const options = (res.items ?? [])
+          .filter((item) => item.isActive !== false)
+          .map((item) => ({
+            value: item.id,
+            label: `${item.code} - ${item.name}`,
+          }));
+
+        setBankOptions([{ value: "all", label: "All" }, ...options]);
+      })
+      .catch(() => {
+        setBankOptions([{ value: "all", label: "All" }]);
+      });
+  }, []);
 
   const endpoint = useMemo(() => {
     const sp = new URLSearchParams();
@@ -81,7 +104,7 @@ export function ConsignacionesTab({
     return `/api/contabilidad/consignaciones${qs ? `?${qs}` : ""}`;
   }, [bank, currency, dateFrom, dateTo, q]);
 
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<ConsignacionRow>(endpoint, 15);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<DepositRow>(endpoint, 15);
 
   const updateStatus = async (id: string, nextStatus: "PAGADO" | "ANULADO") => {
     try {
@@ -92,8 +115,8 @@ export function ConsignacionesTab({
 
       toast.success(
         nextStatus === "PAGADO"
-          ? "Pago aprobado como CONSIGNADO"
-          : "Pago desechado como NO CONSIGNADO",
+          ? "Payment approved as DEPOSITED"
+          : "Payment rejected as NOT DEPOSITED",
       );
       refresh();
     } catch (error) {
@@ -107,27 +130,27 @@ export function ConsignacionesTab({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-80"
-            placeholder="Buscar por pedido, # consignación o banco..."
+            placeholder="Search by order, deposit # or bank..."
             value={q}
             onValueChange={setQ}
           />
           <FilterSelect
             className="sm:w-48"
-            label="Banco"
+            label="Bank"
             options={bankOptions}
             value={bank}
             onChange={setBank}
           />
           <FilterSelect
             className="sm:w-36"
-            label="Moneda"
+            label="Currency"
             options={currencyOptions}
             value={currency}
             onChange={setCurrency}
           />
           <Input
             className="sm:w-44"
-            label="Fecha desde"
+            label="Date from"
             size="sm"
             type="date"
             value={dateFrom}
@@ -135,7 +158,7 @@ export function ConsignacionesTab({
           />
           <Input
             className="sm:w-44"
-            label="Fecha hasta"
+            label="Date to"
             size="sm"
             type="date"
             value={dateTo}
@@ -153,43 +176,43 @@ export function ConsignacionesTab({
               setDateTo("");
             }}
           >
-            Limpiar filtros
+            Clear filters
           </Button>
-          <Button variant="flat" onPress={refresh}>Refrescar</Button>
+          <Button variant="flat" onPress={refresh}>Refresh</Button>
         </div>
       </div>
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Consignaciones"
+          ariaLabel="Deposits"
           headers={[
-            "Fecha consignación",
-            "Código pedido",
-            "Banco",
-            "# consignación",
-            "Estado",
-            "Moneda",
-            "Total consignado",
-            "Valor a pagar",
-            "Valor a favor",
-            "Acciones",
+            "Deposit date",
+            "Order code",
+            "Bank",
+            "Deposit #",
+            "Status",
+            "Currency",
+            "Deposited total",
+            "Order amount",
+            "Credit balance",
+            "Actions",
           ]}
         />
       ) : (
-        <Table aria-label="Consignaciones">
+        <Table aria-label="Deposits">
           <TableHeader>
-            <TableColumn>Fecha consignación</TableColumn>
-            <TableColumn>Código pedido</TableColumn>
-            <TableColumn>Banco</TableColumn>
-            <TableColumn># consignación</TableColumn>
-            <TableColumn>Estado</TableColumn>
-            <TableColumn>Moneda</TableColumn>
-            <TableColumn>Total consignado</TableColumn>
-            <TableColumn>Valor a pagar en pedido</TableColumn>
-            <TableColumn>Valor a favor</TableColumn>
-            <TableColumn>Acciones</TableColumn>
+            <TableColumn>Deposit date</TableColumn>
+            <TableColumn>Order code</TableColumn>
+            <TableColumn>Bank</TableColumn>
+            <TableColumn>Deposit #</TableColumn>
+            <TableColumn>Status</TableColumn>
+            <TableColumn>Currency</TableColumn>
+            <TableColumn>Deposited total</TableColumn>
+            <TableColumn>Order amount</TableColumn>
+            <TableColumn>Credit balance</TableColumn>
+            <TableColumn>Actions</TableColumn>
           </TableHeader>
-          <TableBody emptyContent="Sin consignaciones" items={data?.items ?? []}>
+          <TableBody emptyContent="No deposits" items={data?.items ?? []}>
             {(row) => {
               const currency = String(row.transferCurrency ?? "COP").toUpperCase();
               return (
@@ -198,13 +221,20 @@ export function ConsignacionesTab({
                     {row.createdAt ? new Date(row.createdAt).toLocaleString("es-CO") : "-"}
                   </TableCell>
                   <TableCell>{row.orderCode ?? "-"}</TableCell>
-                  <TableCell>{row.transferBank ?? "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span>{[row.bankCode, row.bankName].filter(Boolean).join(" - ") || "-"}</span>
+                      <span className="text-xs text-default-500">
+                        {row.bankAccountRef ? `Account: ${row.bankAccountRef}` : "Account: -"}
+                      </span>
+                    </div>
+                  </TableCell>
                   <TableCell>{row.referenceCode ?? "-"}</TableCell>
                   <TableCell>{normalizePaymentStatusLabel(row.status)}</TableCell>
                   <TableCell>{currency}</TableCell>
                   <TableCell>{formatMoney(row.depositAmount, currency)}</TableCell>
                   <TableCell>{formatMoney(row.orderTotal, currency)}</TableCell>
-                  <TableCell>{formatMoney(row.valorAFavor, currency)}</TableCell>
+                  <TableCell>{formatMoney(row.creditBalance, currency)}</TableCell>
                   <TableCell>
                     <Dropdown>
                       <DropdownTrigger>
@@ -212,20 +242,20 @@ export function ConsignacionesTab({
                           <BsThreeDotsVertical />
                         </Button>
                       </DropdownTrigger>
-                      <DropdownMenu aria-label="Acciones consignación">
+                      <DropdownMenu aria-label="Deposit actions">
                         <DropdownItem
                           key="approve"
                           isDisabled={!canApprovePayments}
                           onPress={() => updateStatus(row.id, "PAGADO")}
                         >
-                          Aprobar pago
+                          Approve payment
                         </DropdownItem>
                         <DropdownItem
                           key="reject"
                           isDisabled={!canApprovePayments}
                           onPress={() => updateStatus(row.id, "ANULADO")}
                         >
-                          Anular pago
+                          Reject payment
                         </DropdownItem>
                       </DropdownMenu>
                     </Dropdown>
@@ -244,14 +274,14 @@ export function ConsignacionesTab({
             variant="flat"
             onPress={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Anterior
+            Previous
           </Button>
           <Button
             isDisabled={!data.hasNextPage || loading}
             variant="flat"
             onPress={() => setPage((p) => p + 1)}
           >
-            Siguiente
+            Next
           </Button>
         </div>
       ) : null}

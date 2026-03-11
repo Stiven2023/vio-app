@@ -1,10 +1,20 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderPayments, orders, orderStatusHistory, prefacturas } from "@/src/db/schema";
+import {
+  banks,
+  orderPayments,
+  orders,
+  orderStatusHistory,
+  prefacturas,
+} from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
+import {
+  resolvePaymentBankById,
+  validatePaymentBankCurrency,
+} from "@/src/utils/payment-banks";
 import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
@@ -28,9 +38,6 @@ function toPositiveNumericString(v: unknown) {
 }
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
-const transferCurrencies = new Set(["COP", "USD"]);
-const transferBanks = new Set(["GC 24-25", "O 29-52", "VIO-EXT."]);
-
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
     .select({ id: orders.id, total: orders.total, status: orders.status })
@@ -123,7 +130,7 @@ export async function GET(
     const { id } = await params;
     const orderId = String(id ?? "").trim();
 
-    if (!orderId) return new Response("id required", { status: 400 });
+    if (!orderId) return new Response("Order ID is required", { status: 400 });
 
     const where = and(eq(orderPayments.orderId, orderId));
 
@@ -157,13 +164,17 @@ export async function GET(
         depositAmount: orderPayments.depositAmount,
         referenceCode: orderPayments.referenceCode,
         method: orderPayments.method,
-        transferBank: orderPayments.transferBank,
+        bankId: orderPayments.bankId,
+        bankCode: banks.code,
+        bankName: banks.name,
+        bankAccountRef: banks.accountRef,
         transferCurrency: orderPayments.transferCurrency,
         status: orderPayments.status,
         proofImageUrl: orderPayments.proofImageUrl,
         createdAt: orderPayments.createdAt,
       })
       .from(orderPayments)
+      .leftJoin(banks, eq(orderPayments.bankId, banks.id))
       .where(where)
       .orderBy(desc(orderPayments.createdAt))
       .limit(pageSize)
@@ -183,7 +194,7 @@ export async function GET(
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
-    return new Response("No se pudo consultar pagos", { status: 500 });
+    return new Response("Failed to fetch payments", { status: 500 });
   }
 }
 
@@ -206,20 +217,20 @@ export async function POST(
   const { id } = await params;
   const orderId = String(id ?? "").trim();
 
-  if (!orderId) return new Response("id required", { status: 400 });
+  if (!orderId) return new Response("Order ID is required", { status: 400 });
 
   const body = (await request.json()) as any;
 
   const amount = toPositiveNumericString(body.amount);
 
-  if (!amount) return new Response("amount must be > 0", { status: 400 });
+  if (!amount) return new Response("Amount must be greater than 0", { status: 400 });
 
   const method = String(body.method ?? "")
     .trim()
     .toUpperCase();
 
   if (!methods.has(method)) {
-    return new Response("invalid method", { status: 400 });
+    return new Response("Invalid payment method", { status: 400 });
   }
 
   const status = "PENDIENTE";
@@ -237,10 +248,10 @@ export async function POST(
   const depositAmount =
     toPositiveNumericString(body.depositAmount) ?? amount;
 
-  const transferBank =
-    body.transferBank === undefined || body.transferBank === null
+  const bankId =
+    body.bankId === undefined || body.bankId === null
       ? null
-      : String(body.transferBank).trim() || null;
+      : String(body.bankId).trim() || null;
 
   const transferCurrencyRaw =
     body.transferCurrency === undefined || body.transferCurrency === null
@@ -248,29 +259,15 @@ export async function POST(
       : String(body.transferCurrency).trim().toUpperCase() || null;
   const transferCurrency = transferCurrencyRaw;
 
+  const bankRow = bankId ? await resolvePaymentBankById(db, bankId) : null;
+
   if (method === "TRANSFERENCIA") {
-    if (!transferBank || !transferBanks.has(transferBank)) {
-      return new Response("transferBank required for transfer method", {
-        status: 400,
-      });
-    }
-
-    if (!transferCurrency || !transferCurrencies.has(transferCurrency)) {
-      return new Response("transferCurrency must be COP or USD", {
-        status: 400,
-      });
-    }
-
-    if (transferCurrency === "USD" && transferBank !== "VIO-EXT.") {
-      return new Response("USD solo se acepta cuando el banco es VIO-EXT.", {
-        status: 400,
-      });
-    }
-
-    if (transferBank === "VIO-EXT." && transferCurrency !== "USD") {
-      return new Response("Con banco VIO-EXT. solo se acepta moneda USD.", {
-        status: 400,
-      });
+    const bankValidationError = validatePaymentBankCurrency(
+      bankRow,
+      transferCurrency,
+    );
+    if (bankValidationError) {
+      return new Response(bankValidationError, { status: 400 });
     }
   }
 
@@ -291,7 +288,8 @@ export async function POST(
         depositAmount,
         referenceCode,
         method: method as any,
-        transferBank: method === "TRANSFERENCIA" ? transferBank : null,
+        bankId: method === "TRANSFERENCIA" ? bankRow?.id ?? null : null,
+        transferBank: null,
         transferCurrency:
           method === "TRANSFERENCIA" && transferCurrency
             ? transferCurrency

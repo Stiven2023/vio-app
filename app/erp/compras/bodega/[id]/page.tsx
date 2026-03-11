@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { WarehouseDetailsClient } from "./warehouse-details-client";
 
+import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export default async function WarehouseDetailsPage({
@@ -17,6 +18,13 @@ export default async function WarehouseDetailsPage({
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),
   });
+
+  const role = getRoleFromRequest(req);
+  const allowedRole = role === "ADMINISTRADOR" || role === "LIDER_SUMINISTROS";
+
+  if (!allowedRole) {
+    redirect("/unauthorized");
+  }
 
   const forbidden = await requirePermission(req, "VER_INVENTARIO");
 

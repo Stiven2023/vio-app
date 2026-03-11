@@ -35,14 +35,14 @@ export async function PUT(request: Request) {
     const newPassword = String(payload.newPassword ?? "").trim();
 
     if (!currentPassword || !newPassword) {
-      return new Response("currentPassword y newPassword son requeridos", {
+      return new Response("currentPassword and newPassword are required", {
         status: 400,
       });
     }
 
     if (!isValidUserPassword(newPassword)) {
       return new Response(
-        "Contraseña inválida: mínimo 7, 1 mayúscula, solo letras, números, . y *",
+        "Invalid password: at least 7 characters, 1 uppercase letter, only letters, numbers, . and *",
         { status: 400 },
       );
     }
@@ -54,7 +54,7 @@ export async function PUT(request: Request) {
       .limit(1);
 
     if (!user) {
-      return new Response("Usuario no encontrado", { status: 404 });
+      return new Response("User not found", { status: 404 });
     }
 
     const validCurrentPassword = await bcrypt.compare(
@@ -63,7 +63,7 @@ export async function PUT(request: Request) {
     );
 
     if (!validCurrentPassword) {
-      return new Response("La contraseña actual no es válida", {
+      return new Response("Current password is invalid", {
         status: 401,
       });
     }
@@ -80,6 +80,6 @@ export async function PUT(request: Request) {
     const response = dbErrorResponse(error);
     if (response) return response;
 
-    return new Response("No se pudo cambiar la contraseña", { status: 500 });
+    return new Response("Failed to change password", { status: 500 });
   }
 }

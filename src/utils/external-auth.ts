@@ -72,7 +72,7 @@ export async function requireExternalAccessActiveClient(request: Request) {
 
   if (!isClientActive) {
     return {
-      error: new Response("Cliente inactivo o suspendido", { status: 403 }),
+      error: new Response("Client is inactive or suspended", { status: 403 }),
       payload: null,
       client: null,
     } as const;

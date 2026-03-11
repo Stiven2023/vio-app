@@ -84,7 +84,7 @@ function renderStatusChip(status: string | null | undefined) {
   if (normalized === "APROBACION_INICIAL") {
     return (
       <span className="inline-flex rounded-full bg-warning-100 px-2 py-0.5 text-xs font-semibold text-warning-700">
-        Aprobación inicial
+        Initial approval
       </span>
     );
   }
@@ -92,7 +92,7 @@ function renderStatusChip(status: string | null | undefined) {
   if (normalized === "PRODUCCION") {
     return (
       <span className="inline-flex rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary">
-        Producción
+        Production
       </span>
     );
   }
@@ -137,7 +137,7 @@ export default function PortalPedidosPage() {
       if (!me.ok) {
         const text = await me.text();
         setToast({
-          message: text || "No tienes acceso al portal de pedidos.",
+          message: text || "You do not have access to the orders portal.",
           type: "error",
         });
         router.push("/login");
@@ -150,7 +150,7 @@ export default function PortalPedidosPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        setToast({ message: text || "No se pudieron consultar pedidos.", type: "error" });
+        setToast({ message: text || "Could not fetch orders.", type: "error" });
         return;
       }
 
@@ -167,7 +167,7 @@ export default function PortalPedidosPage() {
         setTotals(null);
       }
     } catch {
-      setToast({ message: "No se pudieron consultar pedidos.", type: "error" });
+      setToast({ message: "Could not fetch orders.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -182,7 +182,7 @@ export default function PortalPedidosPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        setToast({ message: text || "No se pudo consultar el pedido.", type: "error" });
+        setToast({ message: text || "Could not fetch the order.", type: "error" });
         return;
       }
 
@@ -198,7 +198,7 @@ export default function PortalPedidosPage() {
       setPayments(data.payments ?? []);
       setTotals(data.totals ?? null);
     } catch {
-      setToast({ message: "No se pudo consultar el pedido.", type: "error" });
+      setToast({ message: "Could not fetch the order.", type: "error" });
     } finally {
       setLoadingDetail(false);
     }
@@ -213,8 +213,8 @@ export default function PortalPedidosPage() {
       {toast ? <AlertToast message={toast.message} type={toast.type} /> : null}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Portal de pedidos y diseños</h1>
-          <p className="text-default-600 mt-1">Consulta avance, prefactura, diseños y pagos realizados.</p>
+          <h1 className="text-2xl font-bold">Orders and Designs Portal</h1>
+          <p className="text-default-600 mt-1">Track progress, pre-invoices, designs, and completed payments.</p>
         </div>
         <Button
           color="danger"
@@ -224,22 +224,22 @@ export default function PortalPedidosPage() {
             router.push("/login");
           }}
         >
-          Cerrar sesión
+          Log out
         </Button>
       </div>
 
       <div className="rounded-medium border border-default-200 bg-content1 p-3">
-        <Table aria-label="Pedidos del cliente" removeWrapper>
+        <Table aria-label="Client orders" removeWrapper>
           <TableHeader>
-            <TableColumn>PEDIDO</TableColumn>
-            <TableColumn>CLIENTE</TableColumn>
-            <TableColumn>ESTADO</TableColumn>
-            <TableColumn>TIPO</TableColumn>
+            <TableColumn>ORDER</TableColumn>
+            <TableColumn>CLIENT</TableColumn>
+            <TableColumn>STATUS</TableColumn>
+            <TableColumn>TYPE</TableColumn>
             <TableColumn>TOTAL</TableColumn>
-            <TableColumn>FECHA</TableColumn>
-            <TableColumn>ACCIÓN</TableColumn>
+            <TableColumn>DATE</TableColumn>
+            <TableColumn>ACTION</TableColumn>
           </TableHeader>
-          <TableBody emptyContent={loading ? "Cargando..." : "Sin pedidos"} items={orders}>
+          <TableBody emptyContent={loading ? "Loading..." : "No orders"} items={orders}>
             {(row) => (
               <TableRow key={row.id}>
                 <TableCell>{row.orderCode}</TableCell>
@@ -250,7 +250,7 @@ export default function PortalPedidosPage() {
                 <TableCell>{formatDate(row.createdAt)}</TableCell>
                 <TableCell>
                   <Button size="sm" variant="flat" onPress={() => void loadOrderDetail(row.orderCode)}>
-                    Ver detalles
+                    View details
                   </Button>
                 </TableCell>
               </TableRow>
@@ -261,30 +261,30 @@ export default function PortalPedidosPage() {
 
       {selectedOrder ? (
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold">Pedido {selectedOrder.orderCode}</h2>
+          <h2 className="text-xl font-semibold">Order {selectedOrder.orderCode}</h2>
 
           <Card>
             <CardHeader>
-              <div className="font-semibold">Resumen (tipo prefactura)</div>
+                <div className="font-semibold">Summary (pre-invoice style)</div>
             </CardHeader>
             <CardBody>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
-                  <div className="text-xs text-default-500">Cliente</div>
+                  <div className="text-xs text-default-500">Client</div>
                   <div className="font-medium">{selectedOrder.clientName ?? selectedOrder.clientCode ?? "-"}</div>
                   <div className="text-sm text-default-600">{selectedOrder.clientCode ?? "-"}</div>
                 </div>
                 <div>
-                  <div className="text-xs text-default-500">Pedido</div>
+                  <div className="text-xs text-default-500">Order</div>
                   <div className="font-medium">{selectedOrder.orderCode}</div>
                   <div className="text-sm text-default-600">
-                    {selectedOrder.type} · {selectedOrder.kind ?? "NUEVO"} · {selectedOrder.currency ?? "COP"}
+                    {selectedOrder.type} · {selectedOrder.kind ?? "NEW"} · {selectedOrder.currency ?? "COP"}
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-default-500">Estado</div>
+                  <div className="text-xs text-default-500">Status</div>
                   <div className="font-medium">{renderStatusChip(selectedOrder.status)}</div>
-                  <div className="text-sm text-default-600">Fecha: {formatDate(selectedOrder.createdAt)}</div>
+                  <div className="text-sm text-default-600">Date: {formatDate(selectedOrder.createdAt)}</div>
                 </div>
               </div>
             </CardBody>
@@ -293,7 +293,7 @@ export default function PortalPedidosPage() {
           {totals ? (
             <Card>
               <CardHeader>
-                <div className="font-semibold">Totales</div>
+                <div className="font-semibold">Totals</div>
               </CardHeader>
               <CardBody>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -302,25 +302,25 @@ export default function PortalPedidosPage() {
                     <div className="font-medium">{formatMoney(totals.subtotal)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-default-500">Descuento (%)</div>
+                    <div className="text-xs text-default-500">Discount (%)</div>
                     <div className="font-medium">{totals.discountPercent.toFixed(0)}%</div>
                     <div className="text-sm text-default-600">-{formatMoney(totals.discountAmount)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-default-500">Flete</div>
+                    <div className="text-xs text-default-500">Shipping</div>
                     <div className="font-medium">{formatMoney(totals.shippingFee)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-default-500">Abonado</div>
+                    <div className="text-xs text-default-500">Paid</div>
                     <div className="font-medium">{formatMoney(totals.paidTotal)}</div>
                     <div className="text-sm text-default-600">{totals.paidPercent.toFixed(0)}%</div>
                   </div>
                   <div>
-                    <div className="text-xs text-default-500">Saldo</div>
+                    <div className="text-xs text-default-500">Balance</div>
                     <div className="font-medium">{formatMoney(totals.remaining)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-default-500">Total final</div>
+                    <div className="text-xs text-default-500">Final total</div>
                     <div className="text-lg font-semibold">{formatMoney(totals.grandTotal)}</div>
                   </div>
                 </div>
@@ -330,35 +330,35 @@ export default function PortalPedidosPage() {
 
           <Card>
             <CardHeader>
-              <div className="font-semibold">Diseños</div>
+                <div className="font-semibold">Designs</div>
             </CardHeader>
             <CardBody>
               {items.length === 0 ? (
-                <p className="text-sm text-default-500">Sin diseños</p>
+                <p className="text-sm text-default-500">No designs</p>
               ) : (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                   {items.map((item) => (
                     <div key={item.id} className="rounded-medium border border-default-200 p-3 space-y-2">
                       <div className="aspect-[4/3] overflow-hidden rounded-small border border-default-200 bg-default-100">
                         {item.imageUrl ? (
-                          <img alt={item.name ?? "Diseño"} className="h-full w-full object-cover" src={item.imageUrl} />
+                          <img alt={item.name ?? "Design"} className="h-full w-full object-cover" src={item.imageUrl} />
                         ) : (
-                          <div className="h-full w-full grid place-items-center text-xs text-default-500">Sin imagen</div>
+                          <div className="h-full w-full grid place-items-center text-xs text-default-500">No image</div>
                         )}
                       </div>
                       <div className="font-medium">{item.name ?? "-"}</div>
                       <div className="text-sm text-default-600">{renderStatusChip(item.status)}</div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div>
-                          <div className="text-xs text-default-500">Cantidad</div>
+                          <div className="text-xs text-default-500">Quantity</div>
                           <div>{item.quantity ?? 0}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-default-500">Proceso</div>
+                          <div className="text-xs text-default-500">Process</div>
                           <div>{item.process ?? "-"}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-default-500">Tela</div>
+                          <div className="text-xs text-default-500">Fabric</div>
                           <div>{item.fabric ?? "-"}</div>
                         </div>
                         <div>
@@ -366,7 +366,7 @@ export default function PortalPedidosPage() {
                           <div>{item.color ?? "-"}</div>
                         </div>
                         <div>
-                          <div className="text-xs text-default-500">Unitario</div>
+                          <div className="text-xs text-default-500">Unit price</div>
                           <div>{formatMoney(item.unitPrice)}</div>
                         </div>
                         <div>
@@ -375,7 +375,7 @@ export default function PortalPedidosPage() {
                         </div>
                       </div>
                       {item.observations ? (
-                        <div className="text-xs text-default-500">Observaciones: {item.observations}</div>
+                        <div className="text-xs text-default-500">Notes: {item.observations}</div>
                       ) : null}
                     </div>
                   ))}
@@ -389,36 +389,36 @@ export default function PortalPedidosPage() {
               <div>
                 <div className="font-semibold">Pagos realizados</div>
                 <p className="text-xs text-default-500 mt-1">
-                  Consulta el historial de pagos y abre vista previa del soporte.
+                  Review payment history and open proof previews.
                 </p>
               </div>
             </CardHeader>
             <CardBody>
               <div className="grid grid-cols-1 gap-2 mb-3 sm:grid-cols-3">
                 <div className="rounded-medium border border-default-200 p-2">
-                  <div className="text-xs text-default-500">Pagos registrados</div>
+                  <div className="text-xs text-default-500">Recorded payments</div>
                   <div className="font-semibold">{payments.length}</div>
                 </div>
                 <div className="rounded-medium border border-default-200 p-2">
-                  <div className="text-xs text-default-500">Total abonado</div>
+                  <div className="text-xs text-default-500">Total paid</div>
                   <div className="font-semibold">{formatMoney(totals?.paidTotal ?? 0)}</div>
                 </div>
                 <div className="rounded-medium border border-default-200 p-2">
-                  <div className="text-xs text-default-500">Saldo pendiente</div>
+                  <div className="text-xs text-default-500">Pending balance</div>
                   <div className="font-semibold">{formatMoney(totals?.remaining ?? 0)}</div>
                 </div>
               </div>
 
-              <Table aria-label="Pagos del pedido" removeWrapper>
+              <Table aria-label="Order payments" removeWrapper>
                 <TableHeader>
-                  <TableColumn>FECHA</TableColumn>
-                  <TableColumn>METODO</TableColumn>
-                  <TableColumn>ESTADO</TableColumn>
-                  <TableColumn>MONTO</TableColumn>
-                  <TableColumn>REFERENCIA</TableColumn>
-                  <TableColumn>SOPORTE</TableColumn>
+                  <TableColumn>DATE</TableColumn>
+                  <TableColumn>METHOD</TableColumn>
+                  <TableColumn>STATUS</TableColumn>
+                  <TableColumn>AMOUNT</TableColumn>
+                  <TableColumn>REFERENCE</TableColumn>
+                  <TableColumn>PROOF</TableColumn>
                 </TableHeader>
-                <TableBody emptyContent={loadingDetail ? "Cargando..." : "Sin pagos"} items={payments}>
+                <TableBody emptyContent={loadingDetail ? "Loading..." : "No payments"} items={payments}>
                   {(payment) => (
                     <TableRow key={payment.id}>
                       <TableCell>{payment.createdAt ? new Date(payment.createdAt).toLocaleString("es-CO") : "-"}</TableCell>
@@ -434,7 +434,7 @@ export default function PortalPedidosPage() {
                             onClick={() => setPaymentPreviewUrl(payment.proofImageUrl)}
                           >
                             <img
-                              alt="Soporte de pago"
+                              alt="Payment proof"
                               className="h-full w-full object-cover"
                               src={payment.proofImageUrl}
                             />
@@ -458,11 +458,11 @@ export default function PortalPedidosPage() {
             }}
           >
             <ModalContent>
-              <ModalHeader>Soporte de pago</ModalHeader>
+              <ModalHeader>Payment proof</ModalHeader>
               <ModalBody>
                 {paymentPreviewUrl ? (
                   <img
-                    alt="Soporte de pago"
+                    alt="Payment proof"
                     className="w-full max-h-[70vh] object-contain"
                     src={paymentPreviewUrl}
                   />

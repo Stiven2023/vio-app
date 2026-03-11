@@ -10,17 +10,17 @@ export default function NotFound() {
         <CardBody>
           <div className="flex flex-col gap-4">
             <div>
-              <div className="text-2xl font-semibold">Pagina no encontrada</div>
+              <div className="text-2xl font-semibold">Page not found</div>
               <div className="text-default-600 mt-2">
-                La ruta que intentas abrir no existe o fue movida.
+                The route you are trying to open does not exist or was moved.
               </div>
             </div>
             <div className="flex gap-2">
               <Button as={NextLink} href="/" variant="flat">
-                Ir al inicio
+                Go to home
               </Button>
               <Button as={NextLink} href="/erp/dashboard" variant="flat">
-                Ir al dashboard
+                Go to dashboard
               </Button>
             </div>
           </div>

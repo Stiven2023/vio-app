@@ -63,7 +63,7 @@ export function requireRole(request: Request, allowedRoles: string[]) {
   const role = getRoleFromRequest(request);
 
   if (!role || !allowedRoles.includes(role)) {
-    return new Response("Forbidden", { status: 403 });
+    return new Response("Access denied", { status: 403 });
   }
 
   return null; // autorizado

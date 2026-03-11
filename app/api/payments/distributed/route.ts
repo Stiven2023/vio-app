@@ -4,6 +4,10 @@ import { db } from "@/src/db";
 import { orderPayments, orders, orderStatusHistory, prefacturas } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import {
+  resolvePaymentBankById,
+  validatePaymentBankCurrency,
+} from "@/src/utils/payment-banks";
 import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -26,8 +30,6 @@ function toPositiveNumericString(v: unknown) {
 }
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
-const transferCurrencies = new Set(["COP", "USD"]);
-const transferBanks = new Set(["GC 24-25", "O 29-52", "VIO-EXT."]);
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
     .select({ id: orders.id, total: orders.total, status: orders.status })
@@ -115,6 +117,7 @@ export async function POST(request: Request) {
       depositAmount?: unknown;
       method?: unknown;
       status?: unknown;
+      bankId?: unknown;
       transferBank?: unknown;
       transferCurrency?: unknown;
       referenceCode?: unknown;
@@ -125,50 +128,36 @@ export async function POST(request: Request) {
     const depositAmount = toPositiveNumericString(body.depositAmount);
 
     if (!depositAmount) {
-      return new Response("depositAmount must be > 0", { status: 400 });
+      return new Response("Deposit amount must be greater than 0", { status: 400 });
     }
 
     const method = String(body.method ?? "").trim().toUpperCase();
 
     if (!methods.has(method)) {
-      return new Response("invalid method", { status: 400 });
+      return new Response("Invalid payment method", { status: 400 });
     }
 
     const status = "PENDIENTE";
 
-    const transferBank =
-      body.transferBank === undefined || body.transferBank === null
+    const bankId =
+      body.bankId === undefined || body.bankId === null
         ? null
-        : String(body.transferBank).trim() || null;
+        : String(body.bankId).trim() || null;
 
     const transferCurrency =
       body.transferCurrency === undefined || body.transferCurrency === null
         ? null
         : String(body.transferCurrency).trim().toUpperCase() || null;
 
+    const bankRow = bankId ? await resolvePaymentBankById(db, bankId) : null;
+
     if (method === "TRANSFERENCIA") {
-      if (!transferBank || !transferBanks.has(transferBank)) {
-        return new Response("transferBank required for transfer method", {
-          status: 400,
-        });
-      }
-
-      if (!transferCurrency || !transferCurrencies.has(transferCurrency)) {
-        return new Response("transferCurrency must be COP or USD", {
-          status: 400,
-        });
-      }
-
-      if (transferCurrency === "USD" && transferBank !== "VIO-EXT.") {
-        return new Response("USD solo se acepta cuando el banco es VIO-EXT.", {
-          status: 400,
-        });
-      }
-
-      if (transferBank === "VIO-EXT." && transferCurrency !== "USD") {
-        return new Response("Con banco VIO-EXT. solo se acepta moneda USD.", {
-          status: 400,
-        });
+      const bankValidationError = validatePaymentBankCurrency(
+        bankRow,
+        transferCurrency,
+      );
+      if (bankValidationError) {
+        return new Response(bankValidationError, { status: 400 });
       }
     }
 
@@ -192,18 +181,18 @@ export async function POST(request: Request) {
       .filter((a) => a.orderId && a.amount) as Array<{ orderId: string; amount: string }>;
 
     if (allocations.length === 0) {
-      return new Response("allocations required", { status: 400 });
+      return new Response("At least one allocation is required", { status: 400 });
     }
 
     const assignedTotal = allocations.reduce((acc, item) => acc + Number(item.amount), 0);
     const depositTotal = Number(depositAmount);
 
     if (!Number.isFinite(assignedTotal) || assignedTotal <= 0) {
-      return new Response("invalid allocations total", { status: 400 });
+      return new Response("Invalid allocated total", { status: 400 });
     }
 
     if (assignedTotal > depositTotal) {
-      return new Response("allocated total cannot exceed depositAmount", { status: 400 });
+      return new Response("Allocated total cannot exceed deposit amount", { status: 400 });
     }
 
     const uniqueOrderIds = Array.from(new Set(allocations.map((a) => a.orderId)));
@@ -218,7 +207,7 @@ export async function POST(request: Request) {
     const invalidOrder = uniqueOrderIds.find((id) => !existingSet.has(id));
 
     if (invalidOrder) {
-      return new Response("invalid orderId in allocations", { status: 400 });
+      return new Response("Invalid orderId in allocations", { status: 400 });
     }
 
     const clientIds = Array.from(
@@ -227,7 +216,7 @@ export async function POST(request: Request) {
 
     if (clientIds.length !== 1 || !clientIds[0]) {
       return new Response(
-        "Todos los pedidos del abono distribuido deben ser del mismo cliente",
+        "All allocated orders must belong to the same client",
         { status: 400 },
       );
     }
@@ -242,7 +231,8 @@ export async function POST(request: Request) {
             depositAmount,
             referenceCode,
             method: method as any,
-            transferBank: method === "TRANSFERENCIA" ? transferBank : null,
+            bankId: method === "TRANSFERENCIA" ? bankRow?.id ?? null : null,
+            transferBank: null,
             transferCurrency:
               method === "TRANSFERENCIA" ? transferCurrency : null,
             status: status as any,

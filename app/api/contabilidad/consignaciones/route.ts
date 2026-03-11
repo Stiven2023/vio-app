@@ -1,22 +1,25 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderPayments, orders } from "@/src/db/schema";
+import { banks, orderPayments, orders } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-type ConsignacionRow = {
+type DepositRow = {
   id: string;
+  bankId: string | null;
+  bankCode: string | null;
+  bankName: string | null;
+  bankAccountRef: string | null;
   orderCode: string | null;
-  transferBank: string | null;
   referenceCode: string | null;
   status: string | null;
   transferCurrency: string | null;
   depositAmount: string | null;
   orderTotal: string | null;
-  valorAFavor: string;
+  creditBalance: string;
   createdAt: string | null;
 };
 
@@ -47,10 +50,12 @@ export async function GET(request: Request) {
         ? sql`(
             ${orders.orderCode} ilike ${`%${q}%`}
             or ${orderPayments.referenceCode} ilike ${`%${q}%`}
-            or ${orderPayments.transferBank} ilike ${`%${q}%`}
+            or ${banks.code} ilike ${`%${q}%`}
+            or ${banks.name} ilike ${`%${q}%`}
+            or ${banks.accountRef} ilike ${`%${q}%`}
           )`
         : undefined,
-      bank ? eq(orderPayments.transferBank, bank) : undefined,
+      bank ? eq(orderPayments.bankId, bank) : undefined,
       currency ? eq(orderPayments.transferCurrency, currency) : undefined,
       dateFrom ? sql`date(${orderPayments.createdAt}) >= ${dateFrom}::date` : undefined,
       dateTo ? sql`date(${orderPayments.createdAt}) <= ${dateTo}::date` : undefined,
@@ -61,6 +66,7 @@ export async function GET(request: Request) {
     const totalQuery = db
       .select({ total: sql<number>`count(*)::int` })
       .from(orderPayments)
+      .leftJoin(banks, eq(orderPayments.bankId, banks.id))
       .leftJoin(orders, eq(orderPayments.orderId, orders.id));
 
     const [{ total }] = where
@@ -70,8 +76,11 @@ export async function GET(request: Request) {
     const itemsQuery = db
       .select({
         id: orderPayments.id,
+        bankId: orderPayments.bankId,
+        bankCode: banks.code,
+        bankName: banks.name,
+        bankAccountRef: banks.accountRef,
         orderCode: orders.orderCode,
-        transferBank: orderPayments.transferBank,
         referenceCode: orderPayments.referenceCode,
         status: orderPayments.status,
         transferCurrency: orderPayments.transferCurrency,
@@ -80,6 +89,7 @@ export async function GET(request: Request) {
         createdAt: orderPayments.createdAt,
       })
       .from(orderPayments)
+      .leftJoin(banks, eq(orderPayments.bankId, banks.id))
       .leftJoin(orders, eq(orderPayments.orderId, orders.id))
       .orderBy(desc(orderPayments.createdAt))
       .limit(pageSize)
@@ -87,14 +97,14 @@ export async function GET(request: Request) {
 
     const rows = where ? await itemsQuery.where(where) : await itemsQuery;
 
-    const items: ConsignacionRow[] = rows.map((row) => {
+    const items: DepositRow[] = rows.map((row) => {
       const consignado = Number(row.depositAmount ?? 0);
       const valorPedido = Number(row.orderTotal ?? 0);
       const favor = Math.max(0, consignado - valorPedido);
 
       return {
         ...row,
-        valorAFavor: String(Number.isFinite(favor) ? favor : 0),
+        creditBalance: String(Number.isFinite(favor) ? favor : 0),
         createdAt: row.createdAt ? String(row.createdAt) : null,
       };
     });
@@ -111,6 +121,6 @@ export async function GET(request: Request) {
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
-    return new Response("No se pudieron consultar consignaciones", { status: 500 });
+    return new Response("Failed to fetch deposits", { status: 500 });
   }
 }

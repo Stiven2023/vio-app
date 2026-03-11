@@ -7,7 +7,7 @@ export default function AppLoading() {
           <div className="h-3 w-3 animate-bounce rounded-full bg-success [animation-delay:100ms]" />
           <div className="h-3 w-3 animate-bounce rounded-full bg-success [animation-delay:200ms]" />
         </div>
-        <div className="text-sm text-default-500">Cargando...</div>
+        <div className="text-sm text-default-500">Loading module...</div>
       </div>
     </div>
   );

@@ -17,7 +17,6 @@ import {
 } from "@heroui/modal";
 import {
   BsBoxSeam,
-  BsHash,
   BsGrid,
   BsRulers,
   BsTag,
@@ -72,11 +71,9 @@ export function InventoryItemModal({
   const [categoryType, setCategoryType] = useState<
     "INSUMOS_PRODUCCION" | "PAPELERIA" | "ASEO" | "REPUESTOS" | "REVENTA"
   >("INSUMOS_PRODUCCION");
-  const [hasVariants, setHasVariants] = useState(false);
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [supplierId, setSupplierId] = useState("");
-  const [minStock, setMinStock] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [draftColor, setDraftColor] = useState("");
   const [draftSize, setDraftSize] = useState("");
@@ -96,11 +93,9 @@ export function InventoryItemModal({
     setName(item?.name ?? "");
     setUnit(item?.unit ?? "");
     setCategoryType(item?.categoryType ?? "INSUMOS_PRODUCCION");
-    setHasVariants(Boolean(item?.hasVariants));
     setDescription(item?.description ?? "");
     setPrice(item?.price ?? "");
     setSupplierId(item?.supplierId ?? "");
-    setMinStock(item?.minStock ?? "");
     setIsActive(item?.isActive ?? true);
     setDraftColor("");
     setDraftSize("");
@@ -179,11 +174,9 @@ export function InventoryItemModal({
       name,
       unit,
       categoryType,
-      hasVariants,
       description,
       price,
       supplierId: supplierId ? supplierId : undefined,
-      minStock,
       isActive,
     });
 
@@ -204,15 +197,13 @@ export function InventoryItemModal({
             ? { id: item.id, ...parsed.data }
             : {
                 ...parsed.data,
-                initialVariants: hasVariants
-                  ? initialVariants.map((variant) => ({
-                          sku: variant.sku,
-                      color: variant.color,
-                      size: variant.size,
-                      description: variant.description,
-                      isActive: variant.isActive,
-                    }))
-                  : [],
+                initialVariants: initialVariants.map((variant) => ({
+                  sku: variant.sku,
+                  color: variant.color,
+                  size: variant.size,
+                  description: variant.description,
+                  isActive: variant.isActive,
+                })),
               },
         ),
       });
@@ -310,13 +301,6 @@ export function InventoryItemModal({
               value={price}
               onValueChange={setPrice}
             />
-            <Input
-              label="Stock mínimo (opcional)"
-              startContent={<BsHash className="text-default-400" />}
-              type="number"
-              value={minStock}
-              onValueChange={setMinStock}
-            />
           </div>
 
           <Select
@@ -342,13 +326,9 @@ export function InventoryItemModal({
             Activo
           </Switch>
 
-          <Switch isSelected={hasVariants} onValueChange={setHasVariants}>
-            Maneja variantes (color/talla)
-          </Switch>
-
-          {hasVariants && !item ? (
+          {!item ? (
             <div className="space-y-2 rounded-lg border border-default-200 p-3">
-              <p className="text-sm font-semibold">Variantes iniciales (opcional)</p>
+              <p className="text-sm font-semibold">Variantes iniciales (obligatorio)</p>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                 <Input
                   label="Codigo variante"
@@ -383,7 +363,7 @@ export function InventoryItemModal({
 
               <div className="space-y-1">
                 {initialVariants.length === 0 ? (
-                  <p className="text-xs text-default-500">Sin variantes iniciales.</p>
+                  <p className="text-xs text-danger">Debes agregar al menos una variante inicial.</p>
                 ) : (
                   initialVariants.map((variant, index) => (
                     <div

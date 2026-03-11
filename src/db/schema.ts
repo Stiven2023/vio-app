@@ -5,8 +5,30 @@ export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
   "RECHAZADA",
   "EN_PROCESO",
   "FINALIZADA",
+  "VENCIDA",
   "CANCELADA",
 ]);
+
+export const purchaseOrderRouteTypeEnum = pgEnum("purchase_order_route_type", [
+  "COMPRA_APROBADA",
+  "DESPACHO_CLIENTE",
+  "LLEVADA_CONFECCION",
+  "RETORNO_CONFECCION",
+]);
+
+export const purchaseOrderPartyTypeEnum = pgEnum("purchase_order_party_type", [
+  "PROVEEDOR",
+  "CONFECCIONISTA",
+  "EMPAQUE",
+  "MENSAJERO",
+  "CONDUCTOR",
+  "DESPACHO",
+]);
+
+export const purchaseOrderRouteStatusEnum = pgEnum(
+  "purchase_order_route_status",
+  ["PENDIENTE", "EN_RUTA", "COMPLETADA", "CANCELADA"],
+);
 
 // Enum de tipo de cliente
 export const clientTypeEnum = pgEnum("client_type", [
@@ -1074,7 +1096,7 @@ export const inventoryItems = pgTable("inventory_items", {
     .notNull()
     .references(() => inventoryCategories.id),
   unit: varchar("unit", { length: 50 }).notNull(),
-  hasVariants: boolean("has_variants").default(false),
+  hasVariants: boolean("has_variants").default(true).notNull(),
   price: numeric("price", { precision: 14, scale: 2 }).default("0"),
   supplierId: uuid("supplier_id").references(() => suppliers.id),
   isActive: boolean("is_active").default(true),
@@ -1124,11 +1146,34 @@ export const warehouseStock = pgTable(
 /* =========================
    PURCHASE ORDERS
 ========================= */
+export const banks = pgTable("banks", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: varchar("code", { length: 30 }).unique().notNull(),
+  name: varchar("name", { length: 120 }).notNull(),
+  accountRef: varchar("account_ref", { length: 80 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const purchaseOrders = pgTable("purchase_orders", {
   id: uuid("id").defaultRandom().primaryKey(),
+  purchaseOrderCode: varchar("purchase_order_code", { length: 20 }).unique(),
   supplierId: uuid("supplier_id").references(() => suppliers.id),
+  createdBy: uuid("created_by").references(() => employees.id),
   status: purchaseOrderStatusEnum("status").default("PENDIENTE"),
   notes: text("notes"),
+  bankId: uuid("bank_id").references(() => banks.id),
+  bankName: varchar("bank_name", { length: 120 }),
+  bankAccountRef: varchar("bank_account_ref", { length: 80 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  approvedBy: uuid("approved_by").references(() => employees.id),
+  approvalExpiresAt: timestamp("approval_expires_at", { withTimezone: true }),
+  rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+  rejectedBy: uuid("rejected_by").references(() => employees.id),
+  rejectionReason: text("rejection_reason"),
+  subtotal: numeric("subtotal", { precision: 14, scale: 2 }).default("0"),
+  total: numeric("total", { precision: 14, scale: 2 }).default("0"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   finalizedAt: timestamp("finalized_at", { withTimezone: true }),
 });
@@ -1141,7 +1186,47 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   inventoryItemId: uuid("inventory_item_id")
     .notNull()
     .references(() => inventoryItems.id),
+  itemCode: varchar("item_code", { length: 30 }).notNull(),
+  itemName: varchar("item_name", { length: 255 }).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull(),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  unitPrice: numeric("unit_price", { precision: 14, scale: 2 })
+    .notNull()
+    .default("0"),
+  lineTotal: numeric("line_total", { precision: 14, scale: 2 })
+    .notNull()
+    .default("0"),
+});
+
+export const purchaseOrderHistory = pgTable("purchase_order_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  purchaseOrderId: uuid("purchase_order_id")
+    .notNull()
+    .references(() => purchaseOrders.id),
+  action: varchar("action", { length: 80 }).notNull(),
+  notes: text("notes"),
+  performedBy: uuid("performed_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const purchaseOrderRoutes = pgTable("purchase_order_routes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  purchaseOrderId: uuid("purchase_order_id")
+    .notNull()
+    .references(() => purchaseOrders.id),
+  routeType: purchaseOrderRouteTypeEnum("route_type").notNull(),
+  partyType: purchaseOrderPartyTypeEnum("party_type").notNull(),
+  partyId: uuid("party_id"),
+  partyLabel: varchar("party_label", { length: 255 }),
+  driverLabel: varchar("driver_label", { length: 255 }),
+  vehiclePlate: varchar("vehicle_plate", { length: 20 }),
+  originArea: varchar("origin_area", { length: 120 }).notNull(),
+  destinationArea: varchar("destination_area", { length: 120 }).notNull(),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  status: purchaseOrderRouteStatusEnum("status").default("PENDIENTE"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const stockMovements = pgTable("stock_movements", {
@@ -1231,6 +1316,7 @@ export const orderPayments = pgTable("order_payments", {
   depositAmount: numeric("deposit_amount", { precision: 14, scale: 2 }),
   referenceCode: varchar("reference_code", { length: 120 }),
   method: paymentMethodEnum("method"),
+  bankId: uuid("bank_id").references(() => banks.id),
   transferBank: varchar("transfer_bank", { length: 120 }),
   transferCurrency: varchar("transfer_currency", { length: 5 }),
   status: paymentStatusEnum("status").default("PENDIENTE"),

@@ -40,11 +40,11 @@ const sections: Section[] = [
     title: "ERP",
     fullTitle: "Enterprise Resource Planning",
     description:
-      "Contabilidad, inventario y operaciones empresariales en un solo sistema unificado.",
+      "Accounting, inventory, and enterprise operations in one unified system.",
     route: "/erp/dashboard",
-    accentWord: "GESTION",
+    accentWord: "MANAGEMENT",
     stat: "360°",
-    statLabel: "Visibilidad total",
+    statLabel: "Total visibility",
     illustration: (active) => (
       <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
         <path
@@ -66,11 +66,11 @@ const sections: Section[] = [
     title: "MES",
     fullTitle: "Manufacturing Execution System",
     description:
-      "Control de produccion, eficiencia industrial y monitoreo de planta en tiempo real.",
+      "Production control, industrial efficiency, and real-time plant monitoring.",
     route: "/mes",
-    accentWord: "PRODUCCION",
+    accentWord: "PRODUCTION",
     stat: "40%",
-    statLabel: "Mas eficiencia",
+    statLabel: "More efficiency",
     illustration: (active) => (
       <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
         <path
@@ -96,9 +96,9 @@ const sections: Section[] = [
     title: "CRM",
     fullTitle: "Customer Relationship Management",
     description:
-      "Clientes, ventas, oportunidades comerciales y pipeline integrado completo.",
+      "Clients, sales, commercial opportunities, and a fully integrated pipeline.",
     route: "/crm",
-    accentWord: "CLIENTES",
+    accentWord: "CLIENTS",
     stat: "3x",
     statLabel: "Conversion",
     illustration: (active) => (
@@ -412,7 +412,7 @@ export function HomeModuleSelector() {
               color: "#6B6B6B",
             }}
           >
-            Sistema Empresarial
+            Enterprise System
           </span>
         </div>
 
@@ -435,14 +435,14 @@ export function HomeModuleSelector() {
                         textOverflow: "ellipsis",
                       }}
                     >
-                      {user?.name ?? "Usuario"}
+                      {user?.name ?? "User"}
                     </span>
                     <BsChevronDown className="text-xs text-default-500" />
                   </div>
                 </Button>
               </DropdownTrigger>
               <DropdownMenu
-                aria-label="Acciones de usuario home"
+                aria-label="Home user actions"
                 onAction={async (key) => {
                   if (String(key) === "logout") {
                     await logout();
@@ -451,7 +451,7 @@ export function HomeModuleSelector() {
                 }}
               >
                 <DropdownItem key="logout" className="text-danger" color="danger">
-                  Cierre de sesion
+                  Log out
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
@@ -478,7 +478,7 @@ export function HomeModuleSelector() {
             color: PRIMARY,
           }}
         >
-          ▸ Selecciona tu modulo
+          ▸ Select your module
         </span>
       </motion.div>
 

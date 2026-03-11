@@ -4,6 +4,10 @@ import { db } from "@/src/db";
 import { orderPayments, orders, orderStatusHistory, prefacturas } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import {
+  resolvePaymentBankById,
+  validatePaymentBankCurrency,
+} from "@/src/utils/payment-banks";
+import {
   canSetPaymentStatusOnApproval,
   isConfirmedPaymentStatus,
 } from "@/src/utils/payment-status";
@@ -29,9 +33,6 @@ function toPositiveNumericString(v: unknown) {
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
 const statuses = new Set(["PENDIENTE", "PARCIAL", "PAGADO", "ANULADO"]);
-const transferCurrencies = new Set(["COP", "USD"]);
-const transferBanks = new Set(["GC 24-25", "O 29-52", "VIO-EXT."]);
-
 async function syncOrderStatusByPayments(orderId: string) {
   const [orderRow] = await db
     .select({ id: orders.id, total: orders.total, status: orders.status })
@@ -116,7 +117,7 @@ export async function PUT(
   const { paymentId } = await params;
   const pid = String(paymentId ?? "").trim();
 
-  if (!pid) return new Response("paymentId required", { status: 400 });
+  if (!pid) return new Response("Payment ID is required", { status: 400 });
 
   const body = (await request.json()) as any;
   const wantsStatusChange = body.status !== undefined;
@@ -132,7 +133,7 @@ export async function PUT(
     body.proofImageUrl !== undefined ||
     body.referenceCode !== undefined ||
     body.depositAmount !== undefined ||
-    body.transferBank !== undefined ||
+    body.bankId !== undefined ||
     body.transferCurrency !== undefined;
 
   if (wantsEditFields) {
@@ -145,7 +146,7 @@ export async function PUT(
   if (body.amount !== undefined) {
     const amount = toPositiveNumericString(body.amount);
 
-    if (!amount) return new Response("amount must be > 0", { status: 400 });
+    if (!amount) return new Response("Amount must be greater than 0", { status: 400 });
 
     patch.amount = amount;
   }
@@ -156,7 +157,7 @@ export async function PUT(
       .toUpperCase();
 
     if (!methods.has(method))
-      return new Response("invalid method", { status: 400 });
+      return new Response("Invalid payment method", { status: 400 });
 
     patch.method = method as any;
   }
@@ -167,10 +168,10 @@ export async function PUT(
       .toUpperCase();
 
     if (!statuses.has(status))
-      return new Response("invalid status", { status: 400 });
+      return new Response("Invalid payment status", { status: 400 });
 
     if (!canSetPaymentStatusOnApproval(status)) {
-      return new Response("status must be PAGADO or ANULADO", { status: 400 });
+      return new Response("Status must be PAGADO or ANULADO", { status: 400 });
     }
 
     patch.status = status as any;
@@ -194,21 +195,29 @@ export async function PUT(
     const depositAmount = toPositiveNumericString(body.depositAmount);
 
     if (!depositAmount) {
-      return new Response("depositAmount must be > 0", { status: 400 });
+      return new Response("Deposit amount must be greater than 0", { status: 400 });
     }
 
     patch.depositAmount = depositAmount;
   }
 
-  if (body.transferBank !== undefined) {
-    const bank =
-      body.transferBank === null ? null : String(body.transferBank).trim() || null;
+  if (body.bankId !== undefined) {
+    const bankId =
+      body.bankId === null ? null : String(body.bankId).trim() || null;
 
-    if (bank && !transferBanks.has(bank)) {
-      return new Response("transferBank inválido", { status: 400 });
+    if (!bankId) {
+      patch.bankId = null;
+      patch.transferBank = null;
+    } else {
+      const bank = await resolvePaymentBankById(db, bankId);
+
+      if (!bank) {
+        return new Response("Invalid bank", { status: 400 });
+      }
+
+      patch.bankId = bank.id;
+      patch.transferBank = null;
     }
-
-    patch.transferBank = bank;
   }
 
   if (body.transferCurrency !== undefined) {
@@ -216,10 +225,6 @@ export async function PUT(
       body.transferCurrency === null
         ? null
         : String(body.transferCurrency).trim().toUpperCase() || null;
-
-    if (currency && !transferCurrencies.has(currency)) {
-      return new Response("transferCurrency must be COP or USD", { status: 400 });
-    }
 
     patch.transferCurrency = currency;
   }
@@ -236,57 +241,49 @@ export async function PUT(
     const [current] = await db
       .select({
         method: orderPayments.method,
-        transferBank: orderPayments.transferBank,
+        bankId: orderPayments.bankId,
         transferCurrency: orderPayments.transferCurrency,
       })
       .from(orderPayments)
       .where(eq(orderPayments.id, pid))
       .limit(1);
 
-    if (!current) return new Response("Not found", { status: 404 });
+    if (!current) return new Response("Payment not found", { status: 404 });
 
     const effectiveMethod = methodAfterPatch ?? String(current.method ?? "");
-    const effectiveBank =
-      patch.transferBank !== undefined ? patch.transferBank : current.transferBank;
+    const effectiveBankId =
+      patch.bankId !== undefined ? patch.bankId : current.bankId;
     const effectiveCurrency =
       patch.transferCurrency !== undefined
         ? patch.transferCurrency
         : current.transferCurrency;
 
     if (effectiveMethod === "TRANSFERENCIA") {
-      if (!String(effectiveBank ?? "").trim() || !transferBanks.has(String(effectiveBank))) {
-        return new Response("transferBank required for transfer method", {
-          status: 400,
-        });
+      const effectiveBank = effectiveBankId
+        ? await resolvePaymentBankById(db, String(effectiveBankId))
+        : null;
+
+      const bankValidationError = validatePaymentBankCurrency(
+        effectiveBank,
+        effectiveCurrency ? String(effectiveCurrency) : null,
+      );
+      if (bankValidationError) {
+        return new Response(bankValidationError, { status: 400 });
       }
 
-      if (!effectiveCurrency || !transferCurrencies.has(String(effectiveCurrency))) {
-        return new Response("transferCurrency must be COP or USD", {
-          status: 400,
-        });
-      }
-
-      if (String(effectiveCurrency) === "USD" && String(effectiveBank) !== "VIO-EXT.") {
-        return new Response("USD solo se acepta cuando el banco es VIO-EXT.", {
-          status: 400,
-        });
-      }
-
-      if (String(effectiveBank) === "VIO-EXT." && String(effectiveCurrency) !== "USD") {
-        return new Response("Con banco VIO-EXT. solo se acepta moneda USD.", {
-          status: 400,
-        });
-      }
+      patch.bankId = effectiveBank?.id ?? null;
+      patch.transferBank = null;
     }
 
     if (effectiveMethod !== "TRANSFERENCIA") {
+      patch.bankId = null;
       patch.transferBank = null;
       patch.transferCurrency = null;
     }
   }
 
   if (Object.keys(patch).length === 0) {
-    return new Response("No fields to update", { status: 400 });
+    return new Response("No fields provided for update", { status: 400 });
   }
 
   const [updated] = await db
@@ -295,7 +292,7 @@ export async function PUT(
     .where(eq(orderPayments.id, pid))
     .returning();
 
-  if (!updated) return new Response("Not found", { status: 404 });
+  if (!updated) return new Response("Payment not found", { status: 404 });
 
   if (updated.orderId) {
     await syncOrderStatusByPayments(String(updated.orderId));
@@ -323,14 +320,14 @@ export async function DELETE(
   const { paymentId } = await params;
   const pid = String(paymentId ?? "").trim();
 
-  if (!pid) return new Response("paymentId required", { status: 400 });
+  if (!pid) return new Response("Payment ID is required", { status: 400 });
 
   const [deleted] = await db
     .delete(orderPayments)
     .where(eq(orderPayments.id, pid))
     .returning();
 
-  if (!deleted) return new Response("Not found", { status: 404 });
+  if (!deleted) return new Response("Payment not found", { status: 404 });
 
   if (deleted.orderId) {
     await syncOrderStatusByPayments(String(deleted.orderId));

@@ -67,7 +67,17 @@ export function InventoryItemDetailsModal({
   const [pendingDelete, setPendingDelete] = useState<VariantRow | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const canManageVariants = Boolean(item?.hasVariants);
+  const canManageVariants = Boolean(item?.id);
+
+  const variantTotalStock = useMemo(() => {
+    const total = variants.reduce((acc, variant) => {
+      const qty = Number.parseFloat(String(variant.currentStock ?? "0"));
+
+      return acc + (Number.isFinite(qty) ? qty : 0);
+    }, 0);
+
+    return Number.isInteger(total) ? String(total) : total.toFixed(2);
+  }, [variants]);
 
   const loadVariants = async () => {
     if (!item?.id || !canManageVariants) {
@@ -98,12 +108,14 @@ export function InventoryItemDetailsModal({
       { label: "Codigo", value: item?.itemCode ?? "-" },
       { label: "Nombre", value: item?.name ?? "-" },
       { label: "Unidad", value: item?.unit ?? "-" },
-      { label: "Stock actual", value: item?.currentStock ?? "0" },
-      { label: "Stock minimo", value: item?.minStock ?? "0" },
+      {
+        label: "Stock actual",
+        value: canManageVariants ? variantTotalStock : (item?.currentStock ?? "0"),
+      },
       { label: "Descripcion", value: item?.description ?? "-" },
-      { label: "Maneja variantes", value: item?.hasVariants ? "Si" : "No" },
+      { label: "Modelo", value: "Variantes obligatorias" },
     ],
-    [item],
+    [item, canManageVariants, variantTotalStock],
   );
 
   const removeVariant = async () => {

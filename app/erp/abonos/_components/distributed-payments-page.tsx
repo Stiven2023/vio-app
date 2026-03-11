@@ -31,13 +31,19 @@ type AllocationRow = {
   orderSearch: string;
 };
 
+type BankOption = {
+  id: string;
+  code: string;
+  name: string;
+  accountRef: string;
+  isActive: boolean | null;
+};
+
 const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: "EFECTIVO", label: "Efectivo" },
   { value: "TRANSFERENCIA", label: "Transferencia" },
   { value: "CREDITO", label: "Crédito" },
 ];
-
-const transferBankOptions = ["GC 24-25", "O 29-52", "VIO-EXT."] as const;
 
 function toAmountString(v: number | string | null | undefined) {
   const raw = String(v ?? "").trim().replace(/,/g, ".");
@@ -87,8 +93,9 @@ export function DistributedPaymentsPage({
   const [depositAmount, setDepositAmount] = useState("");
   const [referenceCode, setReferenceCode] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("TRANSFERENCIA");
-  const [transferBank, setTransferBank] = useState("");
+  const [bankId, setBankId] = useState("");
   const [transferCurrency, setTransferCurrency] = useState<"COP" | "USD">("COP");
+  const [banks, setBanks] = useState<BankOption[]>([]);
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
@@ -104,10 +111,15 @@ export function DistributedPaymentsPage({
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{
     depositAmount?: string;
-    transferBank?: string;
+    bankId?: string;
     transferCurrency?: string;
     allocations: Record<string, { orderId?: string; amount?: string }>;
   }>({ allocations: {} });
+
+  const selectedBank = useMemo(
+    () => banks.find((bank) => bank.id === bankId) ?? null,
+    [banks, bankId],
+  );
 
   const displayCurrency = method === "TRANSFERENCIA" ? transferCurrency : "COP";
 
@@ -118,6 +130,14 @@ export function DistributedPaymentsPage({
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Number.isFinite(value) ? value : 0);
+
+  useEffect(() => {
+    apiJson<{ items: BankOption[] }>("/api/banks?page=1&pageSize=200")
+      .then((res) => {
+        setBanks((res.items ?? []).filter((bank) => bank.isActive !== false));
+      })
+      .catch(() => setBanks([]));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -287,7 +307,7 @@ export function DistributedPaymentsPage({
 
     const nextErrors: {
       depositAmount?: string;
-      transferBank?: string;
+      bankId?: string;
       transferCurrency?: string;
       allocations: Record<string, { orderId?: string; amount?: string }>;
     } = { allocations: {} };
@@ -340,26 +360,26 @@ export function DistributedPaymentsPage({
     }
 
     if (method === "TRANSFERENCIA") {
-      if (!transferBank.trim()) {
-        nextErrors.transferBank = "El banco es obligatorio para transferencias";
-      } else if (!transferBankOptions.includes(transferBank as any)) {
-        nextErrors.transferBank = "Selecciona un banco válido";
+      if (!bankId.trim()) {
+        nextErrors.bankId = "El banco es obligatorio para transferencias";
+      } else if (!selectedBank) {
+        nextErrors.bankId = "Selecciona un banco válido";
       }
       if (!transferCurrency) {
         nextErrors.transferCurrency = "La moneda es obligatoria para transferencias";
       }
 
-      if (transferCurrency === "USD" && transferBank !== "VIO-EXT.") {
+      if (transferCurrency === "USD" && selectedBank?.code !== "VIO_EXT") {
         nextErrors.transferCurrency = "USD solo se acepta con banco VIO-EXT.";
       }
 
-      if (transferBank === "VIO-EXT." && transferCurrency !== "USD") {
+      if (selectedBank?.code === "VIO_EXT" && transferCurrency !== "USD") {
         nextErrors.transferCurrency = "Con banco VIO-EXT. solo se acepta USD.";
       }
 
-      if (nextErrors.transferBank || nextErrors.transferCurrency) {
+      if (nextErrors.bankId || nextErrors.transferCurrency) {
         setErrors(nextErrors);
-        toast.error(nextErrors.transferBank ?? nextErrors.transferCurrency ?? "Completa los datos de transferencia");
+        toast.error(nextErrors.bankId ?? nextErrors.transferCurrency ?? "Completa los datos de transferencia");
         return;
       }
     }
@@ -412,7 +432,7 @@ export function DistributedPaymentsPage({
         body: JSON.stringify({
           depositAmount: Number(depositAmount),
           method,
-          transferBank: method === "TRANSFERENCIA" ? transferBank.trim() : null,
+          bankId: method === "TRANSFERENCIA" ? bankId : null,
           transferCurrency: method === "TRANSFERENCIA" ? transferCurrency : null,
           referenceCode: referenceCode.trim() || null,
           proofImageUrl,
@@ -427,7 +447,7 @@ export function DistributedPaymentsPage({
       setDepositAmount("");
       setReferenceCode("");
       setMethod("TRANSFERENCIA");
-      setTransferBank("");
+      setBankId("");
       setTransferCurrency("COP");
       setProofFile(null);
       setAllocations([
@@ -468,23 +488,25 @@ export function DistributedPaymentsPage({
             />
             <Select
               isRequired={method === "TRANSFERENCIA"}
-              isInvalid={Boolean(errors.transferBank)}
-              errorMessage={errors.transferBank}
+              isInvalid={Boolean(errors.bankId)}
+              errorMessage={errors.bankId}
               label="Banco"
-              selectedKeys={transferBank ? [transferBank] : []}
+              selectedKeys={bankId ? [bankId] : []}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "");
-                setTransferBank(first);
-                if (first === "VIO-EXT.") {
+                const bank = banks.find((row) => row.id === first);
+
+                setBankId(first);
+                if (bank?.code === "VIO_EXT") {
                   setTransferCurrency("USD");
                 } else if (transferCurrency === "USD") {
                   setTransferCurrency("COP");
                 }
-                setErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
+                setErrors((prev) => ({ ...prev, bankId: undefined, transferCurrency: undefined }));
               }}
             >
-              {transferBankOptions.map((bank) => (
-                <SelectItem key={bank}>{bank}</SelectItem>
+              {banks.map((bank) => (
+                <SelectItem key={bank.id}>{`${bank.code} - ${bank.name}`}</SelectItem>
               ))}
             </Select>
             <Select
@@ -497,16 +519,18 @@ export function DistributedPaymentsPage({
                 const first = String(Array.from(keys)[0] ?? "COP").toUpperCase();
                 const nextCurrency = first === "USD" ? "USD" : "COP";
                 setTransferCurrency(nextCurrency);
-                setTransferBank((prev) => {
-                  if (nextCurrency === "USD") return "VIO-EXT.";
-                  if (prev === "VIO-EXT.") return "";
+                setBankId((prev) => {
+                  if (nextCurrency === "USD") {
+                    return banks.find((bank) => bank.code === "VIO_EXT")?.id ?? "";
+                  }
+                  if (selectedBank?.code === "VIO_EXT") return "";
                   return prev;
                 });
-                setErrors((prev) => ({ ...prev, transferBank: undefined, transferCurrency: undefined }));
+                setErrors((prev) => ({ ...prev, bankId: undefined, transferCurrency: undefined }));
               }}
             >
-              <SelectItem key="COP" isDisabled={transferBank === "VIO-EXT."}>COP</SelectItem>
-              <SelectItem key="USD" isDisabled={transferBank !== "VIO-EXT."}>USD</SelectItem>
+              <SelectItem key="COP" isDisabled={selectedBank?.code === "VIO_EXT"}>COP</SelectItem>
+              <SelectItem key="USD" isDisabled={selectedBank?.code !== "VIO_EXT"}>USD</SelectItem>
             </Select>
             <Select
               label="Método"

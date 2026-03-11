@@ -146,6 +146,7 @@ export async function POST(request: Request) {
   const qty = toPositiveNumber(quantity);
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!vId) return new Response("variantId required", { status: 400 });
   if (!targetWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
@@ -176,7 +177,6 @@ export async function POST(request: Request) {
     .select({
       name: inventoryItems.name,
       price: inventoryItems.price,
-      hasVariants: inventoryItems.hasVariants,
     })
     .from(inventoryItems)
     .where(eq(inventoryItems.id, itemId))
@@ -184,22 +184,6 @@ export async function POST(request: Request) {
 
   if (!itemRow) {
     return new Response("inventory item not found", { status: 404 });
-  }
-
-  if (itemRow.hasVariants && !vId) {
-    const [{ totalVariants }] = await db
-      .select({ totalVariants: sql<number>`count(*)::int` })
-      .from(inventoryItemVariants)
-      .where(
-        and(
-          eq(inventoryItemVariants.inventoryItemId, itemId),
-          eq(inventoryItemVariants.isActive, true),
-        ),
-      );
-
-    if ((totalVariants ?? 0) > 0) {
-      return new Response("variant required for this item", { status: 400 });
-    }
   }
 
   const created = await db.transaction(async (tx) => {
@@ -257,6 +241,7 @@ export async function PUT(request: Request) {
   const qty = toPositiveNumber(quantity);
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
+  if (!vId) return new Response("variantId required", { status: 400 });
   if (!targetWarehouseId) return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
@@ -285,29 +270,13 @@ export async function PUT(request: Request) {
 
   const updated = await db.transaction(async (tx) => {
     const [itemRow] = await tx
-      .select({ hasVariants: inventoryItems.hasVariants })
+      .select({ id: inventoryItems.id })
       .from(inventoryItems)
       .where(eq(inventoryItems.id, itemId))
       .limit(1);
 
     if (!itemRow) {
       throw new Error("inventory item not found");
-    }
-
-    if (itemRow.hasVariants && !vId) {
-      const [{ totalVariants }] = await tx
-        .select({ totalVariants: sql<number>`count(*)::int` })
-        .from(inventoryItemVariants)
-        .where(
-          and(
-            eq(inventoryItemVariants.inventoryItemId, itemId),
-            eq(inventoryItemVariants.isActive, true),
-          ),
-        );
-
-      if ((totalVariants ?? 0) > 0) {
-        throw new Error("variant required for this item");
-      }
     }
 
     const [existing] = await tx
@@ -346,16 +315,11 @@ export async function PUT(request: Request) {
   }).catch((e) => {
     const msg = String((e as { message?: string })?.message ?? "");
     if (msg === "inventory item not found") return "__item" as const;
-    if (msg === "variant required for this item") return "__variant_required" as const;
     throw e;
   });
 
   if (updated === "__item") {
     return new Response("inventory item not found", { status: 404 });
-  }
-
-  if (updated === "__variant_required") {
-    return new Response("variant required for this item", { status: 400 });
   }
 
   if (updated.length === 0) return new Response("Not found", { status: 404 });

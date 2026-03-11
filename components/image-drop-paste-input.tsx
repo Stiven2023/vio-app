@@ -91,7 +91,7 @@ export function ImageDropPasteInput({
       {resolvedPreview ? (
         <div className="mt-2 overflow-hidden rounded-medium border border-default-200">
           <img
-            alt="Preview imagen"
+            alt="Vista previa de la imagen"
             className="h-40 w-full object-contain bg-default-50"
             src={resolvedPreview}
           />

@@ -18,19 +18,15 @@ export default async function PurchaseOrdersPage() {
   if (forbidden) redirect("/unauthorized");
 
   const canFinalize = !(await requirePermission(req, "REGISTRAR_ENTRADA"));
-  const canAssociateSupplier = !(await requirePermission(req, "ASOCIAR_PROVEEDOR"));
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Órdenes de compra</h1>
       <p className="text-default-600 mt-1">
-        Crea órdenes (pendiente) y finalízalas para registrar la entrada a inventario.
+        Centro operativo de compras: gestión documental, aprobación, rutas y coordinación logística.
       </p>
       <div className="mt-6">
-        <PurchaseOrdersTab
-          canFinalize={canFinalize}
-          canAssociateSupplier={canAssociateSupplier}
-        />
+        <PurchaseOrdersTab canFinalize={canFinalize} />
       </div>
     </div>
   );

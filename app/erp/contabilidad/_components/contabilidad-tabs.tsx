@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Tab, Tabs } from "@heroui/tabs";
 
 import { PrefacturasTab } from "@/app/erp/prefacturas/_components/prefacturas-tab";
-import { ConsignacionesTab } from "@/app/erp/contabilidad/_components/consignaciones-tab";
+import { DepositsTab } from "@/app/erp/contabilidad/_components/consignaciones-tab";
 
-export function ContabilidadTabs({
+export function AccountingTabs({
   canEdit,
   canApprovePayments,
 }: {
@@ -18,15 +18,15 @@ export function ContabilidadTabs({
   return (
     <div className="space-y-4">
       <Tabs
-        aria-label="Módulos de contabilidad"
+        aria-label="Accounting modules"
         selectedKey={selected}
         variant="underlined"
         onSelectionChange={(key) =>
           setSelected(String(key) === "consignaciones" ? "consignaciones" : "prefacturas")
         }
       >
-        <Tab key="prefacturas" title="Prefacturas" />
-        <Tab key="consignaciones" title="Consignaciones" />
+        <Tab key="prefacturas" title="Pre-invoices" />
+        <Tab key="consignaciones" title="Deposits" />
       </Tabs>
 
       {selected === "prefacturas" ? (
@@ -38,7 +38,7 @@ export function ContabilidadTabs({
           lockStatusFilter
         />
       ) : (
-        <ConsignacionesTab canApprovePayments={canApprovePayments} />
+        <DepositsTab canApprovePayments={canApprovePayments} />
       )}
     </div>
   );

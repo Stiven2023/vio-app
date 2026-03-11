@@ -57,7 +57,7 @@ export async function requirePermission(
   const roleName = getRoleFromRequest(request);
 
   if (!roleName) {
-    return new Response("Forbidden", { status: 403 });
+    return new Response("Access denied", { status: 403 });
   }
 
   // Bypass para administrador: acceso total al panel
@@ -74,7 +74,7 @@ export async function requirePermission(
   const role = await db.select().from(roles).where(eq(roles.name, roleName));
 
   if (role.length === 0) {
-    return new Response("Forbidden", { status: 403 });
+    return new Response("Access denied", { status: 403 });
   }
   const candidates = [
     permissionName,
@@ -105,5 +105,5 @@ export async function requirePermission(
     }
   }
 
-  return new Response("Forbidden: missing permission", { status: 403 });
+  return new Response("Access denied: missing permission", { status: 403 });
 }

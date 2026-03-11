@@ -150,7 +150,6 @@ export const createInventoryItemSchema = z.object({
     "REPUESTOS",
     "REVENTA",
   ]),
-  hasVariants: z.boolean().optional(),
   description: z
     .string()
     .trim()
@@ -168,12 +167,6 @@ export const createInventoryItemSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined))
     .refine((v) => !v || /^[0-9a-fA-F-]{36}$/.test(v), "Proveedor inválido"),
-  minStock: z
-    .string()
-    .trim()
-    .optional()
-    .or(z.literal("").transform(() => undefined))
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Stock mínimo inválido"),
   isActive: z.boolean().optional(),
 });
 

@@ -3,9 +3,17 @@ import { desc, eq, ilike, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { warehouseStock, warehouses } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+function ensureWarehouseRole(request: Request) {
+  const role = getRoleFromRequest(request);
+  const allowed = role === "ADMINISTRADOR" || role === "LIDER_SUMINISTROS";
+
+  return allowed ? null : new Response("Forbidden", { status: 403 });
+}
 
 function normalizeCode(v: unknown) {
   return String(v ?? "")
@@ -23,6 +31,9 @@ export async function GET(request: Request) {
   });
 
   if (limited) return limited;
+
+  const roleForbidden = ensureWarehouseRole(request);
+  if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "VER_INVENTARIO");
   if (forbidden) return forbidden;
@@ -78,6 +89,9 @@ export async function POST(request: Request) {
 
   if (limited) return limited;
 
+  const roleForbidden = ensureWarehouseRole(request);
+  if (roleForbidden) return roleForbidden;
+
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
   if (forbidden) return forbidden;
 
@@ -125,6 +139,9 @@ export async function PUT(request: Request) {
   });
 
   if (limited) return limited;
+
+  const roleForbidden = ensureWarehouseRole(request);
+  if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
   if (forbidden) return forbidden;
@@ -177,6 +194,9 @@ export async function DELETE(request: Request) {
   });
 
   if (limited) return limited;
+
+  const roleForbidden = ensureWarehouseRole(request);
+  if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
   if (forbidden) return forbidden;

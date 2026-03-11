@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       .limit(1);
 
     if (!user) {
-      return new Response("Usuario no encontrado", { status: 404 });
+      return new Response("User not found", { status: 404 });
     }
 
     const employeeId = getEmployeeIdFromRequest(request);
@@ -86,7 +86,7 @@ export async function GET(request: Request) {
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;
-    return new Response("No se pudo consultar opciones de cuenta", {
+    return new Response("Failed to fetch account options", {
       status: 500,
     });
   }
@@ -118,7 +118,7 @@ export async function PUT(request: Request) {
         .toLowerCase();
 
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return new Response("Email inválido", { status: 400 });
+        return new Response("Invalid email", { status: 400 });
       }
 
       userPatch.email = email;
@@ -131,7 +131,7 @@ export async function PUT(request: Request) {
         .toLowerCase();
 
       if (preferredLanguage && !["es", "en", "pt"].includes(preferredLanguage)) {
-        return new Response("Idioma inválido. Usa: es, en o pt", {
+        return new Response("Invalid language. Use: es, en, or pt", {
           status: 400,
         });
       }
@@ -141,7 +141,7 @@ export async function PUT(request: Request) {
 
     if (payload.name !== undefined) {
       const name = String(payload.name ?? "").trim();
-      if (!name) return new Response("Nombre requerido", { status: 400 });
+      if (!name) return new Response("Name is required", { status: 400 });
       employeePatch.name = name;
     }
 
@@ -249,13 +249,13 @@ export async function PUT(request: Request) {
         : undefined;
 
     if (code === "23505") {
-      return new Response("El email ya está en uso", { status: 409 });
+      return new Response("Email is already in use", { status: 409 });
     }
 
     const response = dbErrorResponse(error);
     if (response) return response;
 
-    return new Response("No se pudo actualizar opciones de cuenta", {
+    return new Response("Failed to update account options", {
       status: 500,
     });
   }

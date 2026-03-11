@@ -121,7 +121,7 @@ export function FileUpload({
       onChange(url);
       toast.success("Archivo subido correctamente");
     } catch (error) {
-      console.error("Error uploading file:", error);
+      console.error("Error al subir archivo:", error);
       toast.error(
         error instanceof Error ? error.message : "Error al subir archivo",
       );
