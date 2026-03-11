@@ -17,10 +17,12 @@ import { rateLimit } from "@/src/utils/rate-limit";
 type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
 type OrderStatusFilter = "PRODUCCION" | "APROBACION_INICIAL";
 type ProgramacionView = "GENERAL" | "ACTUALIZACION";
+type DeliverySort = "DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA";
 
 const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
 const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "APROBACION_INICIAL"];
 const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
+const VALID_DELIVERY_SORT: DeliverySort[] = ["DEFAULT", "MAS_PROXIMA", "MAS_LEJANA"];
 const PROGRAMACION_CACHE_HEADERS = {
   "Cache-Control": "no-store",
   Vary: "Cookie",
@@ -49,6 +51,9 @@ export async function GET(request: Request) {
   const viewRaw = String(searchParams.get("view") ?? "GENERAL")
     .trim()
     .toUpperCase();
+  const deliverySortRaw = String(searchParams.get("deliverySort") ?? "DEFAULT")
+    .trim()
+    .toUpperCase();
   const search = String(searchParams.get("search") ?? "").trim();
   const genderRaw = String(searchParams.get("gender") ?? "")
     .trim()
@@ -74,9 +79,16 @@ export async function GET(request: Request) {
     });
   }
 
+  if (!VALID_DELIVERY_SORT.includes(deliverySortRaw as DeliverySort)) {
+    return new Response("deliverySort inválido. Usa: DEFAULT, MAS_PROXIMA o MAS_LEJANA", {
+      status: 400,
+    });
+  }
+
   const process = processRaw as ProcessType;
   const orderStatus = orderStatusRaw as OrderStatusFilter;
   const view = viewRaw as ProgramacionView;
+  const deliverySort = deliverySortRaw as DeliverySort;
   const gender =
     genderRaw === "HOMBRE" || genderRaw === "MUJER" || genderRaw === "UNISEX"
       ? genderRaw
@@ -145,6 +157,7 @@ export async function GET(request: Request) {
       clientCode: clients.clientCode,
       deliveryDate: sql<string | null>`coalesce((date(${orders.createdAt}) + ${orderItems.estimatedLeadDays})::text, ${quotations.deliveryDate}::text)`,
       sellerName: employees.name,
+      sellerCode: employees.employeeCode,
       design: orderItems.name,
       quantity: sql<number | null>`coalesce(${orderItems.quantity}, 0)`,
       fabric: orderItems.fabric,
@@ -206,6 +219,8 @@ export async function GET(request: Request) {
     clientCode: string | null;
     deliveryDate: string | null;
     sellerName: string | null;
+    sellerCode: string | null;
+    designNumber: number | null;
     design: string | null;
     talla: string | null;
     quantity: number | null;
@@ -215,6 +230,41 @@ export async function GET(request: Request) {
     leadHours: number | null;
     process: string | null;
   }> = [];
+
+  const itemIdsByOrder = new Map<string, Array<{ itemId: string; createdAt: Date | null }>>();
+
+  for (const item of baseItems) {
+    const orderId = String(item.orderId ?? "");
+    const itemId = String(item.id ?? "");
+
+    if (!orderId || !itemId) continue;
+
+    const current = itemIdsByOrder.get(orderId) ?? [];
+    current.push({ itemId, createdAt: item.itemCreatedAt ?? null });
+    itemIdsByOrder.set(orderId, current);
+  }
+
+  const designNumberByItemId = new Map<string, number>();
+
+  for (const [, rows] of itemIdsByOrder.entries()) {
+    const uniqueByItemId = new Map<string, Date | null>();
+
+    for (const row of rows) {
+      if (!uniqueByItemId.has(row.itemId)) {
+        uniqueByItemId.set(row.itemId, row.createdAt ?? null);
+      }
+    }
+
+    const ordered = Array.from(uniqueByItemId.entries()).sort((a, b) => {
+      const aTime = a[1] ? new Date(a[1]).getTime() : 0;
+      const bTime = b[1] ? new Date(b[1]).getTime() : 0;
+      return aTime - bTime;
+    });
+
+    ordered.forEach(([itemId], index) => {
+      designNumberByItemId.set(itemId, index + 1);
+    });
+  }
 
   const sizeWeight = (value: string | null | undefined) => {
     const raw = String(value ?? "")
@@ -262,6 +312,8 @@ export async function GET(request: Request) {
         clientCode: item.clientCode,
         deliveryDate: item.deliveryDate,
         sellerName: item.sellerName,
+        sellerCode: item.sellerCode,
+        designNumber: designNumberByItemId.get(itemId) ?? null,
         design: item.design,
         talla: null,
         quantity: item.quantity,
@@ -292,6 +344,8 @@ export async function GET(request: Request) {
         clientCode: item.clientCode,
         deliveryDate: item.deliveryDate,
         sellerName: item.sellerName,
+        sellerCode: item.sellerCode,
+        designNumber: designNumberByItemId.get(itemId) ?? null,
         design: item.design,
         talla: sizeRow.size,
         quantity: sizeRow.quantity,
@@ -301,6 +355,19 @@ export async function GET(request: Request) {
         leadHours: item.leadHours,
         process: item.process,
       });
+    });
+  }
+
+  if (deliverySort !== "DEFAULT") {
+    expandedItems.sort((a, b) => {
+      const aTime = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+      const bTime = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+
+      if (deliverySort === "MAS_PROXIMA") {
+        return aTime - bTime;
+      }
+
+      return bTime - aTime;
     });
   }
 

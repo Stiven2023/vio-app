@@ -3,9 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@heroui/button";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
+import { BsThreeDotsVertical } from "react-icons/bs";
 import { AlertToast } from "@/components/alert-toast";
 import {
   Table,
@@ -28,6 +35,8 @@ type ProgramacionItem = {
   clientCode: string | null;
   deliveryDate: string | null;
   sellerName: string | null;
+  sellerCode: string | null;
+  designNumber: number | null;
   design: string | null;
   talla: string | null;
   quantity: number | null;
@@ -47,6 +56,34 @@ type Paginated<T> = {
 };
 
 const PAGE_SIZE = 10;
+const ALL_COLUMN_KEYS = [
+  "pedido",
+  "fechaPedido",
+  "cliente",
+  "fechaEntrega",
+  "vendedor",
+  "diseno",
+  "talla",
+  "cantidad",
+  "tela",
+  "genero",
+  "proceso",
+  "plazo",
+  "plazoHoras",
+] as const;
+const DEFAULT_VISIBLE_COLUMNS = [
+  "pedido",
+  "fechaPedido",
+  "cliente",
+  "fechaEntrega",
+  "vendedor",
+  "diseno",
+  "talla",
+  "cantidad",
+  "tela",
+  "genero",
+  "plazo",
+] as const;
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -114,6 +151,16 @@ function renderCountdownCell(
   );
 }
 
+function renderSellerCell(sellerCode: string | null) {
+  const text = sellerCode?.trim() || "-";
+
+  return (
+    <div className="max-w-[170px] truncate whitespace-nowrap" title={text}>
+      {text}
+    </div>
+  );
+}
+
 export function ProgramacionItemsTable({
   process,
   orderStatus = "PRODUCCION",
@@ -151,7 +198,14 @@ export function ProgramacionItemsTable({
   const [gender, setGender] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [deliverySort, setDeliverySort] = useState<"DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA">("DEFAULT");
+  const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
+    () => new Set(DEFAULT_VISIBLE_COLUMNS),
+  );
   const [currentView, setCurrentView] = useState<"GENERAL" | "ACTUALIZACION">(view ?? "GENERAL");
+  const isColumnVisible = (key: string) => selectedColumns.has(key);
+  const visibleDataColumnsCount = selectedColumns.size;
+  const shouldEnableHorizontalScroll = visibleDataColumnsCount + (enableDecisions ? 1 : 0) > 11;
 
   const buildQuery = () => {
     const params = new URLSearchParams({
@@ -166,6 +220,7 @@ export function ProgramacionItemsTable({
     if (gender) params.set("gender", gender);
     if (startDate) params.set("startDate", startDate);
     if (endDate) params.set("endDate", endDate);
+    if (deliverySort !== "DEFAULT") params.set("deliverySort", deliverySort);
 
     return params.toString();
   };
@@ -197,11 +252,11 @@ export function ProgramacionItemsTable({
     return () => {
       active = false;
     };
-  }, [page, process, orderStatus, currentView, search, gender, startDate, endDate]);
+  }, [page, process, orderStatus, currentView, search, gender, startDate, endDate, deliverySort]);
 
   useEffect(() => {
     setPage(1);
-  }, [process, orderStatus, currentView, search, gender, startDate, endDate]);
+  }, [process, orderStatus, currentView, search, gender, startDate, endDate, deliverySort]);
 
   const title = useMemo(() => {
     if (process === "PRODUCCION") return labels?.principal ?? "Programación principal";
@@ -250,80 +305,25 @@ export function ProgramacionItemsTable({
   };
 
   const renderHeaderColumns = () => {
-    if (decompressByDesign && showProcessColumn) {
-      return (
-        <>
-          <TableColumn>PEDIDO / DISEÑO</TableColumn>
-          <TableColumn>FECHA PEDIDO</TableColumn>
-          <TableColumn>CLIENTE</TableColumn>
-          <TableColumn>FECHA DE ENTREGA</TableColumn>
-          <TableColumn>VENDEDOR</TableColumn>
-          <TableColumn>TALLA</TableColumn>
-          <TableColumn>CANTIDAD</TableColumn>
-          <TableColumn>TELA</TableColumn>
-          <TableColumn>GENERO</TableColumn>
-          <TableColumn>PROCESO</TableColumn>
-          <TableColumn>PLAZO</TableColumn>
-          <TableColumn>PLAZO EN HORAS</TableColumn>
-          {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
-        </>
-      );
-    }
-
-    if (decompressByDesign && !showProcessColumn) {
-      return (
-        <>
-          <TableColumn>PEDIDO / DISEÑO</TableColumn>
-          <TableColumn>FECHA PEDIDO</TableColumn>
-          <TableColumn>CLIENTE</TableColumn>
-          <TableColumn>FECHA DE ENTREGA</TableColumn>
-          <TableColumn>VENDEDOR</TableColumn>
-          <TableColumn>TALLA</TableColumn>
-          <TableColumn>CANTIDAD</TableColumn>
-          <TableColumn>TELA</TableColumn>
-          <TableColumn>GENERO</TableColumn>
-          <TableColumn>PLAZO</TableColumn>
-          <TableColumn>PLAZO EN HORAS</TableColumn>
-          {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
-        </>
-      );
-    }
-
-    if (!decompressByDesign && showProcessColumn) {
-      return (
-        <>
-          <TableColumn>PEDIDO</TableColumn>
-          <TableColumn>FECHA PEDIDO</TableColumn>
-          <TableColumn>CLIENTE</TableColumn>
-          <TableColumn>FECHA DE ENTREGA</TableColumn>
-          <TableColumn>VENDEDOR</TableColumn>
-          <TableColumn>DISEÑO</TableColumn>
-          <TableColumn>TALLA</TableColumn>
-          <TableColumn>CANTIDAD</TableColumn>
-          <TableColumn>TELA</TableColumn>
-          <TableColumn>GENERO</TableColumn>
-          <TableColumn>PROCESO</TableColumn>
-          <TableColumn>PLAZO</TableColumn>
-          <TableColumn>PLAZO EN HORAS</TableColumn>
-          {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
-        </>
-      );
-    }
+    const showDesignInFirstColumn = decompressByDesign;
 
     return (
       <>
-        <TableColumn>PEDIDO</TableColumn>
-        <TableColumn>FECHA PEDIDO</TableColumn>
-        <TableColumn>CLIENTE</TableColumn>
-        <TableColumn>FECHA DE ENTREGA</TableColumn>
-        <TableColumn>VENDEDOR</TableColumn>
-        <TableColumn>DISEÑO</TableColumn>
-        <TableColumn>TALLA</TableColumn>
-        <TableColumn>CANTIDAD</TableColumn>
-        <TableColumn>TELA</TableColumn>
-        <TableColumn>GENERO</TableColumn>
-        <TableColumn>PLAZO</TableColumn>
-        <TableColumn>PLAZO EN HORAS</TableColumn>
+        {isColumnVisible("pedido")
+          ? <TableColumn>{showDesignInFirstColumn ? "PEDIDO / DISEÑO" : "PEDIDO"}</TableColumn>
+          : null}
+        {isColumnVisible("fechaPedido") ? <TableColumn>FECHA PEDIDO</TableColumn> : null}
+        {isColumnVisible("cliente") ? <TableColumn>CLIENTE</TableColumn> : null}
+        {isColumnVisible("fechaEntrega") ? <TableColumn>FECHA DE ENTREGA</TableColumn> : null}
+        {isColumnVisible("vendedor") ? <TableColumn>VENDEDOR</TableColumn> : null}
+        {!showDesignInFirstColumn && isColumnVisible("diseno") ? <TableColumn>DISEÑO</TableColumn> : null}
+        {isColumnVisible("talla") ? <TableColumn>TALLA</TableColumn> : null}
+        {isColumnVisible("cantidad") ? <TableColumn>CANTIDAD</TableColumn> : null}
+        {isColumnVisible("tela") ? <TableColumn>TELA</TableColumn> : null}
+        {isColumnVisible("genero") ? <TableColumn>GENERO</TableColumn> : null}
+        {isColumnVisible("proceso") ? <TableColumn>PROCESO</TableColumn> : null}
+        {isColumnVisible("plazo") ? <TableColumn>PLAZO</TableColumn> : null}
+        {isColumnVisible("plazoHoras") ? <TableColumn>PLAZO EN HORAS</TableColumn> : null}
         {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
       </>
     );
@@ -340,128 +340,105 @@ export function ProgramacionItemsTable({
         : String(item.leadHours);
     const actionsCell = enableDecisions ? (
       <TableCell key="acciones">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            color="success"
-            isDisabled={pendingActionId === item.orderItemId}
-            size="sm"
-            variant="flat"
-            onPress={() => decide(item, "PENDIENTE_PRODUCCION")}
-          >
-            Aprobar
-          </Button>
-          <Button
-            color="danger"
-            isDisabled={pendingActionId === item.orderItemId}
-            size="sm"
-            variant="flat"
-            onPress={() => decide(item, "EN_REVISION_CAMBIO")}
-          >
-            Denegar
-          </Button>
-        </div>
+        <Dropdown>
+          <DropdownTrigger>
+            <Button
+              isIconOnly
+              isDisabled={pendingActionId === item.orderItemId}
+              size="sm"
+              variant="flat"
+            >
+              <BsThreeDotsVertical />
+            </Button>
+          </DropdownTrigger>
+          <DropdownMenu aria-label="Acciones programación">
+            <DropdownItem key="aprobar" color="success" onPress={() => decide(item, "PENDIENTE_PRODUCCION")}>
+              Aprobar
+            </DropdownItem>
+            <DropdownItem key="denegar" color="danger" onPress={() => decide(item, "EN_REVISION_CAMBIO")}>
+              Denegar
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
       </TableCell>
     ) : null;
 
-    if (decompressByDesign && showProcessColumn) {
-      return (
-        [
-          <TableCell key="pedido-diseno">
+    const showDesignInFirstColumn = decompressByDesign;
+    const cells: Array<JSX.Element> = [];
+
+    if (isColumnVisible("pedido")) {
+      cells.push(
+        <TableCell key="pedido">
+          {showDesignInFirstColumn ? (
             <div className="leading-tight">
               <div className="font-medium">{item.orderCode ?? "-"}</div>
-              <div className="max-w-[220px] truncate text-xs text-default-500" title={item.design ?? "-"}>
-                {item.design ?? "-"}
-              </div>
+              {isColumnVisible("diseno") ? (
+                <div
+                  className="max-w-[220px] truncate text-xs text-default-500"
+                  title={`Diseño ${item.designNumber ?? "-"}`}
+                >
+                  Diseño {item.designNumber ?? "-"}
+                </div>
+              ) : null}
             </div>
-          </TableCell>,
-          <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-          <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
-          <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
-          <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
-          <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
-          <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
-          <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
-          <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
-          <TableCell key="proceso">{item.process ?? "-"}</TableCell>,
-          <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
-          <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
-          ...(actionsCell ? [actionsCell] : []),
-        ]
+          ) : (
+            item.orderCode ?? "-"
+          )}
+        </TableCell>,
       );
     }
 
-    if (decompressByDesign && !showProcessColumn) {
-      return (
-        [
-          <TableCell key="pedido-diseno">
-            <div className="leading-tight">
-              <div className="font-medium">{item.orderCode ?? "-"}</div>
-              <div className="max-w-[220px] truncate text-xs text-default-500" title={item.design ?? "-"}>
-                {item.design ?? "-"}
-              </div>
-            </div>
-          </TableCell>,
-          <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-          <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
-          <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
-          <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
-          <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
-          <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
-          <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
-          <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
-          <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
-          <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
-          ...(actionsCell ? [actionsCell] : []),
-        ]
-      );
+    if (isColumnVisible("fechaPedido")) {
+      cells.push(<TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>);
     }
-
-    if (!decompressByDesign && showProcessColumn) {
-      return (
-        [
-          <TableCell key="pedido">{item.orderCode ?? "-"}</TableCell>,
-          <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-          <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
-          <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
-          <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
-          <TableCell key="diseno">
-            <div className="max-w-[220px] truncate" title={item.design ?? "-"}>
-              {item.design ?? "-"}
-            </div>
-          </TableCell>,
-          <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
-          <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
-          <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
-          <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
-          <TableCell key="proceso">{item.process ?? "-"}</TableCell>,
-          <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
-          <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
-          ...(actionsCell ? [actionsCell] : []),
-        ]
-      );
+    if (isColumnVisible("cliente")) {
+      cells.push(<TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>);
     }
-
-    return (
-      [
-        <TableCell key="pedido">{item.orderCode ?? "-"}</TableCell>,
-        <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
-        <TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>,
-        <TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>,
-        <TableCell key="vendedor">{item.sellerName ?? "-"}</TableCell>,
+    if (isColumnVisible("fechaEntrega")) {
+      cells.push(<TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>);
+    }
+    if (isColumnVisible("vendedor")) {
+      cells.push(<TableCell key="vendedor">{renderSellerCell(item.sellerCode)}</TableCell>);
+    }
+    if (!showDesignInFirstColumn && isColumnVisible("diseno")) {
+      cells.push(
         <TableCell key="diseno">
-          <div className="max-w-[220px] truncate" title={item.design ?? "-"}>
-            {item.design ?? "-"}
+          <div className="max-w-[220px] truncate" title={`Diseño ${item.designNumber ?? "-"}`}>
+            {item.designNumber ?? "-"}
           </div>
         </TableCell>,
-        <TableCell key="talla">{item.talla ?? "-"}</TableCell>,
-        <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
-        <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
-        <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
+      );
+    }
+    if (isColumnVisible("talla")) {
+      cells.push(<TableCell key="talla">{item.talla ?? "-"}</TableCell>);
+    }
+    if (isColumnVisible("cantidad")) {
+      cells.push(<TableCell key="cantidad">{item.quantity ?? 0}</TableCell>);
+    }
+    if (isColumnVisible("tela")) {
+      cells.push(<TableCell key="tela">{item.fabric ?? "-"}</TableCell>);
+    }
+    if (isColumnVisible("genero")) {
+      cells.push(<TableCell key="genero">{item.gender ?? "-"}</TableCell>);
+    }
+    if (isColumnVisible("proceso")) {
+      cells.push(<TableCell key="proceso">{item.process ?? "-"}</TableCell>);
+    }
+    if (isColumnVisible("plazo")) {
+      cells.push(
         <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
+      );
+    }
+    if (isColumnVisible("plazoHoras")) {
+      cells.push(
         <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
-        ...(actionsCell ? [actionsCell] : []),
-      ]
-    );
+      );
+    }
+    if (actionsCell) {
+      cells.push(actionsCell);
+    }
+
+    return cells;
   };
 
   return (
@@ -469,7 +446,7 @@ export function ProgramacionItemsTable({
       {toast ? <AlertToast message={toast.message} type={toast.type} /> : null}
       <div className="flex flex-wrap items-center gap-2">
           <Button as={Link} href={basePath} variant={process === "PRODUCCION" ? "solid" : "flat"}>
-          Principal
+          Producción
         </Button>
           <Button as={Link} href={`${basePath}/bodega`} variant={process === "BODEGA" ? "solid" : "flat"}>
           Bodega
@@ -487,7 +464,7 @@ export function ProgramacionItemsTable({
 
       <div className="text-sm text-default-600">{title}</div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
         <Input
           label="Buscar"
           placeholder="Pedido, cliente, diseño, vendedor, talla"
@@ -508,6 +485,55 @@ export function ProgramacionItemsTable({
         </Select>
         <Input label="Desde" type="date" value={startDate} onValueChange={setStartDate} />
         <Input label="Hasta" type="date" value={endDate} onValueChange={setEndDate} />
+        <Select
+          label="Entrega"
+          selectedKeys={[deliverySort]}
+          onSelectionChange={(keys) => {
+            const first = String(Array.from(keys)[0] ?? "DEFAULT").toUpperCase();
+            if (first === "MAS_PROXIMA" || first === "MAS_LEJANA") {
+              setDeliverySort(first);
+              return;
+            }
+            setDeliverySort("DEFAULT");
+          }}
+        >
+          <SelectItem key="DEFAULT">Normal</SelectItem>
+          <SelectItem key="MAS_PROXIMA">Más próxima</SelectItem>
+          <SelectItem key="MAS_LEJANA">Más lejana</SelectItem>
+        </Select>
+        <Select
+          label="Columnas"
+          selectionMode="multiple"
+          selectedKeys={selectedColumns}
+          onSelectionChange={(keys) => {
+            if (keys === "all") {
+              setSelectedColumns(new Set(ALL_COLUMN_KEYS));
+              return;
+            }
+
+            const next = new Set(Array.from(keys).map(String));
+
+            if (next.size === 0) {
+              return;
+            }
+
+            setSelectedColumns(next);
+          }}
+        >
+          <SelectItem key="pedido">Pedido</SelectItem>
+          <SelectItem key="fechaPedido">Fecha pedido</SelectItem>
+          <SelectItem key="cliente">Cliente</SelectItem>
+          <SelectItem key="fechaEntrega">Fecha entrega</SelectItem>
+          <SelectItem key="vendedor">Vendedor</SelectItem>
+          <SelectItem key="diseno">Diseño</SelectItem>
+          <SelectItem key="talla">Talla</SelectItem>
+          <SelectItem key="cantidad">Cantidad</SelectItem>
+          <SelectItem key="tela">Tela</SelectItem>
+          <SelectItem key="genero">Género</SelectItem>
+          <SelectItem key="proceso">Proceso</SelectItem>
+          <SelectItem key="plazo">Plazo</SelectItem>
+          <SelectItem key="plazoHoras">Plazo en horas</SelectItem>
+        </Select>
       </div>
 
       {loading ? (
@@ -519,7 +545,17 @@ export function ProgramacionItemsTable({
           </div>
         </div>
       ) : hasRows ? (
-        <Table aria-label="Tabla programación" removeWrapper>
+        <div className={`w-full pb-2 ${shouldEnableHorizontalScroll ? "overflow-x-auto" : "overflow-x-hidden"}`}>
+          <Table
+            aria-label="Tabla programación"
+            className={shouldEnableHorizontalScroll ? "min-w-[1200px]" : "w-full table-fixed"}
+            classNames={{
+              table: shouldEnableHorizontalScroll ? "min-w-[1200px]" : "w-full table-fixed",
+              th: "px-2 py-2 text-[11px]",
+              td: "px-2 py-2 text-xs",
+            }}
+            removeWrapper
+          >
           <TableHeader>
             {renderHeaderColumns()}
           </TableHeader>
@@ -530,7 +566,8 @@ export function ProgramacionItemsTable({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       ) : (
         <div className="rounded-medium border border-default-200 bg-content1 p-4 text-sm text-default-500">
           Sin items para esta programación

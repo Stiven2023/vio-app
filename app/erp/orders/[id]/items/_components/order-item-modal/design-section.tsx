@@ -47,6 +47,167 @@ function getPastedImageFile(ev: React.ClipboardEvent) {
   return (img?.getAsFile() as File | null) ?? null;
 }
 
+function ImageDropZone({
+  title,
+  subtitle,
+  required = false,
+  previewSrc,
+  disabled,
+  minHeightClass = "min-h-[260px]",
+  imageFitClass = "object-cover",
+  compact = false,
+  onSelectFile,
+}: {
+  title: string;
+  subtitle?: string;
+  required?: boolean;
+  previewSrc: string;
+  disabled: boolean;
+  minHeightClass?: string;
+  imageFitClass?: string;
+  compact?: boolean;
+  onSelectFile: (file: File | null) => void;
+}) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [dragging, setDragging] = React.useState(false);
+
+  const accentStyle = React.useMemo<React.CSSProperties>(() => {
+    if (disabled) return {};
+    if (dragging) {
+      return {
+        borderColor: "var(--viomar-primary)",
+        backgroundColor: "color-mix(in srgb, var(--viomar-primary) 10%, transparent)",
+      };
+    }
+
+    return {
+      borderColor: "color-mix(in srgb, var(--viomar-primary) 45%, var(--viomar-fg) 55%)",
+    };
+  }, [disabled, dragging]);
+
+  const processFile = React.useCallback(
+    (file: File | null) => {
+      if (!file) return;
+      if (!file.type.startsWith("image/")) return;
+      onSelectFile(file);
+    },
+    [onSelectFile],
+  );
+
+  return (
+    <div
+      className={
+        "group relative border border-dashed p-3 transition-colors " +
+        (disabled
+          ? "border-default-200 opacity-60"
+          : "border-default-300")
+      }
+      style={accentStyle}
+      role="button"
+      onDragOver={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        setDragging(false);
+        processFile(e.dataTransfer.files?.[0] ?? null);
+      }}
+      onPaste={(e) => {
+        if (disabled) return;
+        const file = getPastedImageFile(e);
+        if (file) {
+          e.preventDefault();
+          processFile(file);
+        }
+      }}
+      tabIndex={disabled ? -1 : 0}
+      onClick={() => {
+        if (disabled) return;
+        inputRef.current?.click();
+      }}
+    >
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-sm text-default-200">
+          {title}
+          {required ? <span className="ml-1 text-danger">*</span> : null}
+        </div>
+        {previewSrc ? (
+          <button
+            className="text-xs text-danger hover:underline"
+            disabled={disabled}
+            type="button"
+            onClick={() => onSelectFile(null)}
+          >
+            Quitar
+          </button>
+        ) : null}
+      </div>
+
+      <div className="text-xs text-default-500">
+        Click, arrastra o pega imagen (Ctrl+V)
+      </div>
+
+      {subtitle ? <div className="text-[11px] text-default-500 mt-1">{subtitle}</div> : null}
+
+      <div className="mt-2">
+        <input
+          ref={inputRef}
+          accept="image/*"
+          className="hidden"
+          disabled={disabled}
+          type="file"
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            processFile(e.target.files?.[0] ?? null);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+        />
+        <button
+          className="rounded-full border border-default-300 px-3 py-1 text-xs hover:bg-default-100"
+          disabled={disabled}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            inputRef.current?.click();
+          }}
+        >
+          Seleccionar imagen
+        </button>
+      </div>
+
+      {previewSrc ? (
+        <div
+          className={
+            "mt-3 rounded-medium border border-default-200 bg-content2 p-2 " +
+            (compact ? "h-[96px]" : "h-[120px]")
+          }
+        >
+          <img
+            alt={title}
+            className={`h-full w-full rounded-medium ${compact ? imageFitClass : "object-contain"}`}
+            src={previewSrc}
+          />
+        </div>
+      ) : (
+        <div
+          className={
+            `mt-3 rounded-medium border border-default-200/60 bg-default-100/20 ${minHeightClass} flex items-center justify-center` +
+            (compact ? " min-h-[90px]" : "")
+          }
+        >
+          <div className="text-center text-default-500 text-xs">
+            <div className="uppercase tracking-[0.15em]">{title}</div>
+            {subtitle ? <div className="mt-1 text-[10px]">{subtitle}</div> : null}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DesignSection({
   value,
   imageOneFile,
@@ -317,116 +478,67 @@ export function DesignSection({
         </Switch>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div
-          className={
-            "rounded-medium border border-dashed border-default-300 p-3 " +
-            (dropDisabled ? "opacity-60" : "")
-          }
-          onDragOver={(e) => {
-            if (dropDisabled) return;
-            e.preventDefault();
-          }}
-          onDrop={(e) => {
-            if (dropDisabled) return;
-            e.preventDefault();
-            const f = e.dataTransfer.files?.[0] ?? null;
-            if (f) onSelectImageOneFile(f);
-          }}
-          onPaste={(e) => {
-            if (dropDisabled) return;
-            const f = getPastedImageFile(e);
-            if (f) {
-              e.preventDefault();
-              onSelectImageOneFile(f);
-            }
-          }}
-          tabIndex={dropDisabled ? -1 : 0}
-        >
-          <div className="text-sm text-default-600 mb-2">Imagen prenda 1</div>
-          <div className="text-xs text-default-500">
-            Arrastra y suelta aquí, o pega desde el portapapeles (Ctrl+V).
-          </div>
-          <div className="mt-2">
-            <input
-              accept="image/*"
+      <div className="rounded-medium border border-default-200 bg-content1 p-2 md:p-3">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-stretch border border-default-200">
+          <div className="border-r border-default-200">
+            <div
+              className="border-b border-default-200 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em]"
+              style={{ color: "var(--viomar-primary)" }}
+            >
+              Diseño: Jugador
+            </div>
+            <ImageDropZone
               disabled={dropDisabled}
-              type="file"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                onSelectImageOneFile(e.target.files?.[0] ?? null)
-              }
+              minHeightClass="min-h-[280px]"
+              previewSrc={resolvedImageOne}
+              subtitle="Imagen principal"
+              title="Jugador"
+              onSelectFile={onSelectImageOneFile}
+            />
+          </div>
+
+          <div className="relative w-[1px] bg-default-200">
+            <div className="absolute -bottom-1 left-1/2 z-10 w-[170px] -translate-x-1/2">
+              <div
+                className="border border-default-200 border-b-0 bg-content1 px-3 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.2em]"
+                style={{ color: "var(--viomar-primary)" }}
+              >
+                Logo
+              </div>
+              <div className="border border-default-200 bg-content1 p-0">
+                <ImageDropZone
+                  compact
+                  disabled={dropDisabled}
+                  imageFitClass="object-contain"
+                  minHeightClass="min-h-[96px]"
+                  previewSrc={resolvedLogo}
+                  required
+                  subtitle="Obligatorio"
+                  title="Logo"
+                  onSelectFile={onSelectLogoFile}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-l border-default-200">
+            <div
+              className="border-b border-default-200 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.18em]"
+              style={{ color: "var(--viomar-primary)" }}
+            >
+              Diseño: Arquero
+            </div>
+            <ImageDropZone
+              disabled={dropDisabled}
+              minHeightClass="min-h-[280px]"
+              previewSrc={resolvedImageTwo}
+              subtitle="Imagen secundaria"
+              title="Arquero"
+              onSelectFile={onSelectImageTwoFile}
             />
           </div>
         </div>
-
-        <div className={"rounded-medium border border-dashed border-default-300 p-3 " + (dropDisabled ? "opacity-60" : "")}>
-          <div className="text-sm text-default-600 mb-2">Imagen prenda 2 (opcional)</div>
-          <div className="mt-2">
-            <input
-              accept="image/*"
-              disabled={dropDisabled}
-              type="file"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                onSelectImageTwoFile(e.target.files?.[0] ?? null)
-              }
-            />
-          </div>
-        </div>
-
-        <div className={"rounded-medium border border-dashed border-default-300 p-3 " + (dropDisabled ? "opacity-60" : "")}>
-          <div className="text-sm text-default-600 mb-2">Logo (obligatorio)</div>
-          <div className="mt-2">
-            <input
-              accept="image/*"
-              disabled={dropDisabled}
-              type="file"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                onSelectLogoFile(e.target.files?.[0] ?? null)
-              }
-            />
-          </div>
-        </div>
-
-        <Input
-          isReadOnly
-          label="URL prenda 1"
-          value={String(value.clothingImageOneUrl ?? "")}
-        />
-        <Input isReadOnly label="URL prenda 2" value={String(value.clothingImageTwoUrl ?? "")} />
-        <Input isReadOnly label="URL logo" value={String(value.logoImageUrl ?? "")} />
       </div>
-
-      {resolvedImageOne || resolvedImageTwo || resolvedLogo ? (
-        <div className="rounded-medium border border-default-200 bg-content1 p-3">
-          <div className="text-sm font-semibold mb-2">Preview</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div>
-              <div className="text-xs text-default-500 mb-1">Prenda 1</div>
-              {resolvedImageOne ? (
-                <img alt="Preview prenda 1" className="h-32 w-auto rounded-medium border border-default-200 object-contain" src={resolvedImageOne} />
-              ) : (
-                <div className="text-xs text-default-400">Sin imagen</div>
-              )}
-            </div>
-            <div>
-              <div className="text-xs text-default-500 mb-1">Prenda 2</div>
-              {resolvedImageTwo ? (
-                <img alt="Preview prenda 2" className="h-32 w-auto rounded-medium border border-default-200 object-contain" src={resolvedImageTwo} />
-              ) : (
-                <div className="text-xs text-default-400">Sin imagen</div>
-              )}
-            </div>
-            <div>
-              <div className="text-xs text-default-500 mb-1">Logo</div>
-              {resolvedLogo ? (
-                <img alt="Preview logo" className="h-32 w-auto rounded-medium border border-default-200 object-contain" src={resolvedLogo} />
-              ) : (
-                <div className="text-xs text-danger">Falta logo</div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
