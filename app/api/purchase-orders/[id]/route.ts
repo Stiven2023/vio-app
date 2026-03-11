@@ -116,6 +116,7 @@ export async function GET(
       .select({
         id: purchaseOrderItems.id,
         inventoryItemId: purchaseOrderItems.inventoryItemId,
+        variantId: purchaseOrderItems.variantId,
         itemCode: purchaseOrderItems.itemCode,
         itemName: purchaseOrderItems.itemName,
         unit: purchaseOrderItems.unit,

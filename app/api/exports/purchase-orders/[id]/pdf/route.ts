@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { db } from "@/src/db";
-import { employees, purchaseOrderItems, purchaseOrders, suppliers } from "@/src/db/schema";
+import { employees, inventoryItemVariants, purchaseOrderItems, purchaseOrders, suppliers } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -53,6 +53,15 @@ async function readImageSourceBytes(source: string): Promise<Uint8Array | null> 
   const diskPath = join(process.cwd(), "public", normalized);
   return new Uint8Array(await readFile(diskPath));
 }
+
+// ── Datos de la empresa emisora ────────────────────────────────────────────
+const COMPANY_INFO = {
+  name: "VIOMAR SOLUCIONES SAS",
+  nit: "901.113.329-1",
+  address: "CR 42 54 A 71 BG 149",
+  phone: "(57) 3003283971",
+  city: "Itagui - Colombia",
+};
 
 async function embedImageFromSource(pdf: PDFDocument, source: string) {
   const bytes = await readImageSourceBytes(source);
@@ -128,9 +137,28 @@ export async function GET(
       quantity: purchaseOrderItems.quantity,
       unitPrice: purchaseOrderItems.unitPrice,
       lineTotal: purchaseOrderItems.lineTotal,
+      variantId: purchaseOrderItems.variantId,
     })
     .from(purchaseOrderItems)
     .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+
+  const variantIds = items.map((i) => i.variantId).filter(Boolean) as string[];
+  const variantMap = new Map<string, string>();
+  if (variantIds.length > 0) {
+    const variantRows = await db
+      .select({
+        id: inventoryItemVariants.id,
+        color: inventoryItemVariants.color,
+        size: inventoryItemVariants.size,
+        sku: inventoryItemVariants.sku,
+      })
+      .from(inventoryItemVariants)
+      .where(inArray(inventoryItemVariants.id, variantIds));
+    for (const v of variantRows) {
+      const label = [v.color, v.size].filter(Boolean).join(" / ") || v.sku;
+      variantMap.set(v.id, label);
+    }
+  }
 
   const pdf = await PDFDocument.create();
   const regular = await pdf.embedFont(StandardFonts.Helvetica);
@@ -146,8 +174,8 @@ export async function GET(
   const lineColor = rgb(0.82, 0.84, 0.88);
   const textColor = rgb(0.14, 0.16, 0.2);
   const mutedColor = rgb(0.42, 0.45, 0.52);
-  const accent = rgb(0.9, 0.55, 0.12);
-  const paleAccent = rgb(0.99, 0.96, 0.92);
+  const accent = rgb(0, 0.831, 0.667);      // #00D4AA teal
+  const paleAccent = rgb(0.88, 0.99, 0.97); // pale teal
 
   let page = pdf.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
@@ -170,36 +198,43 @@ export async function GET(
   };
 
   const drawHeader = () => {
-    let headerY = pageHeight - margin;
+    const headerY = pageHeight - margin;
+    const halfW = (contentWidth - 12) / 2;
+    const rightX = margin + halfW + 12;
 
+    // ── Bloque izquierdo: logo + datos empresa ───────────────────────────────
+    let leftY = headerY;
     if (logo) {
-      const logoWidth = Math.min(220, contentWidth * 0.5);
+      const logoWidth = Math.min(160, halfW * 0.75);
       const logoHeight = (logo.height / logo.width) * logoWidth;
       page.drawImage(logo, {
         x: margin,
-        y: headerY - logoHeight,
+        y: leftY - logoHeight,
         width: logoWidth,
         height: logoHeight,
       });
-      headerY -= logoHeight + 10;
+      leftY -= logoHeight + 8;
     }
+    drawText(COMPANY_INFO.name, margin, leftY - 11, 10, "bold");
+    drawText(`Nit ${COMPANY_INFO.nit}`, margin, leftY - 23, 8, "regular", mutedColor);
+    drawText(COMPANY_INFO.address, margin, leftY - 35, 8, "regular", mutedColor);
+    drawText(`Tel: ${COMPANY_INFO.phone}`, margin, leftY - 47, 8, "regular", accent);
+    drawText(COMPANY_INFO.city, margin, leftY - 59, 8, "regular", accent);
 
-    page.drawRectangle({
-      x: margin,
-      y: headerY - 54,
-      width: contentWidth,
-      height: 54,
-      color: paleAccent,
-      borderColor: accent,
-      borderWidth: 1,
+    // ── Bloque derecho: título orden ─────────────────────────────────────────
+    drawText("Orden de compra", rightX, headerY - 16, 16, "bold");
+    drawText(`No. ${String(order.purchaseOrderCode ?? "OC")}`, rightX, headerY - 34, 10, "regular", mutedColor);
+
+    // línea separadora horizontal
+    const separatorY = Math.min(leftY - 72, headerY - 80);
+    page.drawLine({
+      start: { x: margin, y: separatorY },
+      end: { x: pageWidth - margin, y: separatorY },
+      color: lineColor,
+      thickness: 1,
     });
 
-    drawText("ORDEN DE COMPRA", margin + 16, headerY - 20, 18, "bold");
-    drawText(String(order.purchaseOrderCode ?? "OC"), margin + 16, headerY - 38, 11, "bold", accent);
-    drawText(`Fecha: ${formatDate(order.createdAt)}`, pageWidth - margin - 120, headerY - 20, 10);
-    drawText(`Estado: ${String(order.status ?? "-")}`, pageWidth - margin - 120, headerY - 38, 10);
-
-    y = headerY - 72;
+    y = separatorY - 12;
   };
 
   const ensureSpace = (neededHeight: number) => {
@@ -246,11 +281,11 @@ export async function GET(
   drawInfoBlock(
     "Proveedor",
     [
-      ["Proveedor", String(order.supplierName ?? "Sin proveedor")],
-      ["Código", String(order.supplierCode ?? "-")],
-      ["NIT / ID", String(order.supplierIdentification ?? "-")],
+      ["Para", String(order.supplierName ?? "Sin proveedor")],
+      ["Nit", String(order.supplierIdentification ?? "-")],
+      ["Fecha", formatDate(order.createdAt)],
+      ["Elaboró", String(order.createdByName ?? "-")],
       ["Contacto", String(order.supplierContactName ?? "-")],
-      ["Correo", String(order.supplierEmail ?? "-")],
       ["Teléfono", String(order.supplierPhone ?? "-")],
     ],
     margin,
@@ -261,10 +296,10 @@ export async function GET(
     "Datos de orden",
     [
       ["Código", String(order.purchaseOrderCode ?? "-")],
-      ["Fecha", formatDate(order.createdAt)],
-      ["Elaboró", String(order.createdByName ?? "-")],
+      ["Estado", String(order.status ?? "-")],
       ["Ciudad", `${String(order.supplierCity ?? "-")} / ${String(order.supplierDepartment ?? "-")}`],
       ["Dirección", truncateText(order.supplierAddress, 28)],
+      ["Correo", String(order.supplierEmail ?? "-")],
       ["Entrega", order.finalizedAt ? formatDate(order.finalizedAt) : "Pendiente"],
     ],
     rightX,
@@ -301,25 +336,31 @@ export async function GET(
   y -= 26;
 
   items.forEach((item) => {
-    ensureSpace(30);
+    const variantLabel = item.variantId ? (variantMap.get(item.variantId) ?? null) : null;
+    const rowHeight = variantLabel ? 42 : 30;
+    ensureSpace(rowHeight);
 
     page.drawRectangle({
       x: margin,
-      y: y - 30,
+      y: y - rowHeight,
       width: contentWidth,
-      height: 30,
+      height: rowHeight,
       color: rgb(1, 1, 1),
       borderColor: lineColor,
       borderWidth: 1,
     });
 
-    drawText(String(item.itemCode ?? "-"), columnX.code, y - 18, 8);
-    drawText(`${truncateText(item.itemName, 34)} (${String(item.unit ?? "und")})`, columnX.name, y - 18, 8);
-    drawText(String(item.quantity ?? "0"), columnX.quantity, y - 18, 8);
-    drawText(formatMoney(item.unitPrice), columnX.unitPrice, y - 18, 8);
-    drawText(formatMoney(item.lineTotal), columnX.total, y - 18, 8);
+    const midY = variantLabel ? y - 13 : y - 18;
+    drawText(String(item.itemCode ?? "-"), columnX.code, midY, 8);
+    drawText(`${truncateText(item.itemName, 34)} (${String(item.unit ?? "und")})`, columnX.name, midY, 8);
+    if (variantLabel) {
+      drawText(variantLabel, columnX.name, y - 26, 7, "regular", mutedColor);
+    }
+    drawText(String(item.quantity ?? "0"), columnX.quantity, midY, 8);
+    drawText(formatMoney(item.unitPrice), columnX.unitPrice, midY, 8);
+    drawText(formatMoney(item.lineTotal), columnX.total, midY, 8);
 
-    y -= 30;
+    y -= rowHeight;
   });
 
   ensureSpace(120);

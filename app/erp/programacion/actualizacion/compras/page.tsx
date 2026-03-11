@@ -24,13 +24,12 @@ export default async function ProgramacionActualizacionComprasPage() {
         <ProgramacionItemsTable
           process="COMPRAS"
           orderStatus="PRODUCCION"
-          basePath="/programacion/actualizacion"
-          actualizacionBasePath="/programacion/actualizacion"
+          basePath="/programacion"
           view="ACTUALIZACION"
           labels={{
-            principal: "Actualización programación principal",
-            bodega: "Actualización programación bodega",
-            compras: "Actualización programación compras",
+            principal: "Programación principal",
+            bodega: "Programación bodega",
+            compras: "Programación compras",
           }}
         />
       </div>

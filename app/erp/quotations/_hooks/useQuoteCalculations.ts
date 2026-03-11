@@ -14,7 +14,7 @@ export function useQuoteCalculations(
   shippingFee: number,
   insuranceEnabled: boolean,
   insuranceFee: number,
-  documentType: DocumentType = "P", // P = Persona (con IVA), R = Razón social (sin IVA)
+  documentType: DocumentType = "F", // F = Factura (con IVA), R = Razón social (sin IVA)
 ): QuoteCalculations {
   return useMemo(() => {
     const itemsSubtotal = items.reduce((acc, row) => {
@@ -32,7 +32,7 @@ export function useQuoteCalculations(
     }, 0);
 
     const subtotal = itemsSubtotal;
-    const iva = documentType === "P" ? subtotal * 0.19 : 0; // IVA solo si es Persona
+    const iva = documentType === "F" ? subtotal * 0.19 : 0; // IVA solo si es factura
     const extraShipping = shippingEnabled ? shippingFee : 0;
     const extraInsurance = insuranceEnabled ? insuranceFee : 0;
     const total = subtotal + iva + extraShipping + extraInsurance;

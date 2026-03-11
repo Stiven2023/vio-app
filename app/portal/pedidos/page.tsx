@@ -84,7 +84,7 @@ function renderStatusChip(status: string | null | undefined) {
   if (normalized === "APROBACION_INICIAL") {
     return (
       <span className="inline-flex rounded-full bg-warning-100 px-2 py-0.5 text-xs font-semibold text-warning-700">
-        Initial approval
+        Aprobación
       </span>
     );
   }

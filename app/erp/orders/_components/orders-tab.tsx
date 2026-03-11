@@ -52,7 +52,7 @@ import {
 const statusOptions: Array<{ value: string; label: string }> = [
   { value: "all", label: "Todos" },
   { value: "PENDIENTE", label: "Pendiente" },
-  { value: "APROBACION_INICIAL", label: "Aprobación inicial" },
+  { value: "APROBACION_INICIAL", label: "Aprobación" },
   { value: "PRODUCCION", label: "Producción" },
   { value: "ATRASADO", label: "Atrasado" },
   { value: "FINALIZADO", label: "Finalizado" },

@@ -239,7 +239,7 @@ export async function POST(
               kind: "NUEVO" as any,
               status: "PENDIENTE" as any,
               total: String(quotation.total ?? "0"),
-              ivaEnabled: String(quotation.documentType ?? "P") === "P",
+              ivaEnabled: String(quotation.documentType ?? "F") === "F",
               discount: "0",
               currency: String(quotation.currency ?? "COP"),
               shippingFee: quotation.shippingEnabled

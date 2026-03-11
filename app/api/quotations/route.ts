@@ -328,8 +328,8 @@ export async function POST(request: Request) {
             ? String(body.clientPriceType)
             : null,
           documentType: body?.documentType
-            ? (String(body.documentType) as "P" | "R")
-            : "P",
+            ? (String(body.documentType) as "F" | "R")
+            : "F",
           currency: body?.currency ? String(body.currency) : "COP",
           deliveryDate: null,
           expiryDate: autoExpiryDate,

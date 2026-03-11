@@ -22,8 +22,7 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 
 type RouteOptionsResponse = {
   packers?: Array<{ id: string; name: string }>;
-  messengers?: Array<{ id: string; name: string }>;
-  drivers?: Array<{ id: string; name: string }>;
+  envios?: Array<{ id: string; name: string }>;
   dispatchers?: Array<{ id: string; name: string }>;
 };
 
@@ -64,8 +63,7 @@ const actorMap: Record<string, string> = {
   ALL: "Todos",
   DESPACHO: "Despacho",
   EMPAQUE: "Empaque",
-  MENSAJERO: "Mensajero",
-  CONDUCTOR: "Conductor",
+  ENVIOS: "Envíos",
 };
 
 function withinFiveDays(dateIso: string | null) {
@@ -206,8 +204,7 @@ export function PurchaseOrdersCoordinationClient() {
     return {
       DESPACHO: options.dispatchers?.length ?? 0,
       EMPAQUE: options.packers?.length ?? 0,
-      MENSAJERO: options.messengers?.length ?? 0,
-      CONDUCTOR: options.drivers?.length ?? 0,
+      ENVIOS: options.envios?.length ?? 0,
     };
   }, [options]);
 
@@ -220,8 +217,7 @@ export function PurchaseOrdersCoordinationClient() {
       }
 
       if (actor === "EMPAQUE") return order.status === "EN_PROCESO";
-      if (actor === "MENSAJERO") return order.status === "EN_PROCESO";
-      if (actor === "CONDUCTOR") return order.status === "EN_PROCESO";
+      if (actor === "ENVIOS") return order.status === "EN_PROCESO";
 
       return true;
     });

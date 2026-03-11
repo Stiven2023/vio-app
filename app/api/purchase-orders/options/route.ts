@@ -5,6 +5,7 @@ import {
   banks,
   confectionists,
   employees,
+  inventoryItemVariants,
   inventoryItems,
   packers,
   roles,
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
     const [
       supplierRows,
       itemRows,
+      variantRows,
       bankRows,
       confectionistRows,
       packerRows,
@@ -59,9 +61,21 @@ export async function GET(request: Request) {
           name: inventoryItems.name,
           unit: inventoryItems.unit,
           price: inventoryItems.price,
+          hasVariants: inventoryItems.hasVariants,
         })
         .from(inventoryItems)
         .orderBy(asc(inventoryItems.name)),
+      db
+        .select({
+          id: inventoryItemVariants.id,
+          inventoryItemId: inventoryItemVariants.inventoryItemId,
+          sku: inventoryItemVariants.sku,
+          color: inventoryItemVariants.color,
+          size: inventoryItemVariants.size,
+        })
+        .from(inventoryItemVariants)
+        .where(eq(inventoryItemVariants.isActive, true))
+        .orderBy(asc(inventoryItemVariants.sku)),
       db
         .select({
           id: banks.id,
@@ -114,24 +128,43 @@ export async function GET(request: Request) {
         .orderBy(asc(employees.name)),
     ]);
 
-    const messengers = employeeRows.filter((row) => row.roleName === "MENSAJERO");
+    // Group variants by item
+    const variantsByItem = new Map<string, typeof variantRows>();
+    for (const v of variantRows) {
+      const list = variantsByItem.get(v.inventoryItemId) ?? [];
+      list.push(v);
+      variantsByItem.set(v.inventoryItemId, list);
+    }
+    const itemsWithVariants = itemRows.map((item) => ({
+      ...item,
+      variants: variantsByItem.get(item.id) ?? [],
+    }));
+
     const dispatchers = employeeRows.filter((row) => row.roleName === "OPERARIO_DESPACHO");
-    const drivers = employeeRows.filter(
-      (row) =>
+    // Merge messengers + drivers (conductors) into a single "envios" list (deduplicated by id)
+    const enviosMap = new Map<string, (typeof employeeRows)[number]>();
+    for (const row of employeeRows) {
+      if (
         row.roleName === "MENSAJERO" ||
-        row.roleName === "OPERARIO_DESPACHO" ||
-        String(row.name ?? "").toUpperCase().includes("CONDUCTOR"),
-    );
+        row.roleName === "CONDUCTOR" ||
+        String(row.name ?? "").toUpperCase().includes("CONDUCTOR")
+      ) {
+        enviosMap.set(row.id, row);
+      }
+    }
+    const envios = Array.from(enviosMap.values());
+
+    const messengers = employeeRows.filter((row) => row.roleName === "MENSAJERO");
 
     return Response.json({
       suppliers: supplierRows,
-      inventoryItems: itemRows,
+      inventoryItems: itemsWithVariants,
       banks: bankRows,
       confectionists: confectionistRows,
       packers: packerRows,
-      messengers,
-      drivers,
+      envios,
       dispatchers,
+      messengers,
     });
   } catch (error) {
     const response = dbErrorResponse(error);

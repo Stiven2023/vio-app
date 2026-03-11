@@ -1,6 +1,6 @@
 export type Currency = "COP" | "USD";
 export type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
-export type DocumentType = "P" | "R"; // P = Persona (con IVA), R = Razón social (sin IVA)
+export type DocumentType = "F" | "R"; // F = Factura (con IVA), R = Razón social (sin IVA)
 export type OrderType =
   | "NORMAL"
   | "COMPLETACION"
@@ -81,7 +81,7 @@ export type QuoteForm = {
   // IDs only (saved to database)
   clientId: string;
   sellerId: string; // User ID
-  documentType: DocumentType; // P = Persona (con IVA), R = Razón social (sin IVA)
+  documentType: DocumentType; // F = Factura (con IVA), R = Razón social (sin IVA)
   currency: Currency;
   expiryDate: string;
   paymentTerms: string;

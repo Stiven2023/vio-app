@@ -5,11 +5,18 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
 import { createPurchaseOrderSchema } from "../_lib/schemas";
-import type { BankOption, InventoryItemOption, PurchaseOrderDetail, SupplierOption } from "../_lib/types";
+import type {
+  BankOption,
+  InventoryItemOption,
+  PurchaseOrderDetail,
+  SupplierOption,
+  VariantOption,
+} from "../_lib/types";
 
 type OptionsResponse = {
   suppliers: SupplierOption[];
@@ -17,7 +24,21 @@ type OptionsResponse = {
   banks?: BankOption[];
 };
 
-type DraftItem = { inventoryItemId: string; quantity: string; unitPrice: string };
+type DraftItem = {
+  inventoryItemId: string;
+  variantId: string;
+  quantity: string;
+  unitPrice: string;
+};
+
+type ModalState = {
+  open: boolean;
+  editingIndex: number | null;
+  inventoryItemId: string;
+  variantId: string;
+  quantity: string;
+  unitPrice: string;
+};
 
 function parseNumeric(value: string) {
   const parsed = Number(String(value ?? "").replace(/,/g, "."));
@@ -32,6 +53,22 @@ function formatMoney(value: number) {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+function variantLabel(v: VariantOption): string {
+  if (v.color && v.size) return `${v.color} / ${v.size}`;
+  if (v.color) return v.color;
+  if (v.size) return v.size;
+  return v.sku;
+}
+
+const EMPTY_MODAL: ModalState = {
+  open: false,
+  editingIndex: null,
+  inventoryItemId: "",
+  variantId: "",
+  quantity: "",
+  unitPrice: "",
+};
 
 export function PurchaseOrderPageForm({
   orderId,
@@ -55,9 +92,9 @@ export function PurchaseOrderPageForm({
   const [bankId, setBankId] = useState("");
   const [bankAccountRef, setBankAccountRef] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<DraftItem[]>([
-    { inventoryItemId: "", quantity: "", unitPrice: "" },
-  ]);
+  const [items, setItems] = useState<DraftItem[]>([]);
+
+  const [modal, setModal] = useState<ModalState>(EMPTY_MODAL);
 
   useEffect(() => {
     let active = true;
@@ -86,10 +123,11 @@ export function PurchaseOrderPageForm({
             detail.items.length > 0
               ? detail.items.map((row) => ({
                   inventoryItemId: row.inventoryItemId,
+                  variantId: row.variantId ?? "",
                   quantity: String(row.quantity ?? ""),
                   unitPrice: String(row.unitPrice ?? ""),
                 }))
-              : [{ inventoryItemId: "", quantity: "", unitPrice: "" }],
+              : [],
           );
         } else {
           setBankId(bankRows[0]?.id ?? "");
@@ -111,7 +149,7 @@ export function PurchaseOrderPageForm({
   }, [isEdit, orderId]);
 
   const supplierOptions = useMemo(
-    () => [{ id: "__none", name: "Sin proveedor" }, ...suppliers],
+    () => [{ id: "__none", name: "No supplier" }, ...suppliers],
     [suppliers],
   );
 
@@ -125,39 +163,65 @@ export function PurchaseOrderPageForm({
     [supplierId, suppliers],
   );
 
-  const itemRows = useMemo(
-    () =>
-      items.map((row) => {
-        const source = row.inventoryItemId ? itemById.get(row.inventoryItemId) ?? null : null;
-        const quantity = parseNumeric(row.quantity);
-        const unitPrice = parseNumeric(row.unitPrice);
-        const lineTotal = quantity * unitPrice;
-
-        return {
-          ...row,
-          source,
-          lineTotal,
-        };
-      }),
-    [itemById, items],
-  );
-
-  const subtotal = useMemo(
-    () => itemRows.reduce((acc, row) => acc + row.lineTotal, 0),
-    [itemRows],
-  );
-
   const selectedBank = useMemo(
     () => banks.find((bank) => bank.id === bankId) ?? null,
     [banks, bankId],
   );
 
-  const updateItem = (index: number, patch: Partial<DraftItem>) => {
-    setItems((prev) => prev.map((item, current) => (current === index ? { ...item, ...patch } : item)));
+  const subtotal = useMemo(
+    () =>
+      items.reduce((acc, row) => {
+        return acc + parseNumeric(row.quantity) * parseNumeric(row.unitPrice);
+      }, 0),
+    [items],
+  );
+
+  // Modal computed values
+  const modalItem = modal.inventoryItemId ? itemById.get(modal.inventoryItemId) ?? null : null;
+  const modalVariants = modalItem?.variants ?? [];
+  const modalSubtotal = parseNumeric(modal.quantity) * parseNumeric(modal.unitPrice);
+
+  const openAddModal = () => {
+    setModal({ ...EMPTY_MODAL, open: true });
   };
 
-  const addEmptyRow = () => {
-    setItems((prev) => [...prev, { inventoryItemId: "", quantity: "", unitPrice: "" }]);
+  const openEditModal = (index: number) => {
+    const row = items[index];
+    if (!row) return;
+    setModal({
+      open: true,
+      editingIndex: index,
+      inventoryItemId: row.inventoryItemId,
+      variantId: row.variantId,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+    });
+  };
+
+  const closeModal = () => {
+    setModal((prev) => ({ ...prev, open: false }));
+  };
+
+  const confirmModal = () => {
+    const { inventoryItemId, variantId, quantity, unitPrice, editingIndex } = modal;
+    if (!inventoryItemId || !quantity || !unitPrice) return;
+    const newItem: DraftItem = { inventoryItemId, variantId, quantity, unitPrice };
+    if (editingIndex !== null) {
+      setItems((prev) => prev.map((item, idx) => (idx === editingIndex ? newItem : item)));
+    } else {
+      setItems((prev) => [...prev, newItem]);
+    }
+    closeModal();
+  };
+
+  const handleItemSelectInModal = (value: string) => {
+    const selected = value ? itemById.get(value) ?? null : null;
+    setModal((prev) => ({
+      ...prev,
+      inventoryItemId: value,
+      variantId: "",
+      unitPrice: selected?.price ? String(selected.price) : prev.unitPrice,
+    }));
   };
 
   const submit = async () => {
@@ -168,16 +232,21 @@ export function PurchaseOrderPageForm({
       bankId,
       bankAccountRef,
       notes: notes.trim() ? notes.trim() : undefined,
-      items,
+      items: items.map((it) => ({
+        inventoryItemId: it.inventoryItemId,
+        variantId: it.variantId || undefined,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+      })),
     });
 
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Datos inválidos");
+      setError(parsed.error.issues[0]?.message ?? "Invalid data");
       return;
     }
 
     if (supplierId && !canAssociateSupplier) {
-      setError("No tienes permiso para asociar proveedor");
+      setError("You do not have permission to associate a supplier");
       return;
     }
 
@@ -190,13 +259,13 @@ export function PurchaseOrderPageForm({
           method: "PUT",
           body: JSON.stringify(parsed.data),
         });
-        toast.success("Orden actualizada");
+        toast.success("Order updated");
       } else {
         await apiJson("/api/purchase-orders", {
           method: "POST",
           body: JSON.stringify(parsed.data),
         });
-        toast.success("Orden creada");
+        toast.success("Order created");
       }
 
       router.push("/erp/purchase-orders");
@@ -210,29 +279,31 @@ export function PurchaseOrderPageForm({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-5 shadow-sm">
+      {/* Header */}
+      <div className="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50 via-content1 to-teal-50/30 p-5 shadow-sm dark:border-teal-800/40 dark:from-teal-950/30 dark:via-content1 dark:to-teal-900/10">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-amber-700">Viomar</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-teal-700 dark:text-teal-400">Viomar</p>
             <h1 className="mt-2 text-2xl font-semibold text-default-900">
-              {isEdit ? "Editar orden de compra" : "Nueva orden de compra"}
+              {isEdit ? "Edit purchase order" : "New purchase order"}
             </h1>
             <p className="mt-1 text-sm text-default-600">
-              Flujo con proveedor, banco maestro y líneas de costo para coordinación de compras.
+              Supplier flow, master bank and cost lines for purchase coordination.
             </p>
           </div>
-          <div className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs text-default-700">
-            Fecha: {new Intl.DateTimeFormat("es-CO").format(new Date())}
+          <div className="rounded-xl border border-teal-200 bg-content2 px-3 py-2 text-xs text-default-700 dark:border-teal-800/40">
+            Date: {new Intl.DateTimeFormat("es-CO").format(new Date())}
           </div>
         </div>
       </div>
 
+      {/* Main grid */}
       <div className="grid gap-4 xl:grid-cols-[1.6fr,0.9fr]">
         <div className="space-y-4 rounded-2xl border border-default-200 bg-content1 p-4">
           <Select
             isDisabled={submitting || loading || !canAssociateSupplier}
             isLoading={loading}
-            label="Proveedor"
+            label="Supplier"
             selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
@@ -251,7 +322,7 @@ export function PurchaseOrderPageForm({
             <Select
               isDisabled={submitting || loading}
               isLoading={loading}
-              label="Banco"
+              label="Bank"
               selectedKeys={bankId ? new Set([bankId]) : new Set([])}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
@@ -263,14 +334,15 @@ export function PurchaseOrderPageForm({
               items={banks}
             >
               {(bank) => (
-                <SelectItem key={bank.id} textValue={bank.name}>
-                  {bank.name}
+                <SelectItem key={bank.id} textValue={`${bank.code} – ${bank.name}`}>
+                  <span className="font-mono text-xs text-default-500">{bank.code}</span>
+                  <span className="ml-2">{bank.name}</span>
                 </SelectItem>
               )}
             </Select>
 
             <Input
-              label="Referencia bancaria"
+              label="Bank reference"
               value={bankAccountRef}
               onValueChange={setBankAccountRef}
               isDisabled={submitting || loading}
@@ -278,29 +350,32 @@ export function PurchaseOrderPageForm({
           </div>
 
           <Input
-            label="Observaciones"
+            label="Notes"
             value={notes}
             onValueChange={setNotes}
             isDisabled={submitting || loading}
           />
         </div>
 
+        {/* Summary panel */}
         <div className="space-y-3 rounded-2xl border border-default-200 bg-default-50 p-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">Resumen</h3>
-          <div className="space-y-2 rounded-xl bg-white p-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">Summary</h3>
+          <div className="space-y-2 rounded-xl bg-content2 p-3">
             <div className="flex items-center justify-between text-sm text-default-600">
-              <span>Líneas</span>
+              <span>Lines</span>
               <span>{items.length}</span>
             </div>
             <div className="flex items-center justify-between text-sm text-default-600">
-              <span>Proveedor</span>
-              <span className="max-w-[170px] truncate text-right">{selectedSupplier?.name ?? "Sin asignar"}</span>
+              <span>Supplier</span>
+              <span className="max-w-[170px] truncate text-right">{selectedSupplier?.name ?? "Unassigned"}</span>
             </div>
             <div className="flex items-center justify-between text-sm text-default-600">
-              <span>Banco</span>
-              <span className="max-w-[170px] truncate text-right">{selectedBank?.name ?? "-"}</span>
+              <span>Bank</span>
+              <span className="max-w-[170px] truncate text-right">
+                {selectedBank ? `${selectedBank.code} – ${selectedBank.name}` : "-"}
+              </span>
             </div>
-            <div className="h-px bg-default-100" />
+            <div className="h-px bg-default-200" />
             <div className="flex items-center justify-between text-base font-semibold text-default-800">
               <span>Total</span>
               <span>{formatMoney(subtotal)}</span>
@@ -309,99 +384,187 @@ export function PurchaseOrderPageForm({
         </div>
       </div>
 
+      {/* Items table */}
       <div className="space-y-3 rounded-2xl border border-default-200 bg-content1 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">Items</h3>
-          <Button variant="flat" isDisabled={submitting || loading} onPress={addEmptyRow}>
-            Agregar línea
+          <Button color="primary" variant="flat" isDisabled={submitting || loading} onPress={openAddModal}>
+            Add item
           </Button>
         </div>
 
-        <div className="space-y-3">
-          {itemRows.map((row, index) => (
-            <div key={index} className="rounded-xl border border-default-200 bg-white p-3">
-              <div className="grid gap-3 xl:grid-cols-[2fr,0.7fr,0.9fr,0.8fr]">
-                <Select
-                  isDisabled={submitting || loading}
-                  isLoading={loading}
-                  label="Item de inventario"
-                  selectedKeys={row.inventoryItemId ? new Set([row.inventoryItemId]) : new Set([])}
-                  onSelectionChange={(keys) => {
-                    const first = Array.from(keys)[0];
-                    const value = first ? String(first) : "";
-                    const selectedItem = value ? itemById.get(value) ?? null : null;
+        {items.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-default-200 py-8 text-center text-sm text-default-400">
+            No items added yet. Click <strong>Add item</strong> to get started.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-default-200 text-left text-xs font-semibold uppercase tracking-wide text-default-500">
+                  <th className="py-2 px-2">#</th>
+                  <th className="py-2 px-2">Item</th>
+                  <th className="py-2 px-2">Variant</th>
+                  <th className="py-2 px-2 text-right">Qty</th>
+                  <th className="py-2 px-2 text-right">Unit price</th>
+                  <th className="py-2 px-2 text-right">Subtotal</th>
+                  <th className="py-2 px-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((row, index) => {
+                  const source = row.inventoryItemId ? itemById.get(row.inventoryItemId) ?? null : null;
+                  const variant = row.variantId
+                    ? source?.variants.find((v) => v.id === row.variantId) ?? null
+                    : null;
+                  const lineTotal = parseNumeric(row.quantity) * parseNumeric(row.unitPrice);
 
-                    updateItem(index, {
-                      inventoryItemId: value,
-                      unitPrice:
-                        selectedItem && !items[index]?.unitPrice
-                          ? String(selectedItem.price ?? "")
-                          : items[index]?.unitPrice ?? "",
-                    });
-                  }}
-                  items={inventoryItems}
-                >
-                  {(item) => (
-                    <SelectItem key={item.id} textValue={item.name}>
-                      {item.name}
-                    </SelectItem>
-                  )}
-                </Select>
-
-                <Input
-                  label="Cantidad"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={row.quantity}
-                  onValueChange={(value) => updateItem(index, { quantity: value })}
-                  isDisabled={submitting || loading}
-                />
-
-                <Input
-                  label="Precio unitario"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={row.unitPrice}
-                  onValueChange={(value) => updateItem(index, { unitPrice: value })}
-                  isDisabled={submitting || loading}
-                />
-
-                <div className="flex flex-col justify-between rounded-xl border border-default-200 bg-default-50 px-3 py-2">
-                  <div>
-                    <div className="text-xs uppercase tracking-wide text-default-500">Subtotal</div>
-                    <div className="mt-1 text-lg font-semibold text-default-800">{formatMoney(row.lineTotal)}</div>
-                  </div>
-                  <div className="mt-2 flex justify-end">
-                    <Button
-                      color="danger"
-                      variant="light"
-                      isDisabled={submitting || items.length === 1 || loading}
-                      onPress={() => {
-                        setItems((prev) => prev.filter((_, current) => current !== index));
-                      }}
-                    >
-                      Eliminar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+                  return (
+                    <tr key={index} className="border-b border-default-100 last:border-b-0 hover:bg-default-50/50">
+                      <td className="py-2 px-2 text-default-400">{index + 1}</td>
+                      <td className="py-2 px-2">
+                        <p className="font-medium text-default-800">{source?.name ?? row.inventoryItemId}</p>
+                        {source?.itemCode ? (
+                          <p className="text-xs text-default-400">{source.itemCode}</p>
+                        ) : null}
+                      </td>
+                      <td className="py-2 px-2 text-default-500">
+                        {variant ? variantLabel(variant) : <span className="text-default-300">—</span>}
+                      </td>
+                      <td className="py-2 px-2 text-right">{row.quantity}</td>
+                      <td className="py-2 px-2 text-right">{formatMoney(parseNumeric(row.unitPrice))}</td>
+                      <td className="py-2 px-2 text-right font-semibold text-default-800">{formatMoney(lineTotal)}</td>
+                      <td className="py-2 px-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="flat"
+                            isDisabled={submitting}
+                            onPress={() => openEditModal(index)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="danger"
+                            isDisabled={submitting}
+                            onPress={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {error ? <div className="text-sm text-danger">{error}</div> : null}
 
       <div className="flex items-center justify-end gap-2">
         <Button variant="flat" isDisabled={submitting} onPress={() => router.push("/erp/purchase-orders")}>
-          Cancelar
+          Cancel
         </Button>
         <Button color="primary" isLoading={submitting} onPress={submit}>
-          {isEdit ? "Guardar cambios" : "Crear orden"}
+          {isEdit ? "Save changes" : "Create order"}
         </Button>
       </div>
+
+      {/* Add / Edit item modal */}
+      <Modal
+        isOpen={modal.open}
+        size="lg"
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>
+            {modal.editingIndex !== null ? `Edit item #${modal.editingIndex + 1}` : "Add item"}
+          </ModalHeader>
+          <ModalBody className="space-y-4 pb-5">
+            <Select
+              isLoading={loading}
+              label="Inventory item"
+              selectedKeys={modal.inventoryItemId ? new Set([modal.inventoryItemId]) : new Set([])}
+              onSelectionChange={(keys) => {
+                const first = Array.from(keys)[0];
+                handleItemSelectInModal(first ? String(first) : "");
+              }}
+              items={inventoryItems}
+            >
+              {(item) => (
+                <SelectItem key={item.id} textValue={`${item.itemCode ?? ""} ${item.name}`}>
+                  <span className="font-mono text-xs text-default-500">{item.itemCode ?? "—"}</span>
+                  <span className="ml-2">{item.name}</span>
+                </SelectItem>
+              )}
+            </Select>
+
+            {modalVariants.length > 0 && (
+              <Select
+                label="Variant"
+                placeholder="Select variant…"
+                selectedKeys={modal.variantId ? new Set([modal.variantId]) : new Set([])}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
+                  setModal((prev) => ({ ...prev, variantId: first ? String(first) : "" }));
+                }}
+                items={modalVariants}
+              >
+                {(v) => (
+                  <SelectItem key={v.id} textValue={variantLabel(v)}>
+                    <span>{variantLabel(v)}</span>
+                    <span className="ml-2 text-xs text-default-400">{v.sku}</span>
+                  </SelectItem>
+                )}
+              </Select>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Quantity"
+                type="number"
+                min="0"
+                step="0.01"
+                value={modal.quantity}
+                onValueChange={(v) => setModal((prev) => ({ ...prev, quantity: v }))}
+              />
+              <Input
+                label="Unit price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={modal.unitPrice}
+                onValueChange={(v) => setModal((prev) => ({ ...prev, unitPrice: v }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-default-200 bg-default-50 px-4 py-3">
+              <span className="text-sm text-default-500">Subtotal</span>
+              <span className="text-lg font-semibold text-default-800">{formatMoney(modalSubtotal)}</span>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="flat" onPress={closeModal}>
+                Cancel
+              </Button>
+              <Button
+                color="primary"
+                isDisabled={!modal.inventoryItemId || !modal.quantity || !modal.unitPrice}
+                onPress={confirmModal}
+              >
+                {modal.editingIndex !== null ? "Save" : "Add"}
+              </Button>
+            </div>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

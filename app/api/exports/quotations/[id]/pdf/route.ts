@@ -359,7 +359,7 @@ export async function GET(
     pushPair("Moneda", String(header.currency ?? "COP"));
 
     if (!isExternalPdf) {
-      pushPair("Tipo Documento", String(header.documentType ?? "P"));
+      pushPair("Tipo Documento", String(header.documentType ?? "F"));
     }
 
     pushPair("Entrega", formatDate(header.deliveryDate));

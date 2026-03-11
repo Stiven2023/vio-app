@@ -49,10 +49,14 @@ async function resolveAdvisorFilter(request: Request) {
 }
 
 function normalizePaymentDocumentType(value: unknown) {
-  const raw = String(value ?? "").trim().toUpperCase();
+  const raw = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
   if (raw === "F") return "F";
   if (raw === "R") return "R";
   if (raw === "P") return "F";
+
   return null;
 }
 
@@ -142,16 +146,25 @@ export async function GET(request: Request) {
 
   const prefacturaMap = new Map<
     string,
-    { documentType: string | null; prefacturaCode: string | null; createdAt: string | null }
+    {
+      documentType: string | null;
+      prefacturaCode: string | null;
+      createdAt: string | null;
+    }
   >();
 
   for (const row of prefacturaRows) {
     const orderId = String(row.orderId ?? "");
+
     if (!orderId) continue;
 
     const current = prefacturaMap.get(orderId);
-    const nextDate = row.createdAt ? new Date(String(row.createdAt)).getTime() : 0;
-    const currentDate = current?.createdAt ? new Date(String(current.createdAt)).getTime() : 0;
+    const nextDate = row.createdAt
+      ? new Date(String(row.createdAt)).getTime()
+      : 0;
+    const currentDate = current?.createdAt
+      ? new Date(String(current.createdAt)).getTime()
+      : 0;
 
     if (!current || nextDate >= currentDate) {
       prefacturaMap.set(orderId, {
@@ -178,14 +191,20 @@ export async function GET(request: Request) {
 
   for (const payment of payments) {
     const orderId = String(payment.orderId ?? "");
+
     if (!orderId) continue;
 
     movementsMap.set(orderId, (movementsMap.get(orderId) ?? 0) + 1);
 
     const paymentAt = payment.createdAt ? String(payment.createdAt) : null;
+
     if (paymentAt) {
       const current = lastPaymentMap.get(orderId);
-      if (!current || new Date(paymentAt).getTime() > new Date(current).getTime()) {
+
+      if (
+        !current ||
+        new Date(paymentAt).getTime() > new Date(current).getTime()
+      ) {
         lastPaymentMap.set(orderId, paymentAt);
       }
     }
@@ -193,6 +212,7 @@ export async function GET(request: Request) {
     if (!isConfirmedPaymentStatus(payment.status)) continue;
 
     const amount = Number(payment.amount ?? 0);
+
     if (!Number.isFinite(amount) || amount <= 0) continue;
 
     paidMap.set(orderId, (paidMap.get(orderId) ?? 0) + amount);
@@ -214,8 +234,14 @@ export async function GET(request: Request) {
     };
   });
 
-  const billedTotal = items.reduce((acc, row) => acc + Number(row.total ?? 0), 0);
-  const dueTotal = items.reduce((acc, row) => acc + Number(row.remainingTotal ?? 0), 0);
+  const billedTotal = items.reduce(
+    (acc, row) => acc + Number(row.total ?? 0),
+    0,
+  );
+  const dueTotal = items.reduce(
+    (acc, row) => acc + Number(row.remainingTotal ?? 0),
+    0,
+  );
 
   return Response.json({
     client: clientRow,

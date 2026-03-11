@@ -9,6 +9,7 @@ export const createPurchaseOrderSchema = z.object({
     .array(
       z.object({
         inventoryItemId: z.string().uuid("Selecciona un item"),
+        variantId: z.string().uuid().optional(),
         quantity: z
           .string()
           .trim()

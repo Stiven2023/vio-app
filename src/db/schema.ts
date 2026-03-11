@@ -84,9 +84,9 @@ export const legalStatusEnum = pgEnum("legal_status_status", [
   "BLOQUEADO", // Bloqueado, no puede operar
 ]);
 
-// Enum de tipo documento (Persona / Razón social)
+// Enum de tipo documento (Factura / Razón social)
 export const documentTypeEnum = pgEnum("document_type", [
-  "P", // Persona - lleva IVA
+  "F", // Factura - lleva IVA
   "R", // Razón social - sin IVA
 ]);
 
@@ -634,7 +634,7 @@ export const quotations = pgTable("quotations", {
     .notNull()
     .references(() => users.id),
   clientPriceType: varchar("client_price_type", { length: 20 }),
-  documentType: documentTypeEnum("document_type").default("P").notNull(), // P = Persona, R = Razón social
+  documentType: documentTypeEnum("document_type").default("F").notNull(), // F = Factura, R = Razón social
   currency: varchar("currency", { length: 5 }).default("COP").notNull(),
   deliveryDate: date("delivery_date"),
   expiryDate: date("expiry_date"),
@@ -1186,6 +1186,7 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   inventoryItemId: uuid("inventory_item_id")
     .notNull()
     .references(() => inventoryItems.id),
+  variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
   itemCode: varchar("item_code", { length: 30 }).notNull(),
   itemName: varchar("item_name", { length: 255 }).notNull(),
   unit: varchar("unit", { length: 50 }).notNull(),

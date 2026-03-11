@@ -99,7 +99,7 @@ type CreatePurchaseOrderBody = {
   bankId?: string | null;
   bankAccountRef?: string | null;
   notes?: string | null;
-  items?: Array<{ inventoryItemId: string; quantity: unknown; unitPrice: unknown }>;
+  items?: Array<{ inventoryItemId: string; variantId?: string | null; quantity: unknown; unitPrice: unknown }>;
 };
 
 export async function POST(request: Request) {
@@ -144,12 +144,14 @@ export async function POST(request: Request) {
     const normalizedItems = rawItems
       .map((it) => {
         const inventoryItemId = String((it as any)?.inventoryItemId ?? "").trim();
+        const variantId = String((it as any)?.variantId ?? "").trim() || null;
         const quantity = toPositiveNumber((it as any)?.quantity);
         const unitPrice = toPositiveNumber((it as any)?.unitPrice);
 
         return inventoryItemId && quantity && unitPrice
           ? {
               inventoryItemId,
+              variantId,
               quantity: formatDecimal(quantity),
               unitPrice: formatDecimal(unitPrice),
             }
@@ -157,6 +159,7 @@ export async function POST(request: Request) {
       })
       .filter(Boolean) as Array<{
         inventoryItemId: string;
+        variantId: string | null;
         quantity: string;
         unitPrice: string;
       }>;
@@ -204,6 +207,7 @@ export async function POST(request: Request) {
 
       return {
         inventoryItemId: item.inventoryItemId,
+        variantId: item.variantId ?? null,
         itemCode: source.itemCode,
         itemName: source.name,
         unit: source.unit,
@@ -239,6 +243,7 @@ export async function POST(request: Request) {
         orderItems.map((it) => ({
           purchaseOrderId: order.id,
           inventoryItemId: it.inventoryItemId,
+          variantId: it.variantId,
           itemCode: it.itemCode,
           itemName: it.itemName,
           unit: it.unit,

@@ -59,6 +59,61 @@ function formatDate(value: string | null) {
   }).format(date);
 }
 
+function getDeadlineIndicator(deliveryDate: string | null) {
+  if (!deliveryDate) return null;
+
+  const target = new Date(deliveryDate);
+
+  if (Number.isNaN(target.getTime())) return null;
+
+  target.setHours(23, 59, 59, 999);
+
+  const diffMs = target.getTime() - Date.now();
+  const remainingHours = Math.ceil(diffMs / (1000 * 60 * 60));
+  const remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (remainingHours <= 0) {
+    return {
+      daysLabel: "Vencido",
+      hoursLabel: "0 h",
+      toneClass: "border-danger-200 bg-danger-50 text-danger-700",
+    };
+  }
+
+  const toneClass =
+    remainingDays <= 5
+      ? "border-danger-200 bg-danger-50 text-danger-700"
+      : remainingDays <= 10
+        ? "border-warning-200 bg-warning-50 text-warning-700"
+        : "border-success-200 bg-success-50 text-success-700";
+
+  return {
+    daysLabel: `${remainingDays} días`,
+    hoursLabel: `${remainingHours} h`,
+    toneClass,
+  };
+}
+
+function renderCountdownCell(
+  deliveryDate: string | null,
+  fallback: string,
+  variant: "days" | "hours",
+) {
+  const indicator = getDeadlineIndicator(deliveryDate);
+
+  if (!indicator) {
+    return <span>{fallback}</span>;
+  }
+
+  return (
+    <span
+      className={`inline-flex min-w-[88px] justify-center rounded-full border px-2 py-1 text-xs font-semibold ${indicator.toneClass}`}
+    >
+      {variant === "days" ? indicator.daysLabel : indicator.hoursLabel}
+    </span>
+  );
+}
+
 export function ProgramacionItemsTable({
   process,
   orderStatus = "PRODUCCION",
@@ -96,14 +151,13 @@ export function ProgramacionItemsTable({
   const [gender, setGender] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-
-  const activeActualizacionBasePath = actualizacionBasePath ?? `${basePath}/actualizacion`;
+  const [currentView, setCurrentView] = useState<"GENERAL" | "ACTUALIZACION">(view ?? "GENERAL");
 
   const buildQuery = () => {
     const params = new URLSearchParams({
       process,
       orderStatus,
-      view,
+      view: currentView,
       page: String(page),
       pageSize: String(PAGE_SIZE),
     });
@@ -143,11 +197,11 @@ export function ProgramacionItemsTable({
     return () => {
       active = false;
     };
-  }, [page, process, orderStatus, view, search, gender, startDate, endDate]);
+  }, [page, process, orderStatus, currentView, search, gender, startDate, endDate]);
 
   useEffect(() => {
     setPage(1);
-  }, [process, orderStatus, view, search, gender, startDate, endDate]);
+  }, [process, orderStatus, currentView, search, gender, startDate, endDate]);
 
   const title = useMemo(() => {
     if (process === "PRODUCCION") return labels?.principal ?? "Programación principal";
@@ -157,7 +211,7 @@ export function ProgramacionItemsTable({
 
   const hasRows = (data?.items?.length ?? 0) > 0;
 
-  const isActualizacion = view === "ACTUALIZACION";
+  const isActualizacion = currentView === "ACTUALIZACION";
 
   const decide = async (item: ProgramacionItem, nextStatus: "PENDIENTE_PRODUCCION" | "EN_REVISION_CAMBIO") => {
     if (!item.orderItemId) return;
@@ -276,6 +330,14 @@ export function ProgramacionItemsTable({
   };
 
   const renderRowCells = (item: ProgramacionItem) => {
+    const leadDaysLabel =
+      item.leadDays === null || item.leadDays === undefined
+        ? "-"
+        : `${item.leadDays} días`;
+    const leadHoursLabel =
+      item.leadHours === null || item.leadHours === undefined
+        ? "-"
+        : String(item.leadHours);
     const actionsCell = enableDecisions ? (
       <TableCell key="acciones">
         <div className="flex flex-wrap gap-2">
@@ -321,16 +383,8 @@ export function ProgramacionItemsTable({
           <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
           <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
           <TableCell key="proceso">{item.process ?? "-"}</TableCell>,
-          <TableCell key="plazo">
-            {item.leadDays === null || item.leadDays === undefined
-              ? "-"
-              : `${item.leadDays} días`}
-          </TableCell>,
-          <TableCell key="plazo-horas">
-            {item.leadHours === null || item.leadHours === undefined
-              ? "-"
-              : String(item.leadHours)}
-          </TableCell>,
+          <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
+          <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
           ...(actionsCell ? [actionsCell] : []),
         ]
       );
@@ -355,16 +409,8 @@ export function ProgramacionItemsTable({
           <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
           <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
           <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
-          <TableCell key="plazo">
-            {item.leadDays === null || item.leadDays === undefined
-              ? "-"
-              : `${item.leadDays} días`}
-          </TableCell>,
-          <TableCell key="plazo-horas">
-            {item.leadHours === null || item.leadHours === undefined
-              ? "-"
-              : String(item.leadHours)}
-          </TableCell>,
+          <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
+          <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
           ...(actionsCell ? [actionsCell] : []),
         ]
       );
@@ -388,16 +434,8 @@ export function ProgramacionItemsTable({
           <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
           <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
           <TableCell key="proceso">{item.process ?? "-"}</TableCell>,
-          <TableCell key="plazo">
-            {item.leadDays === null || item.leadDays === undefined
-              ? "-"
-              : `${item.leadDays} días`}
-          </TableCell>,
-          <TableCell key="plazo-horas">
-            {item.leadHours === null || item.leadHours === undefined
-              ? "-"
-              : String(item.leadHours)}
-          </TableCell>,
+          <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
+          <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
           ...(actionsCell ? [actionsCell] : []),
         ]
       );
@@ -419,16 +457,8 @@ export function ProgramacionItemsTable({
         <TableCell key="cantidad">{item.quantity ?? 0}</TableCell>,
         <TableCell key="tela">{item.fabric ?? "-"}</TableCell>,
         <TableCell key="genero">{item.gender ?? "-"}</TableCell>,
-        <TableCell key="plazo">
-          {item.leadDays === null || item.leadDays === undefined
-            ? "-"
-            : `${item.leadDays} días`}
-        </TableCell>,
-        <TableCell key="plazo-horas">
-          {item.leadHours === null || item.leadHours === undefined
-            ? "-"
-            : String(item.leadHours)}
-        </TableCell>,
+        <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
+        <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
         ...(actionsCell ? [actionsCell] : []),
       ]
     );
@@ -448,9 +478,8 @@ export function ProgramacionItemsTable({
           Compras
         </Button>
         <Button
-          as={Link}
-          href={activeActualizacionBasePath}
           variant={isActualizacion ? "solid" : "flat"}
+          onPress={() => setCurrentView((v) => (v === "ACTUALIZACION" ? "GENERAL" : "ACTUALIZACION"))}
         >
           Actualización
         </Button>

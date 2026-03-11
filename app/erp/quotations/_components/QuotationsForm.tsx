@@ -38,7 +38,7 @@ export function QuotationsForm({
     );
     onFormChange({
       clientId,
-      documentType: "P", // Default to P (Persona) on client change
+      documentType: "F", // Default to F (Factura) on client change
       customerName: selected?.name ?? "",
       customerEmail: selected?.email ?? "",
       documentNumber: selected?.identification ?? "",
@@ -93,11 +93,11 @@ export function QuotationsForm({
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
               onFormChange({
-                documentType: String(first) === "R" ? "R" : "P",
+                documentType: String(first) === "R" ? "R" : "F",
               });
             }}
           >
-            <SelectItem key="P">P</SelectItem>
+            <SelectItem key="F">F</SelectItem>
             <SelectItem key="R">R</SelectItem>
           </Select>
         ) : (

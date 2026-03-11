@@ -69,6 +69,7 @@ type ClientOrdersResponse = {
 
 function asMoney(value: string | number | null | undefined, currency = "COP") {
   const n = Number(value ?? 0);
+
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: currency.toUpperCase() === "USD" ? "USD" : "COP",
@@ -76,9 +77,13 @@ function asMoney(value: string | number | null | undefined, currency = "COP") {
 }
 
 function formatPrefacturaDocumentType(value: string | null | undefined) {
-  const normalized = String(value ?? "").trim().toUpperCase();
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
   if (normalized === "F" || normalized === "P") return "F";
   if (normalized === "R") return "R";
+
   return "-";
 }
 
@@ -96,7 +101,9 @@ export function PaymentsByClientPage({
   const [loadingClients, setLoadingClients] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [loadingClientData, setLoadingClientData] = useState(false);
-  const [clientData, setClientData] = useState<ClientOrdersResponse | null>(null);
+  const [clientData, setClientData] = useState<ClientOrdersResponse | null>(
+    null,
+  );
   const [selectedOrderId, setSelectedOrderId] = useState("");
 
   const selectedClient = useMemo(
@@ -131,6 +138,7 @@ export function PaymentsByClientPage({
   const loadClientData = async (clientId: string) => {
     if (!clientId) {
       setClientData(null);
+
       return;
     }
 
@@ -139,6 +147,7 @@ export function PaymentsByClientPage({
       const res = await apiJson<ClientOrdersResponse>(
         `/api/pagos/client-orders?clientId=${encodeURIComponent(clientId)}`,
       );
+
       setClientData(res);
       setSelectedOrderId("");
     } catch (error) {
@@ -151,6 +160,7 @@ export function PaymentsByClientPage({
 
   const onSelectClient = (key: Key | null) => {
     const nextId = String(key ?? "");
+
     setSelectedClientId(nextId);
   };
 
@@ -175,7 +185,9 @@ export function PaymentsByClientPage({
                 textValue={`${item.clientCode} ${item.name} ${item.identification}`}
               >
                 <div className="flex flex-col">
-                  <span className="font-medium">{item.clientCode} · {item.name}</span>
+                  <span className="font-medium">
+                    {item.clientCode} · {item.name}
+                  </span>
                   <span className="text-xs text-default-500">
                     {item.identification} · Pedidos: {item.ordersCount}
                   </span>
@@ -200,35 +212,54 @@ export function PaymentsByClientPage({
       {clientData ? (
         <>
           <Card>
-            <CardHeader className="font-semibold">Información del cliente</CardHeader>
+            <CardHeader className="font-semibold">
+              Información del cliente
+            </CardHeader>
             <CardBody className="space-y-4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div>
                   <div className="text-xs text-default-500">Cliente</div>
-                  <div className="font-medium">{clientData.client.clientCode} · {clientData.client.name}</div>
+                  <div className="font-medium">
+                    {clientData.client.clientCode} · {clientData.client.name}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-default-500">Identificación</div>
-                  <div className="font-medium">{clientData.client.identificationType} {clientData.client.identification}</div>
+                  <div className="font-medium">
+                    {clientData.client.identificationType}{" "}
+                    {clientData.client.identification}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-default-500">Contacto</div>
-                  <div className="font-medium">{clientData.client.contactName} · {clientData.client.email}</div>
+                  <div className="font-medium">
+                    {clientData.client.contactName} · {clientData.client.email}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="rounded-medium border border-default-200 p-3">
-                  <div className="text-xs text-default-500">Valor facturado</div>
-                  <div className="font-semibold">{asMoney(clientData.billedTotal)}</div>
+                  <div className="text-xs text-default-500">
+                    Valor facturado
+                  </div>
+                  <div className="font-semibold">
+                    {asMoney(clientData.billedTotal)}
+                  </div>
                 </div>
                 <div className="rounded-medium border border-default-200 p-3">
                   <div className="text-xs text-default-500">Total a deber</div>
-                  <div className="font-semibold">{asMoney(clientData.dueTotal)}</div>
+                  <div className="font-semibold">
+                    {asMoney(clientData.dueTotal)}
+                  </div>
                 </div>
                 <div className="rounded-medium border border-default-200 p-3">
-                  <div className="text-xs text-default-500">Pedidos asociados</div>
-                  <div className="font-semibold">{clientData.orders.length}</div>
+                  <div className="text-xs text-default-500">
+                    Pedidos asociados
+                  </div>
+                  <div className="font-semibold">
+                    {clientData.orders.length}
+                  </div>
                 </div>
               </div>
             </CardBody>
@@ -236,7 +267,8 @@ export function PaymentsByClientPage({
 
           <Card>
             <CardHeader className="font-semibold">
-              Estado de cuenta del cliente (historial de todos los pedidos asociados)
+              Estado de cuenta del cliente (historial de todos los pedidos
+              asociados)
             </CardHeader>
             <CardBody>
               <Table removeWrapper aria-label="Pedidos del cliente">
@@ -258,20 +290,32 @@ export function PaymentsByClientPage({
                       <TableCell>{order.orderCode}</TableCell>
                       <TableCell>
                         {order.createdAt
-                          ? new Date(order.createdAt).toLocaleDateString("es-CO")
+                          ? new Date(order.createdAt).toLocaleDateString(
+                              "es-CO",
+                            )
                           : "-"}
                       </TableCell>
                       <TableCell>{order.status}</TableCell>
                       <TableCell>{order.prefacturaCode ?? "-"}</TableCell>
                       <TableCell>
-                        {formatPrefacturaDocumentType(order.prefacturaDocumentType)}
+                        {formatPrefacturaDocumentType(
+                          order.prefacturaDocumentType,
+                        )}
                       </TableCell>
-                      <TableCell>{asMoney(order.total, order.currency ?? "COP")}</TableCell>
-                      <TableCell>{asMoney(order.paidTotal, order.currency ?? "COP")}</TableCell>
-                      <TableCell>{asMoney(order.remainingTotal, order.currency ?? "COP")}</TableCell>
+                      <TableCell>
+                        {asMoney(order.total, order.currency ?? "COP")}
+                      </TableCell>
+                      <TableCell>
+                        {asMoney(order.paidTotal, order.currency ?? "COP")}
+                      </TableCell>
+                      <TableCell>
+                        {asMoney(order.remainingTotal, order.currency ?? "COP")}
+                      </TableCell>
                       <TableCell>
                         {order.lastPaymentAt
-                          ? new Date(order.lastPaymentAt).toLocaleString("es-CO")
+                          ? new Date(order.lastPaymentAt).toLocaleString(
+                              "es-CO",
+                            )
                           : "-"}
                       </TableCell>
                       <TableCell>
@@ -300,7 +344,9 @@ export function PaymentsByClientPage({
 
           {selectedOrderId ? (
             <Card>
-              <CardHeader className="font-semibold">Abono individual por pedido</CardHeader>
+              <CardHeader className="font-semibold">
+                Abono individual por pedido
+              </CardHeader>
               <CardBody>
                 <OrderPaymentsPage
                   canApprove={canApprove}
@@ -313,7 +359,9 @@ export function PaymentsByClientPage({
           ) : null}
 
           <Card>
-            <CardHeader className="font-semibold">Abono distribuido del cliente</CardHeader>
+            <CardHeader className="font-semibold">
+              Abono distribuido del cliente
+            </CardHeader>
             <CardBody>
               <DistributedPaymentsPage
                 fixedClientId={clientData.client.id}

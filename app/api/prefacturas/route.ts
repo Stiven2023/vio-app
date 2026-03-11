@@ -152,7 +152,9 @@ export async function GET(request: Request) {
     const q = String(searchParams.get("q") ?? "").trim();
     const status = String(searchParams.get("status") ?? "all").trim().toUpperCase();
     const type = String(searchParams.get("type") ?? "all").trim().toUpperCase();
+    const documentType = String(searchParams.get("documentType") ?? "all").trim().toUpperCase();
     const orderStatus = String(searchParams.get("orderStatus") ?? "all").trim().toUpperCase();
+    const documentTypeExpr = sql<string>`coalesce(${quotations.documentType}, case when ${orders.ivaEnabled} then 'F' else 'R' end)`;
 
     const filters = [] as Array<any>;
 
@@ -162,6 +164,10 @@ export async function GET(request: Request) {
 
     if (type === "VN" || type === "VI" || type === "VT" || type === "VW") {
       filters.push(eq(orders.type, type as any));
+    }
+
+    if (documentType === "F" || documentType === "R") {
+      filters.push(sql`${documentTypeExpr} = ${documentType}`);
     }
 
     if (orderStatus && orderStatus !== "ALL") {
@@ -209,6 +215,7 @@ export async function GET(request: Request) {
         subtotal: prefacturas.subtotal,
         total: prefacturas.total,
         clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+        documentType: documentTypeExpr,
         approvedAt: prefacturas.approvedAt,
         createdAt: prefacturas.createdAt,
       })
@@ -308,7 +315,7 @@ export async function POST(request: Request) {
                 kind: "NUEVO" as any,
                 status: "PENDIENTE" as any,
                 total,
-                ivaEnabled: String(body?.documentType ?? "P") === "P",
+                ivaEnabled: String(body?.documentType ?? "F") === "F",
                 discount: "0",
                 currency,
                 shippingFee,

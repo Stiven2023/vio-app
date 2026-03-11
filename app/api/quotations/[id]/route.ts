@@ -224,7 +224,7 @@ export async function PUT(
             ? String(body.clientPriceType)
             : null,
           documentType: body?.documentType
-            ? (String(body.documentType) as "P" | "R")
+            ? (String(body.documentType) as "F" | "R")
             : undefined,
           currency: body?.currency ? String(body.currency) : undefined,
           deliveryDate: null,

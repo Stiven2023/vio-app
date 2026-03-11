@@ -92,12 +92,21 @@ export type EmployeeOption = {
   isActive: boolean | null;
 };
 
+export type VariantOption = {
+  id: string;
+  sku: string;
+  color: string | null;
+  size: string | null;
+};
+
 export type InventoryItemOption = {
   id: string;
   itemCode?: string | null;
   name: string;
   unit?: string | null;
   price?: string | null;
+  hasVariants: boolean;
+  variants: VariantOption[];
 };
 
 export type BankOption = {
@@ -111,6 +120,7 @@ export type BankOption = {
 export type PurchaseOrderDetailItem = {
   id: string;
   inventoryItemId: string;
+  variantId: string | null;
   itemCode: string | null;
   itemName: string;
   unit: string | null;

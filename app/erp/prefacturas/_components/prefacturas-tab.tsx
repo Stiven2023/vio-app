@@ -59,14 +59,21 @@ type PrefacturaRow = {
   subtotal: string | null;
   total: string | null;
   clientName: string | null;
+  documentType: "F" | "R" | null;
   approvedAt: string | null;
   createdAt: string | null;
 };
 
+const documentTypeOptions = [
+  { value: "all", label: "Todos" },
+  { value: "F", label: "F" },
+  { value: "R", label: "R" },
+];
+
 const statusOptions = [
   { value: "all", label: "Todos" },
   { value: "PENDIENTE_CONTABILIDAD", label: "Pendiente contabilidad" },
-  { value: "APROBACION_INICIAL", label: "Aprobación inicial" },
+  { value: "APROBACION_INICIAL", label: "Aprobación" },
   { value: "PROGRAMACION", label: "Programación" },
   { value: "PENDIENTE", label: "Pendiente" },
   { value: "APROBADA", label: "Aprobada" },
@@ -123,6 +130,7 @@ export function PrefacturasTab({
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(initialStatus);
   const [type, setType] = useState("all");
+  const [documentType, setDocumentType] = useState("all");
 
   const endpoint = useMemo(() => {
     const sp = new URLSearchParams();
@@ -131,12 +139,13 @@ export function PrefacturasTab({
     if (query) sp.set("q", query);
     if (status !== "all") sp.set("status", status);
     if (type !== "all") sp.set("type", type);
+    if (documentType !== "all") sp.set("documentType", documentType);
     if (initialOrderStatus !== "all") sp.set("orderStatus", initialOrderStatus);
 
     const qs = sp.toString();
 
     return `/api/prefacturas${qs ? `?${qs}` : ""}`;
-  }, [q, status, type, initialOrderStatus]);
+  }, [documentType, q, status, type, initialOrderStatus]);
 
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<PrefacturaRow>(endpoint, 10);
@@ -158,10 +167,10 @@ export function PrefacturasTab({
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (q.trim() || status !== "all" || type !== "all") return "Sin resultados";
+    if (q.trim() || status !== "all" || type !== "all" || documentType !== "all") return "Sin resultados";
 
     return "Sin prefacturas";
-  }, [loading, q, status, type]);
+  }, [documentType, loading, q, status, type]);
 
   const openEdit = (row: PrefacturaRow) => {
     setEditing(row);
@@ -287,6 +296,13 @@ export function PrefacturasTab({
             options={typeOptions}
             value={type}
             onChange={setType}
+          />
+          <FilterSelect
+            className="sm:w-40"
+            label="Documento"
+            options={documentTypeOptions}
+            value={documentType}
+            onChange={setDocumentType}
           />
         </div>
 
@@ -501,7 +517,7 @@ export function PrefacturasTab({
               }}
             >
               <SelectItem key="PENDIENTE_CONTABILIDAD">Pendiente contabilidad</SelectItem>
-              <SelectItem key="APROBACION_INICIAL">Aprobación inicial</SelectItem>
+              <SelectItem key="APROBACION_INICIAL">Aprobación</SelectItem>
               <SelectItem key="PROGRAMACION">Programación</SelectItem>
               <SelectItem key="PENDIENTE">Pendiente</SelectItem>
               <SelectItem key="APROBADA">Aprobada</SelectItem>

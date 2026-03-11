@@ -39,7 +39,7 @@ type QuotationDetailResponse = {
   clientId: string;
   sellerId: string;
   clientPriceType: ClientPriceType | null;
-  documentType: "P" | "R";
+  documentType: "F" | "R";
   currency: "COP" | "USD";
   deliveryDate: string | null;
   expiryDate: string | null;
@@ -79,7 +79,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   const [form, setForm] = useState<QuoteForm>({
     clientId: "",
     sellerId: user?.id ?? "",
-    documentType: "P",
+    documentType: "F",
     customerName: "",
     customerEmail: "",
     documentNumber: "",
@@ -208,7 +208,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
           ...s,
           clientId: quote.clientId,
           sellerId: quote.sellerId,
-          documentType: quote.documentType ?? "P",
+          documentType: quote.documentType ?? "F",
           currency: quote.currency,
           expiryDate: quote.expiryDate ?? "",
           paymentTerms: quote.paymentTerms ?? "TRANSFERENCIA",
