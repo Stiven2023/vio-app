@@ -303,6 +303,7 @@ export async function GET(request: Request) {
             subtotal: prefacturas.subtotal,
             total: prefacturas.total,
             clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+            documentType: sql<string | null>`null`,
             approvedAt: prefacturas.approvedAt,
             createdAt: prefacturas.createdAt,
           })
@@ -314,8 +315,6 @@ export async function GET(request: Request) {
           .orderBy(desc(prefacturas.createdAt))
           .limit(pageSize)
           .offset(offset);
-
-        items = items.map((item) => ({ ...item, documentType: null }));
       } catch (err2) {
         console.warn("[prefacturas GET] tier-2 fallback:", (err2 as any)?.message);
 

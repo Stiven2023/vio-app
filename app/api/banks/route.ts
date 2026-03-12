@@ -62,8 +62,8 @@ export async function GET(request: Request) {
       code: string;
       name: string;
       accountRef: string | null;
-      isOfficial: boolean;
-      isActive: boolean;
+      isOfficial: boolean | null;
+      isActive: boolean | null;
       createdAt: Date | string | null;
       updatedAt: Date | string | null;
     }> = [];

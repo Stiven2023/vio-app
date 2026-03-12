@@ -107,6 +107,11 @@ export function OrderItemModal(props: {
     return (q * up).toFixed(2);
   }, [item.quantity, item.unitPrice]);
 
+  const quantity = React.useMemo(
+    () => Math.max(1, Math.floor(asNumber(item.quantity))),
+    [item.quantity]
+  );
+
   const isCreateBlocked = mode === "create" && orderKind !== "NUEVO";
 
 
@@ -133,7 +138,6 @@ export function OrderItemModal(props: {
       return;
     }
 
-    const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
     const unitPrice = Math.max(0, asNumber(item.unitPrice));
 
     setIsSaving(true);
