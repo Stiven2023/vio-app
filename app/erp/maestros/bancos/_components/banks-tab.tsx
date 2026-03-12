@@ -45,6 +45,7 @@ type Bank = {
   code: string;
   name: string;
   accountRef: string;
+  isOfficial: boolean | null;
   isActive: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -55,6 +56,7 @@ type Draft = {
   code: string;
   name: string;
   accountRef: string;
+  isOfficial: boolean;
   isActive: boolean;
 };
 
@@ -87,6 +89,7 @@ const EMPTY_DRAFT: Draft = {
   code: "",
   name: "",
   accountRef: "",
+  isOfficial: false,
   isActive: true,
 };
 
@@ -141,6 +144,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
       code: bank.code ?? "",
       name: bank.name ?? "",
       accountRef: bank.accountRef ?? "",
+      isOfficial: bank.isOfficial === true,
       isActive: bank.isActive !== false,
     });
     setModalOpen(true);
@@ -172,6 +176,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
       code: draft.code.trim(),
       name: draft.name.trim(),
       accountRef: draft.accountRef.trim(),
+      isOfficial: draft.isOfficial,
       isActive: draft.isActive,
     };
 
@@ -260,7 +265,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
       {loading ? (
         <TableSkeleton
           ariaLabel="Banks"
-          headers={["Code", "Name", "Account", "Status", "Actions"]}
+          headers={["Code", "Name", "Account", "Official", "Status", "Actions"]}
           rows={6}
         />
       ) : (
@@ -269,6 +274,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
             <TableColumn>Code</TableColumn>
             <TableColumn>Name</TableColumn>
             <TableColumn>Account</TableColumn>
+            <TableColumn>Official</TableColumn>
             <TableColumn>Status</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
@@ -278,6 +284,14 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
                 <TableCell>{bank.code}</TableCell>
                 <TableCell>{bank.name}</TableCell>
                 <TableCell>{bank.accountRef}</TableCell>
+                <TableCell>
+                  <Chip
+                    color={bank.isOfficial ? "primary" : "default"}
+                    variant="flat"
+                  >
+                    {bank.isOfficial ? "Official" : "Not official"}
+                  </Chip>
+                </TableCell>
                 <TableCell>
                   <Chip
                     color={bank.isActive === false ? "danger" : "success"}
@@ -366,6 +380,14 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
               }
             />
             <Switch
+              isSelected={draft.isOfficial}
+              onValueChange={(value) =>
+                setDraft((prev) => ({ ...prev, isOfficial: value }))
+              }
+            >
+              Official bank
+            </Switch>
+            <Switch
               isSelected={draft.isActive}
               onValueChange={(value) =>
                 setDraft((prev) => ({ ...prev, isActive: value }))
@@ -411,7 +433,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
               : "Bank history"}
           </ModalHeader>
           <ModalBody className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
               <div className="rounded-lg border border-default-200 p-3">
                 <p className="text-xs text-default-500">Related payments</p>
                 <p className="mt-1 text-lg font-semibold">
@@ -428,6 +450,12 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
                 <p className="text-xs text-default-500">Account</p>
                 <p className="mt-1 text-sm font-medium">
                   {history?.bank.accountRef ?? "-"}
+                </p>
+              </div>
+              <div className="rounded-lg border border-default-200 p-3">
+                <p className="text-xs text-default-500">Official</p>
+                <p className="mt-1 text-sm font-medium">
+                  {history?.bank.isOfficial ? "Official" : "Not official"}
                 </p>
               </div>
             </div>

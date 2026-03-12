@@ -91,6 +91,17 @@ function normalizeOperationalProcess(v: unknown) {
   return "PRODUCCION";
 }
 
+function sumGroupedPackagingQuantity(packagingInput: unknown) {
+  if (!Array.isArray(packagingInput)) return 0;
+
+  return packagingInput.reduce((acc, row: any) => {
+    const mode = String(row?.mode ?? "AGRUPADO").trim().toUpperCase();
+    if (mode !== "AGRUPADO") return acc;
+    const qty = toPositiveInt(row?.quantity);
+    return acc + (qty ?? 0);
+  }, 0);
+}
+
 const GARMENT_TYPES = new Set([
   "JUGADOR",
   "ARQUERO",
@@ -98,6 +109,7 @@ const GARMENT_TYPES = new Set([
   "JUEZ",
   "ENTRENADOR",
   "LIBERO",
+  "OBJETO",
 ]);
 
 function normalizeGarmentType(v: unknown) {
@@ -352,6 +364,14 @@ export async function POST(request: Request) {
 
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
+  const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
+  if (groupedPackagingTotal > qty) {
+    return new Response(
+      `La curva no puede superar la cantidad del diseño (${qty}).`,
+      { status: 400 },
+    );
+  }
+
   const employeeId = await resolveEmployeeId(request);
   const latestUsdCopRate = await getLatestUsdCopRate();
   const garmentType = normalizeGarmentType(body.garmentType);
@@ -390,16 +410,6 @@ export async function POST(request: Request) {
       throw new Error(
         "No se pueden agregar diseños en pedidos de completación",
       );
-    }
-
-    const [duplicatedGarmentType] = await tx
-      .select({ id: orderItems.id })
-      .from(orderItems)
-      .where(and(eq(orderItems.orderId, orderId), eq(orderItems.garmentType, garmentType)))
-      .limit(1);
-
-    if (duplicatedGarmentType) {
-      throw new Error(`Ya existe un diseño para el tipo ${garmentType}`);
     }
 
     const productId = toNullableString(body.productId);

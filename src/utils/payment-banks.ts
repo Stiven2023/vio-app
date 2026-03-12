@@ -9,6 +9,7 @@ export type PaymentBankRow = {
   code: string;
   name: string;
   accountRef: string;
+  isOfficial: boolean | null;
   isActive: boolean | null;
 };
 
@@ -26,6 +27,7 @@ export async function resolvePaymentBankById(
       code: banks.code,
       name: banks.name,
       accountRef: banks.accountRef,
+      isOfficial: banks.isOfficial,
       isActive: banks.isActive,
     })
     .from(banks)

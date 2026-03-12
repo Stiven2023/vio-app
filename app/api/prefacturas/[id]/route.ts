@@ -27,6 +27,26 @@ async function resolveAdvisorFilter(request: Request) {
   return employeeId;
 }
 
+function isMissingColumnError(error: unknown) {
+  // Walk up to 4 levels of error chaining (error → cause → cause.cause…)
+  let curr: any = error;
+  for (let depth = 0; depth < 4; depth++) {
+    if (!curr || typeof curr !== "object") break;
+    const code = String(curr.code ?? "");
+    const msg = String(curr.message ?? "").toLowerCase();
+    if (
+      code === "42703" ||
+      msg.includes("does not exist") ||
+      msg.includes("undefined_column") ||
+      msg.includes("42703")
+    ) {
+      return true;
+    }
+    curr = curr.cause ?? curr.error ?? null;
+  }
+  return false;
+}
+
 async function getPrefacturaById(id: string, advisorScope: string | null) {
   const filters = [eq(prefacturas.id, id)] as Array<any>;
 
@@ -34,32 +54,62 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
     filters.push(eq(orders.createdBy, advisorScope));
   }
 
-  const [row] = await db
-    .select({
-      id: prefacturas.id,
-      prefacturaCode: prefacturas.prefacturaCode,
-      quotationId: prefacturas.quotationId,
-      quoteCode: quotations.quoteCode,
-      orderId: prefacturas.orderId,
-      orderCode: orders.orderCode,
-      orderName: orders.orderName,
-      orderType: orders.type,
-      status: prefacturas.status,
-      totalProducts: prefacturas.totalProducts,
-      subtotal: prefacturas.subtotal,
-      total: prefacturas.total,
-      clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
-      approvedAt: prefacturas.approvedAt,
-      createdAt: prefacturas.createdAt,
-    })
-    .from(prefacturas)
-    .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
-    .leftJoin(orders, eq(prefacturas.orderId, orders.id))
-    .leftJoin(clients, eq(orders.clientId, clients.id))
-    .where(and(...filters))
-    .limit(1);
+  try {
+    const [row] = await db
+      .select({
+        id: prefacturas.id,
+        prefacturaCode: prefacturas.prefacturaCode,
+        quotationId: prefacturas.quotationId,
+        quoteCode: quotations.quoteCode,
+        orderId: prefacturas.orderId,
+        orderCode: orders.orderCode,
+        orderName: orders.orderName,
+        orderType: orders.type,
+        status: prefacturas.status,
+        totalProducts: prefacturas.totalProducts,
+        subtotal: prefacturas.subtotal,
+        total: prefacturas.total,
+        clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+        approvedAt: prefacturas.approvedAt,
+        createdAt: prefacturas.createdAt,
+      })
+      .from(prefacturas)
+      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+      .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+      .leftJoin(clients, eq(orders.clientId, clients.id))
+      .where(and(...filters))
+      .limit(1);
 
-  return row ?? null;
+    return row ?? null;
+  } catch (error) {
+    console.warn("[prefacturas GET id] tier-1 fallback:", (error as any)?.message);
+
+    const [legacyRow] = await db
+      .select({
+        id: prefacturas.id,
+        prefacturaCode: prefacturas.prefacturaCode,
+        quotationId: prefacturas.quotationId,
+        quoteCode: quotations.quoteCode,
+        orderId: prefacturas.orderId,
+        orderCode: orders.orderCode,
+        orderName: orders.orderName,
+        orderType: orders.type,
+        status: prefacturas.status,
+        subtotal: prefacturas.subtotal,
+        total: prefacturas.total,
+        clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+        approvedAt: prefacturas.approvedAt,
+        createdAt: prefacturas.createdAt,
+      })
+      .from(prefacturas)
+      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+      .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+      .leftJoin(clients, eq(orders.clientId, clients.id))
+      .where(and(...filters))
+      .limit(1);
+
+    return legacyRow ? { ...legacyRow, totalProducts: null } : null;
+  }
 }
 
 export async function GET(

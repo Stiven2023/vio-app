@@ -11,6 +11,25 @@ function normalizeCode(value: string) {
   return value.trim().toUpperCase().replace(/\s+/g, "-").slice(0, 30);
 }
 
+function isMissingColumnError(error: unknown) {
+  let curr: any = error;
+  for (let depth = 0; depth < 4; depth++) {
+    if (!curr || typeof curr !== "object") break;
+    const code = String(curr.code ?? "");
+    const msg = String(curr.message ?? "").toLowerCase();
+    if (
+      code === "42703" ||
+      msg.includes("does not exist") ||
+      msg.includes("undefined_column") ||
+      msg.includes("42703")
+    ) {
+      return true;
+    }
+    curr = curr.cause ?? curr.error ?? null;
+  }
+  return false;
+}
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "banks:get",
@@ -38,13 +57,83 @@ export async function GET(request: Request) {
       .from(banks)
       .where(where);
 
-    const items = await db
-      .select()
-      .from(banks)
-      .where(where)
-      .orderBy(asc(banks.name))
-      .limit(pageSize)
-      .offset(offset);
+    let items: Array<{
+      id: string;
+      code: string;
+      name: string;
+      accountRef: string | null;
+      isOfficial: boolean;
+      isActive: boolean;
+      createdAt: Date | string | null;
+      updatedAt: Date | string | null;
+    }> = [];
+
+    try {
+      items = await db
+        .select({
+          id: banks.id,
+          code: banks.code,
+          name: banks.name,
+          accountRef: banks.accountRef,
+          isOfficial: banks.isOfficial,
+          isActive: banks.isActive,
+          createdAt: banks.createdAt,
+          updatedAt: banks.updatedAt,
+        })
+        .from(banks)
+        .where(where)
+        .orderBy(asc(banks.name))
+        .limit(pageSize)
+        .offset(offset);
+    } catch (error) {
+      if (!isMissingColumnError(error)) throw error;
+
+      try {
+        const legacyItems = await db
+          .select({
+            id: banks.id,
+            code: banks.code,
+            name: banks.name,
+            accountRef: banks.accountRef,
+          })
+          .from(banks)
+          .where(where)
+          .orderBy(asc(banks.name))
+          .limit(pageSize)
+          .offset(offset);
+
+        items = legacyItems.map((row) => ({
+          ...row,
+          isOfficial: false,
+          isActive: true,
+          createdAt: null,
+          updatedAt: null,
+        }));
+      } catch (legacyError) {
+        if (!isMissingColumnError(legacyError)) throw legacyError;
+
+        const minimalItems = await db
+          .select({
+            id: banks.id,
+            code: banks.code,
+            name: banks.name,
+          })
+          .from(banks)
+          .where(where)
+          .orderBy(asc(banks.name))
+          .limit(pageSize)
+          .offset(offset);
+
+        items = minimalItems.map((row) => ({
+          ...row,
+          accountRef: null,
+          isOfficial: false,
+          isActive: true,
+          createdAt: null,
+          updatedAt: null,
+        }));
+      }
+    }
 
     return Response.json({
       items,
@@ -80,6 +169,7 @@ export async function POST(request: Request) {
   const code = normalizeCode(String(body?.code ?? ""));
   const name = String(body?.name ?? "").trim();
   const accountRef = String(body?.accountRef ?? "").trim();
+  const isOfficial = body?.isOfficial !== undefined ? Boolean(body.isOfficial) : false;
   const isActive = body?.isActive !== undefined ? Boolean(body.isActive) : true;
 
   if (!code) return new Response("code required", { status: 400 });
@@ -93,6 +183,7 @@ export async function POST(request: Request) {
         code,
         name,
         accountRef,
+        isOfficial,
         isActive,
         updatedAt: new Date(),
       })
@@ -127,6 +218,7 @@ export async function PUT(request: Request) {
   const code = normalizeCode(String(body?.code ?? ""));
   const name = String(body?.name ?? "").trim();
   const accountRef = String(body?.accountRef ?? "").trim();
+  const isOfficial = body?.isOfficial !== undefined ? Boolean(body.isOfficial) : false;
   const isActive = body?.isActive !== undefined ? Boolean(body.isActive) : true;
 
   if (!id) return new Response("id required", { status: 400 });
@@ -151,6 +243,7 @@ export async function PUT(request: Request) {
         code,
         name,
         accountRef,
+        isOfficial,
         isActive,
         updatedAt: new Date(),
       })

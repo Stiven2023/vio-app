@@ -165,6 +165,7 @@ export async function GET(
         referenceCode: orderPayments.referenceCode,
         method: orderPayments.method,
         bankId: orderPayments.bankId,
+        transferBank: orderPayments.transferBank,
         bankCode: banks.code,
         bankName: banks.name,
         bankAccountRef: banks.accountRef,

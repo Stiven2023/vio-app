@@ -18,16 +18,18 @@ export default async function AprobacionInicialActualizacionPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Aprobación — Actualización</h1>
-      <p className="text-default-600 mt-1">Diseños modificados luego de entrar a aprobación/producción.</p>
+      <h1 className="text-2xl font-bold">Aprobación Actualización</h1>
+      <p className="text-default-600 mt-1">Aprueba cambios de diseño y envíalos a Programación - Actualización.</p>
       <div className="mt-6">
         <ProgramacionItemsTable
           process="PRODUCCION"
           orderStatus="APROBACION_INICIAL"
-          showProcessColumn
-          basePath="/aprobacion-inicial"
+          basePath="/aprobacion-inicial/actualizacion"
+          actualizacionBasePath="/aprobacion-inicial/actualizacion"
           view="ACTUALIZACION"
+          actualizacionQueue="APROBACION"
           enableDecisions
+          groupByOrder={false}
           labels={{
             principal: "Aprobación principal",
             bodega: "Aprobación bodega",

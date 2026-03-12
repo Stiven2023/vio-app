@@ -31,6 +31,7 @@ export type OrderItemInput = {
     | "JUEZ"
     | "ENTRENADOR"
     | "LIBERO"
+    | "OBJETO"
     | null;
   productId?: string | null;
   additionId?: string | null;

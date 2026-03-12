@@ -107,8 +107,7 @@ export const buildNavbarSections = ({
             icon: FiDollarSign,
             visible: canSeeOrders,
             items: [
-                { name: "Pre-invoices", href: "/contabilidad-modulo/prefacturas" },
-                { name: "Deposits", href: "/contabilidad-modulo/consignaciones" },
+                { name: "Deposits", href: "/depositos" },
                 { name: "Invoices", href: "/contabilidad-modulo/facturas" },
                 { name: "Delivery notes", href: "/contabilidad-modulo/remisiones" },
                 { name: "Cash receipt", href: "/contabilidad-modulo/recibo-caja" },

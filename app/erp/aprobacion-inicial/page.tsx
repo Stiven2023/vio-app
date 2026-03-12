@@ -19,7 +19,7 @@ export default async function AprobacionInicialPage() {
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Aprobación</h1>
-      <p className="text-default-600 mt-1">Items en estado de pedido APROBACION_INICIAL, sectorizados por proceso.</p>
+      <p className="text-default-600 mt-1">Pedidos agrupados por pedido en estado APROBACION_INICIAL, sectorizados por proceso.</p>
       <div className="mt-6">
         <ProgramacionItemsTable
           process="PRODUCCION"

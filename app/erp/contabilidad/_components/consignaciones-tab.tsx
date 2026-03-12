@@ -23,6 +23,7 @@ import { normalizePaymentStatusLabel } from "@/src/utils/payment-status";
 type DepositRow = {
   id: string;
   bankId: string | null;
+  transferBank: string | null;
   bankCode: string | null;
   bankName: string | null;
   bankAccountRef: string | null;
@@ -215,6 +216,7 @@ export function DepositsTab({
           <TableBody emptyContent="No deposits" items={data?.items ?? []}>
             {(row) => {
               const currency = String(row.transferCurrency ?? "COP").toUpperCase();
+              const bankLabel = [row.bankCode, row.bankName].filter(Boolean).join(" - ") || row.transferBank || "-";
               return (
                 <TableRow key={row.id}>
                   <TableCell>
@@ -223,7 +225,7 @@ export function DepositsTab({
                   <TableCell>{row.orderCode ?? "-"}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span>{[row.bankCode, row.bankName].filter(Boolean).join(" - ") || "-"}</span>
+                      <span>{bankLabel}</span>
                       <span className="text-xs text-default-500">
                         {row.bankAccountRef ? `Account: ${row.bankAccountRef}` : "Account: -"}
                       </span>

@@ -28,6 +28,7 @@ type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
 type ProgramacionItem = {
   id: string;
   orderItemId: string;
+  orderItemIds?: string[];
   orderId: string;
   orderCode: string;
   orderDate: string | null;
@@ -62,8 +63,6 @@ const ALL_COLUMN_KEYS = [
   "cliente",
   "fechaEntrega",
   "vendedor",
-  "diseno",
-  "talla",
   "cantidad",
   "tela",
   "genero",
@@ -77,8 +76,6 @@ const DEFAULT_VISIBLE_COLUMNS = [
   "cliente",
   "fechaEntrega",
   "vendedor",
-  "diseno",
-  "talla",
   "cantidad",
   "tela",
   "genero",
@@ -170,7 +167,9 @@ export function ProgramacionItemsTable({
   decompressByDesign = false,
   showProcessColumn = false,
   view = "GENERAL",
+  actualizacionQueue = "PROGRAMACION",
   enableDecisions = false,
+  groupByOrder = true,
 }: {
   process: ProcessType;
   orderStatus?: "PRODUCCION" | "APROBACION_INICIAL";
@@ -179,7 +178,9 @@ export function ProgramacionItemsTable({
   decompressByDesign?: boolean;
   showProcessColumn?: boolean;
   view?: "GENERAL" | "ACTUALIZACION";
+  actualizacionQueue?: "APROBACION" | "PROGRAMACION";
   enableDecisions?: boolean;
+  groupByOrder?: boolean;
   labels?: {
     principal: string;
     bodega: string;
@@ -203,9 +204,21 @@ export function ProgramacionItemsTable({
     () => new Set(DEFAULT_VISIBLE_COLUMNS),
   );
   const [currentView, setCurrentView] = useState<"GENERAL" | "ACTUALIZACION">(view ?? "GENERAL");
+  const effectiveGroupByOrder = currentView === "ACTUALIZACION" ? false : groupByOrder;
   const isColumnVisible = (key: string) => selectedColumns.has(key);
   const visibleDataColumnsCount = selectedColumns.size;
   const shouldEnableHorizontalScroll = visibleDataColumnsCount + (enableDecisions ? 1 : 0) > 11;
+
+  useEffect(() => {
+    if (currentView !== "ACTUALIZACION") return;
+
+    setSelectedColumns((prev) => {
+      if (prev.has("diseno")) return prev;
+      const next = new Set(prev);
+      next.add("diseno");
+      return next;
+    });
+  }, [currentView]);
 
   const buildQuery = () => {
     const params = new URLSearchParams({
@@ -214,7 +227,12 @@ export function ProgramacionItemsTable({
       view: currentView,
       page: String(page),
       pageSize: String(PAGE_SIZE),
+      groupBy: effectiveGroupByOrder ? "ORDER" : "ITEM",
     });
+
+    if (currentView === "ACTUALIZACION") {
+      params.set("actualizacionQueue", actualizacionQueue);
+    }
 
     if (search.trim()) params.set("search", search.trim());
     if (gender) params.set("gender", gender);
@@ -268,20 +286,42 @@ export function ProgramacionItemsTable({
 
   const isActualizacion = currentView === "ACTUALIZACION";
 
-  const decide = async (item: ProgramacionItem, nextStatus: "PENDIENTE_PRODUCCION" | "EN_REVISION_CAMBIO") => {
-    if (!item.orderItemId) return;
-    setPendingActionId(item.orderItemId);
-    try {
-      const res = await fetch(`/api/orders/items/${item.orderItemId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ status: nextStatus }),
-      });
+  const decide = async (
+    item: ProgramacionItem,
+    nextStatus:
+      | "PENDIENTE_PRODUCCION"
+      | "EN_REVISION_CAMBIO"
+      | "APROBADO_CAMBIO"
+      | "RECHAZADO_CAMBIO",
+  ) => {
+    const itemIds = effectiveGroupByOrder
+      ? Array.from(new Set((item.orderItemIds ?? []).filter(Boolean)))
+      : [item.orderItemId].filter(Boolean);
 
-      if (!res.ok) {
-        const text = await res.text();
-        setToast({ message: text || "No se pudo actualizar el estado.", type: "error" });
+    if (itemIds.length === 0) return;
+
+    setPendingActionId(item.id);
+    try {
+      const responses = await Promise.all(
+        itemIds.map(async (itemId) => {
+          const res = await fetch(`/api/orders/items/${itemId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ status: nextStatus }),
+          });
+
+          if (!res.ok) {
+            return { ok: false, message: await res.text() };
+          }
+
+          return { ok: true, message: "" };
+        }),
+      );
+
+      const failed = responses.find((r) => !r.ok);
+      if (failed) {
+        setToast({ message: failed.message || "No se pudo actualizar el estado.", type: "error" });
         return;
       }
 
@@ -305,7 +345,11 @@ export function ProgramacionItemsTable({
   };
 
   const renderHeaderColumns = () => {
-    const showDesignInFirstColumn = decompressByDesign;
+    const showDesignInFirstColumn =
+      (isActualizacion && !effectiveGroupByOrder) ||
+      (decompressByDesign && !effectiveGroupByOrder);
+    const showDesignColumn = !effectiveGroupByOrder && (!showDesignInFirstColumn && (isActualizacion || isColumnVisible("diseno")));
+    const showTallaColumn = !effectiveGroupByOrder && !isActualizacion && isColumnVisible("talla");
 
     return (
       <>
@@ -316,8 +360,8 @@ export function ProgramacionItemsTable({
         {isColumnVisible("cliente") ? <TableColumn>CLIENTE</TableColumn> : null}
         {isColumnVisible("fechaEntrega") ? <TableColumn>FECHA DE ENTREGA</TableColumn> : null}
         {isColumnVisible("vendedor") ? <TableColumn>VENDEDOR</TableColumn> : null}
-        {!showDesignInFirstColumn && isColumnVisible("diseno") ? <TableColumn>DISEÑO</TableColumn> : null}
-        {isColumnVisible("talla") ? <TableColumn>TALLA</TableColumn> : null}
+        {showDesignColumn ? <TableColumn>DISEÑO</TableColumn> : null}
+        {showTallaColumn ? <TableColumn>TALLA</TableColumn> : null}
         {isColumnVisible("cantidad") ? <TableColumn>CANTIDAD</TableColumn> : null}
         {isColumnVisible("tela") ? <TableColumn>TELA</TableColumn> : null}
         {isColumnVisible("genero") ? <TableColumn>GENERO</TableColumn> : null}
@@ -344,7 +388,7 @@ export function ProgramacionItemsTable({
           <DropdownTrigger>
             <Button
               isIconOnly
-              isDisabled={pendingActionId === item.orderItemId}
+              isDisabled={pendingActionId === item.id}
               size="sm"
               variant="flat"
             >
@@ -352,10 +396,22 @@ export function ProgramacionItemsTable({
             </Button>
           </DropdownTrigger>
           <DropdownMenu aria-label="Acciones programación">
-            <DropdownItem key="aprobar" color="success" onPress={() => decide(item, "PENDIENTE_PRODUCCION")}>
+            <DropdownItem
+              key="aprobar"
+              color="success"
+              onPress={() =>
+                decide(item, isActualizacion ? "APROBADO_CAMBIO" : "PENDIENTE_PRODUCCION")
+              }
+            >
               Aprobar
             </DropdownItem>
-            <DropdownItem key="denegar" color="danger" onPress={() => decide(item, "EN_REVISION_CAMBIO")}>
+            <DropdownItem
+              key="denegar"
+              color="danger"
+              onPress={() =>
+                decide(item, isActualizacion ? "RECHAZADO_CAMBIO" : "EN_REVISION_CAMBIO")
+              }
+            >
               Denegar
             </DropdownItem>
           </DropdownMenu>
@@ -363,7 +419,11 @@ export function ProgramacionItemsTable({
       </TableCell>
     ) : null;
 
-    const showDesignInFirstColumn = decompressByDesign;
+    const showDesignInFirstColumn =
+      (isActualizacion && !effectiveGroupByOrder) ||
+      (decompressByDesign && !effectiveGroupByOrder);
+    const showDesignColumn = !effectiveGroupByOrder && !showDesignInFirstColumn && (isActualizacion || isColumnVisible("diseno"));
+    const showTallaColumn = !effectiveGroupByOrder && !isActualizacion && isColumnVisible("talla");
     const cells: Array<JSX.Element> = [];
 
     if (isColumnVisible("pedido")) {
@@ -372,12 +432,12 @@ export function ProgramacionItemsTable({
           {showDesignInFirstColumn ? (
             <div className="leading-tight">
               <div className="font-medium">{item.orderCode ?? "-"}</div>
-              {isColumnVisible("diseno") ? (
+              {isActualizacion || isColumnVisible("diseno") ? (
                 <div
                   className="max-w-[220px] truncate text-xs text-default-500"
-                  title={`Diseño ${item.designNumber ?? "-"}`}
+                  title={item.design ?? `Diseño ${item.designNumber ?? "-"}`}
                 >
-                  Diseño {item.designNumber ?? "-"}
+                  {item.design ?? `Diseño ${item.designNumber ?? "-"}`}
                 </div>
               ) : null}
             </div>
@@ -400,16 +460,16 @@ export function ProgramacionItemsTable({
     if (isColumnVisible("vendedor")) {
       cells.push(<TableCell key="vendedor">{renderSellerCell(item.sellerCode)}</TableCell>);
     }
-    if (!showDesignInFirstColumn && isColumnVisible("diseno")) {
+    if (showDesignColumn) {
       cells.push(
         <TableCell key="diseno">
-          <div className="max-w-[220px] truncate" title={`Diseño ${item.designNumber ?? "-"}`}>
-            {item.designNumber ?? "-"}
+          <div className="max-w-[220px] truncate" title={item.design ?? "-"}>
+            {item.design ?? `Diseño ${item.designNumber ?? "-"}`}
           </div>
         </TableCell>,
       );
     }
-    if (isColumnVisible("talla")) {
+    if (showTallaColumn) {
       cells.push(<TableCell key="talla">{item.talla ?? "-"}</TableCell>);
     }
     if (isColumnVisible("cantidad")) {
@@ -467,7 +527,7 @@ export function ProgramacionItemsTable({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
         <Input
           label="Buscar"
-          placeholder="Pedido, cliente, diseño, vendedor, talla"
+          placeholder={effectiveGroupByOrder ? "Pedido, cliente, vendedor" : "Pedido, cliente, diseño, vendedor, talla"}
           value={search}
           onValueChange={setSearch}
         />
@@ -525,8 +585,8 @@ export function ProgramacionItemsTable({
           <SelectItem key="cliente">Cliente</SelectItem>
           <SelectItem key="fechaEntrega">Fecha entrega</SelectItem>
           <SelectItem key="vendedor">Vendedor</SelectItem>
-          <SelectItem key="diseno">Diseño</SelectItem>
-          <SelectItem key="talla">Talla</SelectItem>
+          {!effectiveGroupByOrder ? <SelectItem key="diseno">Diseño</SelectItem> : null}
+          {!effectiveGroupByOrder && !isActualizacion ? <SelectItem key="talla">Talla</SelectItem> : null}
           <SelectItem key="cantidad">Cantidad</SelectItem>
           <SelectItem key="tela">Tela</SelectItem>
           <SelectItem key="genero">Género</SelectItem>

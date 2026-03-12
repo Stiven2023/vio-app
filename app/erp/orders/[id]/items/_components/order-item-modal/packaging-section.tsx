@@ -37,6 +37,7 @@ function formatCount(value: number) {
 export function PackagingSection({
   mode: _mode,
   packaging,
+  maxCurveQuantity,
   garmentType,
   disabled,
   onModeChange: _onModeChange,
@@ -45,12 +46,14 @@ export function PackagingSection({
 }: {
   mode: PackagingMode;
   packaging: OrderItemPackagingInput[];
+  maxCurveQuantity?: number;
   garmentType?: string;
   disabled: boolean;
   onModeChange: (next: PackagingMode) => void;
   onPackagingChange: (next: OrderItemPackagingInput[]) => void;
   onError?: (message: string) => void;
 }) {
+  const [curveExceeded, setCurveExceeded] = React.useState(false);
   const groupedRows = (packaging ?? []).filter((p) => String(p.mode ?? "").toUpperCase() === "AGRUPADO");
   const individualRows = (packaging ?? []).filter((p) => String(p.mode ?? "").toUpperCase() !== "AGRUPADO");
 
@@ -74,6 +77,12 @@ export function PackagingSection({
 
   const kidsTotal = KIDS_SIZES.reduce((acc, size) => acc + getGroupedQty(size), 0);
   const adultsTotal = ADULT_SIZES.reduce((acc, size) => acc + getGroupedQty(size), 0);
+  const groupedTotal = kidsTotal + adultsTotal;
+  const maxAllowedCurve = Number.isFinite(Number(maxCurveQuantity))
+    ? Math.max(0, Math.floor(Number(maxCurveQuantity)))
+    : null;
+  const isCurveOverLimit =
+    (maxAllowedCurve !== null && groupedTotal > maxAllowedCurve) || curveExceeded;
 
   const setGroupedQty = (size: string, raw: string) => {
     const qty = parseCount(raw);
@@ -93,6 +102,20 @@ export function PackagingSection({
       nextGrouped.push({ mode: "AGRUPADO", size: normalized, quantity: qty });
     }
 
+    if (maxAllowedCurve !== null) {
+      const nextGroupedTotal = nextGrouped.reduce((acc, row) => {
+        const rowQty = Number(row.quantity ?? 0);
+        return acc + (Number.isFinite(rowQty) ? Math.max(0, Math.floor(rowQty)) : 0);
+      }, 0);
+
+      if (nextGroupedTotal > maxAllowedCurve) {
+        setCurveExceeded(true);
+        onError?.(`La curva no puede superar la cantidad del diseño (${formatCount(maxAllowedCurve)}).`);
+        return;
+      }
+    }
+
+    setCurveExceeded(false);
     onPackagingChange([...nextGrouped, ...currentIndividual]);
   };
 
@@ -143,7 +166,13 @@ export function PackagingSection({
                 onValueChange={(v: string) => setGroupedQty(size, v)}
               />
             ))}
-            <div className="text-center font-semibold rounded-small bg-primary text-primary-foreground py-2 px-1">{formatCount(kidsTotal) || "0"}</div>
+            <div
+              className={`text-center font-semibold rounded-small py-2 px-1 ${
+                isCurveOverLimit ? "bg-danger text-danger-foreground" : "bg-primary text-primary-foreground"
+              }`}
+            >
+              {formatCount(kidsTotal) || "0"}
+            </div>
           </div>
 
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-y border-default-200 bg-content2 px-2 py-2 text-xs font-semibold uppercase text-default-600">
@@ -165,23 +194,39 @@ export function PackagingSection({
                 onValueChange={(v: string) => setGroupedQty(size, v)}
               />
             ))}
-            <div className="text-center font-semibold rounded-small bg-primary text-primary-foreground py-2 px-1">{formatCount(adultsTotal) || "0"}</div>
+            <div
+              className={`text-center font-semibold rounded-small py-2 px-1 ${
+                isCurveOverLimit ? "bg-danger text-danger-foreground" : "bg-primary text-primary-foreground"
+              }`}
+            >
+              {formatCount(adultsTotal) || "0"}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="text-sm text-default-600">
-            Total curva: <span className="font-semibold">{formatCount(kidsTotal + adultsTotal) || "0"}</span>
+          <div className={`text-sm ${isCurveOverLimit ? "text-danger" : "text-default-600"}`}>
+            Total curva:{" "}
+            <span className="font-semibold">{formatCount(kidsTotal + adultsTotal) || "0"}</span>
           </div>
           <Button
             isDisabled={disabled}
             size="sm"
             variant="flat"
-            onPress={() => onPackagingChange(individualRows)}
+            onPress={() => {
+              setCurveExceeded(false);
+              onPackagingChange(individualRows);
+            }}
           >
             Limpiar curva
           </Button>
         </div>
+
+        {maxAllowedCurve !== null ? (
+          <div className={`text-xs ${isCurveOverLimit ? "text-danger" : "text-default-500"}`}>
+            Máximo permitido por diseño: {formatCount(maxAllowedCurve) || "0"}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-2">

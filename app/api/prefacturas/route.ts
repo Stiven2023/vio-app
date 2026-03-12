@@ -61,6 +61,27 @@ function isUniqueViolation(error: unknown) {
   return (error as any)?.code === "23505";
 }
 
+function isMissingColumnError(error: unknown) {
+  // Walk up to 4 levels of error chaining (error → cause → cause.cause…)
+  // Drizzle 0.45 + node-postgres wraps PG errors differently depending on version.
+  let curr: any = error;
+  for (let depth = 0; depth < 4; depth++) {
+    if (!curr || typeof curr !== "object") break;
+    const code = String(curr.code ?? "");
+    const msg = String(curr.message ?? "").toLowerCase();
+    if (
+      code === "42703" ||
+      msg.includes("does not exist") ||
+      msg.includes("undefined_column") ||
+      msg.includes("42703")
+    ) {
+      return true;
+    }
+    curr = curr.cause ?? curr.error ?? null;
+  }
+  return false;
+}
+
 function calculateTotalProductsFromItems(items: any[]) {
   const totalProducts = items.reduce((acc, rawItem) => {
     const quantity = Number(rawItem?.quantity ?? 0);
@@ -154,7 +175,6 @@ export async function GET(request: Request) {
     const type = String(searchParams.get("type") ?? "all").trim().toUpperCase();
     const documentType = String(searchParams.get("documentType") ?? "all").trim().toUpperCase();
     const orderStatus = String(searchParams.get("orderStatus") ?? "all").trim().toUpperCase();
-    const documentTypeExpr = sql<string>`coalesce(${quotations.documentType}, case when ${orders.ivaEnabled} then 'F' else 'R' end)`;
 
     const filters = [] as Array<any>;
 
@@ -164,10 +184,6 @@ export async function GET(request: Request) {
 
     if (type === "VN" || type === "VI" || type === "VT" || type === "VW") {
       filters.push(eq(orders.type, type as any));
-    }
-
-    if (documentType === "F" || documentType === "R") {
-      filters.push(sql`${documentTypeExpr} = ${documentType}`);
     }
 
     if (orderStatus && orderStatus !== "ALL") {
@@ -190,51 +206,187 @@ export async function GET(request: Request) {
       );
     }
 
-    const whereClause = filters.length ? and(...filters) : undefined;
+    let items: Array<{
+      id: string;
+      prefacturaCode: string;
+      quotationId: string | null;
+      quoteCode: string | null;
+      orderId: string | null;
+      orderCode: string | null;
+      orderName: string | null;
+      orderType: string | null;
+      status: string;
+      totalProducts: string | null;
+      subtotal: string | null;
+      total: string | null;
+      clientName: string | null;
+      documentType: string | null;
+      approvedAt: Date | null;
+      createdAt: Date | null;
+    }> = [];
+    let total = 0;
 
-    const [{ total }] = await db
-      .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
-      .from(prefacturas)
-      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
-      .leftJoin(orders, eq(prefacturas.orderId, orders.id))
-      .leftJoin(clients, eq(orders.clientId, clients.id))
-      .where(whereClause);
+    // Tier 1: full query with documentType computed from orders.ivaEnabled
+    try {
+      const documentTypeExpr = sql<string>`coalesce(${quotations.documentType}, case when ${orders.ivaEnabled} then 'F' else 'R' end)`;
+      const scopedFilters = [...filters] as Array<any>;
 
-    const items = await db
-      .select({
-        id: prefacturas.id,
-        prefacturaCode: prefacturas.prefacturaCode,
-        quotationId: prefacturas.quotationId,
-        quoteCode: quotations.quoteCode,
-        orderId: prefacturas.orderId,
-        orderCode: orders.orderCode,
-        orderName: orders.orderName,
-        orderType: orders.type,
-        status: prefacturas.status,
-        totalProducts: prefacturas.totalProducts,
-        subtotal: prefacturas.subtotal,
-        total: prefacturas.total,
-        clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
-        documentType: documentTypeExpr,
-        approvedAt: prefacturas.approvedAt,
-        createdAt: prefacturas.createdAt,
-      })
-      .from(prefacturas)
-      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
-      .leftJoin(orders, eq(prefacturas.orderId, orders.id))
-      .leftJoin(clients, eq(orders.clientId, clients.id))
-      .where(whereClause)
-      .orderBy(desc(prefacturas.createdAt))
-      .limit(pageSize)
-      .offset(offset);
+      if (documentType === "F" || documentType === "R") {
+        scopedFilters.push(sql`${documentTypeExpr} = ${documentType}`);
+      }
+
+      const whereClause = scopedFilters.length ? and(...scopedFilters) : undefined;
+
+      [{ total }] = await db
+        .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
+        .from(prefacturas)
+        .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+        .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+        .leftJoin(clients, eq(orders.clientId, clients.id))
+        .where(whereClause);
+
+      items = await db
+        .select({
+          id: prefacturas.id,
+          prefacturaCode: prefacturas.prefacturaCode,
+          quotationId: prefacturas.quotationId,
+          quoteCode: quotations.quoteCode,
+          orderId: prefacturas.orderId,
+          orderCode: orders.orderCode,
+          orderName: orders.orderName,
+          orderType: orders.type,
+          status: prefacturas.status,
+          totalProducts: prefacturas.totalProducts,
+          subtotal: prefacturas.subtotal,
+          total: prefacturas.total,
+          clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+          documentType: documentTypeExpr,
+          approvedAt: prefacturas.approvedAt,
+          createdAt: prefacturas.createdAt,
+        })
+        .from(prefacturas)
+        .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+        .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+        .leftJoin(clients, eq(orders.clientId, clients.id))
+        .where(whereClause)
+        .orderBy(desc(prefacturas.createdAt))
+        .limit(pageSize)
+        .offset(offset);
+    } catch (err1) {
+      console.warn("[prefacturas GET] tier-1 fallback:", (err1 as any)?.message);
+
+      // Tier 2: without computed documentType (avoids iva_enabled / document_type)
+      try {
+        const baseFilters = [...filters] as Array<any>;
+        const whereClause = baseFilters.length ? and(...baseFilters) : undefined;
+
+        [{ total }] = await db
+          .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
+          .from(prefacturas)
+          .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+          .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+          .leftJoin(clients, eq(orders.clientId, clients.id))
+          .where(whereClause);
+
+        items = await db
+          .select({
+            id: prefacturas.id,
+            prefacturaCode: prefacturas.prefacturaCode,
+            quotationId: prefacturas.quotationId,
+            quoteCode: quotations.quoteCode,
+            orderId: prefacturas.orderId,
+            orderCode: orders.orderCode,
+            orderName: orders.orderName,
+            orderType: orders.type,
+            status: prefacturas.status,
+            totalProducts: prefacturas.totalProducts,
+            subtotal: prefacturas.subtotal,
+            total: prefacturas.total,
+            clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+            approvedAt: prefacturas.approvedAt,
+            createdAt: prefacturas.createdAt,
+          })
+          .from(prefacturas)
+          .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+          .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+          .leftJoin(clients, eq(orders.clientId, clients.id))
+          .where(whereClause)
+          .orderBy(desc(prefacturas.createdAt))
+          .limit(pageSize)
+          .offset(offset);
+
+        items = items.map((item) => ({ ...item, documentType: null }));
+      } catch (err2) {
+        console.warn("[prefacturas GET] tier-2 fallback:", (err2 as any)?.message);
+
+        // Tier 3: minimal query — only base prefacturas columns, no joins that
+        // reference potentially-missing columns
+        try {
+          const baseFilters = filters.filter(
+            (f: any) => !String(f).includes("orders") && !String(f).includes("clients"),
+          );
+          const whereClause = baseFilters.length ? and(...baseFilters) : undefined;
+
+          [{ total }] = await db
+            .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
+            .from(prefacturas)
+            .where(whereClause);
+
+          const minimalItems = await db
+            .select({
+              id: prefacturas.id,
+              prefacturaCode: prefacturas.prefacturaCode,
+              quotationId: prefacturas.quotationId,
+              orderId: prefacturas.orderId,
+              status: prefacturas.status,
+              subtotal: prefacturas.subtotal,
+              total: prefacturas.total,
+              approvedAt: prefacturas.approvedAt,
+              createdAt: prefacturas.createdAt,
+            })
+            .from(prefacturas)
+            .where(whereClause)
+            .orderBy(desc(prefacturas.createdAt))
+            .limit(pageSize)
+            .offset(offset);
+
+          items = minimalItems.map((item) => ({
+            ...item,
+            quoteCode: null,
+            orderCode: null,
+            orderName: null,
+            orderType: null,
+            totalProducts: null,
+            clientName: null,
+            documentType: null,
+          }));
+        } catch (err3) {
+          console.error("[prefacturas GET] tier-3 failed:", (err3 as any)?.message);
+          // Last resort: return empty page rather than 500
+          total = 0;
+          items = [];
+        }
+      }
+    }
 
     const hasNextPage = offset + items.length < total;
 
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
+    console.error("[prefacturas GET] error:", {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+      detail: (error as any)?.detail,
+    });
     const response = dbErrorResponse(error);
     if (response) return response;
-    return new Response("No se pudieron consultar prefacturas", { status: 500 });
+    const errMsg = (error as any)?.message ?? String(error);
+    return new Response(
+      process.env.NODE_ENV === "development"
+        ? `Error: ${errMsg}`
+        : "No se pudieron consultar prefacturas",
+      { status: 500 },
+    );
   }
 }
 

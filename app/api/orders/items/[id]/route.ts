@@ -15,6 +15,7 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
+  orderStatusHistory,
   products,
 } from "@/src/db/schema";
 import {
@@ -58,6 +59,7 @@ const GARMENT_TYPES = new Set([
   "JUEZ",
   "ENTRENADOR",
   "LIBERO",
+  "OBJETO",
 ]);
 
 function asNumber(v: unknown) {
@@ -88,6 +90,44 @@ async function recalcOrderTotal(tx: any, orderId: string) {
     .update(orders)
     .set({ total: String(totalAfterDiscount) })
     .where(eq(orders.id, orderId));
+}
+
+async function syncOrderStatusFromItems(tx: any, orderId: string, changedBy: string | null) {
+  const [resume] = await tx
+    .select({
+      total: sql<number>`count(*)::int`,
+      pendingProduction: sql<number>`sum(case when ${orderItems.status} = 'PENDIENTE_PRODUCCION' then 1 else 0 end)::int`,
+    })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
+  const total = Number(resume?.total ?? 0);
+  const pendingProduction = Number(resume?.pendingProduction ?? 0);
+
+  if (!total || pendingProduction !== total) {
+    return;
+  }
+
+  const [orderRow] = await tx
+    .select({ status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+
+  if (!orderRow || orderRow.status === "PRODUCCION") {
+    return;
+  }
+
+  await tx
+    .update(orders)
+    .set({ status: "PRODUCCION" as any })
+    .where(eq(orders.id, orderId));
+
+  await tx.insert(orderStatusHistory).values({
+    orderId,
+    status: "PRODUCCION",
+    changedBy,
+  });
 }
 
 export async function GET(
@@ -232,6 +272,17 @@ function normalizeOperationalProcess(v: unknown) {
   }
 
   return "PRODUCCION";
+}
+
+function sumGroupedPackagingQuantity(packagingInput: unknown) {
+  if (!Array.isArray(packagingInput)) return 0;
+
+  return packagingInput.reduce((acc, row: any) => {
+    const mode = String(row?.mode ?? "AGRUPADO").trim().toUpperCase();
+    if (mode !== "AGRUPADO") return acc;
+    const qty = toPositiveInt(row?.quantity);
+    return acc + (qty ?? 0);
+  }, 0);
 }
 
 function normalizeGarmentType(v: unknown) {
@@ -424,6 +475,7 @@ export async function PUT(
       kind: orders.kind,
       currency: orders.currency,
       clientPriceType: clients.priceClientType,
+      orderStatus: orders.status,
     })
     .from(orders)
     .leftJoin(clients, eq(orders.clientId, clients.id))
@@ -436,6 +488,21 @@ export async function PUT(
   const patch: Partial<typeof orderItems.$inferInsert> = {};
 
   const qty = body.quantity !== undefined ? toPositiveInt(body.quantity) : null;
+  const quantityWasChanged =
+    body.quantity !== undefined &&
+    qty !== null &&
+    Number(qty) !== Number(existing.quantity ?? 0);
+  const effectiveQuantity = qty ?? Number(existing.quantity ?? 0);
+
+  if (Array.isArray(body.packaging)) {
+    const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
+    if (groupedPackagingTotal > effectiveQuantity) {
+      return new Response(
+        `La curva no puede superar la cantidad del diseño (${effectiveQuantity}).`,
+        { status: 400 },
+      );
+    }
+  }
 
   // COMPLETACION: solo se permite cambiar quantity y empaques
   if (kind === "COMPLETACION") {
@@ -500,18 +567,6 @@ export async function PUT(
 
   patch.garmentType = effectiveGarmentType;
 
-  const [duplicatedGarmentType] = await db
-    .select({ id: orderItems.id })
-    .from(orderItems)
-    .where(
-      sql`${orderItems.orderId} = ${existing.orderId} and ${orderItems.garmentType} = ${effectiveGarmentType} and ${orderItems.id} <> ${orderItemId}`,
-    )
-    .limit(1);
-
-  if (duplicatedGarmentType) {
-    return new Response(`Ya existe un diseño para el tipo ${effectiveGarmentType}`, { status: 400 });
-  }
-
   if (body.productId !== undefined)
     patch.productId = toNullableString(body.productId);
   if (body.name !== undefined) patch.name = toNullableString(body.name);
@@ -524,7 +579,7 @@ export async function PUT(
     if (evidence) patch.hasAdditions = true;
   }
 
-  const effectiveQuantity = qty ?? Number(existing.quantity ?? 1);
+  const normalizedEffectiveQuantity = Math.max(1, Math.floor(asNumber(effectiveQuantity)));
   const effectiveProductId =
     body.productId !== undefined
       ? toNullableString(body.productId)
@@ -562,7 +617,7 @@ export async function PUT(
     const resolvedUnitPrice = resolveUnitPriceByRule({
       currency: orderRow?.currency,
       clientPriceType: orderRow?.clientPriceType,
-      quantity: Math.max(1, Math.floor(asNumber(effectiveQuantity))),
+      quantity: normalizedEffectiveQuantity,
       row: productRow,
       manualUnitPrice:
         body.unitPrice !== undefined ? body.unitPrice : existing.unitPrice,
@@ -581,7 +636,7 @@ export async function PUT(
     const resolvedUnitNumber = Math.max(0, asNumber(resolvedUnitPrice));
     patch.unitPrice = String(resolvedUnitNumber);
     patch.totalPrice = String(
-      resolvedUnitNumber * Math.max(1, Math.floor(asNumber(effectiveQuantity))),
+      resolvedUnitNumber * normalizedEffectiveQuantity,
     );
   }
   if (body.observations !== undefined)
@@ -662,6 +717,49 @@ export async function PUT(
     }
 
     patch.status = nextStatus as any;
+  }
+
+  if (body.status === undefined && orderRow?.orderStatus === "PRODUCCION" && !quantityWasChanged) {
+    const designChanged =
+      (body.name !== undefined && toNullableString(body.name) !== toNullableString(existing.name)) ||
+      body.clothingImageOneUrl !== undefined ||
+      body.clothingImageTwoUrl !== undefined ||
+      body.logoImageUrl !== undefined;
+
+    let tallaChanged = false;
+    if (Array.isArray(body.packaging)) {
+      const currentPackaging = await db
+        .select({
+          size: orderItemPackaging.size,
+          quantity: orderItemPackaging.quantity,
+        })
+        .from(orderItemPackaging)
+        .where(eq(orderItemPackaging.orderItemId, orderItemId));
+
+      const normalizeRows = (rows: Array<{ size: unknown; quantity: unknown }>) =>
+        rows
+          .map((row) => ({
+            size: String(row.size ?? "").trim().toUpperCase(),
+            quantity: Number(row.quantity ?? 0),
+          }))
+          .filter((row) => row.size)
+          .sort((a, b) => {
+            if (a.size === b.size) return a.quantity - b.quantity;
+            return a.size.localeCompare(b.size);
+          });
+
+      const left = normalizeRows(currentPackaging as Array<{ size: unknown; quantity: unknown }>);
+      const right = normalizeRows(body.packaging as Array<{ size: unknown; quantity: unknown }>);
+
+      tallaChanged = JSON.stringify(left) !== JSON.stringify(right);
+    }
+
+    const currentStatus = String(existing.status ?? "").trim().toUpperCase();
+    if (designChanged || tallaChanged) {
+      if (currentStatus !== "EN_REVISION_CAMBIO") {
+        patch.status = "EN_REVISION_CAMBIO" as any;
+      }
+    }
   }
 
   const updated = await db.transaction(async (tx) => {
@@ -767,6 +865,7 @@ export async function PUT(
       .limit(1);
 
     await recalcOrderTotal(tx, existing.orderId!);
+    await syncOrderStatusFromItems(tx, existing.orderId!, employeeId);
 
     return res;
   });

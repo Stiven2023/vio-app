@@ -1151,6 +1151,7 @@ export const banks = pgTable("banks", {
   code: varchar("code", { length: 30 }).unique().notNull(),
   name: varchar("name", { length: 120 }).notNull(),
   accountRef: varchar("account_ref", { length: 80 }).notNull(),
+  isOfficial: boolean("is_official").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

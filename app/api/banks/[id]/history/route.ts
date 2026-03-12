@@ -45,6 +45,7 @@ export async function GET(request: Request, { params }: Params) {
         code: banks.code,
         name: banks.name,
         accountRef: banks.accountRef,
+        isOfficial: banks.isOfficial,
         isActive: banks.isActive,
         createdAt: banks.createdAt,
         updatedAt: banks.updatedAt,

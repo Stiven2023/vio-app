@@ -294,6 +294,7 @@ export function DesignSection({
         <SelectItem key="JUEZ">Juez</SelectItem>
         <SelectItem key="ENTRENADOR">Entrenador</SelectItem>
         <SelectItem key="LIBERO">Líbero</SelectItem>
+        <SelectItem key="OBJETO">Objeto</SelectItem>
       </Select>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -485,14 +486,14 @@ export function DesignSection({
               className="border-b border-default-200 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em]"
               style={{ color: "var(--viomar-primary)" }}
             >
-              Diseño: Jugador
+              Diseño: Prenda 1
             </div>
             <ImageDropZone
               disabled={dropDisabled}
               minHeightClass="min-h-[280px]"
               previewSrc={resolvedImageOne}
-              subtitle="Imagen principal"
-              title="Jugador"
+              subtitle="Tipo de prenda 1"
+              title="Prenda 1"
               onSelectFile={onSelectImageOneFile}
             />
           </div>
@@ -526,14 +527,14 @@ export function DesignSection({
               className="border-b border-default-200 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.18em]"
               style={{ color: "var(--viomar-primary)" }}
             >
-              Diseño: Arquero
+              Diseño: Prenda 2
             </div>
             <ImageDropZone
               disabled={dropDisabled}
               minHeightClass="min-h-[280px]"
               previewSrc={resolvedImageTwo}
-              subtitle="Imagen secundaria"
-              title="Arquero"
+              subtitle="Tipo de prenda 2"
+              title="Prenda 2"
               onSelectFile={onSelectImageTwoFile}
             />
           </div>

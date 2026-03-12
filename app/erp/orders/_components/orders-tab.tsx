@@ -21,7 +21,6 @@ import {
 } from "@heroui/table";
 import NextLink from "next/link";
 import {
-  BsArrowRepeat,
   BsClockHistory,
   BsEye,
   BsPencilSquare,
@@ -35,7 +34,6 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 import { usePaginatedApi } from "../_hooks/use-paginated-api";
 
 import { OrderModal } from "./order-modal";
-import { OrderStatusModal } from "./order-status-modal";
 
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
@@ -129,8 +127,6 @@ export function OrdersTab({
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrderListItem | null>(null);
-  const [statusModalOpen, setStatusModalOpen] = useState(false);
-  const [statusTarget, setStatusTarget] = useState<OrderListItem | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<
     Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
@@ -395,19 +391,6 @@ export function OrdersTab({
                         </DropdownItem>
                       ) : null}
 
-                      {canChangeStatus && canAccessOrder(o) ? (
-                        <DropdownItem
-                          key="status"
-                          startContent={<BsArrowRepeat />}
-                          onPress={() => {
-                            setStatusTarget(o);
-                            setStatusModalOpen(true);
-                          }}
-                        >
-                          Cambiar estado
-                        </DropdownItem>
-                      ) : null}
-
                       {canEdit && canAccessOrder(o) ? (
                         <DropdownItem
                           key="edit"
@@ -451,17 +434,6 @@ export function OrdersTab({
         options={options}
         order={editing}
         onOpenChange={setModalOpen}
-        onSaved={refresh}
-      />
-
-      <OrderStatusModal
-        canChangeStatus={canChangeStatus}
-        isOpen={statusModalOpen}
-        order={statusTarget}
-        onOpenChange={(open) => {
-          if (!open) setStatusTarget(null);
-          setStatusModalOpen(open);
-        }}
         onSaved={refresh}
       />
 

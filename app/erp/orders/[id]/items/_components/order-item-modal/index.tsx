@@ -271,6 +271,7 @@ export function OrderItemModal(props: {
                 disabled={uiDisabled}
                 mode={packagingMode}
                 packaging={packaging}
+                maxCurveQuantity={quantity}
                 garmentType={String(item.garmentType ?? "JUGADOR")}
                 onModeChange={setPackagingMode}
                 onPackagingChange={setPackaging}

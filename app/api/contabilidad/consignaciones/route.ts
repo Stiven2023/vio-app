@@ -10,6 +10,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 type DepositRow = {
   id: string;
   bankId: string | null;
+  transferBank: string | null;
   bankCode: string | null;
   bankName: string | null;
   bankAccountRef: string | null;
@@ -53,6 +54,7 @@ export async function GET(request: Request) {
             or ${banks.code} ilike ${`%${q}%`}
             or ${banks.name} ilike ${`%${q}%`}
             or ${banks.accountRef} ilike ${`%${q}%`}
+            or ${orderPayments.transferBank} ilike ${`%${q}%`}
           )`
         : undefined,
       bank ? eq(orderPayments.bankId, bank) : undefined,
@@ -77,6 +79,7 @@ export async function GET(request: Request) {
       .select({
         id: orderPayments.id,
         bankId: orderPayments.bankId,
+        transferBank: orderPayments.transferBank,
         bankCode: banks.code,
         bankName: banks.name,
         bankAccountRef: banks.accountRef,

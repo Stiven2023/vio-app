@@ -48,6 +48,7 @@ type PaymentRow = {
   referenceCode?: string | null;
   method: PaymentMethod | null;
   bankId?: string | null;
+  transferBank?: string | null;
   bankCode?: string | null;
   bankName?: string | null;
   bankAccountRef?: string | null;
@@ -507,13 +508,12 @@ export function OrderPaymentsPage({
 
                 if (columnKey === "method") return <TableCell>{p.method ?? "-"}</TableCell>;
                 if (columnKey === "bank") {
+                  const bankLabel = [p.bankCode, p.bankName].filter(Boolean).join(" - ") || p.transferBank || "-";
                   return (
                     <TableCell>
                       {p.method === "TRANSFERENCIA" ? (
                         <div className="flex flex-col">
-                          <span>
-                            {[p.bankCode, p.bankName].filter(Boolean).join(" - ") || "-"}
-                          </span>
+                          <span>{bankLabel}</span>
                           <span className="text-xs text-default-500">
                             {p.bankAccountRef ? `Account: ${p.bankAccountRef}` : "Account: -"}
                           </span>

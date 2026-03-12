@@ -46,7 +46,8 @@ function normalizeGarmentType(v: unknown) {
     raw === "CAPITAN" ||
     raw === "JUEZ" ||
     raw === "ENTRENADOR" ||
-    raw === "LIBERO"
+    raw === "LIBERO" ||
+    raw === "OBJETO"
   ) {
     return raw;
   }

@@ -14,25 +14,31 @@ export default async function AprobacionInicialActualizacionBodegaPage() {
   });
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
+
   if (forbidden) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Aprobación Bodega — Actualización</h1>
-      <p className="text-default-600 mt-1">Diseños modificados en proceso BODEGA.</p>
+      <h1 className="text-2xl font-bold">Aprobación Actualización — Bodega</h1>
+      <p className="text-default-600 mt-1">
+        Aprueba cambios de diseño en proceso BODEGA y envíalos a Programación -
+        Actualización.
+      </p>
       <div className="mt-6">
         <ProgramacionItemsTable
-          process="BODEGA"
-          orderStatus="APROBACION_INICIAL"
-          showProcessColumn
-          basePath="/aprobacion-inicial"
-          view="ACTUALIZACION"
           enableDecisions
+          actualizacionBasePath="/aprobacion-inicial/actualizacion"
+          actualizacionQueue="APROBACION"
+          basePath="/aprobacion-inicial/actualizacion"
+          groupByOrder={false}
           labels={{
             principal: "Aprobación principal",
             bodega: "Aprobación bodega",
             compras: "Aprobación compras",
           }}
+          orderStatus="APROBACION_INICIAL"
+          process="BODEGA"
+          view="ACTUALIZACION"
         />
       </div>
     </div>

@@ -29,7 +29,6 @@ import {
   TableRow,
 } from "@heroui/table";
 import {
-  BsArrowRepeat,
   BsClockHistory,
   BsEye,
   BsPencilSquare,
@@ -38,10 +37,6 @@ import {
   BsTrash,
 } from "react-icons/bs";
 import { ConfectionAssignModal } from "./confection-assign-modal";
-import {
-  OrderItemStatusModal,
-  type OrderItemStatusTarget,
-} from "./order-item-status-modal";
 
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 
@@ -55,7 +50,7 @@ type OrderItemRow = {
   hasAdditions?: boolean | null;
   additionEvidence?: string | null;
   imageUrl?: string | null;
-  status: OrderItemStatusTarget["status"] | null;
+  status: string | null;
   lastStatusAt?: string | null;
   lastStatusBy?: string | null;
   confectionistName?: string | null;
@@ -99,10 +94,6 @@ export function OrderItemsPage({
 
   const [assignOpen, setAssignOpen] = useState(false);
   const [assigningId, setAssigningId] = useState<string | null>(null);
-  const [statusOpen, setStatusOpen] = useState(false);
-  const [statusTarget, setStatusTarget] = useState<OrderItemStatusTarget | null>(
-    null,
-  );
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<
     Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
@@ -175,12 +166,12 @@ export function OrderItemsPage({
     (Boolean(advisorEmployeeId) && order?.createdBy === advisorEmployeeId);
   const effectiveCanEdit = canEdit && canAccessOrder;
   const effectiveCanAssign = canAssign && canAccessOrder;
-  const effectiveCanChangeStatus = canChangeStatus && canAccessOrder;
   const canCreate = effectiveCanEdit && orderKind === "NUEVO";
 
   const columns: ColumnDef[] = [
     { key: "name", name: "Diseño" },
     { key: "image", name: "Imagen" },
+    { key: "status", name: "Estado" },
     { key: "statusHistory", name: "Ultimo cambio" },
     { key: "confectionist", name: "Confeccionista" },
     { key: "quantity", name: "Cantidad" },
@@ -219,17 +210,6 @@ export function OrderItemsPage({
     if (!effectiveCanAssign) return;
     setAssigningId(id);
     setAssignOpen(true);
-  }
-
-  function openStatus(item: OrderItemRow) {
-    if (!effectiveCanChangeStatus) return;
-    setStatusTarget({
-      id: item.id,
-      name: item.name,
-      quantity: item.quantity,
-      status: item.status ?? "PENDIENTE",
-    });
-    setStatusOpen(true);
   }
 
   async function openHistory(itemId: string) {
@@ -388,15 +368,6 @@ export function OrderItemsPage({
                               </DropdownItem>
 
                               <DropdownItem
-                                key="status"
-                                isDisabled={!effectiveCanChangeStatus}
-                                startContent={<BsArrowRepeat />}
-                                onPress={() => openStatus(row)}
-                              >
-                                Cambiar estado
-                              </DropdownItem>
-
-                              <DropdownItem
                                 key="edit"
                                 as={NextLink}
                                 href={`/orders/${orderId}/items/${row.id}/edit`}
@@ -425,6 +396,14 @@ export function OrderItemsPage({
                       return (
                         <TableCell className="text-default-600">
                           {row.confectionistName ?? "-"}
+                        </TableCell>
+                      );
+                    }
+
+                    if (columnKey === "status") {
+                      return (
+                        <TableCell className="text-default-600">
+                          {row.status ?? "-"}
                         </TableCell>
                       );
                     }
@@ -522,17 +501,6 @@ export function OrderItemsPage({
         onSaved={() => {
           refresh();
         }}
-      />
-
-      <OrderItemStatusModal
-        canChangeStatus={effectiveCanChangeStatus}
-        isOpen={statusOpen}
-        orderItem={statusTarget}
-        onOpenChange={(open) => {
-          if (!open) setStatusTarget(null);
-          setStatusOpen(open);
-        }}
-        onSaved={refresh}
       />
 
       <Modal isOpen={historyOpen} onOpenChange={setHistoryOpen}>

@@ -17,12 +17,16 @@ import { rateLimit } from "@/src/utils/rate-limit";
 type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
 type OrderStatusFilter = "PRODUCCION" | "APROBACION_INICIAL";
 type ProgramacionView = "GENERAL" | "ACTUALIZACION";
+type ActualizacionQueue = "APROBACION" | "PROGRAMACION";
 type DeliverySort = "DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA";
+type GroupByMode = "ITEM" | "ORDER";
 
 const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
 const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "APROBACION_INICIAL"];
 const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
+const VALID_ACTUALIZACION_QUEUE: ActualizacionQueue[] = ["APROBACION", "PROGRAMACION"];
 const VALID_DELIVERY_SORT: DeliverySort[] = ["DEFAULT", "MAS_PROXIMA", "MAS_LEJANA"];
+const VALID_GROUP_BY: GroupByMode[] = ["ITEM", "ORDER"];
 const PROGRAMACION_CACHE_HEADERS = {
   "Cache-Control": "no-store",
   Vary: "Cookie",
@@ -51,7 +55,13 @@ export async function GET(request: Request) {
   const viewRaw = String(searchParams.get("view") ?? "GENERAL")
     .trim()
     .toUpperCase();
+  const actualizacionQueueRaw = String(searchParams.get("actualizacionQueue") ?? "PROGRAMACION")
+    .trim()
+    .toUpperCase();
   const deliverySortRaw = String(searchParams.get("deliverySort") ?? "DEFAULT")
+    .trim()
+    .toUpperCase();
+  const groupByRaw = String(searchParams.get("groupBy") ?? "ITEM")
     .trim()
     .toUpperCase();
   const search = String(searchParams.get("search") ?? "").trim();
@@ -79,8 +89,20 @@ export async function GET(request: Request) {
     });
   }
 
+  if (!VALID_ACTUALIZACION_QUEUE.includes(actualizacionQueueRaw as ActualizacionQueue)) {
+    return new Response("actualizacionQueue inválido. Usa: APROBACION o PROGRAMACION", {
+      status: 400,
+    });
+  }
+
   if (!VALID_DELIVERY_SORT.includes(deliverySortRaw as DeliverySort)) {
     return new Response("deliverySort inválido. Usa: DEFAULT, MAS_PROXIMA o MAS_LEJANA", {
+      status: 400,
+    });
+  }
+
+  if (!VALID_GROUP_BY.includes(groupByRaw as GroupByMode)) {
+    return new Response("groupBy inválido. Usa: ITEM o ORDER", {
       status: 400,
     });
   }
@@ -88,20 +110,24 @@ export async function GET(request: Request) {
   const process = processRaw as ProcessType;
   const orderStatus = orderStatusRaw as OrderStatusFilter;
   const view = viewRaw as ProgramacionView;
+  const actualizacionQueue = actualizacionQueueRaw as ActualizacionQueue;
   const deliverySort = deliverySortRaw as DeliverySort;
+  const groupBy = groupByRaw as GroupByMode;
   const gender =
     genderRaw === "HOMBRE" || genderRaw === "MUJER" || genderRaw === "UNISEX"
       ? genderRaw
       : "";
 
-  const whereBase = and(
-    sql`(
+  const processFilter = sql`(
       case
         when upper(trim(coalesce(${orderItems.process}, ''))) in ('PRODUCCION', 'BODEGA', 'COMPRAS')
           then upper(trim(coalesce(${orderItems.process}, '')))
         else 'PRODUCCION'
       end
-    ) = ${process}`,
+    ) = ${process}`;
+
+  const whereBase = and(
+    processFilter,
     eq(orders.status, orderStatus as any),
   );
 
@@ -132,13 +158,10 @@ export async function GET(request: Request) {
   const where =
     view === "ACTUALIZACION"
       ? and(
-          whereBase,
-          sql`exists (
-            select 1
-            from order_item_status_history oish
-            where oish.order_item_id = ${orderItems.id}
-              and oish.status in ('EN_REVISION_CAMBIO', 'APROBADO_CAMBIO', 'RECHAZADO_CAMBIO')
-          )`,
+          processFilter,
+          actualizacionQueue === "APROBACION"
+            ? sql`${orderItems.status} = 'EN_REVISION_CAMBIO'`
+            : sql`${orderItems.status} = 'APROBADO_CAMBIO'`,
           searchFilter,
           genderFilter,
           dateStartFilter,
@@ -231,6 +254,8 @@ export async function GET(request: Request) {
     process: string | null;
   }> = [];
 
+  const splitBySize = !(view === "ACTUALIZACION" && groupBy === "ITEM");
+
   const itemIdsByOrder = new Map<string, Array<{ itemId: string; createdAt: Date | null }>>();
 
   for (const item of baseItems) {
@@ -300,6 +325,31 @@ export async function GET(request: Request) {
   for (const item of baseItems) {
     const itemId = String(item.id);
     const sizeRows = sizesByItem.get(itemId) ?? [];
+
+    if (!splitBySize) {
+      expandedItems.push({
+        id: itemId,
+        orderItemId: itemId,
+        orderId: String(item.orderId),
+        orderCode: String(item.orderCode ?? ""),
+        orderDate: item.orderDate,
+        clientName: item.clientName,
+        clientCode: item.clientCode,
+        deliveryDate: item.deliveryDate,
+        sellerName: item.sellerName,
+        sellerCode: item.sellerCode,
+        designNumber: designNumberByItemId.get(itemId) ?? null,
+        design: item.design,
+        talla: null,
+        quantity: item.quantity,
+        fabric: item.fabric,
+        gender: item.gender,
+        leadDays: item.leadDays,
+        leadHours: item.leadHours,
+        process: item.process,
+      });
+      continue;
+    }
 
     if (sizeRows.length === 0) {
       expandedItems.push({
@@ -371,8 +421,76 @@ export async function GET(request: Request) {
     });
   }
 
-  const total = expandedItems.length;
-  const items = expandedItems.slice(offset, offset + pageSize);
+  const groupedItems =
+    groupBy === "ORDER"
+      ? (() => {
+          const byOrder = new Map<
+            string,
+            {
+              id: string;
+              orderItemId: string;
+              orderItemIds: string[];
+              orderId: string;
+              orderCode: string;
+              orderDate: Date | null;
+              clientName: string | null;
+              clientCode: string | null;
+              deliveryDate: string | null;
+              sellerName: string | null;
+              sellerCode: string | null;
+              designNumber: number | null;
+              design: string | null;
+              talla: string | null;
+              quantity: number | null;
+              fabric: string | null;
+              gender: string | null;
+              leadDays: number | null;
+              leadHours: number | null;
+              process: string | null;
+            }
+          >();
+
+          for (const row of expandedItems) {
+            const key = String(row.orderId || row.orderCode || row.id);
+            const current = byOrder.get(key);
+
+            if (!current) {
+              byOrder.set(key, {
+                ...row,
+                id: key,
+                orderItemId: row.orderItemId,
+                orderItemIds: [row.orderItemId],
+                designNumber: null,
+                design: null,
+                talla: null,
+                quantity: Number(row.quantity ?? 0),
+              });
+              continue;
+            }
+
+            if (!current.orderItemIds.includes(row.orderItemId)) {
+              current.orderItemIds.push(row.orderItemId);
+            }
+
+            current.quantity = Number(current.quantity ?? 0) + Number(row.quantity ?? 0);
+
+            if (!current.deliveryDate) {
+              current.deliveryDate = row.deliveryDate;
+            } else if (row.deliveryDate) {
+              const currentTs = new Date(current.deliveryDate).getTime();
+              const nextTs = new Date(row.deliveryDate).getTime();
+              if (!Number.isNaN(nextTs) && (Number.isNaN(currentTs) || nextTs < currentTs)) {
+                current.deliveryDate = row.deliveryDate;
+              }
+            }
+          }
+
+          return Array.from(byOrder.values());
+        })()
+      : expandedItems;
+
+  const total = groupedItems.length;
+  const items = groupedItems.slice(offset, offset + pageSize);
 
   const hasNextPage = offset + items.length < total;
 

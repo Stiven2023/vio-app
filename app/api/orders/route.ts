@@ -627,22 +627,44 @@ export async function PUT(request: Request) {
     );
   }
 
-  const forbiddenEdit = await requirePermission(request, "EDITAR_PEDIDO");
+  const hasNonStatusChanges =
+    clientId !== undefined ||
+    type !== undefined ||
+    kind !== undefined ||
+    sourceOrderCode !== undefined ||
+    ivaEnabled !== undefined ||
+    discount !== undefined ||
+    currency !== undefined ||
+    shippingFee !== undefined ||
+    items !== undefined;
 
-  if (forbiddenEdit) return forbiddenEdit;
+  const isStatusOnlyUpdate = status !== undefined && !hasNonStatusChanges;
 
-  const advisorForbidden = await assertAdvisorOwnsOrder(request, String(id));
-
-  if (advisorForbidden) return advisorForbidden;
-
-  if (status !== undefined) {
-    const forbiddenStatus = await requirePermission(
+  if (isStatusOnlyUpdate) {
+    const forbiddenStatusOnly = await requirePermission(
       request,
       "CAMBIAR_ESTADO_PEDIDO",
     );
 
-    if (forbiddenStatus) return forbiddenStatus;
+    if (forbiddenStatusOnly) return forbiddenStatusOnly;
+  } else {
+    const forbiddenEdit = await requirePermission(request, "EDITAR_PEDIDO");
+
+    if (forbiddenEdit) return forbiddenEdit;
+
+    if (status !== undefined) {
+      const forbiddenStatus = await requirePermission(
+        request,
+        "CAMBIAR_ESTADO_PEDIDO",
+      );
+
+      if (forbiddenStatus) return forbiddenStatus;
+    }
   }
+
+  const advisorForbidden = await assertAdvisorOwnsOrder(request, String(id));
+
+  if (advisorForbidden) return advisorForbidden;
 
   const patch: Partial<typeof orders.$inferInsert> = {};
 
