@@ -1,5 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 
+import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
+
 import { db } from "@/src/db";
 import {
   operativeDashboardLogs,
@@ -34,6 +36,7 @@ const DASHBOARD_ROLES = new Set([
 
 const ROLE_AREAS = ["OPERARIOS", "CONFECCIONISTAS", "MENSAJERIA", "EMPAQUE"] as const;
 const OPERATION_TYPES = [
+  "MONTAJE",
   "PLOTTER",
   "CALANDRA",
   "CORTE_LASER",
@@ -406,12 +409,12 @@ export async function POST(
       if (linkedItem?.id) {
         await tx
           .update(orderItems)
-          .set({ status: "EN_REVISION_CAMBIO" })
+          .set({ status: ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION })
           .where(eq(orderItems.id, linkedItem.id));
 
         await tx.insert(orderItemStatusHistory).values({
           orderItemId: linkedItem.id,
-          status: "EN_REVISION_CAMBIO",
+          status: ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
           changedBy: changedByEmployeeId,
         });
       }

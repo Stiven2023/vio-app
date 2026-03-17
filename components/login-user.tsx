@@ -7,6 +7,7 @@ import { Card } from "@heroui/card";
 
 import { validateLogin } from "@/utils/validation";
 import { AlertToast } from "@/components/alert-toast";
+import { ModuleLogo } from "@/components/module-logo";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ViomarLogo } from "@/components/viomar-logo";
 import { useSessionStore } from "@/store/session";
@@ -150,6 +151,20 @@ export default function LoginUser() {
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-default-500">
                 ERP, MES y CRM integrados para equipos de operaciones, producción y gestión comercial.
               </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  <ModuleLogo active module="erp" size={78} />
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">ERP</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <ModuleLogo active module="mes" size={78} />
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">MES</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <ModuleLogo active module="crm" size={78} />
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">CRM</span>
+                </div>
+              </div>
             </div>
           </div>
 

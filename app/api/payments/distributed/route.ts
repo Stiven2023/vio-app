@@ -62,14 +62,14 @@ async function syncOrderStatusByPayments(orderId: string) {
     paidPercent >= 50
       ? "PRODUCCION"
       : paidTotal > 0
-        ? "APROBACION_INICIAL"
+        ? "APROBACION"
         : "PENDIENTE";
 
   const nextPrefacturaStatus =
     paidPercent >= 50
       ? "PROGRAMACION"
       : paidTotal > 0
-        ? "APROBACION_INICIAL"
+        ? "APROBACION"
         : "PENDIENTE_CONTABILIDAD";
 
   await db.transaction(async (tx) => {

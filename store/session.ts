@@ -51,13 +51,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
   verifySession: async () => {
-    const res = await fetch("/api/auth/me", { credentials: "include" });
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
 
-    if (res.ok) {
-      const data = await res.json();
+      if (res.ok) {
+        const data = await res.json();
 
-      set({ user: data.user, isAuthenticated: true });
-    } else {
+        set({ user: data.user, isAuthenticated: true });
+      } else {
+        set({ user: null, isAuthenticated: false });
+      }
+    } catch {
       set({ user: null, isAuthenticated: false });
     }
   },

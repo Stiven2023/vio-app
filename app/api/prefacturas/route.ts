@@ -228,7 +228,7 @@ export async function GET(request: Request) {
 
     // Tier 1: full query with documentType computed from orders.ivaEnabled
     try {
-      const documentTypeExpr = sql<string>`coalesce(${quotations.documentType}, case when ${orders.ivaEnabled} then 'F' else 'R' end)`;
+      const documentTypeExpr = sql<string>`coalesce(cast(${quotations.documentType} as text), case when ${orders.ivaEnabled} then 'F' else 'R' end)`;
       const scopedFilters = [...filters] as Array<any>;
 
       if (documentType === "F" || documentType === "R") {
@@ -430,10 +430,7 @@ export async function POST(request: Request) {
         return new Response("clientId required", { status: 400 });
       }
 
-      if (items.length === 0) {
-        return new Response("items required", { status: 400 });
-      }
-
+      // items are optional for standalone prefacturas (sin cotización)
       const normalizedOrderType: OrderTypeCode =
         orderType === "VI" || orderType === "VT" || orderType === "VW" ? orderType : "VN";
 
@@ -755,6 +752,21 @@ export async function POST(request: Request) {
                 subtotal,
                 total,
                 approvedAt: new Date(),
+                advanceRequired: body?.advanceRequired != null
+                  ? String(Math.max(0, Number(body.advanceRequired) || 0))
+                  : "0",
+                advanceMethod:
+                  body?.advanceMethod === "EFECTIVO" || body?.advanceMethod === "TRANSFERENCIA"
+                    ? body.advanceMethod
+                    : null,
+                hasConvenio: Boolean(body?.hasConvenio),
+                convenioType: body?.convenioType ? String(body.convenioType).slice(0, 80) : null,
+                convenioNotes: body?.convenioNotes ? String(body.convenioNotes) : null,
+                convenioExpiresAt: body?.convenioExpiresAt ? String(body.convenioExpiresAt) : null,
+                hasClientApproval: Boolean(body?.hasClientApproval),
+                clientApprovalDate: body?.clientApprovalDate ? String(body.clientApprovalDate) : null,
+                clientApprovalBy: body?.clientApprovalBy ? String(body.clientApprovalBy).slice(0, 150) : null,
+                clientApprovalNotes: body?.clientApprovalNotes ? String(body.clientApprovalNotes) : null,
               })
               .returning({
                 id: prefacturas.id,

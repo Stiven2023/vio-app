@@ -36,7 +36,7 @@ export async function GET(
   const [row] = await db
     .select({
       id: orders.id,
-      orderCode: orders.orderCode,
+      orderCode: sql<string>`coalesce(case when ${(orders as any).operationalApprovedAt} is null then ${(orders as any).provisionalCode} end, ${orders.orderCode})`,
       kind: (orders as any).kind,
       sourceOrderId: (orders as any).sourceOrderId,
       sourceOrderCode: sql<
@@ -52,6 +52,8 @@ export async function GET(
       discount: orders.discount,
       currency: orders.currency,
       shippingFee: (orders as any).shippingFee,
+      provisionalCode: (orders as any).provisionalCode,
+      operationalApprovedAt: (orders as any).operationalApprovedAt,
       createdAt: orders.createdAt,
     })
     .from(orders)

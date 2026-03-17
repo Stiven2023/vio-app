@@ -23,6 +23,12 @@ import {
   getUserIdFromRequest,
   getRoleFromRequest,
 } from "@/src/utils/auth-middleware";
+import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
+import {
+  calculateOrderPaymentPercent,
+  canTransitionOrderStatus,
+  requiresApprovalBeforeProgramming,
+} from "@/src/utils/order-workflow";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -154,6 +160,23 @@ async function generateOrderCode(tx: any, type: OrderTypeCode): Promise<string> 
   return `${prefix}${String(nextSeq).padStart(seqLen, "0")}`;
 }
 
+async function generateDraftOrderCode(tx: any): Promise<string> {
+  const pattern = "^TMP-([0-9]+)$";
+
+  const [row] = await tx
+    .select({
+      maxSeq: sql<number>`max((substring(${orders.orderCode} from ${pattern})::int))`,
+    })
+    .from(orders)
+    .where(like(orders.orderCode, "TMP-%"))
+    .limit(1);
+
+  const maxSeq = Number(row?.maxSeq ?? 0);
+  const nextSeq = Number.isFinite(maxSeq) ? maxSeq + 1 : 1;
+
+  return `TMP-${String(nextSeq).padStart(6, "0")}`;
+}
+
 async function insertOrderStatusHistory(
   tx: any,
   orderId: string,
@@ -242,7 +265,7 @@ export async function GET(request: Request) {
   const itemsQuery = db
     .select({
       id: orders.id,
-      orderCode: orders.orderCode,
+      orderCode: sql<string>`coalesce(case when ${(orders as any).operationalApprovedAt} is null then ${(orders as any).provisionalCode} end, ${orders.orderCode})`,
       kind: (orders as any).kind,
       sourceOrderId: (orders as any).sourceOrderId,
       sourceOrderCode: sql<
@@ -259,7 +282,9 @@ export async function GET(request: Request) {
       discount: orders.discount,
       currency: orders.currency,
       shippingFee: (orders as any).shippingFee,
-      paidTotal: sql<string>`coalesce((select sum(op.amount) from order_payments op where op.order_id = ${orders.id} and op.status = 'PAGADO'), 0)::text`,
+      paidTotal: sql<string>`coalesce((select sum(op.amount) from order_payments op where op.order_id = ${orders.id} and op.status in ('PAGADO', 'CONFIRMADO_CAJA')), 0)::text`,
+      provisionalCode: (orders as any).provisionalCode,
+      operationalApprovedAt: (orders as any).operationalApprovedAt,
       lastStatusAt: sql<string | null>`(
         select osh.created_at
         from order_status_history osh
@@ -314,6 +339,7 @@ export async function POST(request: Request) {
     currency,
     shippingFee,
     items,
+    provisionalCode,
   } = await request.json();
 
   const normalizedType = String(type ?? "VN")
@@ -364,9 +390,12 @@ export async function POST(request: Request) {
     let createdOrder: Array<typeof orders.$inferSelect> | null = null;
 
     const discountPercent = toDiscountPercent(discount);
+    const normalizedProvisionalCode = provisionalCode
+      ? String(provisionalCode).trim().slice(0, 60)
+      : "";
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      const code = await generateOrderCode(tx, orderType);
+      const code = await generateDraftOrderCode(tx);
 
       try {
         const result = await tx
@@ -384,7 +413,8 @@ export async function POST(request: Request) {
             shippingFee: toNonNegativeNumericString(shippingFee),
             total: "0",
             createdBy: employeeId,
-          })
+            provisionalCode: normalizedProvisionalCode || null,
+          } as any)
           .returning();
 
         createdOrder = Array.isArray(result) ? result : [result];
@@ -612,6 +642,7 @@ export async function PUT(request: Request) {
     currency,
     shippingFee,
     items,
+    provisionalCode,
   } = await request.json();
 
   if (!id) {
@@ -712,6 +743,10 @@ export async function PUT(request: Request) {
   if (currency !== undefined) patch.currency = String(currency);
   if (shippingFee !== undefined)
     (patch as any).shippingFee = toNonNegativeNumericString(shippingFee);
+  if (provisionalCode !== undefined)
+    (patch as any).provisionalCode = provisionalCode
+      ? String(provisionalCode).trim().slice(0, 60) || null
+      : null;
 
   const itemInputs: OrderItemInput[] | undefined = Array.isArray(items)
     ? items
@@ -720,12 +755,55 @@ export async function PUT(request: Request) {
   const employeeId = await resolveEmployeeId(request);
 
   const [orderRow] = await db
-    .select({ orderCode: orders.orderCode, status: orders.status })
+    .select({
+      orderCode: orders.orderCode,
+      status: orders.status,
+      total: orders.total,
+      shippingFee: (orders as any).shippingFee,
+    })
     .from(orders)
     .where(eq(orders.id, String(id)))
     .limit(1);
 
   if (!orderRow) return new Response("Not found", { status: 404 });
+
+  if (
+    patch.status !== undefined &&
+    patch.status !== null &&
+    !canTransitionOrderStatus(orderRow.status, String(patch.status))
+  ) {
+    return new Response(
+      `Transición inválida: ${String(orderRow.status ?? "-")} -> ${String(patch.status)}`,
+      { status: 422 },
+    );
+  }
+
+  if (String(patch.status ?? "") === "PROGRAMACION") {
+    const paidRows = await db
+      .select({ amount: orderPayments.amount, status: orderPayments.status })
+      .from(orderPayments)
+      .where(eq(orderPayments.orderId, String(id)));
+
+    const confirmedPaidTotal = paidRows.reduce((acc, row) => {
+      if (!isConfirmedPaymentStatus(row.status)) return acc;
+      const amount = Number(row.amount ?? 0);
+
+      return acc + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
+
+    const paymentPercent = calculateOrderPaymentPercent({
+      total: orderRow.total,
+      shippingFee: orderRow.shippingFee,
+      paidTotal: confirmedPaidTotal,
+    });
+
+    if (requiresApprovalBeforeProgramming(paymentPercent)) {
+      return new Response(
+        "El pedido no puede pasar a PROGRAMACION con un anticipo confirmado menor al 50%. Envíalo a APROBACION.",
+        { status: 422 },
+      );
+    }
+  }
 
   const updated = await db.transaction(async (tx) => {
     const previousStatus = orderRow.status ?? null;

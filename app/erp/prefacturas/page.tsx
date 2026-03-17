@@ -2,7 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { PrefacturasTab } from "@/app/erp/prefacturas/_components/prefacturas-tab";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function PrefacturasPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -13,12 +13,18 @@ export default async function PrefacturasPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_PEDIDO");
-  if (forbidden) redirect("/unauthorized");
+  const perms = await checkPermissions(req, [
+    "VER_PEDIDO",
+    "CREAR_PEDIDO",
+    "EDITAR_PEDIDO",
+    "ELIMINAR_PEDIDO",
+  ]);
 
-  const canCreate = !(await requirePermission(req, "CREAR_PEDIDO"));
-  const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));
-  const canDelete = !(await requirePermission(req, "ELIMINAR_PEDIDO"));
+  if (!perms.VER_PEDIDO) redirect("/unauthorized");
+
+  const canCreate = perms.CREAR_PEDIDO;
+  const canEdit = perms.EDITAR_PEDIDO;
+  const canDelete = perms.ELIMINAR_PEDIDO;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

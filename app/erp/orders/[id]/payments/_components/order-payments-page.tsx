@@ -767,7 +767,7 @@ export function OrderPaymentsPage({
 
               <div className="sm:col-span-2">
                 <div className="text-sm text-default-600 mb-1">
-                  Validation image (optional)
+                  Soporte de validación (opcional, no requerido para efectivo)
                 </div>
                 <div
                   className="rounded-medium border border-dashed border-default-300 bg-default-50 p-3"

@@ -1,5 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
+import { ORDER_ITEM_STATUS, ORDER_ITEM_STATUS_VALUES } from "@/src/utils/order-status";
+
 import { db } from "@/src/db";
 import {
   operativeDashboardLogs,
@@ -20,6 +22,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 const ROLE_AREAS = ["OPERARIOS", "CONFECCIONISTAS", "MENSAJERIA", "EMPAQUE"] as const;
 const OPERATION_TYPES = [
+  "MONTAJE",
   "PLOTTER",
   "CALANDRA",
   "CORTE_LASER",
@@ -30,54 +33,35 @@ const OPERATION_TYPES = [
 const PROCESS_CODES = ["P", "S", "C"] as const;
 
 const ORDER_ITEM_STATUS_FLOW = [
-  "PENDIENTE",
-  "REVISION_ADMIN",
-  "APROBACION_INICIAL",
-  "PENDIENTE_PRODUCCION",
-  "EN_MONTAJE",
-  "EN_IMPRESION",
-  "SUBLIMACION",
-  "CORTE_MANUAL",
-  "CORTE_LASER",
-  "PENDIENTE_CONFECCION",
-  "CONFECCION",
-  "EN_BODEGA",
-  "EMPAQUE",
-  "ENVIADO",
-  "COMPLETADO",
+  ORDER_ITEM_STATUS.PENDIENTE,
+  ORDER_ITEM_STATUS.APROBACION,
+  ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION,
+  ORDER_ITEM_STATUS.MONTAJE,
+  ORDER_ITEM_STATUS.IMPRESION,
+  ORDER_ITEM_STATUS.SUBLIMACION,
+  ORDER_ITEM_STATUS.CORTE_MANUAL,
+  ORDER_ITEM_STATUS.CORTE_LASER,
+  ORDER_ITEM_STATUS.PENDIENTE_CONFECCION,
+  ORDER_ITEM_STATUS.CONFECCION,
+  ORDER_ITEM_STATUS.EN_BODEGA,
+  ORDER_ITEM_STATUS.EMPAQUE,
+  ORDER_ITEM_STATUS.ENVIADO,
+  ORDER_ITEM_STATUS.COMPLETADO,
 ] as const;
 
-type OrderItemStatus =
-  | "PENDIENTE"
-  | "REVISION_ADMIN"
-  | "APROBACION_INICIAL"
-  | "PENDIENTE_PRODUCCION"
-  | "EN_MONTAJE"
-  | "EN_IMPRESION"
-  | "SUBLIMACION"
-  | "CORTE_MANUAL"
-  | "CORTE_LASER"
-  | "PENDIENTE_CONFECCION"
-  | "CONFECCION"
-  | "EN_BODEGA"
-  | "EMPAQUE"
-  | "ENVIADO"
-  | "EN_REVISION_CAMBIO"
-  | "APROBADO_CAMBIO"
-  | "RECHAZADO_CAMBIO"
-  | "COMPLETADO"
-  | "CANCELADO";
+type OrderItemStatusType = (typeof ORDER_ITEM_STATUS_VALUES)[number];
 
 const NEXT_STATUS_BY_OPERATION: Record<
   (typeof OPERATION_TYPES)[number],
-  OrderItemStatus
+  OrderItemStatusType
 > = {
-  PLOTTER: "EN_IMPRESION",
-  CALANDRA: "CORTE_MANUAL",
-  CORTE_LASER: "PENDIENTE_CONFECCION",
-  CORTE_MANUAL: "PENDIENTE_CONFECCION",
-  INTEGRACION: "EN_BODEGA",
-  DESPACHO: "ENVIADO",
+  MONTAJE: ORDER_ITEM_STATUS.MONTAJE,
+  PLOTTER: ORDER_ITEM_STATUS.IMPRESION,
+  CALANDRA: ORDER_ITEM_STATUS.CORTE_MANUAL,
+  CORTE_LASER: ORDER_ITEM_STATUS.PENDIENTE_CONFECCION,
+  CORTE_MANUAL: ORDER_ITEM_STATUS.PENDIENTE_CONFECCION,
+  INTEGRACION: ORDER_ITEM_STATUS.EN_BODEGA,
+  DESPACHO: ORDER_ITEM_STATUS.ENVIADO,
 };
 
 const DASHBOARD_ROLES = new Set([
@@ -151,7 +135,7 @@ function normalizeMatchText(v: unknown) {
     .toLowerCase();
 }
 
-function shouldMoveForward(current: string | null, next: OrderItemStatus) {
+function shouldMoveForward(current: string | null, next: OrderItemStatusType) {
   if (!current) return true;
 
   const currentIndex = ORDER_ITEM_STATUS_FLOW.indexOf(current as (typeof ORDER_ITEM_STATUS_FLOW)[number]);
@@ -249,7 +233,7 @@ async function resolveOrderItemByDesignAndSize(args: {
 async function updateOrderItemStatus(args: {
   tx: any;
   orderItemId: string;
-  nextStatus: OrderItemStatus;
+  nextStatus: OrderItemStatusType;
   changedByEmployeeId: string | null;
 }) {
   await args.tx
@@ -281,9 +265,25 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
+    const rawRoleArea = String(searchParams.get("roleArea") ?? "").trim();
+    const rawOperationType = String(searchParams.get("operationType") ?? "").trim();
     const roleArea = normalizeRoleArea(searchParams.get("roleArea"));
+    const operationType = normalizeOperationType(searchParams.get("operationType"));
 
-    const where = roleArea ? and(eq(operativeDashboardLogs.roleArea, roleArea)) : undefined;
+    if (rawRoleArea && !roleArea) {
+      return new Response("roleArea inválido", { status: 400 });
+    }
+
+    if (rawOperationType && !operationType) {
+      return new Response("operationType inválido", { status: 400 });
+    }
+
+    const filters = [
+      roleArea ? eq(operativeDashboardLogs.roleArea, roleArea) : undefined,
+      operationType ? eq(operativeDashboardLogs.operationType, operationType) : undefined,
+    ].filter(Boolean);
+
+    const where = filters.length ? and(...filters) : undefined;
 
     const totalQuery = db
       .select({ total: sql<number>`count(*)::int` })
@@ -407,7 +407,7 @@ export async function POST(request: Request) {
       });
 
       let linkedOrderItemId: string | null = linkedItem?.id ?? null;
-      let appliedStatus: OrderItemStatus | null = null;
+      let appliedStatus: OrderItemStatusType | null = null;
 
       if (linkedItem?.id) {
         const isComplete = toBoolean(body.isComplete);
@@ -431,10 +431,10 @@ export async function POST(request: Request) {
           await updateOrderItemStatus({
             tx,
             orderItemId: linkedItem.id,
-            nextStatus: "EN_REVISION_CAMBIO",
+            nextStatus: ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
             changedByEmployeeId,
           });
-          appliedStatus = "EN_REVISION_CAMBIO";
+          appliedStatus = ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION;
         }
       }
 

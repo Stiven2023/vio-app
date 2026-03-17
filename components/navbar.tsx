@@ -34,19 +34,42 @@ import { isOperarioRole } from "@/src/utils/role-status";
 
 const permissionsStorageKey = "viomar.permissions.v1";
 
+type AppModule = "erp" | "mes" | "crm";
+
+const getModuleFromPath = (pathname: string): AppModule => {
+  if (pathname === "/mes" || pathname.startsWith("/mes/")) return "mes";
+  if (pathname === "/crm" || pathname.startsWith("/crm/")) return "crm";
+
+  return "erp";
+};
+
 export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
-
-  if (pathname === "/" || pathname === "/login" || pathname === "/erp/login") {
-    return null;
-  }
+  const currentModule = getModuleFromPath(pathname);
+  const moduleRoot = currentModule === "erp" ? "/erp" : `/${currentModule}`;
+  const moduleTitle = currentModule.toUpperCase();
 
   const user = useSessionStore((s) => s.user);
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const logout = useSessionStore((s) => s.clearSession);
   const role = useSessionStore((s) => s.user?.role);
   const isAdmin = role === "ADMINISTRADOR";
+
+  const moduleQuickItems =
+    currentModule === "mes"
+      ? [
+          { name: "MES", href: "/mes" },
+          { name: "ERP", href: "/erp/dashboard" },
+          { name: "CRM", href: "/crm" },
+        ]
+      : currentModule === "crm"
+        ? [
+            { name: "CRM", href: "/crm" },
+            { name: "ERP", href: "/erp/dashboard" },
+            { name: "MES", href: "/mes" },
+          ]
+        : [];
 
   const [canSeeClients, setCanSeeClients] = useState(false);
   const [canSeeCatalog, setCanSeeCatalog] = useState(false);
@@ -108,6 +131,11 @@ export const Navbar = () => {
       return;
     }
 
+    if (currentModule !== "erp") {
+      applyPermissions();
+      return;
+    }
+
     const cached = readCachedPermissions();
     if (cached) {
       applyPermissions(cached);
@@ -150,7 +178,7 @@ export const Navbar = () => {
     return () => {
       active = false;
     };
-  }, [isAuthenticated]);
+  }, [currentModule, isAuthenticated]);
 
   const toErpHref = (href: string) => {
     if (!href.startsWith("/")) return href;
@@ -161,9 +189,13 @@ export const Navbar = () => {
     return `/erp${href}`;
   };
 
-  const normalizedPathname = pathname.startsWith("/erp/")
-    ? pathname.replace(/^\/erp/, "") || "/"
-    : pathname;
+  const normalizedPathname = pathname.startsWith(`${moduleRoot}/`)
+    ? pathname.replace(moduleRoot, "") || "/"
+    : pathname === moduleRoot
+      ? "/"
+      : pathname;
+
+  const isModuleHrefActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const isActive = (href: string) =>
     pathname === toErpHref(href) ||
@@ -204,13 +236,13 @@ export const Navbar = () => {
 
   const handleUserMenuAction = async (actionKey: string) => {
     if (actionKey === "notifications") {
-      router.push("/erp/notifications");
+      router.push(`${moduleRoot}/notifications`);
 
       return;
     }
 
     if (actionKey === "options") {
-      router.push("/erp/options");
+      router.push(`${moduleRoot}/options`);
 
       return;
     }
@@ -220,6 +252,16 @@ export const Navbar = () => {
       router.push("/login");
     }
   };
+
+  if (
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/erp/login" ||
+    pathname === "/es" ||
+    pathname === "/en"
+  ) {
+    return null;
+  }
 
   return (
     <HeroUINavbar
@@ -232,14 +274,24 @@ export const Navbar = () => {
     >
       <NavbarContent className="flex flex-none items-center" justify="start">
         <NavbarItem>
-          <NextLink className="text-sm font-semibold text-default-700" href="/erp/dashboard">
-            ERP
+          <NextLink className="text-sm font-semibold text-default-700" href={currentModule === "erp" ? "/erp/dashboard" : moduleRoot}>
+            {moduleTitle}
           </NextLink>
         </NavbarItem>
       </NavbarContent>
 
       <NavbarContent className="hidden xl:flex basis-2/4" justify="center">
-        {!isAuthenticated ? null : operarioOnly ? (
+        {!isAuthenticated ? null : currentModule !== "erp" ? (
+          <ul className="flex gap-2 items-center">
+            {moduleQuickItems.map((item) => (
+              <NavbarItem key={`module-${item.href}`}>
+                <Button as={NextLink} href={item.href} size="sm" variant={isModuleHrefActive(item.href) ? "solid" : "light"}>
+                  {item.name}
+                </Button>
+              </NavbarItem>
+            ))}
+          </ul>
+        ) : operarioOnly ? (
           <ul className="flex gap-2 items-center">
             <NavbarItem>
               <Button as={NextLink} href="/erp/dashboard" size="sm" variant={isActive("/dashboard") ? "solid" : "light"}>
@@ -288,7 +340,7 @@ export const Navbar = () => {
                         endContent={<BsChevronDown className="text-xs" />}
                         size="sm"
                         variant={
-                          section.items.some((item) => isActive(item.href) && !item.href.startsWith("/en-construccion"))
+                          section.items.some((item) => isActive(item.href) && !item.href.startsWith("/under-construction"))
                             ? "solid"
                             : "light"
                         }
@@ -361,8 +413,8 @@ export const Navbar = () => {
                     </div>
                   </div>
                 </DropdownItem>
-                <DropdownItem key="notifications">Notifications</DropdownItem>
-                <DropdownItem key="options">Options</DropdownItem>
+                {currentModule === "erp" ? <DropdownItem key="notifications">Notifications</DropdownItem> : null}
+                {currentModule === "erp" ? <DropdownItem key="options">Options</DropdownItem> : null}
                 <DropdownItem key="logout" className="text-danger" color="danger">
                   Log out
                 </DropdownItem>
@@ -385,7 +437,15 @@ export const Navbar = () => {
 
       <NavbarMenu className="overflow-x-hidden max-w-[100vw]">
         <div className="mt-2 mb-3 px-3 flex w-full max-w-full flex-col gap-2 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden">
-          {!isAuthenticated ? null : operarioOnly ? (
+          {!isAuthenticated ? null : currentModule !== "erp" ? (
+            moduleQuickItems.map((item) => (
+              <NavbarMenuItem key={`mobile-module-${item.href}`}>
+                <Link color="foreground" href={item.href} size="lg">
+                  {item.name}
+                </Link>
+              </NavbarMenuItem>
+            ))
+          ) : operarioOnly ? (
             <>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/dashboard" size="lg">
@@ -453,11 +513,13 @@ export const Navbar = () => {
 
           {isAuthenticated ? (
             <>
-              <NavbarMenuItem>
-                <Link color="foreground" href="/erp/notifications" size="md">
-                  Notifications
-                </Link>
-              </NavbarMenuItem>
+              {currentModule === "erp" ? (
+                <NavbarMenuItem>
+                  <Link color="foreground" href="/erp/notifications" size="md">
+                    Notifications
+                  </Link>
+                </NavbarMenuItem>
+              ) : null}
               <NavbarMenuItem key="logout-mobile">
                 <Button
                   className="w-full"

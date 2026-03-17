@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
@@ -10,6 +10,14 @@ import {
   DropdownMenu,
   DropdownTrigger,
 } from "@heroui/dropdown";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 import { Input } from "@heroui/input";
 import {
   Modal,
@@ -19,17 +27,10 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from "@heroui/table";
 import NextLink from "next/link";
 import {
   BsEye,
+  BsPiggyBank,
   BsPencilSquare,
   BsPlusCircle,
   BsThreeDotsVertical,
@@ -42,6 +43,7 @@ import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { usePaginatedApi } from "@/app/erp/orders/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { FileUpload } from "@/components/file-upload";
 
 type OrderType = "VN" | "VI" | "VT" | "VW";
 
@@ -64,6 +66,29 @@ type PrefacturaRow = {
   createdAt: string | null;
 };
 
+type BankOption = {
+  id: string;
+  code: string;
+  name: string;
+  accountRef: string;
+  isActive: boolean | null;
+};
+
+type PrefacturaAdvanceDetail = {
+  id: string;
+  prefacturaCode?: string | null;
+  total?: string | null;
+  currency?: string | null;
+  advanceRequired?: string | null;
+  advanceReceived?: string | null;
+  advanceMethod?: "EFECTIVO" | "TRANSFERENCIA" | null;
+  advanceBankId?: string | null;
+  advanceReferenceNumber?: string | null;
+  advanceCurrency?: string | null;
+  advanceDate?: string | null;
+  advancePaymentImageUrl?: string | null;
+};
+
 const documentTypeOptions = [
   { value: "all", label: "Todos" },
   { value: "F", label: "F" },
@@ -73,7 +98,7 @@ const documentTypeOptions = [
 const statusOptions = [
   { value: "all", label: "Todos" },
   { value: "PENDIENTE_CONTABILIDAD", label: "Pendiente contabilidad" },
-  { value: "APROBACION_INICIAL", label: "Aprobación" },
+  { value: "APROBACION", label: "Aprobación" },
   { value: "PROGRAMACION", label: "Programación" },
   { value: "PENDIENTE", label: "Pendiente" },
   { value: "APROBADA", label: "Aprobada" },
@@ -100,6 +125,59 @@ function formatMoney(value: string | number | null | undefined) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+function normalizeCurrency(value: string | null | undefined): "COP" | "USD" {
+  return String(value ?? "COP")
+    .trim()
+    .toUpperCase() === "USD"
+    ? "USD"
+    : "COP";
+}
+
+function formatMoneyByCurrency(
+  value: string | number | null | undefined,
+  currency: "COP" | "USD",
+) {
+  const amount = Number(value ?? 0);
+
+  if (!Number.isFinite(amount)) return "-";
+
+  return new Intl.NumberFormat(currency === "USD" ? "en-US" : "es-CO", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: currency === "USD" ? 2 : 0,
+    maximumFractionDigits: currency === "USD" ? 2 : 0,
+  }).format(amount);
+}
+
+function normalizeAmountInput(value: string) {
+  const raw = value.replace(/[^\d.,]/g, "");
+
+  if (!raw) return "";
+
+  const normalized = raw.replace(/,/g, ".");
+  const parts = normalized.split(".");
+
+  if (parts.length === 1) {
+    return parts[0].replace(/^0+(?=\d)/, "");
+  }
+
+  const integer = (parts[0] || "0").replace(/^0+(?=\d)/, "");
+  const decimal = parts.slice(1).join("").replace(/\D/g, "").slice(0, 2);
+
+  return decimal ? `${integer}.${decimal}` : integer;
+}
+
+function resolveAdvanceStatus(amount: number, total: number) {
+  if (!Number.isFinite(total) || total <= 0) return "PENDIENTE";
+
+  const percentage = Math.max(0, (amount / total) * 100);
+
+  if (percentage >= 50) return "RECIBIDO";
+  if (percentage > 29) return "PARCIAL";
+
+  return "PENDIENTE";
 }
 
 function formatDate(value: string | null | undefined) {
@@ -136,6 +214,7 @@ export function PrefacturasTab({
     const sp = new URLSearchParams();
 
     const query = q.trim();
+
     if (query) sp.set("q", query);
     if (status !== "all") sp.set("status", status);
     if (type !== "all") sp.set("type", type);
@@ -150,108 +229,50 @@ export function PrefacturasTab({
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<PrefacturaRow>(endpoint, 10);
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [createQuotationCode, setCreateQuotationCode] = useState("");
-  const [createOrderName, setCreateOrderName] = useState("");
-  const [createOrderType, setCreateOrderType] = useState<OrderType>("VN");
-
-  const [editing, setEditing] = useState<PrefacturaRow | null>(null);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editOrderName, setEditOrderName] = useState("");
-  const [editOrderType, setEditOrderType] = useState<OrderType>("VN");
-  const [editStatus, setEditStatus] = useState<string>("APROBADA");
-
-  const [pendingDelete, setPendingDelete] = useState<PrefacturaRow | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PrefacturaRow | null>(
+    null,
+  );
   const [deleting, setDeleting] = useState(false);
+  const [banks, setBanks] = useState<BankOption[]>([]);
+
+  const [advanceModalOpen, setAdvanceModalOpen] = useState(false);
+  const [advanceLoading, setAdvanceLoading] = useState(false);
+  const [advanceSubmitting, setAdvanceSubmitting] = useState(false);
+  const [advanceTarget, setAdvanceTarget] = useState<PrefacturaRow | null>(
+    null,
+  );
+  const [advanceDetail, setAdvanceDetail] =
+    useState<PrefacturaAdvanceDetail | null>(null);
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceMethod, setAdvanceMethod] = useState<
+    "EFECTIVO" | "TRANSFERENCIA"
+  >("EFECTIVO");
+  const [advanceBankId, setAdvanceBankId] = useState("");
+  const [advanceReferenceNumber, setAdvanceReferenceNumber] = useState("");
+  const [advanceCurrency, setAdvanceCurrency] = useState<"COP" | "USD">("COP");
+  const [advanceDate, setAdvanceDate] = useState("");
+  const [advanceProofImageUrl, setAdvanceProofImageUrl] = useState("");
+
+  useEffect(() => {
+    apiJson<{ items: BankOption[] }>("/api/banks?page=1&pageSize=200")
+      .then((res) =>
+        setBanks((res.items ?? []).filter((bank) => bank.isActive !== false)),
+      )
+      .catch(() => setBanks([]));
+  }, []);
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (q.trim() || status !== "all" || type !== "all" || documentType !== "all") return "Sin resultados";
+    if (
+      q.trim() ||
+      status !== "all" ||
+      type !== "all" ||
+      documentType !== "all"
+    )
+      return "Sin resultados";
 
     return "Sin prefacturas";
   }, [documentType, loading, q, status, type]);
-
-  const openEdit = (row: PrefacturaRow) => {
-    setEditing(row);
-    setEditOrderName(String(row.orderName ?? ""));
-    setEditOrderType(
-      row.orderType === "VI" || row.orderType === "VT" || row.orderType === "VW"
-        ? row.orderType
-        : "VN",
-    );
-    setEditStatus(String(row.status ?? "APROBADA").toUpperCase());
-  };
-
-  const closeCreate = () => {
-    if (createLoading) return;
-    setCreateOpen(false);
-    setCreateQuotationCode("");
-    setCreateOrderName("");
-    setCreateOrderType("VN");
-  };
-
-  const closeEdit = () => {
-    if (editLoading) return;
-    setEditing(null);
-    setEditOrderName("");
-    setEditOrderType("VN");
-    setEditStatus("APROBADA");
-  };
-
-  const createPrefactura = async () => {
-    if (!createQuotationCode.trim()) {
-      toast.error("Ingresa el código de cotización");
-      return;
-    }
-
-    if (createLoading) return;
-
-    try {
-      setCreateLoading(true);
-      await apiJson("/api/prefacturas", {
-        method: "POST",
-        body: JSON.stringify({
-          quotationCode: createQuotationCode.trim(),
-          orderName: createOrderName.trim(),
-          orderType: createOrderType,
-        }),
-      });
-
-      toast.success("Prefactura creada");
-      closeCreate();
-      refresh();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setCreateLoading(false);
-    }
-  };
-
-  const updatePrefactura = async () => {
-    if (!editing) return;
-    if (editLoading) return;
-
-    try {
-      setEditLoading(true);
-      await apiJson(`/api/prefacturas/${editing.id}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          orderName: editOrderName.trim(),
-          orderType: editOrderType,
-          status: editStatus,
-        }),
-      });
-
-      toast.success("Prefactura actualizada");
-      closeEdit();
-      refresh();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    } finally {
-      setEditLoading(false);
-    }
-  };
 
   const removePrefactura = async () => {
     if (!pendingDelete || deleting) return;
@@ -272,6 +293,112 @@ export function PrefacturasTab({
     }
   };
 
+  const openAdvanceModal = async (row: PrefacturaRow) => {
+    setAdvanceTarget(row);
+    setAdvanceModalOpen(true);
+    setAdvanceLoading(true);
+
+    try {
+      const detail = await apiJson<PrefacturaAdvanceDetail>(
+        `/api/prefacturas/${row.id}`,
+      );
+
+      const paymentCurrency = normalizeCurrency(
+        detail.advanceCurrency ?? detail.currency,
+      );
+
+      setAdvanceDetail(detail);
+      setAdvanceAmount(String(detail.advanceReceived ?? ""));
+      setAdvanceMethod(
+        detail.advanceMethod === "TRANSFERENCIA" ? "TRANSFERENCIA" : "EFECTIVO",
+      );
+      setAdvanceBankId(detail.advanceBankId ?? "");
+      setAdvanceReferenceNumber(detail.advanceReferenceNumber ?? "");
+      setAdvanceCurrency(paymentCurrency);
+      setAdvanceDate(
+        detail.advanceDate ? String(detail.advanceDate).slice(0, 10) : "",
+      );
+      setAdvanceProofImageUrl(detail.advancePaymentImageUrl ?? "");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      setAdvanceModalOpen(false);
+      setAdvanceTarget(null);
+    } finally {
+      setAdvanceLoading(false);
+    }
+  };
+
+  const saveAdvancePayment = async () => {
+    if (!advanceTarget || advanceSubmitting) return;
+
+    const amount = Number(advanceAmount || 0);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Ingresa un monto abonado válido");
+
+      return;
+    }
+
+    if (advanceMethod === "TRANSFERENCIA" && !advanceBankId.trim()) {
+      toast.error("Selecciona el banco para la transferencia");
+
+      return;
+    }
+
+    if (advanceMethod === "TRANSFERENCIA" && !advanceReferenceNumber.trim()) {
+      toast.error("Ingresa el número de referencia de la transferencia");
+
+      return;
+    }
+
+    if (advanceMethod === "TRANSFERENCIA" && !advanceProofImageUrl.trim()) {
+      toast.error("Adjunta el comprobante para registrar la transferencia");
+
+      return;
+    }
+
+    const total = Number(advanceDetail?.total ?? advanceTarget.total ?? 0);
+    const status = resolveAdvanceStatus(amount, total);
+
+    try {
+      setAdvanceSubmitting(true);
+
+      await apiJson(`/api/prefacturas/${advanceTarget.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          advanceReceived: amount,
+          advanceMethod,
+          advanceBankId:
+            advanceMethod === "TRANSFERENCIA" ? advanceBankId : null,
+          advanceReferenceNumber:
+            advanceMethod === "TRANSFERENCIA"
+              ? advanceReferenceNumber.trim() || null
+              : null,
+          advanceCurrency,
+          advanceDate: advanceDate || null,
+          advancePaymentImageUrl: advanceProofImageUrl || null,
+          advanceStatus: status,
+        }),
+      });
+
+      if (advanceMethod === "EFECTIVO") {
+        toast.success("Efectivo registrado — el pago fue confirmado en caja");
+      } else {
+        toast.success(
+          "Transferencia registrada como NO CONSIGNADO — pendiente de verificación en contabilidad",
+        );
+      }
+      setAdvanceModalOpen(false);
+      setAdvanceTarget(null);
+      setAdvanceDetail(null);
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setAdvanceSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -284,11 +411,11 @@ export function PrefacturasTab({
           />
           <FilterSelect
             className="sm:w-48"
+            isDisabled={lockStatusFilter}
             label="Estado"
             options={statusOptions}
             value={status}
             onChange={setStatus}
-            isDisabled={lockStatusFilter}
           />
           <FilterSelect
             className="sm:w-48"
@@ -308,11 +435,16 @@ export function PrefacturasTab({
 
         <div className="flex gap-2">
           {canCreate ? (
-            <Button color="primary" onPress={() => router.push("/prefacturas/new")}>
+            <Button
+              color="primary"
+              onPress={() => router.push("/erp/prefacturas/new")}
+            >
               <BsPlusCircle /> Nueva prefactura
             </Button>
           ) : null}
-          <Button variant="flat" onPress={refresh}>Refrescar</Button>
+          <Button variant="flat" onPress={refresh}>
+            Refrescar
+          </Button>
         </div>
       </div>
 
@@ -347,12 +479,16 @@ export function PrefacturasTab({
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(row) => (
               <TableRow key={row.id}>
-                <TableCell className="font-medium">{row.prefacturaCode}</TableCell>
+                <TableCell className="font-medium">
+                  {row.prefacturaCode}
+                </TableCell>
                 <TableCell>{row.quoteCode ?? "-"}</TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span>{row.orderCode ?? "-"}</span>
-                    <span className="text-xs text-default-500">{row.orderName ?? "-"}</span>
+                    <span className="text-xs text-default-500">
+                      {row.orderName ?? "-"}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>{row.orderType ?? "-"}</TableCell>
@@ -372,7 +508,7 @@ export function PrefacturasTab({
                         <DropdownItem
                           key="view"
                           as={NextLink}
-                          href={`/orders/${row.orderId}/detail`}
+                          href={`/erp/orders/${row.orderId}/detail`}
                           startContent={<BsEye />}
                         >
                           Ver pedido
@@ -382,9 +518,20 @@ export function PrefacturasTab({
                         <DropdownItem
                           key="edit"
                           startContent={<BsPencilSquare />}
-                          onPress={() => openEdit(row)}
+                          onPress={() =>
+                            router.push(`/erp/prefacturas/${row.id}/edit`)
+                          }
                         >
                           Editar
+                        </DropdownItem>
+                      ) : null}
+                      {canEdit ? (
+                        <DropdownItem
+                          key="advance"
+                          startContent={<BsPiggyBank />}
+                          onPress={() => openAdvanceModal(row)}
+                        >
+                          Realizar anticipo
                         </DropdownItem>
                       ) : null}
                       {canDelete ? (
@@ -427,115 +574,6 @@ export function PrefacturasTab({
         </div>
       </div>
 
-      <Modal
-        isDismissable={!createLoading}
-        isKeyboardDismissDisabled={Boolean(createLoading)}
-        isOpen={createOpen}
-        onOpenChange={(open) => {
-          if (!open) closeCreate();
-        }}
-      >
-        <ModalContent>
-          <ModalHeader>Nueva prefactura</ModalHeader>
-          <ModalBody className="space-y-3">
-            <Input
-              label="Código de cotización"
-              placeholder="Ej: COT10001"
-              value={createQuotationCode}
-              onValueChange={setCreateQuotationCode}
-            />
-            <Input
-              label="Nombre del pedido"
-              placeholder="Ej: Pedido COT10001"
-              value={createOrderName}
-              onValueChange={setCreateOrderName}
-            />
-            <Select
-              label="Tipo de pedido"
-              selectedKeys={[createOrderType]}
-              onSelectionChange={(keys) => {
-                const first = String(Array.from(keys)[0] ?? "VN");
-                setCreateOrderType(
-                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
-                );
-              }}
-            >
-              <SelectItem key="VN">Nacional</SelectItem>
-              <SelectItem key="VI">Internacional</SelectItem>
-              <SelectItem key="VT">VT</SelectItem>
-              <SelectItem key="VW">VW</SelectItem>
-            </Select>
-          </ModalBody>
-          <ModalFooter>
-            <Button isDisabled={Boolean(createLoading)} variant="flat" onPress={closeCreate}>
-              Cancelar
-            </Button>
-            <Button color="primary" isLoading={Boolean(createLoading)} onPress={createPrefactura}>
-              Crear
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
-      <Modal
-        isDismissable={!editLoading}
-        isKeyboardDismissDisabled={Boolean(editLoading)}
-        isOpen={Boolean(editing)}
-        onOpenChange={(open) => {
-          if (!open) closeEdit();
-        }}
-      >
-        <ModalContent>
-          <ModalHeader>Editar prefactura</ModalHeader>
-          <ModalBody className="space-y-3">
-            <Input
-              label="Nombre del pedido"
-              value={editOrderName}
-              onValueChange={setEditOrderName}
-            />
-            <Select
-              label="Tipo de pedido"
-              selectedKeys={[editOrderType]}
-              onSelectionChange={(keys) => {
-                const first = String(Array.from(keys)[0] ?? "VN");
-                setEditOrderType(
-                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
-                );
-              }}
-            >
-              <SelectItem key="VN">Nacional</SelectItem>
-              <SelectItem key="VI">Internacional</SelectItem>
-              <SelectItem key="VT">VT</SelectItem>
-              <SelectItem key="VW">VW</SelectItem>
-            </Select>
-            <Select
-              label="Estado"
-              selectedKeys={[editStatus]}
-              onSelectionChange={(keys) => {
-                const first = String(Array.from(keys)[0] ?? "APROBADA");
-                setEditStatus(first.toUpperCase());
-              }}
-            >
-              <SelectItem key="PENDIENTE_CONTABILIDAD">Pendiente contabilidad</SelectItem>
-              <SelectItem key="APROBACION_INICIAL">Aprobación</SelectItem>
-              <SelectItem key="PROGRAMACION">Programación</SelectItem>
-              <SelectItem key="PENDIENTE">Pendiente</SelectItem>
-              <SelectItem key="APROBADA">Aprobada</SelectItem>
-              <SelectItem key="CANCELADA">Cancelada</SelectItem>
-              <SelectItem key="ANULADA">Anulada</SelectItem>
-            </Select>
-          </ModalBody>
-          <ModalFooter>
-            <Button isDisabled={Boolean(editLoading)} variant="flat" onPress={closeEdit}>
-              Cancelar
-            </Button>
-            <Button color="primary" isLoading={Boolean(editLoading)} onPress={updatePrefactura}>
-              Guardar
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-
       <ConfirmActionModal
         cancelLabel="Cancelar"
         confirmLabel="Eliminar"
@@ -552,6 +590,155 @@ export function PrefacturasTab({
           if (!open) setPendingDelete(null);
         }}
       />
+
+      <Modal
+        isOpen={advanceModalOpen}
+        size="xl"
+        onOpenChange={(open) => {
+          setAdvanceModalOpen(open);
+          if (!open) {
+            setAdvanceTarget(null);
+            setAdvanceDetail(null);
+          }
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>Registrar anticipo</ModalHeader>
+          <ModalBody>
+            {advanceLoading ? (
+              <p className="text-sm text-default-500">Cargando prefactura...</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm">
+                  <div>
+                    <span className="text-default-500">Prefactura:</span>{" "}
+                    <strong>
+                      {advanceDetail?.prefacturaCode ??
+                        advanceTarget?.prefacturaCode ??
+                        "-"}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Meta 50%:</span>{" "}
+                    <strong>
+                      {formatMoneyByCurrency(
+                        Number(
+                          advanceDetail?.total ?? advanceTarget?.total ?? 0,
+                        ) * 0.5,
+                        normalizeCurrency(advanceDetail?.currency),
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <Input
+                  label="Monto abonado"
+                  placeholder="0"
+                  value={advanceAmount}
+                  variant="bordered"
+                  onValueChange={(value) =>
+                    setAdvanceAmount(normalizeAmountInput(value))
+                  }
+                />
+
+                <Select
+                  label="Método de pago"
+                  selectedKeys={[advanceMethod]}
+                  variant="bordered"
+                  onSelectionChange={(keys) => {
+                    const first = String(Array.from(keys)[0] ?? "EFECTIVO");
+
+                    setAdvanceMethod(
+                      first === "TRANSFERENCIA" ? "TRANSFERENCIA" : "EFECTIVO",
+                    );
+                  }}
+                >
+                  <SelectItem key="EFECTIVO">Efectivo</SelectItem>
+                  <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
+                </Select>
+
+                <Select
+                  label="Moneda"
+                  selectedKeys={[advanceCurrency]}
+                  variant="bordered"
+                  onSelectionChange={(keys) => {
+                    const first = String(Array.from(keys)[0] ?? "COP");
+
+                    setAdvanceCurrency(first === "USD" ? "USD" : "COP");
+                  }}
+                >
+                  <SelectItem key="COP">COP</SelectItem>
+                  <SelectItem key="USD">USD</SelectItem>
+                </Select>
+
+                {advanceMethod === "TRANSFERENCIA" ? (
+                  <>
+                    <Select
+                      label="Banco"
+                      selectedKeys={advanceBankId ? [advanceBankId] : []}
+                      variant="bordered"
+                      onSelectionChange={(keys) => {
+                        setAdvanceBankId(String(Array.from(keys)[0] ?? ""));
+                      }}
+                    >
+                      {banks.map((bank) => (
+                        <SelectItem key={bank.id}>
+                          {[bank.code, bank.name].filter(Boolean).join(" - ")}
+                        </SelectItem>
+                      ))}
+                    </Select>
+
+                    <Input
+                      label="Número de referencia"
+                      placeholder="Ej: 8457712201"
+                      value={advanceReferenceNumber}
+                      variant="bordered"
+                      onValueChange={setAdvanceReferenceNumber}
+                    />
+                  </>
+                ) : null}
+
+                <Input
+                  label="Fecha de pago"
+                  type="date"
+                  value={advanceDate}
+                  variant="bordered"
+                  onValueChange={setAdvanceDate}
+                />
+
+                <FileUpload
+                  acceptedFileTypes="image/*"
+                  errorMessage={
+                    advanceMethod === "TRANSFERENCIA" &&
+                    !advanceProofImageUrl.trim()
+                      ? "El comprobante es obligatorio para transferencias"
+                      : undefined
+                  }
+                  isRequired={advanceMethod === "TRANSFERENCIA"}
+                  label="Comprobante del anticipo"
+                  uploadFolder="prefacturas/anticipos"
+                  value={advanceProofImageUrl}
+                  onChange={setAdvanceProofImageUrl}
+                  onClear={() => setAdvanceProofImageUrl("")}
+                />
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setAdvanceModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={advanceLoading || advanceSubmitting}
+              isLoading={advanceSubmitting}
+              onPress={saveAdvancePayment}
+            >
+              Guardar anticipo
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }

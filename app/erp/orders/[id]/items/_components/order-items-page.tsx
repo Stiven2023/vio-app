@@ -166,7 +166,12 @@ export function OrderItemsPage({
     (Boolean(advisorEmployeeId) && order?.createdBy === advisorEmployeeId);
   const effectiveCanEdit = canEdit && canAccessOrder;
   const effectiveCanAssign = canAssign && canAccessOrder;
-  const canCreate = effectiveCanEdit && orderKind === "NUEVO";
+
+  // Bloquear modificaciones desde PRODUCCION (montaje) en adelante
+  const MONTAJE_LOCKED: Array<string> = ["PRODUCCION", "ATRASADO", "FINALIZADO", "ENTREGADO", "CANCELADO"];
+  const isOrderLocked = MONTAJE_LOCKED.includes(order?.status ?? "");
+  const canCreate = effectiveCanEdit && orderKind === "NUEVO" && !isOrderLocked;
+  const canModify = effectiveCanEdit && !isOrderLocked;
 
   const columns: ColumnDef[] = [
     { key: "name", name: "Diseño" },
@@ -189,10 +194,8 @@ export function OrderItemsPage({
     return by ? `${label} · ${by}` : label;
   };
 
-  // creación ahora es en página dedicada
-
   async function onDelete(id: string) {
-    if (!effectiveCanEdit) return;
+    if (!canModify) return;
 
     const ok = window.confirm("¿Eliminar este diseño?");
     if (!ok) return;
@@ -245,7 +248,9 @@ export function OrderItemsPage({
         <div>
           <h1 className="text-2xl font-semibold">Diseños</h1>
           <p className="text-sm text-default-500">
-            En COMPLETACIÓN/REFERENTE, los diseños se copian del pedido origen.
+            {isOrderLocked
+              ? "Pedido en montaje o superior. Los diseños no pueden modificarse."
+              : "Consulta y gestión de diseños del pedido."}
           </p>
         </div>
         <div className="flex gap-2">
@@ -308,6 +313,11 @@ export function OrderItemsPage({
               En COMPLETACIÓN el backend solo permite ajustar cantidad y empaque.
             </div>
           ) : null}
+          {isOrderLocked ? (
+            <div className="text-sm text-warning">
+              El pedido está en montaje o superior. No se permiten modificaciones de diseño.
+            </div>
+          ) : null}
         </CardBody>
       </Card>
 
@@ -360,7 +370,7 @@ export function OrderItemsPage({
 
                               <DropdownItem
                                 key="assign"
-                                isDisabled={!effectiveCanAssign}
+                                isDisabled={!effectiveCanAssign || isOrderLocked}
                                 startContent={<BsPersonPlus />}
                                 onPress={() => openAssign(row.id)}
                               >
@@ -371,7 +381,7 @@ export function OrderItemsPage({
                                 key="edit"
                                 as={NextLink}
                                 href={`/orders/${orderId}/items/${row.id}/edit`}
-                                isDisabled={!effectiveCanEdit}
+                                isDisabled={!canModify}
                                 startContent={<BsPencilSquare />}
                               >
                                 Editar
@@ -380,7 +390,7 @@ export function OrderItemsPage({
                               <DropdownItem
                                 key="delete"
                                 className="text-danger"
-                                isDisabled={!effectiveCanEdit}
+                                isDisabled={!canModify}
                                 startContent={<BsTrash />}
                                 onPress={() => onDelete(row.id)}
                               >

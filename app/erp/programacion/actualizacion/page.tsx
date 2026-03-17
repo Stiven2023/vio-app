@@ -24,7 +24,7 @@ export default async function ProgramacionActualizacionPage() {
         <ProgramacionItemsTable
           process="PRODUCCION"
           orderStatus="PRODUCCION"
-          basePath="/programacion/actualizacion"
+          basePath="/erp/programacion/actualizacion"
           view="ACTUALIZACION"
           actualizacionQueue="PROGRAMACION"
           groupByOrder={false}

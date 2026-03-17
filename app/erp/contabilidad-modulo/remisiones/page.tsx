@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/en-construccion?modulo=erp&area=remisiones");
+  redirect("/erp/under-construction?modulo=erp&area=remisiones");
 }
+

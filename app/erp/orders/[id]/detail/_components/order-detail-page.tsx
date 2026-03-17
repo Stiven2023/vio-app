@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { toast } from "react-hot-toast";
 import {
   Table,
   TableBody,
@@ -55,8 +56,9 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<OrderListItem | null>(null);
   const [prefactura, setPrefactura] = useState<PrefacturaResponse | null>(null);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [approving, setApproving] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
     apiJson<OrderListItem>(`/api/orders/${orderId}`)
       .then(setOrder)
       .catch(() => setOrder(null));
@@ -70,7 +72,27 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
     )
       .then((res) => setPayments(res.items ?? []))
       .catch(() => setPayments([]));
+  };
+
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
+
+  const giveOperationalAval = async () => {
+    if (approving) return;
+
+    setApproving(true);
+    try {
+      await apiJson(`/api/orders/${orderId}/aval`, { method: "POST" });
+      toast.success("Aval operativo registrado");
+      loadData();
+    } catch {
+      toast.error("No se pudo registrar el aval");
+    } finally {
+      setApproving(false);
+    }
+  };
 
   const formatter = useMemo(() => {
     const currency = (order?.currency ?? "COP").toUpperCase();
@@ -101,6 +123,15 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           <p className="text-default-600 mt-1">Informacion completa del pedido.</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            color="primary"
+            isDisabled={Boolean(order?.operationalApprovedAt) || approving}
+            isLoading={approving}
+            variant="solid"
+            onPress={giveOperationalAval}
+          >
+            {order?.operationalApprovedAt ? "Aval registrado" : "Dar aval"}
+          </Button>
           <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
             Ver Diseños
           </Button>
@@ -138,6 +169,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               <div className="font-medium">{order?.status ?? "-"}</div>
               <div className="text-sm text-default-600">
                 Moneda: {order?.currency ?? "COP"}
+              </div>
+              <div className="text-sm text-default-600">
+                Aval: {order?.operationalApprovedAt
+                  ? new Date(order.operationalApprovedAt).toLocaleString("es-CO")
+                  : "Pendiente"}
               </div>
             </div>
           </div>

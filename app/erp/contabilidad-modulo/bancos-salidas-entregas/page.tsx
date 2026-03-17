@@ -2,7 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { BanksTab } from "@/app/erp/maestros/bancos/_components/banks-tab";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function BanksAccountingPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -13,11 +13,11 @@ export default async function BanksAccountingPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbiddenView = await requirePermission(req, "VER_PAGO");
+  const perms = await checkPermissions(req, ["VER_PAGO", "CREAR_PAGO"]);
 
-  if (forbiddenView) redirect("/unauthorized");
+  if (!perms.VER_PAGO) redirect("/unauthorized");
 
-  const canManage = !(await requirePermission(req, "CREAR_PAGO"));
+  const canManage = perms.CREAR_PAGO;
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">

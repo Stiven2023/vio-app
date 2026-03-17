@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { SuppliersTab } from "./_components/suppliers-tab";
 
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function SuppliersPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -14,13 +14,14 @@ export default async function SuppliersPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_PROVEEDOR");
+  const perms = await checkPermissions(req, [
+    "VER_PROVEEDOR",
+    "CREAR_PROVEEDOR",
+    "EDITAR_PROVEEDOR",
+    "ELIMINAR_PROVEEDOR",
+  ]);
 
-  if (forbidden) redirect("/unauthorized");
-
-  const canCreate = !(await requirePermission(req, "CREAR_PROVEEDOR"));
-  const canEdit = !(await requirePermission(req, "EDITAR_PROVEEDOR"));
-  const canDelete = !(await requirePermission(req, "ELIMINAR_PROVEEDOR"));
+  if (!perms.VER_PROVEEDOR) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
@@ -30,9 +31,9 @@ export default async function SuppliersPage() {
       </p>
       <div className="mt-6">
         <SuppliersTab
-          canCreate={canCreate}
-          canDelete={canDelete}
-          canEdit={canEdit}
+          canCreate={perms.CREAR_PROVEEDOR}
+          canDelete={perms.ELIMINAR_PROVEEDOR}
+          canEdit={perms.EDITAR_PROVEEDOR}
         />
       </div>
     </div>

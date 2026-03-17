@@ -15,6 +15,7 @@ import {
 import { BsChevronDown } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
+import { ModuleLogo } from "@/components/module-logo";
 import { ViomarLogo } from "@/components/viomar-logo";
 import { useSessionStore } from "@/store/session";
 
@@ -31,7 +32,6 @@ type Section = {
   accentWord: string;
   stat: string;
   statLabel: string;
-  illustration: (active: boolean) => React.ReactNode;
 };
 
 const sections: Section[] = [
@@ -45,21 +45,6 @@ const sections: Section[] = [
     accentWord: "MANAGEMENT",
     stat: "360°",
     statLabel: "Total visibility",
-    illustration: (active) => (
-      <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
-        <path
-          d="M30 20 L20 40 L35 42 L35 80 L85 80 L85 42 L100 40 L90 20 L72 30 C68 35 52 35 48 30 Z"
-          stroke={active ? PRIMARY : "#C8C4BC"}
-          strokeWidth={active ? 2 : 1.5}
-          fill={active ? "color-mix(in srgb, var(--viomar-primary) 10%, transparent)" : "#F0EDE820"}
-          style={{ transition: "all 0.4s" }}
-        />
-        <path d="M48 30 C52 24 68 24 72 30" stroke={active ? PRIMARY : "#B0ADA6"} strokeWidth="1.5" fill="none" style={{ transition: "all 0.4s" }} />
-        <line x1="35" y1="50" x2="85" y2="50" stroke={active ? "#4ccfcdb0" : "#D0CCC540"} strokeWidth="0.8" strokeDasharray="4 3" style={{ transition: "all 0.4s" }} />
-        <line x1="35" y1="62" x2="85" y2="62" stroke={active ? "#4ccfcd88" : "#D0CCC530"} strokeWidth="0.8" strokeDasharray="4 3" style={{ transition: "all 0.4s" }} />
-        <circle cx="60" cy="58" r="5" stroke={active ? PRIMARY : "#C0BDB6"} strokeWidth="1.2" fill="none" />
-      </svg>
-    ),
   },
   {
     id: "mes",
@@ -71,25 +56,6 @@ const sections: Section[] = [
     accentWord: "PRODUCTION",
     stat: "40%",
     statLabel: "More efficiency",
-    illustration: (active) => (
-      <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
-        <path
-          d="M15 72 Q15 80 30 82 L95 80 Q108 78 108 72 L100 65 L20 63 Z"
-          stroke={active ? PRIMARY : "#C8C4BC"}
-          strokeWidth={active ? 2 : 1.5}
-          fill={active ? "color-mix(in srgb, var(--viomar-primary) 8%, transparent)" : "#F0EDE815"}
-          style={{ transition: "all 0.4s" }}
-        />
-        <path
-          d="M20 63 L22 40 Q28 28 45 26 L75 26 Q95 28 100 45 L100 65 Z"
-          stroke={active ? PRIMARY : "#C8C4BC"}
-          strokeWidth={active ? 2 : 1.5}
-          fill={active ? "color-mix(in srgb, var(--viomar-primary) 12%, transparent)" : "#F0EDE820"}
-          style={{ transition: "all 0.4s" }}
-        />
-        <path d="M30 55 Q50 42 80 50" stroke={active ? PRIMARY : "#C8C4BC"} strokeWidth="2" fill="none" />
-      </svg>
-    ),
   },
   {
     id: "crm",
@@ -101,25 +67,6 @@ const sections: Section[] = [
     accentWord: "CLIENTS",
     stat: "3x",
     statLabel: "Conversion",
-    illustration: (active) => (
-      <svg viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
-        <path
-          d="M20 60 Q20 25 60 22 Q100 25 100 60 Z"
-          stroke={active ? PRIMARY : "#C8C4BC"}
-          strokeWidth={active ? 2 : 1.5}
-          fill={active ? "color-mix(in srgb, var(--viomar-primary) 12%, transparent)" : "#F0EDE820"}
-          style={{ transition: "all 0.4s" }}
-        />
-        <path
-          d="M20 60 Q15 62 12 65 Q30 70 60 69 Q90 70 108 65 Q105 62 100 60"
-          stroke={active ? PRIMARY : "#C8C4BC"}
-          strokeWidth={active ? 2 : 1.5}
-          fill={active ? "color-mix(in srgb, var(--viomar-primary) 14%, transparent)" : "#EDE9E215"}
-          style={{ transition: "all 0.4s" }}
-        />
-        <circle cx="60" cy="23" r="3" stroke={active ? PRIMARY : "#C8C4BC"} strokeWidth="1.2" fill="none" />
-      </svg>
-    ),
   },
 ];
 
@@ -526,7 +473,9 @@ export function HomeModuleSelector() {
                 </div>
 
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", maxHeight: 160, minHeight: 90, padding: "14px 0" }}>
-                  <div style={{ width: "100%", maxWidth: 148, height: 120 }}>{section.illustration(isActive)}</div>
+                  <div style={{ width: "100%", maxWidth: 148, height: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <ModuleLogo active={isActive} module={section.id} size={118} />
+                  </div>
                 </div>
 
                 <div style={{ marginTop: "auto" }}>

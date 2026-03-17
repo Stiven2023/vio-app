@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PackersTab } from "./_components/packers-tab";
 
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function PackersPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -14,13 +14,18 @@ export default async function PackersPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_EMPAQUE");
+  const perms = await checkPermissions(req, [
+    "VER_EMPAQUE",
+    "CREAR_EMPAQUE",
+    "EDITAR_EMPAQUE",
+    "ELIMINAR_EMPAQUE",
+  ]);
 
-  if (forbidden) redirect("/unauthorized");
+  if (!perms.VER_EMPAQUE) redirect("/unauthorized");
 
-  const canCreate = !(await requirePermission(req, "CREAR_EMPAQUE"));
-  const canEdit = !(await requirePermission(req, "EDITAR_EMPAQUE"));
-  const canDelete = !(await requirePermission(req, "ELIMINAR_EMPAQUE"));
+  const canCreate = perms.CREAR_EMPAQUE;
+  const canEdit = perms.EDITAR_EMPAQUE;
+  const canDelete = perms.ELIMINAR_EMPAQUE;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

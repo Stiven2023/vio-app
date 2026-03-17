@@ -50,21 +50,21 @@ type ColumnDef = {
 
 const orderStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
   PENDIENTE: "warning",
+  APROBACION: "primary",
   PRODUCCION: "primary",
   ATRASADO: "danger",
   FINALIZADO: "success",
   ENTREGADO: "success",
   CANCELADO: "default",
-  REVISION: "warning",
 };
 
 const itemStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
   PENDIENTE: "warning",
-  REVISION_ADMIN: "warning",
-  APROBACION_INICIAL: "primary",
+  APROBACION: "primary",
   PENDIENTE_PRODUCCION: "primary",
-  EN_MONTAJE: "primary",
-  EN_IMPRESION: "primary",
+  PENDIENTE_PRODUCCION_ACTUALIZACION: "warning",
+  MONTAJE: "primary",
+  IMPRESION: "primary",
   SUBLIMACION: "primary",
   CORTE_MANUAL: "primary",
   CORTE_LASER: "primary",
@@ -73,7 +73,6 @@ const itemStatusColors: Record<string, "default" | "primary" | "success" | "warn
   EN_BODEGA: "primary",
   EMPAQUE: "primary",
   ENVIADO: "success",
-  EN_REVISION_CAMBIO: "warning",
   APROBADO_CAMBIO: "success",
   RECHAZADO_CAMBIO: "danger",
   COMPLETADO: "success",

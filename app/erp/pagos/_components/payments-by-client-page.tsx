@@ -21,9 +21,9 @@ import {
 } from "@heroui/table";
 import { BsThreeDotsVertical } from "react-icons/bs";
 
-import { DistributedPaymentsPage } from "@/app/erp/abonos/_components/distributed-payments-page";
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 import { OrderPaymentsPage } from "@/app/erp/orders/[id]/payments/_components/order-payments-page";
+import { DistributedPaymentsToggleSection } from "@/app/erp/pagos/_components/distributed-payments-toggle-section";
 
 type ClientOption = {
   id: string;
@@ -358,17 +358,13 @@ export function PaymentsByClientPage({
             </Card>
           ) : null}
 
-          <Card>
-            <CardHeader className="font-semibold">
-              Abono distribuido del cliente
-            </CardHeader>
-            <CardBody>
-              <DistributedPaymentsPage
-                fixedClientId={clientData.client.id}
-                fixedClientName={selectedClient?.name ?? clientData.client.name}
-              />
-            </CardBody>
-          </Card>
+          <DistributedPaymentsToggleSection
+            buttonLabel="Activar abono distribuido del cliente"
+            description="Se despliega solo cuando lo necesitas, separado del detalle normal de pagos por pedido."
+            fixedClientId={clientData.client.id}
+            fixedClientName={selectedClient?.name ?? clientData.client.name}
+            title="Abono distribuido del cliente"
+          />
         </>
       ) : null}
     </div>

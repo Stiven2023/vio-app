@@ -23,7 +23,7 @@ export default async function AprobacionInicialActualizacionComprasPage() {
       <div className="mt-6">
         <ProgramacionItemsTable
           process="COMPRAS"
-          orderStatus="APROBACION_INICIAL"
+          orderStatus="APROBACION"
           basePath="/aprobacion-inicial/actualizacion"
           actualizacionBasePath="/aprobacion-inicial/actualizacion"
           view="ACTUALIZACION"

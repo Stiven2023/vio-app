@@ -22,6 +22,7 @@ import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 
 type RoleArea = "OPERARIOS" | "CONFECCIONISTAS" | "MENSAJERIA" | "EMPAQUE";
 type OperationType =
+  | "MONTAJE"
   | "PLOTTER"
   | "CALANDRA"
   | "CORTE_LASER"
@@ -67,6 +68,7 @@ const roleAreaOptions: Array<{ value: RoleArea; label: string }> = [
 ];
 
 const operationOptions: Array<{ value: OperationType; label: string }> = [
+  { value: "MONTAJE", label: "Montaje" },
   { value: "PLOTTER", label: "Plotter" },
   { value: "CALANDRA", label: "Calandra" },
   { value: "CORTE_LASER", label: "Corte láser" },
@@ -101,7 +103,7 @@ type DraftRow = {
 
 const initialDraft: DraftRow = {
   roleArea: "OPERARIOS",
-  operationType: "PLOTTER",
+  operationType: "MONTAJE",
   orderCode: "",
   designName: "",
   details: "",
@@ -142,7 +144,32 @@ function normalizeRoleAreaByRole(role: string): RoleArea {
   return "OPERARIOS";
 }
 
-export function OperarioWorklogTable({ role }: { role: string }) {
+function normalizeOperationByRole(role: string): OperationType {
+  if (role === "OPERARIO_MONTAJE") return "MONTAJE";
+  if (role === "OPERARIO_FLOTER") return "PLOTTER";
+  if (role === "OPERARIO_CORTE_LASER") return "CORTE_LASER";
+  if (role === "OPERARIO_CORTE_MANUAL") return "CORTE_MANUAL";
+  if (role === "OPERARIO_INTEGRACION_CALIDAD") return "INTEGRACION";
+  if (role === "OPERARIO_DESPACHO") return "DESPACHO";
+  return "MONTAJE";
+}
+
+type WorklogPrefill = {
+  orderCode: string;
+  designName: string;
+  size?: string;
+  quantityOp?: number;
+};
+
+export function OperarioWorklogTable({
+  role,
+  prefill,
+  onSaved,
+}: {
+  role: string;
+  prefill?: WorklogPrefill | null;
+  onSaved?: () => void;
+}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -154,13 +181,32 @@ export function OperarioWorklogTable({ role }: { role: string }) {
   }));
 
   const roleAreaFilter = useMemo(() => normalizeRoleAreaByRole(role), [role]);
+  const operationFilter = useMemo(() => normalizeOperationByRole(role), [role]);
 
   useEffect(() => {
     setDraft((prev) => ({
       ...prev,
       roleArea: roleAreaFilter,
+      operationType: operationFilter,
     }));
-  }, [roleAreaFilter]);
+  }, [roleAreaFilter, operationFilter]);
+
+  useEffect(() => {
+    if (!prefill) return;
+
+    setDraft((prev) => ({
+      ...prev,
+      roleArea: roleAreaFilter,
+      operationType: operationFilter,
+      orderCode: prefill.orderCode ?? "",
+      designName: prefill.designName ?? "",
+      size: prefill.size ?? "",
+      quantityOp:
+        typeof prefill.quantityOp === "number" && Number.isFinite(prefill.quantityOp)
+          ? String(Math.max(0, Math.floor(prefill.quantityOp)))
+          : prev.quantityOp,
+    }));
+  }, [prefill, roleAreaFilter, operationFilter]);
 
   useEffect(() => {
     let active = true;
@@ -238,7 +284,9 @@ export function OperarioWorklogTable({ role }: { role: string }) {
       setDraft({
         ...initialDraft,
         roleArea: roleAreaFilter,
+        operationType: operationFilter,
       });
+      onSaved?.();
       reload();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -371,7 +419,7 @@ export function OperarioWorklogTable({ role }: { role: string }) {
           size="sm"
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0] as OperationType | undefined;
-            setDraft((s) => ({ ...s, operationType: first ?? "PLOTTER" }));
+            setDraft((s) => ({ ...s, operationType: first ?? operationFilter }));
           }}
         >
           {operationOptions.map((option) => (

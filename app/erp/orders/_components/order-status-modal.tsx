@@ -15,16 +15,17 @@ import {
 import { Select, SelectItem } from "@heroui/select";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
+import { getAllowedNextOrderStatuses } from "@/src/utils/order-workflow";
 
 const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "PENDIENTE", label: "Pendiente" },
-  { value: "APROBACION_INICIAL", label: "Aprobación" },
+  { value: "APROBACION", label: "Aprobación" },
+  { value: "PROGRAMACION", label: "Programación" },
   { value: "PRODUCCION", label: "Produccion" },
   { value: "ATRASADO", label: "Atrasado" },
   { value: "FINALIZADO", label: "Finalizado" },
   { value: "ENTREGADO", label: "Entregado" },
   { value: "CANCELADO", label: "Cancelado" },
-  { value: "REVISION", label: "Revision" },
 ];
 
 export function OrderStatusModal({
@@ -42,6 +43,12 @@ export function OrderStatusModal({
 }) {
   const [status, setStatus] = useState<OrderStatus>("PENDIENTE");
   const [saving, setSaving] = useState(false);
+
+  const allowedStatuses = order
+    ? [order.status, ...getAllowedNextOrderStatuses(order.status)].filter(
+        (value, index, array) => array.indexOf(value) === index,
+      )
+    : [];
 
   useEffect(() => {
     if (!isOpen) return;
@@ -101,7 +108,7 @@ export function OrderStatusModal({
               setStatus(first ?? "PENDIENTE");
             }}
           >
-            {statusOptions.map((opt) => (
+            {statusOptions.filter((opt) => allowedStatuses.includes(opt.value)).map((opt) => (
               <SelectItem key={opt.value}>{opt.label}</SelectItem>
             ))}
           </Select>

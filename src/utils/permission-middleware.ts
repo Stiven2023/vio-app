@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { roles, permissions, rolePermissions } from "@/src/db/schema";
@@ -70,40 +70,82 @@ export async function requirePermission(
     return null;
   }
 
-  // Buscar el rol por nombre
-  const role = await db.select().from(roles).where(eq(roles.name, roleName));
+  const candidates = Array.from(
+    new Set([permissionName, ...(PERMISSION_ALIASES[permissionName] ?? [])]),
+  );
 
-  if (role.length === 0) {
-    return new Response("Access denied", { status: 403 });
+  // Single JOIN query: roles → role_permissions → permissions
+  const rows = await db
+    .select({ permId: rolePermissions.permissionId })
+    .from(rolePermissions)
+    .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
+    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+    .where(
+      and(
+        eq(roles.name, roleName),
+        inArray(permissions.name, candidates),
+      ),
+    )
+    .limit(1);
+
+  return rows.length > 0 ? null : new Response("Access denied: missing permission", { status: 403 });
+}
+
+/**
+ * Checks multiple permissions at once with a single DB query.
+ * Returns a map of permissionName → boolean (true = granted).
+ * Use this instead of calling requirePermission() in a loop.
+ */
+export async function checkPermissions(
+  request: Request,
+  permissionNames: string[],
+): Promise<Record<string, boolean>> {
+  const result: Record<string, boolean> = {};
+  for (const name of permissionNames) result[name] = false;
+
+  const roleName = getRoleFromRequest(request);
+  if (!roleName) return result;
+
+  if (roleName === "ADMINISTRADOR") {
+    for (const name of permissionNames) result[name] = true;
+    return result;
   }
-  const candidates = [
-    permissionName,
-    ...(PERMISSION_ALIASES[permissionName] ?? []),
-  ];
-  const uniqueCandidates = Array.from(new Set(candidates));
 
-  for (const candidate of uniqueCandidates) {
-    const perm = await db
-      .select()
-      .from(permissions)
-      .where(eq(permissions.name, candidate));
+  const overrides = ROLE_PERMISSION_OVERRIDES[roleName] ?? [];
 
-    if (perm.length === 0) continue;
-
-    const hasPerm = await db
-      .select()
-      .from(rolePermissions)
-      .where(
-        and(
-          eq(rolePermissions.roleId, role[0].id),
-          eq(rolePermissions.permissionId, perm[0].id),
-        ),
-      );
-
-    if (hasPerm.length > 0) {
-      return null; // autorizado por permiso directo o alias
+  // Build full candidate → original name map
+  const candidateToOriginal = new Map<string, string>();
+  for (const name of permissionNames) {
+    if (overrides.includes(name)) {
+      result[name] = true;
+      continue;
     }
+    const candidates = Array.from(
+      new Set([name, ...(PERMISSION_ALIASES[name] ?? [])]),
+    );
+    for (const c of candidates) candidateToOriginal.set(c, name);
   }
 
-  return new Response("Access denied: missing permission", { status: 403 });
+  if (candidateToOriginal.size === 0) return result;
+
+  const allCandidates = Array.from(candidateToOriginal.keys());
+
+  const rows = await db
+    .select({ permName: permissions.name })
+    .from(rolePermissions)
+    .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
+    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+    .where(
+      and(
+        eq(roles.name, roleName),
+        inArray(permissions.name, allCandidates),
+      ),
+    );
+
+  for (const row of rows) {
+    const original = candidateToOriginal.get(row.permName);
+    if (original) result[original] = true;
+  }
+
+  return result;
 }

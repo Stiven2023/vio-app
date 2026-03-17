@@ -2,7 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AccountingTabs } from "@/app/erp/contabilidad/_components/contabilidad-tabs";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function DepositsPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -13,16 +13,21 @@ export default async function DepositsPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_PEDIDO");
-  if (forbidden) redirect("/unauthorized");
+  const perms = await checkPermissions(req, [
+    "VER_PEDIDO",
+    "EDITAR_PEDIDO",
+    "APROBAR_PAGO",
+  ]);
 
-  const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));
-  const canApprovePayments = !(await requirePermission(req, "APROBAR_PAGO"));
+  if (!perms.VER_PEDIDO) redirect("/unauthorized");
+
+  const canEdit = perms.EDITAR_PEDIDO;
+  const canApprovePayments = perms.APROBAR_PAGO;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Deposits</h1>
-      <p className="text-default-600 mt-1">Consolidated deposits.</p>
+      <h1 className="text-2xl font-bold">Pagos y flujo de caja</h1>
+      <p className="text-default-600 mt-1">Vista general de pagos con filtros por método, efectivo y transferencias.</p>
       <div className="mt-6">
         <AccountingTabs canApprovePayments={canApprovePayments} canEdit={canEdit} />
       </div>

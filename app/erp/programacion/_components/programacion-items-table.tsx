@@ -13,6 +13,7 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
 import { BsThreeDotsVertical } from "react-icons/bs";
+import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
 import { AlertToast } from "@/components/alert-toast";
 import {
   Table,
@@ -161,7 +162,7 @@ function renderSellerCell(sellerCode: string | null) {
 export function ProgramacionItemsTable({
   process,
   orderStatus = "PRODUCCION",
-  basePath = "/programacion",
+  basePath = "/erp/programacion",
   actualizacionBasePath,
   labels,
   decompressByDesign = false,
@@ -172,7 +173,7 @@ export function ProgramacionItemsTable({
   groupByOrder = true,
 }: {
   process: ProcessType;
-  orderStatus?: "PRODUCCION" | "APROBACION_INICIAL";
+    orderStatus?: "PRODUCCION" | "PROGRAMACION" | "APROBACION";
   basePath?: string;
   actualizacionBasePath?: string;
   decompressByDesign?: boolean;
@@ -290,7 +291,7 @@ export function ProgramacionItemsTable({
     item: ProgramacionItem,
     nextStatus:
       | "PENDIENTE_PRODUCCION"
-      | "EN_REVISION_CAMBIO"
+      | "PENDIENTE_PRODUCCION_ACTUALIZACION"
       | "APROBADO_CAMBIO"
       | "RECHAZADO_CAMBIO",
   ) => {
@@ -400,7 +401,7 @@ export function ProgramacionItemsTable({
               key="aprobar"
               color="success"
               onPress={() =>
-                decide(item, isActualizacion ? "APROBADO_CAMBIO" : "PENDIENTE_PRODUCCION")
+                decide(item, isActualizacion ? ORDER_ITEM_STATUS.APROBADO_CAMBIO : ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION)
               }
             >
               Aprobar
@@ -409,7 +410,7 @@ export function ProgramacionItemsTable({
               key="denegar"
               color="danger"
               onPress={() =>
-                decide(item, isActualizacion ? "RECHAZADO_CAMBIO" : "EN_REVISION_CAMBIO")
+                decide(item, isActualizacion ? ORDER_ITEM_STATUS.RECHAZADO_CAMBIO : ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION)
               }
             >
               Denegar
@@ -564,7 +565,11 @@ export function ProgramacionItemsTable({
         <Select
           label="Columnas"
           selectionMode="multiple"
-          selectedKeys={selectedColumns}
+          selectedKeys={new Set(Array.from(selectedColumns).filter((k) => {
+            if (k === "diseno" && effectiveGroupByOrder) return false;
+            if (k === "talla" && (effectiveGroupByOrder || isActualizacion)) return false;
+            return true;
+          }))}
           onSelectionChange={(keys) => {
             if (keys === "all") {
               setSelectedColumns(new Set(ALL_COLUMN_KEYS));

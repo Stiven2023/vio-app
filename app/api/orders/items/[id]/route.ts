@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
+import { ORDER_ITEM_STATUS, ORDER_ITEM_STATUS_VALUES, ORDER_STATUS } from "@/src/utils/order-status";
 import {
   additions,
   clients,
@@ -27,30 +28,11 @@ import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { canRoleChangeStatus } from "@/src/utils/role-status";
+import { shouldRouteDesignUpdateToApproval } from "@/src/utils/design-workflow";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
 import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 
-const orderItemStatuses = new Set([
-  "PENDIENTE",
-  "REVISION_ADMIN",
-  "APROBACION_INICIAL",
-  "PENDIENTE_PRODUCCION",
-  "EN_MONTAJE",
-  "EN_IMPRESION",
-  "SUBLIMACION",
-  "CORTE_MANUAL",
-  "CORTE_LASER",
-  "PENDIENTE_CONFECCION",
-  "CONFECCION",
-  "EN_BODEGA",
-  "EMPAQUE",
-  "ENVIADO",
-  "EN_REVISION_CAMBIO",
-  "APROBADO_CAMBIO",
-  "RECHAZADO_CAMBIO",
-  "COMPLETADO",
-  "CANCELADO",
-]);
+const orderItemStatuses = new Set<string>(ORDER_ITEM_STATUS_VALUES);
 
 const GARMENT_TYPES = new Set([
   "JUGADOR",
@@ -114,18 +96,34 @@ async function syncOrderStatusFromItems(tx: any, orderId: string, changedBy: str
     .where(eq(orders.id, orderId))
     .limit(1);
 
-  if (!orderRow || orderRow.status === "PRODUCCION") {
+  if (!orderRow) return;
+
+  // APROBACION → PROGRAMACION cuando todos los diseños son aprobados
+  if (orderRow.status === ORDER_STATUS.APROBACION) {
+    await tx
+      .update(orders)
+      .set({ status: ORDER_STATUS.PROGRAMACION as any })
+      .where(eq(orders.id, orderId));
+
+    await tx.insert(orderStatusHistory).values({
+      orderId,
+      status: ORDER_STATUS.PROGRAMACION,
+      changedBy,
+    });
     return;
   }
 
+  // PROGRAMACION → PRODUCCION cuando todos los diseños están en pendiente producción
+  if (orderRow.status !== ORDER_STATUS.PROGRAMACION) return;
+
   await tx
     .update(orders)
-    .set({ status: "PRODUCCION" as any })
+    .set({ status: ORDER_STATUS.PRODUCCION as any })
     .where(eq(orders.id, orderId));
 
   await tx.insert(orderStatusHistory).values({
     orderId,
-    status: "PRODUCCION",
+    status: ORDER_STATUS.PRODUCCION,
     changedBy,
   });
 }
@@ -492,7 +490,23 @@ export async function PUT(
     body.quantity !== undefined &&
     qty !== null &&
     Number(qty) !== Number(existing.quantity ?? 0);
-  const effectiveQuantity = qty ?? Number(existing.quantity ?? 0);
+    const effectiveQuantity = qty ?? Number(existing.quantity ?? 0);
+
+    // Bloquear modificación de cantidad una vez el pedido avanzó a programación o producción
+    const QUANTITY_LOCKED_STATUSES = new Set<string>([
+      ORDER_STATUS.PROGRAMACION,
+      ORDER_STATUS.PRODUCCION,
+      ORDER_STATUS.ATRASADO,
+      ORDER_STATUS.FINALIZADO,
+      ORDER_STATUS.ENTREGADO,
+      ORDER_STATUS.CANCELADO,
+    ]);
+    if (quantityWasChanged && QUANTITY_LOCKED_STATUSES.has(String(orderRow?.orderStatus ?? ""))) {
+      return new Response(
+        "La cantidad del diseño no puede modificarse una vez el pedido ha sido enviado a programación.",
+        { status: 422 },
+      );
+    }
 
   if (Array.isArray(body.packaging)) {
     const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
@@ -502,6 +516,25 @@ export async function PUT(
         { status: 400 },
       );
     }
+  }
+
+  // Bloquear edición de contenido desde PRODUCCION (montaje) en adelante.
+  // Solo se permiten cambios de estado (status-only).
+  const ORDER_MONTAJE_LOCKED_STATUSES = new Set<string>([
+    ORDER_STATUS.PRODUCCION,
+    ORDER_STATUS.ATRASADO,
+    ORDER_STATUS.FINALIZADO,
+    ORDER_STATUS.ENTREGADO,
+  ]);
+  const hasNonStatusBodyFields = Object.keys(body).some((k) => k !== "status");
+  if (
+    ORDER_MONTAJE_LOCKED_STATUSES.has(String(orderRow?.orderStatus ?? "")) &&
+    hasNonStatusBodyFields
+  ) {
+    return new Response(
+      "No se puede modificar el diseño: el pedido está en montaje o superior.",
+      { status: 422 },
+    );
   }
 
   // COMPLETACION: solo se permite cambiar quantity y empaques
@@ -719,7 +752,7 @@ export async function PUT(
     patch.status = nextStatus as any;
   }
 
-  if (body.status === undefined && orderRow?.orderStatus === "PRODUCCION" && !quantityWasChanged) {
+  if (body.status === undefined && !quantityWasChanged) {
     const designChanged =
       (body.name !== undefined && toNullableString(body.name) !== toNullableString(existing.name)) ||
       body.clothingImageOneUrl !== undefined ||
@@ -755,9 +788,17 @@ export async function PUT(
     }
 
     const currentStatus = String(existing.status ?? "").trim().toUpperCase();
-    if (designChanged || tallaChanged) {
-      if (currentStatus !== "EN_REVISION_CAMBIO") {
-        patch.status = "EN_REVISION_CAMBIO" as any;
+    if (
+      shouldRouteDesignUpdateToApproval({
+        orderStatus: orderRow?.orderStatus,
+        quantityChanged: quantityWasChanged,
+        requestedStatusProvided: body.status !== undefined,
+        designChanged,
+        tallaChanged,
+      })
+    ) {
+      if (currentStatus !== ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION) {
+        patch.status = ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION as any;
       }
     }
   }

@@ -24,6 +24,12 @@ import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  calculateOrderPaymentPercent,
+  getAllowedNextOrderStatuses,
+  requiresApprovalBeforeProgramming,
+} from "@/src/utils/order-workflow";
 
 const orderTypes: Array<{ value: OrderType; label: string }> = [
   { value: "VN", label: "VN" },
@@ -40,12 +46,13 @@ const orderKinds: Array<{ value: OrderKind; label: string }> = [
 
 const orderStatuses: Array<{ value: OrderStatus; label: string }> = [
   { value: "PENDIENTE", label: "PENDIENTE" },
+  { value: "APROBACION", label: "APROBACION" },
+  { value: "PROGRAMACION", label: "PROGRAMACION" },
   { value: "PRODUCCION", label: "PRODUCCION" },
   { value: "ATRASADO", label: "ATRASADO" },
   { value: "FINALIZADO", label: "FINALIZADO" },
   { value: "ENTREGADO", label: "ENTREGADO" },
   { value: "CANCELADO", label: "CANCELADO" },
-  { value: "REVISION", label: "REVISION" },
 ];
 
 const currencies = ["COP", "USD"] as const;
@@ -55,6 +62,7 @@ type FormState = {
   type: OrderType;
   kind: OrderKind;
   sourceOrderCode: string;
+  provisionalCode: string;
   status: OrderStatus;
   currency: string;
   discount: string;
@@ -104,6 +112,7 @@ export function OrderModal({
     type: "VN",
     kind: "NUEVO",
     sourceOrderCode: "",
+    provisionalCode: "",
     status: "PENDIENTE",
     currency: "COP",
     discount: "0",
@@ -112,16 +121,19 @@ export function OrderModal({
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [approvalFallbackOpen, setApprovalFallbackOpen] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
 
     setSubmitting(false);
+    setApprovalFallbackOpen(false);
     setForm({
       clientId: order?.clientId ?? "",
       type: (order?.type ?? "VN") as OrderType,
       kind: (order?.kind ?? "NUEVO") as OrderKind,
       sourceOrderCode: order?.sourceOrderCode ?? "",
+      provisionalCode: order?.provisionalCode ?? "",
       status: (order?.status ?? "PENDIENTE") as OrderStatus,
       currency: order?.currency ?? "COP",
       discount: order?.discount ?? "0",
@@ -130,9 +142,19 @@ export function OrderModal({
     });
   }, [isOpen, order]);
 
-  const submit = async () => {
-    if (submitting) return;
+  const paymentPercent = calculateOrderPaymentPercent({
+    total: order?.total,
+    shippingFee: order?.shippingFee,
+    paidTotal: order?.paidTotal,
+  });
 
+  const allowedStatuses = order
+    ? [order.status, ...getAllowedNextOrderStatuses(order.status)].filter(
+        (value, index, array) => array.indexOf(value) === index,
+      )
+    : ["PENDIENTE", "APROBACION"];
+
+  const submitPayload = async (forcedStatus?: OrderStatus) => {
     const needsSource =
       form.kind === "COMPLETACION" || form.kind === "REFERENTE";
 
@@ -166,7 +188,8 @@ export function OrderModal({
       type: form.type,
       kind: form.kind,
       sourceOrderCode: needsSource ? form.sourceOrderCode.trim() : undefined,
-      status: form.status,
+      provisionalCode: form.provisionalCode.trim() || undefined,
+      status: forcedStatus ?? form.status,
       ivaEnabled: form.ivaEnabled,
       discount: toPercentString(form.discount) || "0",
       currency: form.currency || "COP",
@@ -189,8 +212,25 @@ export function OrderModal({
     }
   };
 
+  const submit = async () => {
+    if (submitting) return;
+
+    if (
+      order &&
+      form.status === "PROGRAMACION" &&
+      requiresApprovalBeforeProgramming(paymentPercent)
+    ) {
+      setApprovalFallbackOpen(true);
+
+      return;
+    }
+
+    await submitPayload();
+  };
+
   return (
-    <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
+    <>
+      <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>{order ? "Editar pedido" : "Crear pedido"}</ModalHeader>
         <ModalBody>
@@ -256,6 +296,15 @@ export function OrderModal({
               />
             ) : null}
 
+            <Input
+              description="Opcional. Se usa para identificar el pedido antes del aval operativo."
+              label="Código provisional"
+              value={form.provisionalCode}
+              onValueChange={(v) =>
+                setForm((s) => ({ ...s, provisionalCode: v }))
+              }
+            />
+
             <Select
               isDisabled={!canChangeStatus && Boolean(order)}
               label="Estado"
@@ -269,7 +318,7 @@ export function OrderModal({
                 }));
               }}
             >
-              {orderStatuses.map((st) => (
+              {orderStatuses.filter((st) => allowedStatuses.includes(st.value)).map((st) => (
                 <SelectItem key={st.value}>{st.label}</SelectItem>
               ))}
             </Select>
@@ -343,6 +392,18 @@ export function OrderModal({
           </Button>
         </ModalFooter>
       </ModalContent>
-    </Modal>
+      </Modal>
+
+      <ConfirmActionModal
+        cancelLabel="Cancelar"
+        confirmLabel="Enviar a aprobación"
+        description="El anticipo es menor al 50%. El pedido no puede avanzar a programación todavía. Si continúas, se enviará a APROBACIÓN para decidir si puede seguir o si debe esperar un nuevo abono."
+        isLoading={submitting}
+        isOpen={approvalFallbackOpen}
+        title="Anticipo menor al 50%"
+        onConfirm={() => submitPayload("APROBACION")}
+        onOpenChange={setApprovalFallbackOpen}
+      />
+    </>
   );
 }

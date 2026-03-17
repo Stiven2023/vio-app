@@ -7,8 +7,8 @@ import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Tab, Tabs } from "@heroui/tabs";
 
 import { apiJson } from "@/app/erp/orders/_lib/api";
-import { DistributedPaymentsPage } from "@/app/erp/abonos/_components/distributed-payments-page";
 import { OrderPaymentsPage } from "@/app/erp/orders/[id]/payments/_components/order-payments-page";
+import { DistributedPaymentsToggleSection } from "@/app/erp/pagos/_components/distributed-payments-toggle-section";
 import { PaymentsByClientPage } from "@/app/erp/pagos/_components/payments-by-client-page";
 
 type OrderOption = {
@@ -138,15 +138,13 @@ export function PaymentsHubPage({
             </Card>
           ) : null}
 
-          <Card>
-            <CardHeader className="font-semibold">Abonos distribuidos</CardHeader>
-            <CardBody>
-              <DistributedPaymentsPage
-                preselectedOrderId={selectedOrderId || undefined}
-                preselectedOrderLabel={selectedOrder?.orderCode ?? undefined}
-              />
-            </CardBody>
-          </Card>
+          <DistributedPaymentsToggleSection
+            buttonLabel="Activar abono distribuido"
+            description="Se carga bajo demanda para mantener separado el flujo normal de pagos del pedido."
+            preselectedOrderId={selectedOrderId || undefined}
+            preselectedOrderLabel={selectedOrder?.orderCode ?? undefined}
+            title="Abonos distribuidos"
+          />
         </>
       ) : (
         <PaymentsByClientPage

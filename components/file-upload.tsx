@@ -3,8 +3,44 @@
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
 import { useState, useRef, useEffect } from "react";
-import { BsCheckCircleFill, BsFileEarmarkPdf, BsTrash, BsUpload } from "react-icons/bs";
+import {
+  BsCheckCircleFill,
+  BsFileEarmarkPdf,
+  BsTrash,
+  BsUpload,
+} from "react-icons/bs";
 import toast from "react-hot-toast";
+
+function parseAcceptedFileTypes(acceptedFileTypes: string) {
+  return acceptedFileTypes
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isFileAccepted(file: File, acceptedFileTypes: string) {
+  const accepted = parseAcceptedFileTypes(acceptedFileTypes);
+
+  if (accepted.length === 0) return true;
+
+  const fileName = String(file.name ?? "").toLowerCase();
+  const fileExtension = fileName.includes(".")
+    ? `.${fileName.split(".").pop()}`
+    : "";
+  const fileType = String(file.type ?? "").toLowerCase();
+
+  return accepted.some((rule) => {
+    if (rule === "*/*") return true;
+    if (rule.startsWith(".")) return fileExtension === rule;
+    if (rule.endsWith("/*")) {
+      const prefix = rule.slice(0, -1);
+
+      return fileType.startsWith(prefix);
+    }
+
+    return fileType === rule;
+  });
+}
 
 // Función auxiliar para subir archivos
 // En desarrollo: guarda localmente
@@ -12,9 +48,10 @@ import toast from "react-hot-toast";
 export async function uploadFileToCldinary(
   file: File,
   uploadFolder: string,
-  publicId?: string
+  publicId?: string,
 ): Promise<string> {
   const formData = new FormData();
+
   formData.append("file", file);
   formData.append("fileName", publicId || file.name);
   formData.append("uploadFolder", uploadFolder); // Pasar la carpeta personalizada
@@ -25,13 +62,11 @@ export async function uploadFileToCldinary(
   });
 
   if (!uploadRes.ok) {
-    const errorText = await uploadRes.text();
-    console.error("Error al guardar documento:", {
-      status: uploadRes.status,
-      statusText: uploadRes.statusText,
-      errorText,
-    });
-    throw new Error(`Error al guardar archivo: ${uploadRes.status} ${uploadRes.statusText}`);
+    await uploadRes.text();
+
+    throw new Error(
+      `Error al guardar archivo: ${uploadRes.status} ${uploadRes.statusText}`,
+    );
   }
 
   const json = (await uploadRes.json()) as { url?: string };
@@ -84,29 +119,36 @@ export function FileUpload({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+
     if (!file) return;
 
     // Validar tamaño
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
     if (file.size > maxSizeBytes) {
       toast.error(`El archivo debe ser menor a ${maxSizeMB}MB`);
+
       return;
     }
 
     // Validar tipo
-    const fileExtension = `.${file.name.split(".").pop()?.toLowerCase()}`;
-    if (!acceptedFileTypes.includes(fileExtension)) {
+    if (!isFileAccepted(file, acceptedFileTypes)) {
       toast.error(`Solo se permiten archivos: ${acceptedFileTypes}`);
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+
       return;
     }
 
     setSelectedFileName(file.name);
-    
+
     // Si no es auto-upload, solo guardar el nombre y archivo
     if (!autoUpload) {
       if (onFileSelect) {
         onFileSelect(file);
       }
+
       return;
     }
 
@@ -118,10 +160,10 @@ export function FileUpload({
     setIsUploading(true);
     try {
       const url = await uploadFileToCldinary(file, uploadFolder);
+
       onChange(url);
       toast.success("Archivo subido correctamente");
     } catch (error) {
-      console.error("Error al subir archivo:", error);
       toast.error(
         error instanceof Error ? error.message : "Error al subir archivo",
       );
@@ -155,11 +197,11 @@ export function FileUpload({
           <BsCheckCircleFill className="text-xl text-success" />
           <div className="flex-1">
             <a
+              download
               className="flex items-center gap-2 text-sm text-primary hover:underline cursor-pointer"
               href={value}
               rel="noopener noreferrer"
               target="_blank"
-              download
               onClick={(e) => {
                 // Asegurar que se abre en nueva pestaña
                 window.open(value, "_blank");
@@ -171,8 +213,8 @@ export function FileUpload({
             </a>
           </div>
           <Button
-            color="danger"
             isIconOnly
+            color="danger"
             size="sm"
             variant="flat"
             onPress={handleClear}
@@ -190,8 +232,8 @@ export function FileUpload({
             <p className="text-xs text-warning">Se subirá al guardar</p>
           </div>
           <Button
-            color="warning"
             isIconOnly
+            color="warning"
             size="sm"
             variant="flat"
             onPress={handleClear}
@@ -214,7 +256,11 @@ export function FileUpload({
             color={errorMessage ? "danger" : "default"}
             isDisabled={isUploading}
             startContent={
-              isUploading ? <Spinner size="sm" /> : <BsUpload className="text-lg" />
+              isUploading ? (
+                <Spinner size="sm" />
+              ) : (
+                <BsUpload className="text-lg" />
+              )
             }
             variant="flat"
             onPress={() => inputRef.current?.click()}
@@ -227,9 +273,7 @@ export function FileUpload({
         </div>
       )}
 
-      {errorMessage && (
-        <p className="text-xs text-danger">{errorMessage}</p>
-      )}
+      {errorMessage && <p className="text-xs text-danger">{errorMessage}</p>}
     </div>
   );
 }

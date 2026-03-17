@@ -2,7 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { OrdersTab } from "@/app/erp/orders/_components/orders-tab";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 import { verifyAuthToken } from "@/src/utils/auth";
 
 export default async function OrdersPage() {
@@ -23,18 +23,22 @@ export default async function OrdersPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_PEDIDO");
-
-  if (forbidden) redirect("/unauthorized");
-
-  const canCreate = !(await requirePermission(req, "CREAR_PEDIDO"));
-  const canEdit = !(await requirePermission(req, "EDITAR_PEDIDO"));
-  const canDelete = !(await requirePermission(req, "ELIMINAR_PEDIDO"));
-  const canChangeStatus = !(await requirePermission(
-    req,
+  const perms = await checkPermissions(req, [
+    "VER_PEDIDO",
+    "CREAR_PEDIDO",
+    "EDITAR_PEDIDO",
+    "ELIMINAR_PEDIDO",
     "CAMBIAR_ESTADO_PEDIDO",
-  ));
-  const canSeeHistory = !(await requirePermission(req, "VER_HISTORIAL_ESTADO"));
+    "VER_HISTORIAL_ESTADO",
+  ]);
+
+  if (!perms.VER_PEDIDO) redirect("/unauthorized");
+
+  const canCreate = perms.CREAR_PEDIDO;
+  const canEdit = perms.EDITAR_PEDIDO;
+  const canDelete = perms.ELIMINAR_PEDIDO;
+  const canChangeStatus = perms.CAMBIAR_ESTADO_PEDIDO;
+  const canSeeHistory = perms.VER_HISTORIAL_ESTADO;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

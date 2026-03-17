@@ -23,7 +23,8 @@ export default async function ProgramacionPage() {
       <div className="mt-6">
         <ProgramacionItemsTable
           process="PRODUCCION"
-          actualizacionBasePath="/programacion/actualizacion"
+          orderStatus="PROGRAMACION"
+          actualizacionBasePath="/erp/programacion/actualizacion"
         />
       </div>
     </div>

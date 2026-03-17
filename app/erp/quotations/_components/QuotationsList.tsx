@@ -295,7 +295,7 @@ export function QuotationsList() {
       fetchRows();
 
       if (result.order?.id) {
-        router.push(`/orders/${result.order.id}/detail`);
+        router.push(`/erp/orders/${result.order.id}/detail`);
       }
 
       setPrefacturaRow(null);

@@ -1,7 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, orderItems, orderPayments, orders } from "@/src/db/schema";
+import {
+  clients,
+  orderItems,
+  orderPayments,
+  orders,
+  prefacturas,
+} from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -41,7 +47,7 @@ export async function GET(
     const [orderRow] = await db
       .select({
         id: orders.id,
-        orderCode: orders.orderCode,
+        orderCode: sql<string>`coalesce(case when ${(orders as any).operationalApprovedAt} is null then ${(orders as any).provisionalCode} end, ${orders.orderCode})`,
         kind: (orders as any).kind,
         sourceOrderId: (orders as any).sourceOrderId,
         sourceOrderCode: sql<
@@ -91,15 +97,21 @@ export async function GET(
     const rawSubtotal = lines.reduce((acc, l) => {
       const qty = Number(l.quantity ?? 0);
       const unit = asNumber(l.unitPrice);
+
       return acc + unit * qty;
     }, 0);
 
     const subtotalRounded = roundMoney(subtotal);
     const rawSubtotalRounded = roundMoney(rawSubtotal);
-    const discountAmount = roundMoney(Math.max(0, rawSubtotalRounded - subtotalRounded));
+    const discountAmount = roundMoney(
+      Math.max(0, rawSubtotalRounded - subtotalRounded),
+    );
     const discountPercent =
       rawSubtotalRounded > 0
-        ? Math.min(100, Math.max(0, (discountAmount / rawSubtotalRounded) * 100))
+        ? Math.min(
+            100,
+            Math.max(0, (discountAmount / rawSubtotalRounded) * 100),
+          )
         : 0;
     const totalAfterDiscount = subtotalRounded;
     const shippingFee = roundMoney(Math.max(0, asNumber(orderRow.shippingFee)));
@@ -122,6 +134,25 @@ export async function GET(
         : 0;
     const remaining = roundMoney(Math.max(0, grandTotal - paidTotal));
 
+    // Fetch prefactura (anticipo + convenio) for this order
+    const [prefacturaRow] = await db
+      .select({
+        id: prefacturas.id,
+        prefacturaCode: prefacturas.prefacturaCode,
+        status: prefacturas.status,
+        advanceRequired: prefacturas.advanceRequired,
+        advanceReceived: prefacturas.advanceReceived,
+        advanceStatus: prefacturas.advanceStatus,
+        advanceDate: prefacturas.advanceDate,
+        hasConvenio: prefacturas.hasConvenio,
+        convenioType: prefacturas.convenioType,
+        convenioNotes: prefacturas.convenioNotes,
+        convenioExpiresAt: prefacturas.convenioExpiresAt,
+      })
+      .from(prefacturas)
+      .where(eq(prefacturas.orderId, orderId))
+      .limit(1);
+
     return Response.json({
       order: orderRow,
       lines,
@@ -136,10 +167,13 @@ export async function GET(
         paidPercent,
         remaining,
       },
+      prefactura: prefacturaRow ?? null,
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar prefactura", { status: 500 });
   }
 }

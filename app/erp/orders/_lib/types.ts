@@ -1,3 +1,5 @@
+import type { OrderStatus as DbOrderStatus } from "@/src/utils/order-status";
+
 export type Paginated<T> = {
   items: T[];
   page: number;
@@ -10,15 +12,7 @@ export type OrderType = "VN" | "VI" | "VT" | "VW";
 
 export type OrderKind = "NUEVO" | "COMPLETACION" | "REFERENTE";
 
-export type OrderStatus =
-  | "PENDIENTE"
-  | "APROBACION_INICIAL"
-  | "PRODUCCION"
-  | "ATRASADO"
-  | "FINALIZADO"
-  | "ENTREGADO"
-  | "CANCELADO"
-  | "REVISION";
+export type OrderStatus = DbOrderStatus;
 
 export type OrderListItem = {
   id: string;
@@ -41,6 +35,8 @@ export type OrderListItem = {
   lastStatusAt?: string | null;
   lastStatusBy?: string | null;
   createdAt: string | null;
+  provisionalCode?: string | null;
+  operationalApprovedAt?: string | null;
 };
 
 export type OrderItemInput = {
@@ -62,6 +58,7 @@ export type OrderInput = {
   currency: string;
   shippingFee?: string;
   items?: OrderItemInput[];
+  provisionalCode?: string;
 };
 
 export type OrdersOptions = {

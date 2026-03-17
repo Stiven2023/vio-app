@@ -50,13 +50,13 @@ import {
 const statusOptions: Array<{ value: string; label: string }> = [
   { value: "all", label: "Todos" },
   { value: "PENDIENTE", label: "Pendiente" },
-  { value: "APROBACION_INICIAL", label: "Aprobación" },
+  { value: "APROBACION", label: "Aprobación" },
+  { value: "PROGRAMACION", label: "Programación" },
   { value: "PRODUCCION", label: "Producción" },
   { value: "ATRASADO", label: "Atrasado" },
   { value: "FINALIZADO", label: "Finalizado" },
   { value: "ENTREGADO", label: "Entregado" },
   { value: "CANCELADO", label: "Cancelado" },
-  { value: "REVISION", label: "Revisión" },
 ];
 
 const typeOptions: Array<{ value: string; label: string }> = [

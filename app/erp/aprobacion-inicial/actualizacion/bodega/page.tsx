@@ -36,7 +36,7 @@ export default async function AprobacionInicialActualizacionBodegaPage() {
             bodega: "Aprobación bodega",
             compras: "Aprobación compras",
           }}
-          orderStatus="APROBACION_INICIAL"
+          orderStatus="APROBACION"
           process="BODEGA"
           view="ACTUALIZACION"
         />

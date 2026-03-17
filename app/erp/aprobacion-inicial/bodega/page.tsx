@@ -23,7 +23,7 @@ export default async function AprobacionInicialBodegaPage() {
       <div className="mt-6">
         <ProgramacionItemsTable
           process="BODEGA"
-          orderStatus="APROBACION_INICIAL"
+          orderStatus="APROBACION"
           showProcessColumn
           basePath="/aprobacion-inicial"
           actualizacionBasePath="/aprobacion-inicial/actualizacion"

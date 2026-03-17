@@ -142,8 +142,8 @@ export const buildNavbarSections = ({
                 { name: "Suppliers", href: "/maestros/proveedores" },
                 { name: "Confectionists", href: "/confectionists" },
                 { name: "Packing", href: "/packers" },
-                { name: "Pattern board", href: "/molderia/tablero" },
-                { name: "Patterns & molds", href: "/molderia/trazos-moldes" },
+                { name: "Pattern board", href: "/patterns/tablero" },
+                { name: "Patterns & molds", href: "/patterns/trazos-moldes" },
             ],
         },
         {
@@ -151,7 +151,7 @@ export const buildNavbarSections = ({
             label: "Costs",
             icon: FiGrid,
             visible: true,
-            items: [{ name: "Budgets", href: "/costos/presupuestos" }],
+            items: [{ name: "Budgets", href: "/costs/presupuestos" }],
         },
         {
             key: "juridica",
@@ -159,7 +159,7 @@ export const buildNavbarSections = ({
             icon: FiShield,
             visible: true,
             items: [
-                { name: "Legal", href: "/juridica" },
+                { name: "Legal", href: "/legal" },
             ],
         },
         {
@@ -168,13 +168,13 @@ export const buildNavbarSections = ({
             icon: FiUsers,
             visible: true,
             items: [
-                { name: "Incumplimiento", href: "/rh/incumplimiento" },
-                { name: "Overtime", href: "/rh/trabajo-extra" },
-                { name: "Vacations", href: "/rh/vacaciones" },
-                { name: "Settlement", href: "/rh/liquidacion" },
-                { name: "Commissions", href: "/rh/comisiones" },
-                { name: "Bonuses", href: "/rh/bonos" },
-                { name: "Per diem", href: "/rh/viaticos" },
+                { name: "Incumplimiento", href: "/hr/incumplimiento" },
+                { name: "Overtime", href: "/hr/trabajo-extra" },
+                { name: "Vacations", href: "/hr/vacaciones" },
+                { name: "Settlement", href: "/hr/liquidacion" },
+                { name: "Commissions", href: "/hr/comisiones" },
+                { name: "Bonuses", href: "/hr/bonos" },
+                { name: "Per diem", href: "/hr/viaticos" },
             ],
         },
     ];

@@ -9,6 +9,14 @@ import { db } from "@/src/db";
 import { orders } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
+const MONTAJE_LOCKED_STATUSES = new Set([
+  "PRODUCCION",
+  "ATRASADO",
+  "FINALIZADO",
+  "ENTREGADO",
+  "CANCELADO",
+]);
+
 export default async function EditOrderItemRoute({
   params,
 }: {
@@ -36,6 +44,7 @@ export default async function EditOrderItemRoute({
     .select({
       id: orders.id,
       kind: orders.kind,
+      status: orders.status,
       currency: orders.currency,
     })
     .from(orders)
@@ -43,6 +52,11 @@ export default async function EditOrderItemRoute({
     .limit(1);
 
   if (!order) redirect(`/orders/${orderId}/items`);
+
+  // Bloquear edición desde PRODUCCION (montaje) en adelante
+  if (MONTAJE_LOCKED_STATUSES.has(String(order.status ?? ""))) {
+    redirect(`/orders/${orderId}/items`);
+  }
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

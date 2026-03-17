@@ -593,6 +593,7 @@ export function OrderItemEditPage(props: {
           <PackagingSection
             disabled={uiDisabled}
             garmentType={String(item.garmentType ?? "JUGADOR")}
+            maxCurveQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
             mode={packagingMode}
             packaging={packaging}
             onModeChange={setPackagingMode}

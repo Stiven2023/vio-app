@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 import { PaymentsHubClient } from "@/app/erp/pagos/_components/payments-hub-client";
 
 export default async function PagosPage({
@@ -17,12 +17,18 @@ export default async function PagosPage({
     headers: new Headers(await headers()),
   });
 
-  const forbiddenView = await requirePermission(req, "VER_PAGO");
-  if (forbiddenView) redirect("/unauthorized");
+  const perms = await checkPermissions(req, [
+    "VER_PAGO",
+    "CREAR_PAGO",
+    "EDITAR_PAGO",
+    "APROBAR_PAGO",
+  ]);
 
-  const canCreate = !(await requirePermission(req, "CREAR_PAGO"));
-  const canEdit = !(await requirePermission(req, "EDITAR_PAGO"));
-  const canApprove = !(await requirePermission(req, "APROBAR_PAGO"));
+  if (!perms.VER_PAGO) redirect("/unauthorized");
+
+  const canCreate = perms.CREAR_PAGO;
+  const canEdit = perms.EDITAR_PAGO;
+  const canApprove = perms.APROBAR_PAGO;
 
   const sp = (await searchParams) ?? {};
   const rawOrderId = Array.isArray(sp.orderId) ? sp.orderId[0] : sp.orderId;

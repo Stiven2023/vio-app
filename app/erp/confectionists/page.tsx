@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { ConfectionistsTab } from "./_components/confectionists-tab";
 
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function ConfectionistsPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -14,13 +14,18 @@ export default async function ConfectionistsPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "VER_CONFECCIONISTA");
+  const perms = await checkPermissions(req, [
+    "VER_CONFECCIONISTA",
+    "CREAR_CONFECCIONISTA",
+    "EDITAR_CONFECCIONISTA",
+    "ELIMINAR_CONFECCIONISTA",
+  ]);
 
-  if (forbidden) redirect("/unauthorized");
+  if (!perms.VER_CONFECCIONISTA) redirect("/unauthorized");
 
-  const canCreate = !(await requirePermission(req, "CREAR_CONFECCIONISTA"));
-  const canEdit = !(await requirePermission(req, "EDITAR_CONFECCIONISTA"));
-  const canDelete = !(await requirePermission(req, "ELIMINAR_CONFECCIONISTA"));
+  const canCreate = perms.CREAR_CONFECCIONISTA;
+  const canEdit = perms.EDITAR_CONFECCIONISTA;
+  const canDelete = perms.ELIMINAR_CONFECCIONISTA;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

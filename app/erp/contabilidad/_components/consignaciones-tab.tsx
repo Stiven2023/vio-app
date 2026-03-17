@@ -1,8 +1,12 @@
 "use client";
 
+import type { Paginated } from "@/app/erp/orders/_lib/types";
+
 import { useEffect, useMemo, useState } from "react";
+import NextLink from "next/link";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
+import { Card, CardBody } from "@heroui/card";
 import {
   Dropdown,
   DropdownItem,
@@ -10,7 +14,21 @@ import {
   DropdownTrigger,
 } from "@heroui/dropdown";
 import { Input } from "@heroui/input";
-import { Table, TableBody, TableCell, TableColumn, TableHeader, TableRow } from "@heroui/table";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/modal";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableColumn,
+  TableHeader,
+  TableRow,
+} from "@heroui/table";
 import { BsThreeDotsVertical } from "react-icons/bs";
 
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
@@ -22,19 +40,33 @@ import { normalizePaymentStatusLabel } from "@/src/utils/payment-status";
 
 type DepositRow = {
   id: string;
+  orderId: string | null;
   bankId: string | null;
   transferBank: string | null;
   bankCode: string | null;
   bankName: string | null;
   bankAccountRef: string | null;
   orderCode: string | null;
+  clientCode: string | null;
+  clientName: string | null;
   referenceCode: string | null;
+  method: string | null;
   status: string | null;
   transferCurrency: string | null;
   depositAmount: string | null;
+  amount: string | null;
   orderTotal: string | null;
   creditBalance: string;
+  proofImageUrl: string | null;
   createdAt: string | null;
+};
+
+type PaymentsData = Paginated<DepositRow> & {
+  summary?: {
+    totalGeneral: string;
+    totalEfectivo: string;
+    totalTransferencias: string;
+  };
 };
 
 type BankOption = {
@@ -44,7 +76,10 @@ type BankOption = {
   isActive: boolean | null;
 };
 
-function formatMoney(value: string | number | null | undefined, currency: string) {
+function formatMoney(
+  value: string | number | null | undefined,
+  currency: string,
+) {
   const n = Number(value ?? 0);
   const cur = String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
 
@@ -61,17 +96,19 @@ export function DepositsTab({
 }: {
   canApprovePayments: boolean;
 }) {
+  const [detailRow, setDetailRow] = useState<DepositRow | null>(null);
   const [q, setQ] = useState("");
+  // Consignaciones es solo para transferencias bancarias
   const [bank, setBank] = useState("all");
   const [currency, setCurrency] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [bankOptions, setBankOptions] = useState<
     Array<{ value: string; label: string }>
-  >([{ value: "all", label: "All" }]);
+  >([{ value: "all", label: "Todos" }]);
 
   const currencyOptions = [
-    { value: "all", label: "All" },
+    { value: "all", label: "Todas" },
     { value: "COP", label: "COP" },
     { value: "USD", label: "USD" },
   ];
@@ -86,26 +123,34 @@ export function DepositsTab({
             label: `${item.code} - ${item.name}`,
           }));
 
-        setBankOptions([{ value: "all", label: "All" }, ...options]);
+        setBankOptions([{ value: "all", label: "Todos" }, ...options]);
       })
       .catch(() => {
-        setBankOptions([{ value: "all", label: "All" }]);
+        setBankOptions([{ value: "all", label: "Todos" }]);
       });
   }, []);
 
   const endpoint = useMemo(() => {
     const sp = new URLSearchParams();
     const query = q.trim();
+
     if (query) sp.set("q", query);
+    sp.set("method", "TRANSFERENCIA");
     if (bank !== "all") sp.set("bank", bank);
     if (currency !== "all") sp.set("currency", currency);
     if (dateFrom) sp.set("dateFrom", dateFrom);
     if (dateTo) sp.set("dateTo", dateTo);
     const qs = sp.toString();
+
     return `/api/contabilidad/consignaciones${qs ? `?${qs}` : ""}`;
   }, [bank, currency, dateFrom, dateTo, q]);
 
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<DepositRow>(endpoint, 15);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<DepositRow>(
+    endpoint,
+    15,
+  );
+  const paymentsData = data as PaymentsData | null;
+  const cardCurrency = currency === "USD" ? "USD" : "COP";
 
   const updateStatus = async (id: string, nextStatus: "PAGADO" | "ANULADO") => {
     try {
@@ -115,9 +160,7 @@ export function DepositsTab({
       });
 
       toast.success(
-        nextStatus === "PAGADO"
-          ? "Payment approved as DEPOSITED"
-          : "Payment rejected as NOT DEPOSITED",
+        nextStatus === "PAGADO" ? "Pago aprobado" : "Pago rechazado",
       );
       refresh();
     } catch (error) {
@@ -126,32 +169,67 @@ export function DepositsTab({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Card>
+          <CardBody className="gap-1">
+            <div className="text-xs uppercase tracking-wide text-default-500">
+              Total transferencias
+            </div>
+            <div className="text-2xl font-semibold">
+              {formatMoney(
+                paymentsData?.summary?.totalTransferencias ?? 0,
+                cardCurrency,
+              )}
+            </div>
+            <p className="text-xs text-default-500">
+              Suma de transferencias bancarias según los filtros.
+            </p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="gap-1">
+            <div className="text-xs uppercase tracking-wide text-default-500">
+              Total general
+            </div>
+            <div className="text-2xl font-semibold">
+              {formatMoney(
+                paymentsData?.summary?.totalGeneral ?? 0,
+                cardCurrency,
+              )}
+            </div>
+            <p className="text-xs text-default-500">
+              Incluye créditos y otros métodos si existen en el período.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
           <FilterSearch
             className="sm:w-80"
-            placeholder="Search by order, deposit # or bank..."
+            placeholder="Buscar por pedido, cliente, referencia o banco..."
             value={q}
             onValueChange={setQ}
           />
           <FilterSelect
             className="sm:w-48"
-            label="Bank"
+            label="Banco"
             options={bankOptions}
             value={bank}
             onChange={setBank}
           />
           <FilterSelect
             className="sm:w-36"
-            label="Currency"
+            label="Moneda"
             options={currencyOptions}
             value={currency}
             onChange={setCurrency}
           />
           <Input
             className="sm:w-44"
-            label="Date from"
+            label="Fecha desde"
             size="sm"
             type="date"
             value={dateFrom}
@@ -159,7 +237,7 @@ export function DepositsTab({
           />
           <Input
             className="sm:w-44"
-            label="Date to"
+            label="Fecha hasta"
             size="sm"
             type="date"
             value={dateTo}
@@ -177,66 +255,102 @@ export function DepositsTab({
               setDateTo("");
             }}
           >
-            Clear filters
+            Limpiar filtros
           </Button>
-          <Button variant="flat" onPress={refresh}>Refresh</Button>
+          <Button variant="flat" onPress={refresh}>
+            Actualizar
+          </Button>
         </div>
       </div>
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Deposits"
+          ariaLabel="Payments"
           headers={[
-            "Deposit date",
-            "Order code",
-            "Bank",
-            "Deposit #",
-            "Status",
-            "Currency",
-            "Deposited total",
-            "Order amount",
-            "Credit balance",
-            "Actions",
+            "Fecha",
+            "Pedido",
+            "Cliente",
+            "Método",
+            "Banco",
+            "Estado",
+            "Moneda",
+            "Pagado",
+            "Valor pedido",
+            "Soporte",
+            "Acciones",
           ]}
         />
       ) : (
-        <Table aria-label="Deposits">
+        <Table aria-label="Payments">
           <TableHeader>
-            <TableColumn>Deposit date</TableColumn>
-            <TableColumn>Order code</TableColumn>
-            <TableColumn>Bank</TableColumn>
-            <TableColumn>Deposit #</TableColumn>
-            <TableColumn>Status</TableColumn>
-            <TableColumn>Currency</TableColumn>
-            <TableColumn>Deposited total</TableColumn>
-            <TableColumn>Order amount</TableColumn>
-            <TableColumn>Credit balance</TableColumn>
-            <TableColumn>Actions</TableColumn>
+            <TableColumn>Fecha</TableColumn>
+            <TableColumn>Pedido</TableColumn>
+            <TableColumn>Cliente</TableColumn>
+            <TableColumn>Método</TableColumn>
+            <TableColumn>Banco</TableColumn>
+            <TableColumn>Estado</TableColumn>
+            <TableColumn>Moneda</TableColumn>
+            <TableColumn>Total pagado</TableColumn>
+            <TableColumn>Valor pedido</TableColumn>
+            <TableColumn>Soporte</TableColumn>
+            <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody emptyContent="No deposits" items={data?.items ?? []}>
+          <TableBody
+            emptyContent="No hay pagos"
+            items={paymentsData?.items ?? []}
+          >
             {(row) => {
-              const currency = String(row.transferCurrency ?? "COP").toUpperCase();
-              const bankLabel = [row.bankCode, row.bankName].filter(Boolean).join(" - ") || row.transferBank || "-";
+              const rowCurrency = String(
+                row.transferCurrency ?? "COP",
+              ).toUpperCase();
+              const bankLabel =
+                [row.bankCode, row.bankName].filter(Boolean).join(" - ") ||
+                row.transferBank ||
+                "-";
+
               return (
                 <TableRow key={row.id}>
                   <TableCell>
-                    {row.createdAt ? new Date(row.createdAt).toLocaleString("es-CO") : "-"}
+                    {row.createdAt
+                      ? new Date(row.createdAt).toLocaleString("es-CO")
+                      : "-"}
                   </TableCell>
                   <TableCell>{row.orderCode ?? "-"}</TableCell>
+                  <TableCell>{row.clientCode ?? "-"}</TableCell>
+                  <TableCell>{row.method ?? "-"}</TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span>{bankLabel}</span>
-                      <span className="text-xs text-default-500">
-                        {row.bankAccountRef ? `Account: ${row.bankAccountRef}` : "Account: -"}
-                      </span>
-                    </div>
+                    {row.method === "TRANSFERENCIA" ? (
+                      (row.bankCode ?? row.transferBank ?? "-")
+                    ) : (
+                      "-"
+                    )}
                   </TableCell>
-                  <TableCell>{row.referenceCode ?? "-"}</TableCell>
-                  <TableCell>{normalizePaymentStatusLabel(row.status)}</TableCell>
-                  <TableCell>{currency}</TableCell>
-                  <TableCell>{formatMoney(row.depositAmount, currency)}</TableCell>
-                  <TableCell>{formatMoney(row.orderTotal, currency)}</TableCell>
-                  <TableCell>{formatMoney(row.creditBalance, currency)}</TableCell>
+                  <TableCell>
+                    {normalizePaymentStatusLabel(row.status)}
+                  </TableCell>
+                  <TableCell>{rowCurrency}</TableCell>
+                  <TableCell>
+                    {formatMoney(row.depositAmount, rowCurrency)}
+                  </TableCell>
+                  <TableCell>
+                    {formatMoney(row.orderTotal, rowCurrency)}
+                  </TableCell>
+                  <TableCell>
+                    {row.proofImageUrl ? (
+                      <Button
+                        as={NextLink}
+                        href={row.proofImageUrl}
+                        rel="noreferrer"
+                        size="sm"
+                        target="_blank"
+                        variant="flat"
+                      >
+                        Ver
+                      </Button>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Dropdown>
                       <DropdownTrigger>
@@ -244,20 +358,26 @@ export function DepositsTab({
                           <BsThreeDotsVertical />
                         </Button>
                       </DropdownTrigger>
-                      <DropdownMenu aria-label="Deposit actions">
+                      <DropdownMenu aria-label="Payment actions">
+                        <DropdownItem
+                          key="view"
+                          onPress={() => setDetailRow(row)}
+                        >
+                          Ver
+                        </DropdownItem>
                         <DropdownItem
                           key="approve"
-                          isDisabled={!canApprovePayments}
+                          isDisabled={!canApprovePayments || row.status === "PAGADO"}
                           onPress={() => updateStatus(row.id, "PAGADO")}
                         >
-                          Approve payment
+                          Aprobar transferencia
                         </DropdownItem>
                         <DropdownItem
                           key="reject"
-                          isDisabled={!canApprovePayments}
+                          isDisabled={!canApprovePayments || row.status === "PAGADO"}
                           onPress={() => updateStatus(row.id, "ANULADO")}
                         >
-                          Reject payment
+                          Rechazar pago
                         </DropdownItem>
                       </DropdownMenu>
                     </Dropdown>
@@ -269,7 +389,108 @@ export function DepositsTab({
         </Table>
       )}
 
-      {data ? (
+      <Modal
+        isOpen={Boolean(detailRow)}
+        size="lg"
+        onOpenChange={(open) => {
+          if (!open) setDetailRow(null);
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>Detalle de consignacion</ModalHeader>
+          <ModalBody>
+            {detailRow ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs text-default-500">Fecha</div>
+                  <div className="font-medium">
+                    {detailRow.createdAt
+                      ? new Date(detailRow.createdAt).toLocaleString("es-CO")
+                      : "-"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Pedido</div>
+                  <div className="font-medium">{detailRow.orderCode ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Cliente</div>
+                  <div className="font-medium">
+                    {detailRow.clientCode ?? "-"} {detailRow.clientName ? `- ${detailRow.clientName}` : ""}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Metodo</div>
+                  <div className="font-medium">{detailRow.method ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Banco</div>
+                  <div className="font-medium">
+                    {[detailRow.bankCode, detailRow.bankName]
+                      .filter(Boolean)
+                      .join(" - ") || detailRow.transferBank || "-"}
+                  </div>
+                  <div className="text-xs text-default-500">
+                    {detailRow.bankAccountRef ? `Cuenta: ${detailRow.bankAccountRef}` : "Cuenta: -"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Referencia</div>
+                  <div className="font-medium">{detailRow.referenceCode ?? "-"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Estado</div>
+                  <div className="font-medium">
+                    {normalizePaymentStatusLabel(detailRow.status)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Moneda</div>
+                  <div className="font-medium">
+                    {String(detailRow.transferCurrency ?? "COP").toUpperCase()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Total pagado</div>
+                  <div className="font-medium">
+                    {formatMoney(
+                      detailRow.depositAmount,
+                      String(detailRow.transferCurrency ?? "COP").toUpperCase(),
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-default-500">Valor pedido</div>
+                  <div className="font-medium">
+                    {formatMoney(
+                      detailRow.orderTotal,
+                      String(detailRow.transferCurrency ?? "COP").toUpperCase(),
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </ModalBody>
+          <ModalFooter>
+            {detailRow?.proofImageUrl ? (
+              <Button
+                as={NextLink}
+                href={detailRow.proofImageUrl}
+                rel="noreferrer"
+                target="_blank"
+                variant="flat"
+              >
+                Ver soporte
+              </Button>
+            ) : null}
+            <Button variant="flat" onPress={() => setDetailRow(null)}>
+              Cerrar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {paymentsData ? (
         <div className="flex items-center justify-end gap-2">
           <Button
             isDisabled={page <= 1 || loading}
@@ -279,7 +500,7 @@ export function DepositsTab({
             Previous
           </Button>
           <Button
-            isDisabled={!data.hasNextPage || loading}
+            isDisabled={!paymentsData.hasNextPage || loading}
             variant="flat"
             onPress={() => setPage((p) => p + 1)}
           >

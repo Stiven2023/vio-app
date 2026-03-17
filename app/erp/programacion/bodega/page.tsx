@@ -23,7 +23,7 @@ export default async function ProgramacionBodegaPage() {
       <div className="mt-6">
         <ProgramacionItemsTable
           process="BODEGA"
-          actualizacionBasePath="/programacion/actualizacion"
+          actualizacionBasePath="/erp/programacion/actualizacion"
         />
       </div>
     </div>

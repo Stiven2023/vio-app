@@ -10,6 +10,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 function normalizeStatus(value: unknown) {
   const raw = String(value ?? "").trim().toUpperCase();
   if (raw === "PAGADO" || raw === "CONSIGNADO") return "PAGADO" as const;
+  if (raw === "CONFIRMADO_CAJA") return "CONFIRMADO_CAJA" as const;
   if (raw === "ANULADO" || raw === "NO_CONSIGNADO" || raw === "DESECHADO") {
     return "ANULADO" as const;
   }
@@ -46,16 +47,16 @@ async function syncOrderStatusByPayments(orderId: string, orderCode: string | nu
 
   const nextStatus =
     paidPercent >= 50
-      ? "PRODUCCION"
+      ? "PROGRAMACION"
       : paidTotal > 0
-        ? "APROBACION_INICIAL"
+        ? "APROBACION"
         : "PENDIENTE";
 
   const nextPrefacturaStatus =
     paidPercent >= 50
       ? "PROGRAMACION"
       : paidTotal > 0
-        ? "APROBACION_INICIAL"
+        ? "APROBACION"
         : "PENDIENTE_CONTABILIDAD";
 
   await db.transaction(async (tx) => {

@@ -227,22 +227,24 @@ export const orderKindEnum = pgEnum("order_kind", [
 
 export const orderStatusEnum = pgEnum("order_status", [
   "PENDIENTE",
-  "APROBACION_INICIAL",
+  "APROBACION",
+  "PROGRAMACION",
   "PRODUCCION",
   "ATRASADO",
   "FINALIZADO",
   "ENTREGADO",
   "CANCELADO",
-  "REVISION",
 ]);
 
 export const orderItemStatusEnum = pgEnum("order_item_status", [
   "PENDIENTE",
-  "REVISION_ADMIN",
-  "APROBACION_INICIAL",
+  "APROBACION",
+  "APROBADO_CAMBIO",
+  "RECHAZADO_CAMBIO",
   "PENDIENTE_PRODUCCION",
-  "EN_MONTAJE",
-  "EN_IMPRESION",
+  "PENDIENTE_PRODUCCION_ACTUALIZACION",
+  "MONTAJE",
+  "IMPRESION",
   "SUBLIMACION",
   "CORTE_MANUAL",
   "CORTE_LASER",
@@ -251,9 +253,6 @@ export const orderItemStatusEnum = pgEnum("order_item_status", [
   "EN_BODEGA",
   "EMPAQUE",
   "ENVIADO",
-  "EN_REVISION_CAMBIO",
-  "APROBADO_CAMBIO",
-  "RECHAZADO_CAMBIO",
   "COMPLETADO",
   "CANCELADO",
 ]);
@@ -269,6 +268,7 @@ export const paymentStatusEnum = pgEnum("payment_status", [
   "PARCIAL",
   "PAGADO",
   "ANULADO",
+  "CONFIRMADO_CAJA",
 ]);
 
 export const inventoryLocationEnum = pgEnum("inventory_location", [
@@ -716,6 +716,15 @@ export const orders = pgTable("orders", {
   ),
   createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  // Provisional code (set by asesor at creation; official orderCode assigned at aval)
+  provisionalCode: varchar("provisional_code", { length: 60 }),
+  // Operational approval (aval)
+  operationalApprovedAt: timestamp("operational_approved_at", {
+    withTimezone: true,
+  }),
+  operationalApprovedBy: uuid("operational_approved_by").references(
+    () => employees.id,
+  ),
 });
 
 export const prefacturas = pgTable("prefacturas", {
@@ -737,6 +746,36 @@ export const prefacturas = pgTable("prefacturas", {
   total: numeric("total", { precision: 14, scale: 2 }).default("0"),
   approvedAt: timestamp("approved_at", { withTimezone: true }).defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  // Advance payment (anticipo)
+  advanceRequired: numeric("advance_required", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  advanceReceived: numeric("advance_received", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  advanceStatus: varchar("advance_status", { length: 20 }).default("PENDIENTE"),
+  advanceDate: timestamp("advance_date", { withTimezone: true }),
+  advancePaymentImageUrl: text("advance_payment_image_url"),
+  // Advance payment method
+  advanceMethod: varchar("advance_method", { length: 20 }),
+  advanceBankId: uuid("advance_bank_id").references(() => banks.id),
+  advanceReferenceNumber: varchar("advance_reference_number", { length: 120 }),
+  advanceCurrency: varchar("advance_currency", { length: 10 }).default("COP"),
+  // Convenio comercial
+  hasConvenio: boolean("has_convenio").default(false),
+  convenioType: varchar("convenio_type", { length: 80 }),
+  convenioNotes: text("convenio_notes"),
+  convenioExpiresAt: date("convenio_expires_at"),
+  // Client approval / aval del cliente
+  hasClientApproval: boolean("has_client_approval").default(false),
+  clientApprovalDate: date("client_approval_date"),
+  clientApprovalBy: varchar("client_approval_by", { length: 150 }),
+  clientApprovalNotes: text("client_approval_notes"),
+  clientApprovalImageUrl: text("client_approval_image_url"),
+  // Convenio image
+  convenioImageUrl: text("convenio_image_url"),
 });
 
 /* =========================
@@ -781,7 +820,11 @@ export const orderItems = pgTable("order_items", {
   manufacturingId: varchar("manufacturing_id", { length: 100 }),
   status: orderItemStatusEnum("status").notNull(),
   requiresRevision: boolean("requires_revision").default(false),
+  ticketMontaje: varchar("ticket_montaje", { length: 80 }),
+  ticketPlotter: varchar("ticket_plotter", { length: 80 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  // Design deadline: calculated from operationalApprovedAt + estimatedLeadDays
+  designDeadline: date("design_deadline"),
 });
 
 export const orderItemAdditions = pgTable("order_item_additions", {

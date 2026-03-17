@@ -2,7 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { CatalogTabs } from "@/app/erp/catalog/_components/catalog-tabs";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function CatalogPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -13,12 +13,18 @@ export default async function CatalogPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbiddenInventory = await requirePermission(req, "VER_INVENTARIO");
-  if (forbiddenInventory) redirect("/unauthorized");
+  const perms = await checkPermissions(req, [
+    "VER_INVENTARIO",
+    "CREAR_ITEM_INVENTARIO",
+    "EDITAR_ITEM_INVENTARIO",
+    "ELIMINAR_ITEM_INVENTARIO",
+  ]);
 
-  const canCreateItem = !(await requirePermission(req, "CREAR_ITEM_INVENTARIO"));
-  const canEditItem = !(await requirePermission(req, "EDITAR_ITEM_INVENTARIO"));
-  const canDeleteItem = !(await requirePermission(req, "ELIMINAR_ITEM_INVENTARIO"));
+  if (!perms.VER_INVENTARIO) redirect("/unauthorized");
+
+  const canCreateItem = perms.CREAR_ITEM_INVENTARIO;
+  const canEditItem = perms.EDITAR_ITEM_INVENTARIO;
+  const canDeleteItem = perms.ELIMINAR_ITEM_INVENTARIO;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

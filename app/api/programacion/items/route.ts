@@ -1,3 +1,4 @@
+import { ORDER_ITEM_STATUS, ORDER_STATUS } from "@/src/utils/order-status";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
@@ -15,14 +16,14 @@ import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
-type OrderStatusFilter = "PRODUCCION" | "APROBACION_INICIAL";
+type OrderStatusFilter = "PRODUCCION" | "PROGRAMACION" | "APROBACION";
 type ProgramacionView = "GENERAL" | "ACTUALIZACION";
 type ActualizacionQueue = "APROBACION" | "PROGRAMACION";
 type DeliverySort = "DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA";
 type GroupByMode = "ITEM" | "ORDER";
 
 const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
-const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "APROBACION_INICIAL"];
+const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "PROGRAMACION", ORDER_STATUS.APROBACION];
 const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
 const VALID_ACTUALIZACION_QUEUE: ActualizacionQueue[] = ["APROBACION", "PROGRAMACION"];
 const VALID_DELIVERY_SORT: DeliverySort[] = ["DEFAULT", "MAS_PROXIMA", "MAS_LEJANA"];
@@ -31,6 +32,12 @@ const PROGRAMACION_CACHE_HEADERS = {
   "Cache-Control": "no-store",
   Vary: "Cookie",
 };
+
+function buildMontajeTicket(designNumber: number) {
+  const next = 1000 + Math.max(1, designNumber || 1);
+
+  return `MON-${next}`;
+}
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -78,7 +85,7 @@ export async function GET(request: Request) {
   }
 
   if (!VALID_ORDER_STATUS.includes(orderStatusRaw as OrderStatusFilter)) {
-    return new Response("orderStatus inválido. Usa: PRODUCCION o APROBACION_INICIAL", {
+    return new Response("orderStatus inválido. Usa: PRODUCCION, PROGRAMACION o APROBACION", {
       status: 400,
     });
   }
@@ -160,7 +167,7 @@ export async function GET(request: Request) {
       ? and(
           processFilter,
           actualizacionQueue === "APROBACION"
-            ? sql`${orderItems.status} = 'EN_REVISION_CAMBIO'`
+            ? sql`${orderItems.status} = ${ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION}`
             : sql`${orderItems.status} = 'APROBADO_CAMBIO'`,
           searchFilter,
           genderFilter,
@@ -188,6 +195,8 @@ export async function GET(request: Request) {
       leadDays: orderItems.estimatedLeadDays,
       leadHours: sql<number | null>`case when ${orderItems.estimatedLeadDays} is null then null else ${orderItems.estimatedLeadDays} * 24 end`,
       process: sql<string>`coalesce(nullif(${orderItems.process}, ''), 'PRODUCCION')`,
+      ticketMontaje: orderItems.ticketMontaje,
+      ticketPlotter: orderItems.ticketPlotter,
       itemCreatedAt: orderItems.createdAt,
     })
     .from(orderItems)
@@ -245,6 +254,8 @@ export async function GET(request: Request) {
     sellerCode: string | null;
     designNumber: number | null;
     design: string | null;
+    ticketMontaje: string | null;
+    ticketPlotter: string | null;
     talla: string | null;
     quantity: number | null;
     fabric: string | null;
@@ -291,6 +302,36 @@ export async function GET(request: Request) {
     });
   }
 
+  const assignedTicketsByItemId = new Map<string, { ticketMontaje: string | null }>();
+  const ticketUpdates: Array<Promise<unknown>> = [];
+
+  for (const item of baseItems) {
+    const itemId = String(item.id ?? "").trim();
+    if (!itemId) continue;
+
+    const designNumber = designNumberByItemId.get(itemId) ?? 1;
+    const currentTicket = String(item.ticketMontaje ?? "").trim();
+    const hasExpectedFormat = /^MON-\d{4}$/i.test(currentTicket);
+    const ticketMontaje = hasExpectedFormat
+      ? currentTicket.toUpperCase()
+      : buildMontajeTicket(designNumber);
+
+    assignedTicketsByItemId.set(itemId, { ticketMontaje });
+
+    if (!hasExpectedFormat) {
+      ticketUpdates.push(
+        db
+          .update(orderItems)
+          .set({ ticketMontaje })
+          .where(eq(orderItems.id, item.id)),
+      );
+    }
+  }
+
+  if (ticketUpdates.length > 0) {
+    await Promise.all(ticketUpdates);
+  }
+
   const sizeWeight = (value: string | null | undefined) => {
     const raw = String(value ?? "")
       .trim()
@@ -325,6 +366,7 @@ export async function GET(request: Request) {
   for (const item of baseItems) {
     const itemId = String(item.id);
     const sizeRows = sizesByItem.get(itemId) ?? [];
+    const tickets = assignedTicketsByItemId.get(itemId);
 
     if (!splitBySize) {
       expandedItems.push({
@@ -340,6 +382,8 @@ export async function GET(request: Request) {
         sellerCode: item.sellerCode,
         designNumber: designNumberByItemId.get(itemId) ?? null,
         design: item.design,
+        ticketMontaje: tickets?.ticketMontaje ?? null,
+        ticketPlotter: item.ticketPlotter ?? null,
         talla: null,
         quantity: item.quantity,
         fabric: item.fabric,
@@ -365,6 +409,8 @@ export async function GET(request: Request) {
         sellerCode: item.sellerCode,
         designNumber: designNumberByItemId.get(itemId) ?? null,
         design: item.design,
+        ticketMontaje: tickets?.ticketMontaje ?? null,
+        ticketPlotter: item.ticketPlotter ?? null,
         talla: null,
         quantity: item.quantity,
         fabric: item.fabric,
@@ -397,6 +443,8 @@ export async function GET(request: Request) {
         sellerCode: item.sellerCode,
         designNumber: designNumberByItemId.get(itemId) ?? null,
         design: item.design,
+        ticketMontaje: tickets?.ticketMontaje ?? null,
+        ticketPlotter: item.ticketPlotter ?? null,
         talla: sizeRow.size,
         quantity: sizeRow.quantity,
         fabric: item.fabric,
@@ -440,6 +488,8 @@ export async function GET(request: Request) {
               sellerCode: string | null;
               designNumber: number | null;
               design: string | null;
+              ticketMontaje: string | null;
+              ticketPlotter: string | null;
               talla: string | null;
               quantity: number | null;
               fabric: string | null;
@@ -462,6 +512,8 @@ export async function GET(request: Request) {
                 orderItemIds: [row.orderItemId],
                 designNumber: null,
                 design: null,
+                ticketMontaje: null,
+                ticketPlotter: null,
                 talla: null,
                 quantity: Number(row.quantity ?? 0),
               });

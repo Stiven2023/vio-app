@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PurchaseOrderPageForm } from "../../_components/purchase-order-page-form";
 
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function PurchaseOrderEditPage({
   params,
@@ -17,10 +17,11 @@ export default async function PurchaseOrderEditPage({
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "CREAR_ORDEN_COMPRA");
-  if (forbidden) redirect("/unauthorized");
+  const perms = await checkPermissions(req, ["CREAR_ORDEN_COMPRA", "ASOCIAR_PROVEEDOR"]);
 
-  const canAssociateSupplier = !(await requirePermission(req, "ASOCIAR_PROVEEDOR"));
+  if (!perms.CREAR_ORDEN_COMPRA) redirect("/unauthorized");
+
+  const canAssociateSupplier = perms.ASOCIAR_PROVEEDOR;
   const { id } = await params;
 
   return (

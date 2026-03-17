@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PurchaseOrdersTab } from "./_components/purchase-orders-tab";
 
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function PurchaseOrdersPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -14,10 +14,14 @@ export default async function PurchaseOrdersPage() {
     headers: new Headers(await headers()),
   });
 
-  const forbidden = await requirePermission(req, "CREAR_ORDEN_COMPRA");
-  if (forbidden) redirect("/unauthorized");
+  const perms = await checkPermissions(req, [
+    "CREAR_ORDEN_COMPRA",
+    "REGISTRAR_ENTRADA",
+  ]);
 
-  const canFinalize = !(await requirePermission(req, "REGISTRAR_ENTRADA"));
+  if (!perms.CREAR_ORDEN_COMPRA) redirect("/unauthorized");
+
+  const canFinalize = perms.REGISTRAR_ENTRADA;
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">

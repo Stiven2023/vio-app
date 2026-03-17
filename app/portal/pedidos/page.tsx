@@ -81,7 +81,7 @@ function formatDate(value: string | null) {
 function renderStatusChip(status: string | null | undefined) {
   const normalized = String(status ?? "").trim().toUpperCase();
 
-  if (normalized === "APROBACION_INICIAL") {
+  if (normalized === "APROBACION") {
     return (
       <span className="inline-flex rounded-full bg-warning-100 px-2 py-0.5 text-xs font-semibold text-warning-700">
         Aprobación
