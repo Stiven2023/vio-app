@@ -3,7 +3,7 @@ import { eq, sql, desc } from "drizzle-orm";
 import { db } from "@/src/db";
 import { clients, employees, clientLegalStatusHistory } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { checkPermissions, requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { detectCriticalFieldChanges, registerAutoRevisionOnClientChange } from "@/app/erp/admin/_lib/sync-client-legal-status";
@@ -78,26 +78,63 @@ export async function GET(request: Request) {
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "VER_CLIENTE");
-
-  if (forbidden) return forbidden;
-
   try {
     const { searchParams } = new URL(request.url);
+    const permissions = await checkPermissions(request, ["VER_CLIENTE", "VER_PEDIDO"]);
+    const canViewClients = Boolean(permissions.VER_CLIENTE);
+    const canViewOrders = Boolean(permissions.VER_PEDIDO);
+
+    if (!canViewClients && !canViewOrders) {
+      return new Response("Access denied: missing permission", { status: 403 });
+    }
+
     const { page, pageSize, offset } = parsePagination(searchParams);
-    const [{ total }] = await db
+    const q = String(searchParams.get("q") ?? "").trim();
+    const forAutocomplete = ["1", "true", "yes"].includes(
+      String(searchParams.get("forAutocomplete") ?? "").trim().toLowerCase(),
+    );
+    const onlyVigente = ["1", "true", "yes"].includes(
+      String(searchParams.get("onlyVigente") ?? "").trim().toLowerCase(),
+    );
+
+    if (!canViewClients && !q) {
+      return new Response("Search query is required", { status: 400 });
+    }
+
+    const qLike = `%${q}%`;
+    const whereClause = q
+      ? sql`(
+          ${clients.name} ilike ${qLike}
+          or ${clients.clientCode} ilike ${qLike}
+          or ${clients.identification} ilike ${qLike}
+          or ${clients.email} ilike ${qLike}
+          or ${clients.contactName} ilike ${qLike}
+        )`
+      : undefined;
+
+    const totalQuery = db
       .select({ total: sql<number>`count(*)::int` })
       .from(clients);
 
-    // Obtener todos los clientes
-    const allClients = await db
+    const [{ total }] = whereClause
+      ? await totalQuery.where(whereClause)
+      : await totalQuery;
+
+    const maxAutocompleteRows = Math.min(300, Math.max(pageSize * 5, 60));
+    const itemsQuery = db
       .select()
       .from(clients)
-      .orderBy(desc(clients.createdAt));
+      .orderBy(desc(clients.createdAt))
+      .limit(forAutocomplete ? maxAutocompleteRows : pageSize)
+      .offset(forAutocomplete ? 0 : offset);
+
+    const pageClients = whereClause
+      ? await itemsQuery.where(whereClause)
+      : await itemsQuery;
 
     // Para cada cliente, obtener su estado jurídico más reciente
     const itemsWithStatus = await Promise.all(
-      allClients.slice(offset, offset + pageSize).map(async (client) => {
+      pageClients.map(async (client) => {
         const latestStatus = await db.query.clientLegalStatusHistory.findFirst({
           where: eq(clientLegalStatusHistory.clientId, client.id),
           orderBy: desc(clientLegalStatusHistory.createdAt),
@@ -119,9 +156,27 @@ export async function GET(request: Request) {
       })
     );
 
-    const hasNextPage = offset + itemsWithStatus.length < total;
+    const filteredByLegalStatus = onlyVigente
+      ? itemsWithStatus.filter((item) =>
+          item.legalStatus
+            ? item.legalStatus === "VIGENTE"
+            : Boolean(item.isActive),
+        )
+      : itemsWithStatus;
 
-    return Response.json({ items: itemsWithStatus, page, pageSize, total, hasNextPage });
+    const pagedItems = forAutocomplete
+      ? filteredByLegalStatus.slice(offset, offset + pageSize)
+      : filteredByLegalStatus;
+    const effectiveTotal = forAutocomplete ? filteredByLegalStatus.length : total;
+    const hasNextPage = offset + pagedItems.length < effectiveTotal;
+
+    return Response.json({
+      items: pagedItems,
+      page,
+      pageSize,
+      total: effectiveTotal,
+      hasNextPage,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
     if (response) return response;

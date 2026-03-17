@@ -1,5 +1,5 @@
-import { PrefacturaForm } from "../_components/prefactura-form";
+import { QuotationEditor } from "@/app/erp/quotations/_components/QuotationEditor";
 
 export default function NewPrefacturaPage() {
-  return <PrefacturaForm mode="create" />;
+  return <QuotationEditor mode="prefactura" />;
 }

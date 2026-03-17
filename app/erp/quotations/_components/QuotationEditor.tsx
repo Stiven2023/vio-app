@@ -107,6 +107,10 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   const [loadedQuoteCode, setLoadedQuoteCode] = useState("");
   const [prefacturaOrderType, setPrefacturaOrderType] =
     useState<PrefacturaOrderType>("VN");
+  const [prefacturaOrderName, setPrefacturaOrderName] = useState("");
+  const [hasConvenio, setHasConvenio] = useState(false);
+  const [hasClientApproval, setHasClientApproval] = useState(false);
+  const [hasAdvance, setHasAdvance] = useState(true);
   const [creatingPrefactura, setCreatingPrefactura] = useState(false);
 
   const { products, loading: loadingProducts } = useProductsData(form.currency);
@@ -233,6 +237,12 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   }, [quoteId]);
 
   useEffect(() => {
+    if (!hasConvenio) {
+      setHasAdvance(true);
+    }
+  }, [hasConvenio]);
+
+  useEffect(() => {
     if (!selectedClient) return;
 
     setForm((s) => ({
@@ -326,9 +336,11 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
         return;
       }
 
-      const orderName = String(form.customerName ?? "").trim()
-        ? `Pedido ${String(form.customerName ?? "").trim()}`
-        : "Pedido prefactura";
+      const orderName = prefacturaOrderName.trim()
+        ? prefacturaOrderName.trim()
+        : String(form.customerName ?? "").trim()
+          ? `Pedido ${String(form.customerName ?? "").trim()}`
+          : "Pedido prefactura";
 
       try {
         setCreatingPrefactura(true);
@@ -344,6 +356,9 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
             total: computed.total,
             orderName,
             orderType: prefacturaOrderType,
+            advanceRequired: hasAdvance ? computed.advancePayment : 0,
+            hasConvenio,
+            hasClientApproval,
             items: validItems.map((item) => ({
               productId: item.productId,
               orderType: item.orderType,
@@ -447,6 +462,12 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       {mode === "prefactura" && !quoteId ? (
         <Card radius="md" shadow="none" className="border border-default-200">
           <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Input
+              label="Nombre del pedido"
+              placeholder="Ej: Pedido Club Deportivo"
+              value={prefacturaOrderName}
+              onValueChange={setPrefacturaOrderName}
+            />
             <Select
               label="Tipo de pedido"
               selectedKeys={[prefacturaOrderType]}
@@ -462,6 +483,45 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
               <SelectItem key="VT">VT</SelectItem>
               <SelectItem key="VW">VW</SelectItem>
             </Select>
+
+            <div className="rounded-medium border border-default-200 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Convenio</p>
+                  <p className="text-xs text-default-500">Habilita edición del anticipo.</p>
+                </div>
+                <Switch isSelected={hasConvenio} onValueChange={setHasConvenio} />
+              </div>
+            </div>
+
+            <div className="rounded-medium border border-default-200 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Aval del cliente</p>
+                  <p className="text-xs text-default-500">Confirmación comercial del cliente.</p>
+                </div>
+                <Switch isSelected={hasClientApproval} onValueChange={setHasClientApproval} />
+              </div>
+            </div>
+
+            <div className="rounded-medium border border-default-200 p-3 md:col-span-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Anticipo</p>
+                  <p className="text-xs text-default-500">
+                    Inicia en true y solo se puede cambiar cuando Convenio está en true.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-default-500">{hasAdvance ? "true" : "false"}</span>
+                  <Switch
+                    isDisabled={!hasConvenio}
+                    isSelected={hasAdvance}
+                    onValueChange={setHasAdvance}
+                  />
+                </div>
+              </div>
+            </div>
           </CardBody>
         </Card>
       ) : null}

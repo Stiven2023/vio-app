@@ -274,7 +274,7 @@ export function PrefacturaForm({
     setClientLoading(true);
     try {
       const res = await apiJson<{ items: ClientOption[] }>(
-        `/api/clients?q=${encodeURIComponent(q.trim())}&pageSize=20`,
+        `/api/clients?q=${encodeURIComponent(q.trim())}&pageSize=20&forAutocomplete=1&onlyVigente=1`,
       );
 
       setClientOptions(Array.isArray(res?.items) ? res.items : []);
@@ -432,7 +432,7 @@ export function PrefacturaForm({
   const statusVal = initial?.status ?? "PENDIENTE_CONTABILIDAD";
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 px-6 py-10">
+    <div className="container mx-auto max-w-7xl space-y-6 px-6 py-10">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">
@@ -463,7 +463,7 @@ export function PrefacturaForm({
             </div>
           ) : (
             <p className="mt-0.5 text-sm text-default-500">
-              Se asignara al guardar
+              Estructura tipo cotización con validaciones comerciales de prefactura.
             </p>
           )}
         </div>
@@ -762,177 +762,203 @@ export function PrefacturaForm({
       ) : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="border border-default-200" radius="md" shadow="none">
-          <CardHeader className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Anticipo</span>
-            <Switch
-              isSelected={hasAdvance}
-              size="sm"
-              onValueChange={setHasAdvance}
-            >
-              <span className="text-xs text-default-500">
-                {hasAdvance ? "Con anticipo" : "Sin anticipo"}
-              </span>
-            </Switch>
-          </CardHeader>
-          <Divider />
-          {hasAdvance ? (
-            <CardBody className="space-y-3">
-              {totalPrefactura > 0 ? (
-                <div className="space-y-1 rounded-lg bg-default-50 p-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-default-500">Total prefactura</span>
-                    <span className="font-semibold">
-                      {formatMoney(totalPrefactura, currency)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-primary">
-                    <span>50% para programacion</span>
-                    <span className="font-semibold">
-                      {formatMoney(halfTotal, currency)}
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-              <Select
-                label="Metodo de pago"
-                selectedKeys={advanceMethod ? [advanceMethod] : []}
-                variant="bordered"
-                onSelectionChange={(keys) => {
-                  const first = String(Array.from(keys)[0] ?? "");
-
-                  setAdvanceMethod(
-                    first === "EFECTIVO" || first === "TRANSFERENCIA"
-                      ? first
-                      : "",
-                  );
-                }}
-              >
-                <SelectItem key="EFECTIVO">Efectivo</SelectItem>
-                <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
-              </Select>
-
-              {mode === "edit" ? (
-                <>
-                  <Divider />
-                  <p className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-xs text-primary-700">
-                    El pago del anticipo ahora se registra desde el listado de
-                    prefacturas en Acciones &gt; Realizar anticipo.
-                  </p>
-                  <div className="rounded-lg border border-default-200 bg-default-50 p-3 text-xs text-default-600">
-                    <div className="flex justify-between gap-3">
-                      <span>Meta minima</span>
-                      <strong>
-                        {formatMoney(requiredAdvanceValue, currency)}
-                      </strong>
+        <div className="space-y-4 lg:col-span-2">
+          <Card className="border border-default-200" radius="md" shadow="none">
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Anticipo</p>
+                <p className="text-xs text-default-500">Define si la prefactura exige anticipo.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Chip color={hasAdvance ? "success" : "default"} size="sm" variant="flat">
+                  {hasAdvance ? "true" : "false"}
+                </Chip>
+                <Switch isSelected={hasAdvance} size="sm" onValueChange={setHasAdvance} />
+              </div>
+            </CardHeader>
+            <Divider />
+            {hasAdvance ? (
+              <CardBody className="space-y-3">
+                {totalPrefactura > 0 ? (
+                  <div className="space-y-1 rounded-lg bg-default-50 p-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-default-500">Total prefactura</span>
+                      <span className="font-semibold">{formatMoney(totalPrefactura, currency)}</span>
+                    </div>
+                    <div className="flex justify-between text-primary">
+                      <span>50% para programación</span>
+                      <span className="font-semibold">{formatMoney(halfTotal, currency)}</span>
                     </div>
                   </div>
-                </>
-              ) : null}
-            </CardBody>
-          ) : (
-            <CardBody>
-              <p className="text-xs text-default-400">
-                Sin anticipo registrado.
-              </p>
-            </CardBody>
-          )}
-        </Card>
+                ) : null}
+                <Select
+                  label="Método de pago"
+                  selectedKeys={advanceMethod ? [advanceMethod] : []}
+                  variant="bordered"
+                  onSelectionChange={(keys) => {
+                    const first = String(Array.from(keys)[0] ?? "");
 
-        <Card className="border border-default-200" radius="md" shadow="none">
-          <CardHeader className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Aval del cliente</span>
-            <Switch
-              isSelected={hasClientApproval}
-              size="sm"
-              onValueChange={setHasClientApproval}
-            >
-              <span className="text-xs text-default-500">
-                {hasClientApproval ? "Avalado" : "Sin aval"}
-              </span>
-            </Switch>
-          </CardHeader>
-          <Divider />
-          {hasClientApproval ? (
-            <CardBody className="space-y-3">
-              <Input
-                label="Fuente del aval"
-                placeholder="Ej: WhatsApp, correo, llamada..."
-                value={clientApprovalBy}
-                variant="bordered"
-                onValueChange={setClientApprovalBy}
-              />
-              <Textarea
-                label="Observaciones"
-                minRows={2}
-                placeholder="Detalles del aval, condiciones, acuerdos..."
-                value={clientApprovalNotes}
-                variant="bordered"
-                onValueChange={setClientApprovalNotes}
-              />
-              <FileUpload
-                acceptedFileTypes="image/*"
-                label="Imagen / evidencia del aval"
-                uploadFolder="prefacturas/avales"
-                value={clientApprovalImageUrl}
-                onChange={setClientApprovalImageUrl}
-                onClear={() => setClientApprovalImageUrl("")}
-              />
-            </CardBody>
-          ) : (
-            <CardBody>
-              <p className="text-xs text-default-400">
-                El cliente aun no ha dado aval formal.
-              </p>
-            </CardBody>
-          )}
-        </Card>
+                    setAdvanceMethod(
+                      first === "EFECTIVO" || first === "TRANSFERENCIA" ? first : "",
+                    );
+                  }}
+                >
+                  <SelectItem key="EFECTIVO">Efectivo</SelectItem>
+                  <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
+                </Select>
 
-        <Card className="border border-default-200" radius="md" shadow="none">
-          <CardHeader className="flex items-center justify-between">
-            <span className="text-sm font-semibold">Convenio comercial</span>
-            <Switch
-              isSelected={hasConvenio}
-              size="sm"
-              onValueChange={setHasConvenio}
-            >
-              <span className="text-xs text-default-500">
-                {hasConvenio ? "Con convenio" : "Sin convenio"}
-              </span>
-            </Switch>
-          </CardHeader>
+                {mode === "edit" ? (
+                  <p className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-xs text-primary-700">
+                    El pago del anticipo se registra desde el listado de prefacturas en Acciones &gt; Realizar anticipo.
+                  </p>
+                ) : null}
+              </CardBody>
+            ) : (
+              <CardBody>
+                <p className="text-xs text-default-400">Prefactura sin anticipo obligatorio.</p>
+              </CardBody>
+            )}
+          </Card>
+
+          <Card className="border border-default-200" radius="md" shadow="none">
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Aval del cliente</p>
+                <p className="text-xs text-default-500">Registra evidencia de aprobación comercial.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Chip color={hasClientApproval ? "success" : "default"} size="sm" variant="flat">
+                  {hasClientApproval ? "true" : "false"}
+                </Chip>
+                <Switch
+                  isSelected={hasClientApproval}
+                  size="sm"
+                  onValueChange={setHasClientApproval}
+                />
+              </div>
+            </CardHeader>
+            <Divider />
+            {hasClientApproval ? (
+              <CardBody className="space-y-3">
+                <Input
+                  label="Fuente del aval"
+                  placeholder="Ej: WhatsApp, correo, llamada..."
+                  value={clientApprovalBy}
+                  variant="bordered"
+                  onValueChange={setClientApprovalBy}
+                />
+                <Textarea
+                  label="Observaciones"
+                  minRows={2}
+                  placeholder="Detalles del aval, condiciones, acuerdos..."
+                  value={clientApprovalNotes}
+                  variant="bordered"
+                  onValueChange={setClientApprovalNotes}
+                />
+                <FileUpload
+                  acceptedFileTypes="image/*"
+                  label="Imagen / evidencia del aval"
+                  uploadFolder="prefacturas/avales"
+                  value={clientApprovalImageUrl}
+                  onChange={setClientApprovalImageUrl}
+                  onClear={() => setClientApprovalImageUrl("")}
+                />
+              </CardBody>
+            ) : (
+              <CardBody>
+                <p className="text-xs text-default-400">El cliente aún no ha dado aval formal.</p>
+              </CardBody>
+            )}
+          </Card>
+
+          <Card className="border border-default-200" radius="md" shadow="none">
+            <CardHeader className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">Convenio comercial</p>
+                <p className="text-xs text-default-500">Aplica acuerdos especiales de pago o condiciones.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Chip color={hasConvenio ? "success" : "default"} size="sm" variant="flat">
+                  {hasConvenio ? "true" : "false"}
+                </Chip>
+                <Switch isSelected={hasConvenio} size="sm" onValueChange={setHasConvenio} />
+              </div>
+            </CardHeader>
+            <Divider />
+            {hasConvenio ? (
+              <CardBody className="space-y-3">
+                <Input
+                  label="Tipo de convenio"
+                  placeholder="Ej: Crédito 30 días"
+                  value={convenioType}
+                  variant="bordered"
+                  onValueChange={setConvenioType}
+                />
+                <Textarea
+                  label="Notas"
+                  minRows={2}
+                  placeholder="Condiciones, excepciones, acuerdos..."
+                  value={convenioNotes}
+                  variant="bordered"
+                  onValueChange={setConvenioNotes}
+                />
+                <FileUpload
+                  acceptedFileTypes="image/*"
+                  label="Imagen / documento del convenio"
+                  uploadFolder="prefacturas/convenios"
+                  value={convenioImageUrl}
+                  onChange={setConvenioImageUrl}
+                  onClear={() => setConvenioImageUrl("")}
+                />
+              </CardBody>
+            ) : (
+              <CardBody>
+                <p className="text-xs text-default-400">Sin convenio activo.</p>
+              </CardBody>
+            )}
+          </Card>
+        </div>
+
+        <Card className="border border-default-200 lg:col-span-1" radius="md" shadow="none">
+          <CardHeader className="text-sm font-semibold">Resumen de prefactura</CardHeader>
           <Divider />
-          {hasConvenio ? (
-            <CardBody className="space-y-3">
-              <Input
-                label="Tipo de convenio"
-                placeholder="Ej: Credito 30 dias"
-                value={convenioType}
-                variant="bordered"
-                onValueChange={setConvenioType}
-              />
-              <Textarea
-                label="Notas"
-                minRows={2}
-                placeholder="Condiciones, excepciones, acuerdos..."
-                value={convenioNotes}
-                variant="bordered"
-                onValueChange={setConvenioNotes}
-              />
-              <FileUpload
-                acceptedFileTypes="image/*"
-                label="Imagen / documento del convenio"
-                uploadFolder="prefacturas/convenios"
-                value={convenioImageUrl}
-                onChange={setConvenioImageUrl}
-                onClear={() => setConvenioImageUrl("")}
-              />
-            </CardBody>
-          ) : (
-            <CardBody>
-              <p className="text-xs text-default-400">Sin convenio activo.</p>
-            </CardBody>
-          )}
+          <CardBody className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-default-500">Subtotal</span>
+              <span className="font-medium">{formatMoney(initial?.subtotal, currency)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-default-500">Total</span>
+              <span className="font-semibold text-primary">{formatMoney(totalPrefactura, currency)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-default-500">Anticipo requerido</span>
+              <span className="font-medium">{hasAdvance ? formatMoney(requiredAdvanceValue, currency) : "N/A"}</span>
+            </div>
+
+            <Divider />
+
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-default-500">Anticipo</span>
+                <Chip color={hasAdvance ? "success" : "default"} size="sm" variant="flat">
+                  {hasAdvance ? "true" : "false"}
+                </Chip>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-default-500">Aval cliente</span>
+                <Chip color={hasClientApproval ? "success" : "default"} size="sm" variant="flat">
+                  {hasClientApproval ? "true" : "false"}
+                </Chip>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-default-500">Convenio</span>
+                <Chip color={hasConvenio ? "success" : "default"} size="sm" variant="flat">
+                  {hasConvenio ? "true" : "false"}
+                </Chip>
+              </div>
+            </div>
+          </CardBody>
         </Card>
       </div>
 

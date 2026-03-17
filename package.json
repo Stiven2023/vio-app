@@ -4,8 +4,9 @@
   "description": "Software de gestión para empresas de confección, venta y distribución de indumentaria deportiva",
   "author": {"name": "Stiven Alexis Aguirre Cardona", "email": "stivenalexis2005@gmail.com", "url": "https://portafoliostivenaguirre.org/"},
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": ">=20.18.0 <21 || >=22.13.0",
+    "node": "22.x",
     "pnpm": ">=9"
   },
   "scripts": {
