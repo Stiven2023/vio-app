@@ -1,6 +1,6 @@
 {
-  "installCommand": "npm i -g pnpm@9.15.9 && pnpm -v && pnpm install --frozen-lockfile",
-  "buildCommand": "npm i -g pnpm@9.15.9 && pnpm -v && pnpm build",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
   "crons": [
     {
       "path": "/api/exchange-rate/update",
