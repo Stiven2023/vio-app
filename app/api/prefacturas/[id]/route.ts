@@ -474,6 +474,7 @@ export async function PUT(
           quotationId: prefacturas.quotationId,
           orderId: prefacturas.orderId,
           orderCreatedBy: orders.createdBy,
+          orderStatus: orders.status,
         })
         .from(prefacturas)
         .leftJoin(orders, eq(prefacturas.orderId, orders.id))
@@ -484,6 +485,17 @@ export async function PUT(
 
       if (advisorScope && current.orderCreatedBy !== advisorScope) {
         throw new Error("forbidden");
+      }
+
+      const ORDER_MONTAJE_LOCKED_STATUSES = new Set<string>([
+        "PRODUCCION",
+        "ATRASADO",
+        "FINALIZADO",
+        "ENTREGADO",
+      ]);
+
+      if (ORDER_MONTAJE_LOCKED_STATUSES.has(String(current.orderStatus ?? ""))) {
+        throw new Error("prefactura_locked_by_production");
       }
 
       if (status) {
@@ -549,6 +561,13 @@ export async function PUT(
   } catch (error) {
     if ((error as Error)?.message === "forbidden") {
       return new Response("Forbidden", { status: 403 });
+    }
+
+    if ((error as Error)?.message === "prefactura_locked_by_production") {
+      return new Response(
+        "No se puede modificar la prefactura: el pedido está en montaje o superior. Solo está permitido consultar y registrar abonos.",
+        { status: 422 },
+      );
     }
 
     const response = dbErrorResponse(error);

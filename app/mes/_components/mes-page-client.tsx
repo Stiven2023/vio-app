@@ -50,7 +50,6 @@ import {
   fetchMesPedidos,
   fetchMontajeAssignments,
 } from "@/app/mes/_components/mes-data";
-import { MOCK_DATA } from "@/app/mes/_components/mes-mock-data";
 import { buildProcessQueue } from "@/app/mes/_components/mes-utils";
 import { useSessionStore } from "@/store/session";
 
@@ -89,7 +88,7 @@ export default function MesPageClient() {
       mesOrderStatuses,
     );
 
-    return pedidos.length > 0 ? pedidos : MOCK_DATA;
+    return pedidos;
   }, [activeProcessConfig.operationType, mesOrderStatuses]);
 
   const reloadMontajeAssignments = useCallback(async () => {
@@ -174,8 +173,9 @@ export default function MesPageClient() {
         setLoading(true);
         await refreshData();
       } catch {
-        setData(MOCK_DATA);
+        setData([]);
         setMontajeAssignments(new Map());
+        toast.error("No se pudieron cargar los datos de MES");
       } finally {
         setLoading(false);
       }

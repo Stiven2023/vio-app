@@ -165,10 +165,9 @@ export async function GET(request: Request) {
   const where =
     view === "ACTUALIZACION"
       ? and(
-          processFilter,
           actualizacionQueue === "APROBACION"
             ? sql`${orderItems.status} = ${ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION}`
-            : sql`${orderItems.status} = 'APROBADO_CAMBIO'`,
+            : sql`${orderItems.status} = ${ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION}`,
           searchFilter,
           genderFilter,
           dateStartFilter,

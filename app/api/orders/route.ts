@@ -767,6 +767,23 @@ export async function PUT(request: Request) {
 
   if (!orderRow) return new Response("Not found", { status: 404 });
 
+  const ORDER_MONTAJE_LOCKED_STATUSES = new Set<string>([
+    "PRODUCCION",
+    "ATRASADO",
+    "FINALIZADO",
+    "ENTREGADO",
+  ]);
+
+  if (
+    ORDER_MONTAJE_LOCKED_STATUSES.has(String(orderRow.status ?? "")) &&
+    hasNonStatusChanges
+  ) {
+    return new Response(
+      "No se puede modificar el pedido: ya está en montaje o superior. Solo está permitido consultar y registrar abonos.",
+      { status: 422 },
+    );
+  }
+
   if (
     patch.status !== undefined &&
     patch.status !== null &&

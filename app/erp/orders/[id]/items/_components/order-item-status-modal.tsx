@@ -22,6 +22,7 @@ const statusOptions: OrderItemStatus[] = [
   ORDER_ITEM_STATUS.APROBACION,
   ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION,
   ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
+    ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
   ORDER_ITEM_STATUS.MONTAJE,
   ORDER_ITEM_STATUS.IMPRESION,
   ORDER_ITEM_STATUS.SUBLIMACION,
@@ -37,6 +38,18 @@ const statusOptions: OrderItemStatus[] = [
   ORDER_ITEM_STATUS.COMPLETADO,
   ORDER_ITEM_STATUS.CANCELADO,
 ];
+
+function formatItemStatusLabel(status: string | null | undefined) {
+  const value = String(status ?? "").trim();
+  if (!value) return "-";
+  if (value === ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION) {
+    return "APROBACION ACTUALIZACION";
+  }
+    if (value === ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION) {
+      return "PROGRAMACION ACTUALIZACION";
+    }
+  return value.replace(/_/g, " ");
+}
 
 export type OrderItemStatusTarget = {
   id: string;
@@ -114,7 +127,7 @@ export function OrderItemStatusModal({
               <span className="font-medium">Cantidad:</span> {orderItem?.quantity ?? "-"}
             </div>
             <div>
-              <span className="font-medium">Estado actual:</span> {orderItem?.status ?? "-"}
+              <span className="font-medium">Estado actual:</span> {formatItemStatusLabel(orderItem?.status)}
             </div>
           </div>
 
@@ -131,9 +144,7 @@ export function OrderItemStatusModal({
               .filter((opt) => allowedNext.includes(opt))
               .map((opt) => (
               <SelectItem key={opt}>
-                {opt === ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION
-                  ? "APROBACION ACTUALIZACION"
-                  : opt.replace(/_/g, " ")}
+                {formatItemStatusLabel(opt)}
               </SelectItem>
             ))}
           </Select>

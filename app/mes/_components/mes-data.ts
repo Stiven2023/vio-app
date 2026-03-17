@@ -15,6 +15,7 @@ import {
 
 export function buildProgramacionQueryParams(orderStatuses: string[]) {
   const statuses = orderStatuses.length > 0 ? orderStatuses : ["PROGRAMACION"];
+  const actualizacionQueues = ["APROBACION", "PROGRAMACION"] as const;
   const common = new URLSearchParams({
     process: "PRODUCCION",
     groupBy: "ITEM",
@@ -28,10 +29,10 @@ export function buildProgramacionQueryParams(orderStatuses: string[]) {
     return generalParams;
   });
 
-  const actualizacionParamsList = statuses.map((status) => {
+  const actualizacionParamsList = actualizacionQueues.map((queue) => {
     const actualizacionParams = new URLSearchParams(common);
     actualizacionParams.set("view", "ACTUALIZACION");
-    actualizacionParams.set("actualizacionQueue", status);
+    actualizacionParams.set("actualizacionQueue", queue);
     return actualizacionParams;
   });
 
@@ -110,8 +111,8 @@ export async function fetchMesPedidos(
     buildProgramacionQueryParams(orderStatuses);
 
   const [generalRowsChunks, actualizacionRowsChunks, operationStatusByTalla] = await Promise.all([
-    Promise.all(generalParamsList.map((params) => fetchProgramacionRows(params))),
-    Promise.all(actualizacionParamsList.map((params) => fetchProgramacionRows(params))),
+    Promise.all(generalParamsList.map((params) => fetchProgramacionRows(params).catch(() => []))),
+    Promise.all(actualizacionParamsList.map((params) => fetchProgramacionRows(params).catch(() => []))),
     fetchOperationStatusByTalla(operationType),
   ]);
 

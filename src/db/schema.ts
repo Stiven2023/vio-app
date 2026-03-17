@@ -239,6 +239,7 @@ export const orderStatusEnum = pgEnum("order_status", [
 export const orderItemStatusEnum = pgEnum("order_item_status", [
   "PENDIENTE",
   "APROBACION",
+  "APROBACION_ACTUALIZACION",
   "APROBADO_CAMBIO",
   "RECHAZADO_CAMBIO",
   "PENDIENTE_PRODUCCION",

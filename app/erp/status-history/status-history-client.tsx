@@ -62,7 +62,8 @@ const itemStatusColors: Record<string, "default" | "primary" | "success" | "warn
   PENDIENTE: "warning",
   APROBACION: "primary",
   PENDIENTE_PRODUCCION: "primary",
-  PENDIENTE_PRODUCCION_ACTUALIZACION: "warning",
+  APROBACION_ACTUALIZACION: "warning",
+  PENDIENTE_PRODUCCION_ACTUALIZACION: "primary",
   MONTAJE: "primary",
   IMPRESION: "primary",
   SUBLIMACION: "primary",
@@ -81,8 +82,11 @@ const itemStatusColors: Record<string, "default" | "primary" | "success" | "warn
 
 function formatStatus(status: string | null | undefined) {
   if (!status) return "-";
-  if (status === "PENDIENTE_PRODUCCION_ACTUALIZACION") {
+  if (status === "APROBACION_ACTUALIZACION") {
     return "APROBACION ACTUALIZACION";
+  }
+  if (status === "PENDIENTE_PRODUCCION_ACTUALIZACION") {
+    return "PROGRAMACION ACTUALIZACION";
   }
   return status.replace(/_/g, " ");
 }

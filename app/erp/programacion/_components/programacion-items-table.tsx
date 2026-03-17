@@ -398,7 +398,14 @@ export function ProgramacionItemsTable({
               key="aprobar"
               color="success"
               onPress={() =>
-                decide(item, isActualizacion ? ORDER_ITEM_STATUS.APROBADO_CAMBIO : ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION)
+                decide(
+                  item,
+                  isActualizacion
+                    ? actualizacionQueue === "APROBACION"
+                      ? ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION
+                      : ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION
+                    : ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION,
+                )
               }
             >
               Aprobar
@@ -410,7 +417,9 @@ export function ProgramacionItemsTable({
                 decide(
                   item,
                   isActualizacion
-                    ? ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION
+                    ? actualizacionQueue === "APROBACION"
+                      ? ORDER_ITEM_STATUS.RECHAZADO_CAMBIO
+                      : ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION
                     : ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
                 )
               }

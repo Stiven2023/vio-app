@@ -24,6 +24,7 @@ export default async function AprobacionInicialBodegaPage() {
         <ProgramacionItemsTable
           process="BODEGA"
           orderStatus="APROBACION"
+          actualizacionQueue="APROBACION"
           showProcessColumn
           basePath="/aprobacion-inicial"
           actualizacionBasePath="/aprobacion-inicial/actualizacion"
