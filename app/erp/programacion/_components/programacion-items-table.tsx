@@ -14,6 +14,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
+import type { OrderItemStatus } from "@/src/utils/order-status";
 import { AlertToast } from "@/components/alert-toast";
 import {
   Table,
@@ -289,11 +290,7 @@ export function ProgramacionItemsTable({
 
   const decide = async (
     item: ProgramacionItem,
-    nextStatus:
-      | "PENDIENTE_PRODUCCION"
-      | "PENDIENTE_PRODUCCION_ACTUALIZACION"
-      | "APROBADO_CAMBIO"
-      | "RECHAZADO_CAMBIO",
+    nextStatus: OrderItemStatus,
   ) => {
     const itemIds = effectiveGroupByOrder
       ? Array.from(new Set((item.orderItemIds ?? []).filter(Boolean)))
@@ -410,7 +407,12 @@ export function ProgramacionItemsTable({
               key="denegar"
               color="danger"
               onPress={() =>
-                decide(item, isActualizacion ? ORDER_ITEM_STATUS.RECHAZADO_CAMBIO : ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION)
+                decide(
+                  item,
+                  isActualizacion
+                    ? ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION
+                    : ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
+                )
               }
             >
               Denegar

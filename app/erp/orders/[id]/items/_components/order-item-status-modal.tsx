@@ -21,7 +21,7 @@ const statusOptions: OrderItemStatus[] = [
   ORDER_ITEM_STATUS.PENDIENTE,
   ORDER_ITEM_STATUS.APROBACION,
   ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION,
-  ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
+  ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
   ORDER_ITEM_STATUS.MONTAJE,
   ORDER_ITEM_STATUS.IMPRESION,
   ORDER_ITEM_STATUS.SUBLIMACION,
@@ -130,7 +130,11 @@ export function OrderItemStatusModal({
             {statusOptions
               .filter((opt) => allowedNext.includes(opt))
               .map((opt) => (
-              <SelectItem key={opt}>{opt.replace(/_/g, " ")}</SelectItem>
+              <SelectItem key={opt}>
+                {opt === ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION
+                  ? "APROBACION ACTUALIZACION"
+                  : opt.replace(/_/g, " ")}
+              </SelectItem>
             ))}
           </Select>
         </ModalBody>

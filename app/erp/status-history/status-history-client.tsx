@@ -81,6 +81,9 @@ const itemStatusColors: Record<string, "default" | "primary" | "success" | "warn
 
 function formatStatus(status: string | null | undefined) {
   if (!status) return "-";
+  if (status === "PENDIENTE_PRODUCCION_ACTUALIZACION") {
+    return "APROBACION ACTUALIZACION";
+  }
   return status.replace(/_/g, " ");
 }
 

@@ -753,7 +753,33 @@ export async function PUT(
   }
 
   if (body.status === undefined && !quantityWasChanged) {
+    const hasDesignFieldChange = [
+      "name",
+      "fabric",
+      "observations",
+      "imageUrl",
+      "clothingImageOneUrl",
+      "clothingImageTwoUrl",
+      "logoImageUrl",
+      "screenPrint",
+      "embroidery",
+      "buttonhole",
+      "snap",
+      "tag",
+      "flag",
+      "gender",
+      "neckType",
+      "sleeve",
+      "color",
+      "garmentType",
+      "process",
+      "hasAdditions",
+      "additionEvidence",
+      "requiresSocks",
+    ].some((field) => body[field] !== undefined);
+
     const designChanged =
+      hasDesignFieldChange ||
       (body.name !== undefined && toNullableString(body.name) !== toNullableString(existing.name)) ||
       body.clothingImageOneUrl !== undefined ||
       body.clothingImageTwoUrl !== undefined ||
@@ -797,8 +823,8 @@ export async function PUT(
         tallaChanged,
       })
     ) {
-      if (currentStatus !== ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION) {
-        patch.status = ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION as any;
+      if (currentStatus !== ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION) {
+        patch.status = ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION as any;
       }
     }
   }

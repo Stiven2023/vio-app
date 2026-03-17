@@ -167,7 +167,7 @@ export async function GET(request: Request) {
       ? and(
           processFilter,
           actualizacionQueue === "APROBACION"
-            ? sql`${orderItems.status} = ${ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION}`
+            ? sql`${orderItems.status} = ${ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION}`
             : sql`${orderItems.status} = 'APROBADO_CAMBIO'`,
           searchFilter,
           genderFilter,

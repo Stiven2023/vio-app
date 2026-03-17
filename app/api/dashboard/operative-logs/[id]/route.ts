@@ -412,12 +412,12 @@ export async function POST(
       if (linkedItem?.id) {
         await tx
           .update(orderItems)
-          .set({ status: ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION })
+          .set({ status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION })
           .where(eq(orderItems.id, linkedItem.id));
 
         await tx.insert(orderItemStatusHistory).values({
           orderItemId: linkedItem.id,
-          status: ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
+          status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
           changedBy: changedByEmployeeId,
         });
       }

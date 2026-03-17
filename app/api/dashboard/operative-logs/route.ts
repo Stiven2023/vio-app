@@ -1,6 +1,10 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
-import { ORDER_ITEM_STATUS, ORDER_ITEM_STATUS_VALUES } from "@/src/utils/order-status";
+import {
+  ORDER_ITEM_STATUS,
+  ORDER_ITEM_STATUS_VALUES,
+  ORDER_STATUS,
+} from "@/src/utils/order-status";
 
 import { db } from "@/src/db";
 import {
@@ -9,6 +13,7 @@ import {
   orderItemSocks,
   orderItemStatusHistory,
   orderItems,
+  orderStatusHistory,
   orders,
 } from "@/src/db/schema";
 import {
@@ -34,6 +39,7 @@ const OPERATION_TYPES = [
   "DESPACHO",
 ] as const;
 const PROCESS_CODES = ["P", "S", "C"] as const;
+const MONTAJE_TAKE_ORDER_MARKER = "[MONTAJE_TAKE_ORDER]";
 
 const ORDER_ITEM_STATUS_FLOW = [
   ORDER_ITEM_STATUS.PENDIENTE,
@@ -254,6 +260,53 @@ async function updateOrderItemStatus(args: {
   });
 }
 
+async function resolveActiveMontajeTakeOrder(args: {
+  tx: any;
+  orderCode: string;
+}) {
+  const [assignment] = await args.tx
+    .select()
+    .from(operativeDashboardLogs)
+    .where(
+      and(
+        eq(operativeDashboardLogs.orderCode, args.orderCode),
+        eq(operativeDashboardLogs.operationType, "MONTAJE"),
+        eq(operativeDashboardLogs.details, MONTAJE_TAKE_ORDER_MARKER),
+        eq(operativeDashboardLogs.isComplete, false),
+      ),
+    )
+    .orderBy(desc(operativeDashboardLogs.createdAt))
+    .limit(1);
+
+  return assignment ?? null;
+}
+
+async function moveOrderToProduccionWhenTaken(args: {
+  tx: any;
+  orderCode: string;
+  changedByEmployeeId: string | null;
+}) {
+  const [orderRow] = await args.tx
+    .select({ id: orders.id, status: orders.status })
+    .from(orders)
+    .where(eq(orders.orderCode, args.orderCode))
+    .limit(1);
+
+  if (!orderRow) return;
+  if (orderRow.status !== ORDER_STATUS.PROGRAMACION) return;
+
+  await args.tx
+    .update(orders)
+    .set({ status: ORDER_STATUS.PRODUCCION as any })
+    .where(eq(orders.id, orderRow.id));
+
+  await args.tx.insert(orderStatusHistory).values({
+    orderId: orderRow.id,
+    status: ORDER_STATUS.PRODUCCION,
+    changedBy: args.changedByEmployeeId,
+  });
+}
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "dashboard:operative-logs:get",
@@ -273,6 +326,10 @@ export async function GET(request: Request) {
     const { page, pageSize, offset } = parsePagination(searchParams);
     const rawRoleArea = String(searchParams.get("roleArea") ?? "").trim();
     const rawOperationType = String(searchParams.get("operationType") ?? "").trim();
+    const includeAssignments = String(searchParams.get("includeAssignments") ?? "").trim() === "1";
+    const assignmentType = String(searchParams.get("assignmentType") ?? "")
+      .trim()
+      .toUpperCase();
     const roleArea = normalizeRoleArea(searchParams.get("roleArea"));
     const operationType = normalizeOperationType(searchParams.get("operationType"));
 
@@ -284,9 +341,19 @@ export async function GET(request: Request) {
       return new Response("operationType inválido", { status: 400 });
     }
 
+    if (assignmentType && assignmentType !== "TAKE_ORDER") {
+      return new Response("assignmentType inválido", { status: 400 });
+    }
+
     const filters = [
       roleArea ? eq(operativeDashboardLogs.roleArea, roleArea) : undefined,
       operationType ? eq(operativeDashboardLogs.operationType, operationType) : undefined,
+      assignmentType === "TAKE_ORDER"
+        ? eq(operativeDashboardLogs.details, MONTAJE_TAKE_ORDER_MARKER)
+        : undefined,
+      !includeAssignments && assignmentType !== "TAKE_ORDER"
+        ? sql`coalesce(${operativeDashboardLogs.details}, '') <> ${MONTAJE_TAKE_ORDER_MARKER}`
+        : undefined,
     ].filter(Boolean);
 
     const where = filters.length ? and(...filters) : undefined;
@@ -359,6 +426,7 @@ export async function POST(request: Request) {
 
   const operationType = normalizeOperationType(body.operationType);
   const processCode = normalizeProcessCode(body.processCode);
+  const takeOrder = toBoolean(body.takeOrder);
   if (!processCode) return new Response("processCode inválido", { status: 400 });
 
   const orderCode = String(body.orderCode ?? "").trim();
@@ -381,8 +449,99 @@ export async function POST(request: Request) {
   const createdByUserId = getUserIdFromRequest(request);
   const changedByEmployeeId = await getEmployeeIdFromRequest(request);
 
+  if (!createdByUserId && operationType === "MONTAJE") {
+    return new Response("Usuario no autenticado para montaje", { status: 403 });
+  }
+
+  if (takeOrder && operationType !== "MONTAJE") {
+    return new Response("takeOrder solo aplica para operación MONTAJE", {
+      status: 400,
+    });
+  }
+
   try {
     const result = await db.transaction(async (tx) => {
+      if (operationType === "MONTAJE") {
+        const activeTakeOrder = await resolveActiveMontajeTakeOrder({ tx, orderCode });
+
+        if (takeOrder) {
+          if (
+            activeTakeOrder &&
+            activeTakeOrder.createdByUserId &&
+            activeTakeOrder.createdByUserId !== createdByUserId
+          ) {
+            return {
+              conflict: true,
+              claimedByUserId: activeTakeOrder.createdByUserId,
+              takenAt: activeTakeOrder.startAt ?? activeTakeOrder.createdAt,
+            };
+          }
+
+          if (activeTakeOrder?.id) {
+            return {
+              ...activeTakeOrder,
+              linkedOrderItemId: null,
+              appliedStatus: null,
+              isTakeOrder: true,
+            };
+          }
+
+          const [createdTakeOrder] = await tx
+            .insert(operativeDashboardLogs)
+            .values({
+              roleArea,
+              operationType,
+              orderCode,
+              designName,
+              details: MONTAJE_TAKE_ORDER_MARKER,
+              size: null,
+              quantityOp: 0,
+              producedQuantity: 0,
+              startAt: new Date(),
+              endAt: null,
+              isComplete: false,
+              isPartial: false,
+              observations: toOptionalText(body.observations),
+              repoCheck: false,
+              processCode,
+              createdByUserId,
+            })
+            .returning();
+
+          await moveOrderToProduccionWhenTaken({
+            tx,
+            orderCode,
+            changedByEmployeeId,
+          });
+
+          return {
+            ...createdTakeOrder,
+            linkedOrderItemId: null,
+            appliedStatus: null,
+            isTakeOrder: true,
+          };
+        }
+
+        if (!activeTakeOrder?.id) {
+          return {
+            conflict: true,
+            message: "Debes tomar el pedido en montaje antes de registrar producción.",
+          };
+        }
+
+        if (
+          activeTakeOrder.createdByUserId &&
+          activeTakeOrder.createdByUserId !== createdByUserId
+        ) {
+          return {
+            conflict: true,
+            message: "Este pedido ya fue tomado por otro operario en montaje.",
+            claimedByUserId: activeTakeOrder.createdByUserId,
+            takenAt: activeTakeOrder.startAt ?? activeTakeOrder.createdAt,
+          };
+        }
+      }
+
       const [created] = await tx
         .insert(operativeDashboardLogs)
         .values({
@@ -437,10 +596,10 @@ export async function POST(request: Request) {
           await updateOrderItemStatus({
             tx,
             orderItemId: linkedItem.id,
-            nextStatus: ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
+            nextStatus: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
             changedByEmployeeId,
           });
-          appliedStatus = ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION;
+          appliedStatus = ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION;
         }
       }
 
@@ -450,6 +609,10 @@ export async function POST(request: Request) {
         appliedStatus,
       };
     });
+
+    if ((result as any)?.conflict) {
+      return Response.json(result, { status: 409 });
+    }
 
     return Response.json(result, { status: 201 });
   } catch (error) {
