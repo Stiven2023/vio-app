@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Table,
   TableHeader,
@@ -49,6 +49,38 @@ const PROCESO_PREFIX: Record<string, string> = {
   despacho: "DES",
 };
 
+const PROCESS_ROLE_CONFIG: Record<
+  string,
+  {
+    label: string;
+    role: string;
+    operationType:
+      | "MONTAJE"
+      | "PLOTTER"
+      | "SUBLIMACION"
+      | "CALANDRA"
+      | "CORTE_LASER"
+      | "CORTE_MANUAL"
+      | "CONFECCION"
+      | "EMPAQUE"
+      | "INTEGRACION"
+      | "DESPACHO";
+  }
+> = {
+  montaje: { label: "Montaje", role: "OPERARIO_MONTAJE", operationType: "MONTAJE" },
+  plotter: { label: "Plotter", role: "OPERARIO_FLOTER", operationType: "PLOTTER" },
+  sublimacion: { label: "Sublimación", role: "OPERARIO_SUBLIMACION", operationType: "SUBLIMACION" },
+  corte: { label: "Corte", role: "OPERARIO_CORTE_MANUAL", operationType: "CORTE_MANUAL" },
+  integracion: {
+    label: "Integración",
+    role: "OPERARIO_INTEGRACION_CALIDAD",
+    operationType: "INTEGRACION",
+  },
+  confeccion: { label: "Confección", role: "CONFECCIONISTA", operationType: "CONFECCION" },
+  empaque: { label: "Empaque", role: "EMPAQUE", operationType: "EMPAQUE" },
+  despacho: { label: "Despacho", role: "OPERARIO_DESPACHO", operationType: "DESPACHO" },
+};
+
 function generateTicket(proceso: string, index: number): string {
   if (proceso.toLowerCase() === "montaje") {
     return `MON-${1001 + index}`;
@@ -58,6 +90,18 @@ function generateTicket(proceso: string, index: number): string {
     PROCESO_PREFIX[proceso.toLowerCase()] ?? proceso.slice(0, 3).toUpperCase();
 
   return `${prefix}-${1001 + index}`;
+}
+
+function buildProcessTicket(proceso: string, diseno: DisenoGroup, index: number): string {
+  if (proceso === "montaje") {
+    return String(diseno.ticketMontaje || generateTicket("montaje", index));
+  }
+
+  if (proceso === "plotter") {
+    return String(diseno.ticketPlotter || generateTicket("plotter", index));
+  }
+
+  return generateTicket(proceso, index);
 }
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
@@ -124,13 +168,40 @@ type PaginatedResponse<T> = {
 type OperativeLogRow = {
   orderCode: string;
   designName: string;
+  size: string | null;
+  producedQuantity: number;
+  isComplete: boolean;
+  isPartial: boolean;
+  repoCheck: boolean;
+  startAt: string | null;
 };
 
-function buildMontajeAttendKey(orderCode: string, designName: string): string {
+function buildProcessTallaKey(orderCode: string, designName: string, size: string): string {
   const order = String(orderCode ?? "").trim().toUpperCase();
   const design = String(designName ?? "").trim().toUpperCase();
+  const talla = String(size ?? "").trim().toUpperCase();
 
-  return `${order}::${design}`;
+  return `${order}::${design}::${talla}`;
+}
+
+function mergeEstado(prev: EstadoProceso | undefined, next: EstadoProceso): EstadoProceso {
+  const rank: Record<EstadoProceso, number> = {
+    pendiente: 0,
+    en_proceso: 1,
+    reponer: 2,
+    completado: 3,
+  };
+
+  if (!prev) return next;
+  return rank[next] >= rank[prev] ? next : prev;
+}
+
+function extractTurnFromTicket(ticket: string): number {
+  const match = String(ticket ?? "").toUpperCase().match(/-(\d+)$/);
+  if (!match) return Number.POSITIVE_INFINITY;
+
+  const turn = Number(match[1]);
+  return Number.isFinite(turn) ? turn : Number.POSITIVE_INFINITY;
 }
 
 function formatDate(value: string | null | undefined): string {
@@ -178,8 +249,10 @@ async function fetchProgramacionRows(params: URLSearchParams): Promise<Programac
   return rows;
 }
 
-async function fetchAttendedMontajeKeys(): Promise<Set<string>> {
-  const keys = new Set<string>();
+async function fetchOperationStatusByTalla(
+  operationType: string,
+): Promise<Map<string, EstadoProceso>> {
+  const statusMap = new Map<string, EstadoProceso>();
   let page = 1;
   let hasNextPage = true;
 
@@ -188,7 +261,7 @@ async function fetchAttendedMontajeKeys(): Promise<Set<string>> {
       page: String(page),
       pageSize: "200",
       roleArea: "OPERARIOS",
-      operationType: "MONTAJE",
+      operationType,
     });
 
     const response = await fetch(`/api/dashboard/operative-logs?${query.toString()}`);
@@ -198,18 +271,64 @@ async function fetchAttendedMontajeKeys(): Promise<Set<string>> {
     const items = Array.isArray(payload.items) ? payload.items : [];
 
     for (const row of items) {
-      const key = buildMontajeAttendKey(row.orderCode, row.designName);
-      if (key !== "::") keys.add(key);
+      const talla = String(row.size ?? "").trim() || "UNICA";
+      const key = buildProcessTallaKey(row.orderCode, row.designName, talla);
+      if (key === "::::") continue;
+
+      let next: EstadoProceso = "pendiente";
+      if (row.isComplete) next = "completado";
+      else if (row.isPartial && row.repoCheck) next = "reponer";
+      else if (Number(row.producedQuantity ?? 0) > 0 || Boolean(row.startAt)) {
+        next = "en_proceso";
+      }
+
+      const prev = statusMap.get(key);
+      statusMap.set(key, mergeEstado(prev, next));
     }
 
     hasNextPage = Boolean(payload.hasNextPage);
     page += 1;
   }
 
-  return keys;
+  return statusMap;
 }
 
-function buildPedidoGroups(rows: ProgramacionApiRow[]): PedidoGroup[] {
+function buildProgramacionQueryParams() {
+  const common = new URLSearchParams({
+    process: "PRODUCCION",
+    groupBy: "ITEM",
+    pageSize: "200",
+  });
+
+  const generalParams = new URLSearchParams(common);
+  generalParams.set("view", "GENERAL");
+  generalParams.set("orderStatus", "PROGRAMACION");
+
+  const actualizacionParams = new URLSearchParams(common);
+  actualizacionParams.set("view", "ACTUALIZACION");
+  actualizacionParams.set("actualizacionQueue", "PROGRAMACION");
+
+  return { generalParams, actualizacionParams };
+}
+
+async function fetchMesPedidos(operationType: string): Promise<PedidoGroup[]> {
+  const { generalParams, actualizacionParams } = buildProgramacionQueryParams();
+
+  const [generalRows, actualizacionRows, operationStatusByTalla] = await Promise.all([
+    fetchProgramacionRows(generalParams),
+    fetchProgramacionRows(actualizacionParams),
+    fetchOperationStatusByTalla(operationType),
+  ]);
+
+  const mergedRows = [...generalRows, ...actualizacionRows];
+
+  return buildPedidoGroups(mergedRows, operationStatusByTalla);
+}
+
+function buildPedidoGroups(
+  rows: ProgramacionApiRow[],
+  operationStatusByTalla: Map<string, EstadoProceso>,
+): PedidoGroup[] {
   const byOrder = new Map<
     string,
     {
@@ -267,20 +386,34 @@ function buildPedidoGroups(rows: ProgramacionApiRow[]): PedidoGroup[] {
     const qty = Number(row.quantity ?? 0);
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
+    const talla = row.talla ?? "UNICA";
+    const tallaKey = buildProcessTallaKey(orderCode, diseno.detalle, talla);
+
     diseno.tallas.push({
-      talla: row.talla ?? "UNICA",
+      talla,
       cantidad: qty,
-      estado: "pendiente",
+      estado: operationStatusByTalla.get(tallaKey) ?? "pendiente",
     });
   }
 
   return Array.from(byOrder.values())
-    .map((entry) => ({
-      ...entry.pedido,
-      disenos: Array.from(entry.disenosByItem.values()).sort(
+    .map((entry) => {
+      const disenos = Array.from(entry.disenosByItem.values()).sort(
         (a, b) => a.diseno - b.diseno,
-      ),
-    }))
+      );
+      const allComplete = disenos.every((d) =>
+        d.tallas.every((t) => t.estado === "completado"),
+      );
+      const estado: PedidoGroup["estado"] = allComplete
+        ? "COMPLETADO"
+        : "EN PROCESO";
+
+      return {
+        ...entry.pedido,
+        estado,
+        disenos,
+      };
+    })
     .sort((a, b) => b.pedido.localeCompare(a.pedido));
 }
 
@@ -753,53 +886,30 @@ export default function MesPageClient() {
   const [search, setSearch] = useState("");
   const [filterEstado, setFilterEstado] = useState<string>("todos");
   const [activeProceso, setActiveProceso] = useState("programacion");
-  const [attendedMontajeKeys, setAttendedMontajeKeys] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [selectedMontajeTicket, setSelectedMontajeTicket] = useState<{
     pedido: string;
     detalle: string;
     totalUnidades: number;
     ticketMontaje: string;
+    tallas: TallaRow[];
   } | null>(null);
+  const activeProcessConfig =
+    PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
+
+  const reloadMesPedidos = useCallback(async () => {
+    const pedidos = await fetchMesPedidos(activeProcessConfig.operationType);
+
+    return pedidos.length > 0 ? pedidos : mockData;
+  }, [activeProcessConfig.operationType]);
 
   // Load orders from programacion and programacion actualizacion queues.
   useEffect(() => {
-    const loadAttended = async () => {
-      try {
-        const attended = await fetchAttendedMontajeKeys();
-        setAttendedMontajeKeys(attended);
-      } catch {
-        setAttendedMontajeKeys(new Set());
-      }
-    };
-
     const loadProgramacionOrders = async () => {
       try {
         setLoading(true);
-        const common = new URLSearchParams({
-          process: "PRODUCCION",
-          groupBy: "ITEM",
-          pageSize: "200",
-        });
+        const pedidos = await reloadMesPedidos();
 
-        const generalParams = new URLSearchParams(common);
-        generalParams.set("view", "GENERAL");
-        generalParams.set("orderStatus", "PROGRAMACION");
-
-        const actualizacionParams = new URLSearchParams(common);
-        actualizacionParams.set("view", "ACTUALIZACION");
-        actualizacionParams.set("actualizacionQueue", "PROGRAMACION");
-
-        const [generalRows, actualizacionRows] = await Promise.all([
-          fetchProgramacionRows(generalParams),
-          fetchProgramacionRows(actualizacionParams),
-        ]);
-
-        const mergedRows = [...generalRows, ...actualizacionRows];
-        const mergedPedidos = buildPedidoGroups(mergedRows);
-
-        setData(mergedPedidos.length > 0 ? mergedPedidos : mockData);
+        setData(pedidos);
       } catch (error) {
         console.error("Error loading programming orders:", error);
         setData(mockData); // Fallback to mock on error
@@ -808,9 +918,8 @@ export default function MesPageClient() {
       }
     };
 
-    loadAttended();
     loadProgramacionOrders();
-  }, []);
+  }, [reloadMesPedidos]);
 
   const filtered = useMemo(() => {
     return data.filter((p) => {
@@ -838,69 +947,64 @@ export default function MesPageClient() {
     return { total, enProceso, tarde, completado };
   }, [data]);
 
-  const montajeQueue = useMemo(() => {
+  const processQueue = useMemo(() => {
     const queue = data
       .flatMap((pedido) =>
-        pedido.disenos.map((diseno) => {
+        pedido.disenos.map((diseno, idx) => {
+          const tallasPendientes = diseno.tallas.filter((t) => t.estado !== "completado");
           const totalUnidades = diseno.tallas.reduce((sum, t) => sum + t.cantidad, 0);
+          const unidadesPendientes = tallasPendientes.reduce(
+            (sum, t) => sum + t.cantidad,
+            0,
+          );
+          const ticket = buildProcessTicket(activeProceso, diseno, idx);
           return {
             pedido: pedido.pedido,
             cliente: pedido.cliente,
             diseno: diseno.diseno,
             detalle: diseno.detalle,
-            ticketMontaje: diseno.ticketMontaje,
+            ticket: String(ticket),
+            tallas: diseno.tallas,
             totalUnidades,
-            turno: extractMontajeTurn(diseno.ticketMontaje),
-            attendKey: buildMontajeAttendKey(pedido.pedido, diseno.detalle),
+            totalTallasPendientes: tallasPendientes.length,
+            unidadesPendientes,
+            turno: extractTurnFromTicket(String(ticket)),
           };
         }),
       )
-      .filter(
-        (row) =>
-          Number.isFinite(row.turno) && !attendedMontajeKeys.has(row.attendKey),
-      );
+      .filter((row) => Number.isFinite(row.turno) && row.totalTallasPendientes > 0);
 
     queue.sort((a, b) => a.turno - b.turno);
     return queue;
-  }, [data, attendedMontajeKeys]);
+  }, [data, activeProceso]);
 
-  const nextMontajeTurn = montajeQueue[0] ?? null;
+  const nextProcessTurn = processQueue[0] ?? null;
 
   const handleMontajeSaved = () => {
-    if (!selectedMontajeTicket) return;
-
-    const attendedKey = buildMontajeAttendKey(
-      selectedMontajeTicket.pedido,
-      selectedMontajeTicket.detalle,
-    );
-    setAttendedMontajeKeys((prev) => {
-      const next = new Set(prev);
-      next.add(attendedKey);
-      return next;
-    });
     setSelectedMontajeTicket(null);
 
-    void fetchAttendedMontajeKeys().then(setAttendedMontajeKeys).catch(() => undefined);
+    void (async () => {
+      try {
+        const pedidos = await reloadMesPedidos();
+        setData(pedidos);
+      } catch {
+        // Keep previous state if refresh fails.
+      }
+    })();
   };
 
   return (
-    <div className="w-full min-h-screen bg-background text-foreground">
+    <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
       {/* ── HEADER ── */}
-      <div className="px-6 pt-6 pb-2">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-1 h-7 rounded-full bg-primary" />
-          <h1 className="text-xl font-bold tracking-tight">M.E.S.</h1>
-          <span className="text-default-400 text-sm font-normal">
-            Manufacturing Execution System
-          </span>
-        </div>
-        <p className="text-xs text-default-400 ml-4">
-          Seguimiento de producción en tiempo real
+      <header className="space-y-1">
+        <h1 className="text-xl font-semibold">M.E.S.</h1>
+        <p className="text-sm text-default-500">
+          Seguimiento de producción en tiempo real para Manufacturing Execution System.
         </p>
-      </div>
+      </header>
 
       {/* ── STATS BAR ── */}
-      <div className="px-6 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
             label: "Total pedidos",
@@ -934,9 +1038,12 @@ export default function MesPageClient() {
       </div>
 
       {/* ── TABS PROCESOS ── */}
-      <div className="px-6">
+      <section className="rounded-medium border border-default-200 bg-content1 p-2">
         <Tabs
-          classNames={{ tabList: "gap-0", cursor: "bg-primary" }}
+          classNames={{
+            tabList: "gap-0 overflow-x-auto",
+            cursor: "bg-primary",
+          }}
           selectedKey={activeProceso}
           size="sm"
           variant="underlined"
@@ -971,13 +1078,13 @@ export default function MesPageClient() {
             />
           ))}
         </Tabs>
-      </div>
+      </section>
 
-      <Divider />
+      <Divider className="opacity-60" />
 
       {/* ── CONTENIDO: PROGRAMACION ── */}
       {activeProceso === "programacion" && (
-        <div className="px-6 py-4">
+        <section className="rounded-medium border border-default-200 bg-content1 p-4">
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <Input
               className="max-w-xs"
@@ -1072,56 +1179,58 @@ export default function MesPageClient() {
               );
             })
           )}
-        </div>
+        </section>
       )}
 
-      {/* ── CONTENIDO: MONTAJE ── */}
-      {activeProceso === "montaje" && (
-        <div className="px-6 py-4 space-y-4">
-          {nextMontajeTurn ? (
+      {/* ── CONTENIDO: PROCESOS OPERATIVOS ── */}
+      {activeProceso !== "programacion" && (
+        <section className="space-y-4 rounded-medium border border-default-200 bg-content1 p-4">
+          {nextProcessTurn ? (
             <Card className="border border-divider" radius="sm" shadow="none">
               <CardBody className="py-3 px-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip color="secondary" size="sm" variant="flat">
-                    Turno que sigue en montaje: {nextMontajeTurn.ticketMontaje}
+                    Turno que sigue en {activeProcessConfig.label.toLowerCase()}: {nextProcessTurn.ticket}
                   </Chip>
                   <span className="text-xs text-default-400">Pedido:</span>
-                  <span className="text-xs font-medium">{nextMontajeTurn.pedido}</span>
+                  <span className="text-xs font-medium">{nextProcessTurn.pedido}</span>
                   <span className="text-xs text-default-400">Diseño:</span>
-                  <span className="text-xs font-medium">{nextMontajeTurn.diseno}</span>
+                  <span className="text-xs font-medium">{nextProcessTurn.diseno}</span>
                 </div>
               </CardBody>
             </Card>
           ) : null}
 
-          {montajeQueue.length === 0 ? (
+          {processQueue.length === 0 ? (
             <Card className="border border-dashed border-divider" radius="md" shadow="none">
               <CardBody className="py-10 text-center text-default-400">
                 <MdError className="mx-auto mb-2 opacity-40" size={32} />
-                <p className="text-sm">No hay tickets de montaje para mostrar</p>
+                <p className="text-sm">No hay tickets de {activeProcessConfig.label.toLowerCase()} para mostrar</p>
               </CardBody>
             </Card>
           ) : (
-            <Table aria-label="Cola de montaje" removeWrapper>
+            <div className="rounded-medium border border-default-200 p-2">
+              <Table aria-label={`Cola de ${activeProcessConfig.label.toLowerCase()}`} removeWrapper>
               <TableHeader>
                 <TableColumn>Turno</TableColumn>
-                <TableColumn>Ticket montaje</TableColumn>
+                <TableColumn>Ticket</TableColumn>
                 <TableColumn>Pedido</TableColumn>
                 <TableColumn>Cliente</TableColumn>
                 <TableColumn>Diseño</TableColumn>
                 <TableColumn>Total uds</TableColumn>
+                <TableColumn>Pendiente tallas</TableColumn>
                 <TableColumn>Acción</TableColumn>
               </TableHeader>
-              <TableBody items={montajeQueue}>
+              <TableBody items={processQueue}>
                 {(row) => (
-                  <TableRow key={`${row.pedido}-${row.diseno}-${row.ticketMontaje}`}>
+                  <TableRow key={`${row.pedido}-${row.diseno}-${row.ticket}`}>
                     <TableCell>{row.turno}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Chip color="secondary" size="sm" variant="flat">
-                          {row.ticketMontaje}
+                          {row.ticket}
                         </Chip>
-                        {nextMontajeTurn?.ticketMontaje === row.ticketMontaje ? (
+                        {nextProcessTurn?.ticket === row.ticket ? (
                           <Chip color="warning" size="sm" variant="flat">
                             Siguiente
                           </Chip>
@@ -1133,21 +1242,27 @@ export default function MesPageClient() {
                     <TableCell>{`Diseño ${row.diseno}`}</TableCell>
                     <TableCell>{row.totalUnidades}</TableCell>
                     <TableCell>
+                      <Chip color="warning" size="sm" variant="flat">
+                        {row.totalTallasPendientes} tallas · {row.unidadesPendientes} uds
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
                       <Button
                         color="primary"
                         size="sm"
                         variant={
-                          selectedMontajeTicket?.ticketMontaje === row.ticketMontaje
+                          selectedMontajeTicket?.ticketMontaje === row.ticket
                             ? "solid"
                             : "flat"
                         }
-                        isDisabled={nextMontajeTurn?.ticketMontaje !== row.ticketMontaje}
+                        isDisabled={nextProcessTurn?.ticket !== row.ticket}
                         onPress={() =>
                           setSelectedMontajeTicket({
                             pedido: row.pedido,
                             detalle: row.detalle,
                             totalUnidades: row.totalUnidades,
-                            ticketMontaje: row.ticketMontaje,
+                            ticketMontaje: row.ticket,
+                            tallas: row.tallas,
                           })
                         }
                       >
@@ -1158,13 +1273,14 @@ export default function MesPageClient() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
 
           {selectedMontajeTicket ? (
             <Card className="border border-divider" radius="sm" shadow="none">
               <CardHeader>
                 <div>
-                  <div className="text-lg font-semibold">Producción - Montaje</div>
+                  <div className="text-lg font-semibold">Producción - {activeProcessConfig.label}</div>
                   <div className="text-sm text-default-500">
                     Ticket {selectedMontajeTicket.ticketMontaje} · Pedido {selectedMontajeTicket.pedido}
                   </div>
@@ -1172,43 +1288,24 @@ export default function MesPageClient() {
               </CardHeader>
               <CardBody>
                 <OperarioWorklogTable
-                  role="OPERARIO_MONTAJE"
+                  role={activeProcessConfig.role}
                   onSaved={handleMontajeSaved}
                   prefill={{
                     orderCode: selectedMontajeTicket.pedido,
                     designName: selectedMontajeTicket.detalle,
                     quantityOp: selectedMontajeTicket.totalUnidades,
+                    tallas: (selectedMontajeTicket.tallas ?? [])
+                      .filter((item) => item.estado !== "completado")
+                      .map((item) => ({
+                        talla: item.talla,
+                        cantidad: item.cantidad,
+                      })),
                   }}
                 />
               </CardBody>
             </Card>
           ) : null}
-        </div>
-      )}
-
-      {/* ── PLACEHOLDER OTROS PROCESOS ── */}
-      {activeProceso !== "programacion" && activeProceso !== "montaje" && (
-        <div className="px-6 py-12 flex flex-col items-center justify-center text-center text-default-400">
-          <div className="w-14 h-14 rounded-2xl bg-default-100 flex items-center justify-center mb-3">
-            <span className="text-lg font-mono font-bold text-default-300">
-              {PROCESO_PREFIX[activeProceso]}
-            </span>
-          </div>
-          <p className="text-sm font-medium text-foreground">
-            Sección{" "}
-            {activeProceso.charAt(0).toUpperCase() + activeProceso.slice(1)}
-          </p>
-          <p className="text-xs mt-1">
-            Tickets:{" "}
-            <span className="font-mono font-bold">
-              {PROCESO_PREFIX[activeProceso]}-1001,{" "}
-              {PROCESO_PREFIX[activeProceso]}-1002…
-            </span>
-          </p>
-          <p className="text-xs text-default-300 mt-3">
-            Próximamente disponible
-          </p>
-        </div>
+        </section>
       )}
     </div>
   );

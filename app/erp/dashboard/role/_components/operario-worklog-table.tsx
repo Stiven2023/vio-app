@@ -8,6 +8,13 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
 import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/modal";
+import {
   Table,
   TableBody,
   TableCell,
@@ -19,14 +26,18 @@ import { BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
+import { useSessionStore } from "@/store/session";
 
 type RoleArea = "OPERARIOS" | "CONFECCIONISTAS" | "MENSAJERIA" | "EMPAQUE";
 type OperationType =
   | "MONTAJE"
   | "PLOTTER"
+  | "SUBLIMACION"
   | "CALANDRA"
   | "CORTE_LASER"
   | "CORTE_MANUAL"
+  | "CONFECCION"
+  | "EMPAQUE"
   | "INTEGRACION"
   | "DESPACHO";
 type ProcessCode = "P" | "S" | "C";
@@ -70,9 +81,12 @@ const roleAreaOptions: Array<{ value: RoleArea; label: string }> = [
 const operationOptions: Array<{ value: OperationType; label: string }> = [
   { value: "MONTAJE", label: "Montaje" },
   { value: "PLOTTER", label: "Plotter" },
+  { value: "SUBLIMACION", label: "Sublimación" },
   { value: "CALANDRA", label: "Calandra" },
   { value: "CORTE_LASER", label: "Corte láser" },
   { value: "CORTE_MANUAL", label: "Corte manual" },
+  { value: "CONFECCION", label: "Confección" },
+  { value: "EMPAQUE", label: "Empaque" },
   { value: "INTEGRACION", label: "Integración" },
   { value: "DESPACHO", label: "Despacho" },
 ];
@@ -132,6 +146,26 @@ function asDateTimeInput(value: string | null) {
 function asDateTimeIso(value: string) {
   const raw = String(value ?? "").trim();
   if (!raw) return null;
+
+  if (/^\d{2}:\d{2}$/.test(raw)) {
+    const now = new Date();
+    const [hours, minutes] = raw.split(":").map(Number);
+
+    if (
+      Number.isNaN(hours) ||
+      Number.isNaN(minutes) ||
+      hours < 0 ||
+      hours > 23 ||
+      minutes < 0 ||
+      minutes > 59
+    ) {
+      return null;
+    }
+
+    now.setHours(hours, minutes, 0, 0);
+    return now.toISOString();
+  }
+
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return null;
   return date.toISOString();
@@ -147,8 +181,11 @@ function normalizeRoleAreaByRole(role: string): RoleArea {
 function normalizeOperationByRole(role: string): OperationType {
   if (role === "OPERARIO_MONTAJE") return "MONTAJE";
   if (role === "OPERARIO_FLOTER") return "PLOTTER";
+  if (role === "OPERARIO_SUBLIMACION") return "SUBLIMACION";
   if (role === "OPERARIO_CORTE_LASER") return "CORTE_LASER";
   if (role === "OPERARIO_CORTE_MANUAL") return "CORTE_MANUAL";
+  if (role === "CONFECCIONISTA") return "CONFECCION";
+  if (role === "EMPAQUE") return "EMPAQUE";
   if (role === "OPERARIO_INTEGRACION_CALIDAD") return "INTEGRACION";
   if (role === "OPERARIO_DESPACHO") return "DESPACHO";
   return "MONTAJE";
@@ -159,6 +196,10 @@ type WorklogPrefill = {
   designName: string;
   size?: string;
   quantityOp?: number;
+  tallas?: Array<{
+    talla: string;
+    cantidad: number;
+  }>;
 };
 
 export function OperarioWorklogTable({
@@ -173,6 +214,9 @@ export function OperarioWorklogTable({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showPartialModal, setShowPartialModal] = useState(false);
+  const [repoReason, setRepoReason] = useState("");
+  const [repoNotes, setRepoNotes] = useState("");
   const [data, setData] = useState<Paginated<WorklogItem> | null>(null);
   const [page, setPage] = useState(1);
   const [draft, setDraft] = useState<DraftRow>(() => ({
@@ -182,6 +226,19 @@ export function OperarioWorklogTable({
 
   const roleAreaFilter = useMemo(() => normalizeRoleAreaByRole(role), [role]);
   const operationFilter = useMemo(() => normalizeOperationByRole(role), [role]);
+  const isOperationFixed = useMemo(() => role.startsWith("OPERARIO_"), [role]);
+  const isPrefilledMode = Boolean(prefill);
+  const sessionUser = useSessionStore((state) => state.user);
+  const reporterId = String(sessionUser?.id ?? "SIN_USUARIO");
+  const tallaOptions = useMemo(
+    () =>
+      (prefill?.tallas ?? []).filter(
+        (item) =>
+          String(item.talla ?? "").trim().length > 0 &&
+          Number.isFinite(Number(item.cantidad)),
+      ),
+    [prefill],
+  );
 
   useEffect(() => {
     setDraft((prev) => ({
@@ -194,19 +251,44 @@ export function OperarioWorklogTable({
   useEffect(() => {
     if (!prefill) return;
 
+    const firstTalla = tallaOptions[0];
+    const initialSize =
+      String(prefill.size ?? "").trim() || String(firstTalla?.talla ?? "").trim();
+    const initialQty =
+      firstTalla && String(firstTalla.talla).trim() === initialSize
+        ? Math.max(0, Math.floor(Number(firstTalla.cantidad) || 0))
+        : null;
+
     setDraft((prev) => ({
       ...prev,
       roleArea: roleAreaFilter,
       operationType: operationFilter,
       orderCode: prefill.orderCode ?? "",
       designName: prefill.designName ?? "",
-      size: prefill.size ?? "",
+      size: initialSize,
       quantityOp:
-        typeof prefill.quantityOp === "number" && Number.isFinite(prefill.quantityOp)
+        typeof initialQty === "number"
+          ? String(initialQty)
+          : typeof prefill.quantityOp === "number" && Number.isFinite(prefill.quantityOp)
           ? String(Math.max(0, Math.floor(prefill.quantityOp)))
           : prev.quantityOp,
     }));
-  }, [prefill, roleAreaFilter, operationFilter]);
+  }, [prefill, roleAreaFilter, operationFilter, tallaOptions]);
+
+  useEffect(() => {
+    if (tallaOptions.length === 0) return;
+
+    const selected = tallaOptions.find(
+      (item) => String(item.talla).trim() === String(draft.size).trim(),
+    );
+
+    if (!selected) return;
+
+    const qty = String(Math.max(0, Math.floor(Number(selected.cantidad) || 0)));
+    if (qty === draft.quantityOp) return;
+
+    setDraft((prev) => ({ ...prev, quantityOp: qty }));
+  }, [draft.size, draft.quantityOp, tallaOptions]);
 
   useEffect(() => {
     let active = true;
@@ -257,6 +339,24 @@ export function OperarioWorklogTable({
       return;
     }
 
+    if (draft.isPartial && !repoReason.trim()) {
+      toast.error("Debes indicar el motivo de la reposición interna");
+      setShowPartialModal(true);
+      return;
+    }
+
+    const partialRepoObservations = draft.isPartial
+      ? [
+          "[REPOSICION_INTERNA]",
+          `Motivo: ${repoReason.trim() || "N/A"}`,
+          `Reporta: ${reporterId}`,
+          `Observaciones repo: ${repoNotes.trim() || "N/A"}`,
+          draft.observations.trim() ? `Observaciones operativas: ${draft.observations.trim()}` : null,
+        ]
+          .filter(Boolean)
+          .join(" | ")
+      : draft.observations || null;
+
     try {
       setSaving(true);
       await apiJson("/api/dashboard/operative-logs", {
@@ -274,8 +374,8 @@ export function OperarioWorklogTable({
           endAt: asDateTimeIso(draft.endAt),
           isComplete: draft.isComplete,
           isPartial: draft.isPartial,
-          observations: draft.observations || null,
-          repoCheck: draft.repoCheck,
+          observations: partialRepoObservations,
+          repoCheck: draft.isPartial ? true : draft.repoCheck,
           processCode: draft.processCode,
         }),
       });
@@ -286,6 +386,8 @@ export function OperarioWorklogTable({
         roleArea: roleAreaFilter,
         operationType: operationFilter,
       });
+      setRepoReason("");
+      setRepoNotes("");
       onSaved?.();
       reload();
     } catch (error) {
@@ -338,12 +440,14 @@ export function OperarioWorklogTable({
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <Input
           label="Pedido"
+          isReadOnly={isPrefilledMode}
           size="sm"
           value={draft.orderCode}
           onValueChange={(value) => setDraft((s) => ({ ...s, orderCode: value }))}
         />
         <Input
           label="Diseño"
+          isReadOnly={isPrefilledMode}
           size="sm"
           value={draft.designName}
           onValueChange={(value) => setDraft((s) => ({ ...s, designName: value }))}
@@ -354,14 +458,34 @@ export function OperarioWorklogTable({
           value={draft.details}
           onValueChange={(value) => setDraft((s) => ({ ...s, details: value }))}
         />
-        <Input
-          label="Talla"
-          size="sm"
-          value={draft.size}
-          onValueChange={(value) => setDraft((s) => ({ ...s, size: value }))}
-        />
+        {tallaOptions.length > 0 ? (
+          <Select
+            label="Talla"
+            disallowEmptySelection
+            selectedKeys={[draft.size || String(tallaOptions[0]?.talla ?? "")]}
+            size="sm"
+            onSelectionChange={(keys) => {
+              const first = String(Array.from(keys)[0] ?? "").trim();
+              setDraft((s) => ({ ...s, size: first }));
+            }}
+          >
+            {tallaOptions.map((option) => (
+              <SelectItem key={option.talla}>
+                {`${option.talla} (${Math.max(0, Math.floor(Number(option.cantidad) || 0))} uds)`}
+              </SelectItem>
+            ))}
+          </Select>
+        ) : (
+          <Input
+            label="Talla"
+            size="sm"
+            value={draft.size}
+            onValueChange={(value) => setDraft((s) => ({ ...s, size: value }))}
+          />
+        )}
         <Input
           label="Cantidad OP"
+          isReadOnly={isPrefilledMode}
           size="sm"
           type="number"
           value={draft.quantityOp}
@@ -396,7 +520,7 @@ export function OperarioWorklogTable({
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <Select
           label="Proceso"
           disallowEmptySelection
@@ -416,6 +540,7 @@ export function OperarioWorklogTable({
           label="Operación"
           disallowEmptySelection
           selectedKeys={[draft.operationType]}
+          isDisabled={isOperationFixed}
           size="sm"
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0] as OperationType | undefined;
@@ -430,7 +555,13 @@ export function OperarioWorklogTable({
         <div className="flex items-center gap-3">
           <Checkbox
             isSelected={draft.isComplete}
-            onValueChange={(value) => setDraft((s) => ({ ...s, isComplete: value }))}
+            onValueChange={(value) =>
+              setDraft((s) => ({
+                ...s,
+                isComplete: value,
+                isPartial: value ? false : s.isPartial,
+              }))
+            }
           >
             Completo
           </Checkbox>
@@ -439,20 +570,22 @@ export function OperarioWorklogTable({
         <div className="flex items-center gap-3">
           <Checkbox
             isSelected={draft.isPartial}
-            onValueChange={(value) => setDraft((s) => ({ ...s, isPartial: value }))}
+            onValueChange={(value) => {
+              if (value) {
+                setDraft((s) => ({ ...s, isPartial: true, isComplete: false, repoCheck: true }));
+                setShowPartialModal(true);
+                return;
+              }
+
+              setDraft((s) => ({ ...s, isPartial: false, repoCheck: false }));
+              setRepoReason("");
+              setRepoNotes("");
+            }}
           >
             Parcial
           </Checkbox>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Checkbox
-            isSelected={draft.repoCheck}
-            onValueChange={(value) => setDraft((s) => ({ ...s, repoCheck: value }))}
-          >
-            Repo
-          </Checkbox>
-        </div>
       </div>
 
       <div className="flex justify-end">
@@ -483,7 +616,6 @@ export function OperarioWorklogTable({
             <TableColumn>COMPLETO</TableColumn>
             <TableColumn>PARCIAL</TableColumn>
             <TableColumn>OBSERVACIONES</TableColumn>
-            <TableColumn>REPO</TableColumn>
             <TableColumn>PROCESO</TableColumn>
             <TableColumn>OPERACIÓN</TableColumn>
             <TableColumn>ESTADO PROG.</TableColumn>
@@ -503,7 +635,6 @@ export function OperarioWorklogTable({
                     <TableCell>{item.isComplete ? "✓" : "-"}</TableCell>
                     <TableCell>{item.isPartial ? "✓" : "-"}</TableCell>
                     <TableCell>{item.observations ?? "-"}</TableCell>
-                    <TableCell>{item.repoCheck ? "✓" : "-"}</TableCell>
                     <TableCell>{item.processCode}</TableCell>
                     <TableCell>{item.operationType ?? "-"}</TableCell>
                     <TableCell>
@@ -543,6 +674,63 @@ export function OperarioWorklogTable({
       </div>
 
       {data ? <Pager data={data} page={data.page} onChange={setPage} /> : null}
+
+      <Modal isOpen={showPartialModal} onOpenChange={setShowPartialModal}>
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>Reposición interna por parcial</ModalHeader>
+              <ModalBody>
+                <p className="text-sm text-default-500">
+                  Al marcar parcial se generará reposición interna y se enviará a Programación (actualización).
+                </p>
+                <Input
+                  label="Motivo"
+                  isRequired
+                  value={repoReason}
+                  onValueChange={setRepoReason}
+                />
+                <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2">
+                  <p className="text-xs text-default-500">Quién reporta</p>
+                  <p className="text-sm font-semibold">{reporterId}</p>
+                </div>
+                <Input
+                  label="Observaciones reposición"
+                  value={repoNotes}
+                  onValueChange={setRepoNotes}
+                />
+              </ModalBody>
+              <ModalFooter>
+                <Button
+                  variant="flat"
+                  onPress={() => {
+                    setDraft((s) => ({ ...s, isPartial: false, repoCheck: false }));
+                    setRepoReason("");
+                    setRepoNotes("");
+                    onClose();
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={() => {
+                    if (!repoReason.trim()) {
+                      toast.error("Debes indicar el motivo");
+                      return;
+                    }
+
+                    setDraft((s) => ({ ...s, isPartial: true, isComplete: false, repoCheck: true }));
+                    onClose();
+                  }}
+                >
+                  Confirmar parcial + reposición
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
