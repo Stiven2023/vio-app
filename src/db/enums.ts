@@ -556,6 +556,11 @@ export const Permission = {
   GENERAR_PILA: "GENERAR_PILA",
   // Historial
   VER_HISTORIAL_ESTADO: "VER_HISTORIAL_ESTADO",
+  // Moldería
+  VER_MOLDERIA: "VER_MOLDERIA",
+  CREAR_MOLDERIA: "CREAR_MOLDERIA",
+  EDITAR_MOLDERIA: "EDITAR_MOLDERIA",
+  ELIMINAR_MOLDERIA: "ELIMINAR_MOLDERIA",
 } as const;
 
 export const permissionValues = [
@@ -653,6 +658,11 @@ export const permissionValues = [
   "GENERAR_PILA",
   // Historial
   "VER_HISTORIAL_ESTADO",
+  // Moldería
+  "VER_MOLDERIA",
+  "CREAR_MOLDERIA",
+  "EDITAR_MOLDERIA",
+  "ELIMINAR_MOLDERIA",
 ] as const;
 
 export const PermissionEnum = z.enum(permissionValues);
@@ -1009,4 +1019,29 @@ export const shipmentEmailModeValues = [
 export const ShipmentEmailModeEnum = z.enum(shipmentEmailModeValues);
 Object.defineProperty(ShipmentEmailModeEnum, "enumValues", {
   value: shipmentEmailModeValues,
+});
+
+/* ========================= */
+/*   MOLDING INSUMO STATUS   */
+/* ========================= */
+
+export const MoldingInsumoStatus = {
+  PENDIENTE: "PENDIENTE",
+  SOLICITADO_COMPRAS: "SOLICITADO_COMPRAS",
+  EN_STOCK: "EN_STOCK",
+  DESPACHADO_CONFECCION: "DESPACHADO_CONFECCION",
+  COMPLETADO: "COMPLETADO",
+} as const;
+
+export const moldingInsumoStatusValues = [
+  "PENDIENTE",
+  "SOLICITADO_COMPRAS",
+  "EN_STOCK",
+  "DESPACHADO_CONFECCION",
+  "COMPLETADO",
+] as const;
+
+export const MoldingInsumoStatusEnum = z.enum(moldingInsumoStatusValues);
+Object.defineProperty(MoldingInsumoStatusEnum, "enumValues", {
+  value: moldingInsumoStatusValues,
 });

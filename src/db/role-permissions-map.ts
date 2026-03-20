@@ -139,6 +139,10 @@ export const ROLE_PERMISSIONS: Record<string, string[] | "ALL"> = {
     "CAMBIAR_ESTADO_DISEÑO",
     "VER_PEDIDO",
     "VER_NOTIFICACION",
+    "VER_MOLDERIA",
+    "CREAR_MOLDERIA",
+    "EDITAR_MOLDERIA",
+    "ELIMINAR_MOLDERIA",
   ],
   DISEÑADOR: [
     "CREAR_DISEÑO",

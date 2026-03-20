@@ -76,6 +76,8 @@ export {
   ShipmentDocumentRefEnum,
   ShipmentEmailMode,
   ShipmentEmailModeEnum,
+  MoldingInsumoStatus,
+  MoldingInsumoStatusEnum,
   // Export value arrays
   purchaseOrderStatusValues,
   purchaseOrderRouteTypeValues,
@@ -115,6 +117,7 @@ export {
   shipmentDocumentTypeValues,
   shipmentDocumentRefValues,
   shipmentEmailModeValues,
+  moldingInsumoStatusValues,
 } from "./enums";
 
 import {
@@ -154,6 +157,7 @@ import {
   shipmentDocumentTypeValues,
   shipmentDocumentRefValues,
   shipmentEmailModeValues,
+  moldingInsumoStatusValues,
 } from "./enums";
 
 import {
@@ -277,6 +281,10 @@ export const shipmentEmailModePgEnum = pgEnum(
   "shipment_email_mode",
   shipmentEmailModeValues
 );
+export const moldingInsumoStatusPgEnum = pgEnum(
+  "molding_insumo_status",
+  moldingInsumoStatusValues
+);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -315,6 +323,7 @@ export const shipmentPaymentStatusEnum = shipmentPaymentStatusPgEnum;
 export const shipmentDocumentTypeEnum = shipmentDocumentTypePgEnum;
 export const shipmentDocumentRefEnum = shipmentDocumentRefPgEnum;
 export const shipmentEmailModeEnum = shipmentEmailModePgEnum;
+export const moldingInsumoStatusEnum = moldingInsumoStatusPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1647,3 +1656,254 @@ export const legalStatusRecords = pgTable("legal_status_records", {
   changedFields: text("changed_fields"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+/* =========================
+   MOLDING TEMPLATES
+   Versioned base catalog for molding patterns
+========================= */
+export const moldingTemplates = pgTable(
+  "molding_templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    moldingCode: varchar("molding_code", { length: 50 }).notNull(),
+    version: integer("version").notNull().default(1),
+    garmentType: varchar("garment_type", { length: 80 }),
+    garmentSubtype: varchar("garment_subtype", { length: 80 }),
+    designDetail: varchar("design_detail", { length: 255 }),
+    fabric: varchar("fabric", { length: 100 }),
+    color: varchar("color", { length: 100 }),
+    gender: varchar("gender", { length: 50 }),
+    imageUrl: text("image_url"),
+    clothingImageOneUrl: text("clothing_image_one_url"),
+    clothingImageTwoUrl: text("clothing_image_two_url"),
+    logoImageUrl: text("logo_image_url"),
+    process: varchar("process", { length: 100 }),
+    estimatedLeadDays: integer("estimated_lead_days"),
+    manufacturingId: varchar("manufacturing_id", { length: 100 }),
+    screenPrint: boolean("screen_print").default(false),
+    embroidery: boolean("embroidery").default(false),
+    buttonhole: boolean("buttonhole").default(false),
+    snap: boolean("snap").default(false),
+    tag: boolean("tag").default(false),
+    flag: boolean("flag").default(false),
+    neckType: varchar("neck_type", { length: 100 }),
+    sesgoType: varchar("sesgo_type", { length: 80 }),
+    sesgoColor: varchar("sesgo_color", { length: 80 }),
+    hiladillaColor: varchar("hiladilla_color", { length: 80 }),
+    sleeveType: varchar("sleeve_type", { length: 80 }),
+    cuffType: varchar("cuff_type", { length: 80 }),
+    cuffMaterial: varchar("cuff_material", { length: 80 }),
+    zipperLocation: varchar("zipper_location", { length: 80 }),
+    zipperColor: varchar("zipper_color", { length: 80 }),
+    zipperSizeCm: numeric("zipper_size_cm", { precision: 6, scale: 1 }),
+    cordColor: varchar("cord_color", { length: 80 }),
+    hasElastic: boolean("has_elastic").default(false),
+    liningType: varchar("lining_type", { length: 80 }),
+    liningColor: varchar("lining_color", { length: 80 }),
+    hoodType: varchar("hood_type", { length: 80 }),
+    hasInnerLining: boolean("has_inner_lining").default(false),
+    hasPocket: boolean("has_pocket").default(false),
+    pocketZipperColor: varchar("pocket_zipper_color", { length: 80 }),
+    hasLateralMesh: boolean("has_lateral_mesh").default(false),
+    lateralMeshColor: varchar("lateral_mesh_color", { length: 80 }),
+    hasFajon: boolean("has_fajon").default(false),
+    hasTanca: boolean("has_tanca").default(false),
+    hasProtection: boolean("has_protection").default(false),
+    buttonType: varchar("button_type", { length: 80 }),
+    buttonholeType: varchar("buttonhole_type", { length: 80 }),
+    perillaColor: varchar("perilla_color", { length: 80 }),
+    collarType: varchar("collar_type", { length: 80 }),
+    fusioningNotes: text("fusioning_notes"),
+    hasEntretela: boolean("has_entretela").default(false),
+    invisibleZipperColor: varchar("invisible_zipper_color", { length: 80 }),
+    observations: text("observations"),
+    isActive: boolean("is_active").default(true),
+    deprecatedAt: timestamp("deprecated_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [uniqueIndex("uq_molding_code_version").on(t.moldingCode, t.version)],
+);
+
+/* =========================
+   MOLDING TEMPLATE INSUMOS
+   Base supply items per molding template
+========================= */
+export const moldingTemplateInsumos = pgTable(
+  "molding_template_insumos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    moldingTemplateId: uuid("molding_template_id")
+      .notNull()
+      .references(() => moldingTemplates.id, { onDelete: "cascade" }),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItems.id),
+    variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
+    qtyPerUnit: numeric("qty_per_unit", { precision: 10, scale: 4 }).notNull(),
+    unit: varchar("unit", { length: 50 }).notNull(),
+    variesBySize: boolean("varies_by_size").default(false),
+    additionId: uuid("addition_id").references(() => additions.id),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_mti_template_item_variant_addition").on(
+      t.moldingTemplateId,
+      t.inventoryItemId,
+      t.variantId,
+      t.additionId,
+    ),
+  ],
+);
+
+/* =========================
+   MOLDING TEMPLATE SIZE ADJUSTMENTS
+   Quantity adjustments per size for a template insumo
+========================= */
+export const moldingTemplateSizeAdjustments = pgTable(
+  "molding_template_size_adjustments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    moldingTemplateInsumoId: uuid("molding_template_insumo_id")
+      .notNull()
+      .references(() => moldingTemplateInsumos.id, { onDelete: "cascade" }),
+    size: varchar("size", { length: 20 }).notNull(),
+    qtyPerUnit: numeric("qty_per_unit", { precision: 10, scale: 4 }).notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_mtsa_insumo_size").on(t.moldingTemplateInsumoId, t.size),
+  ],
+);
+
+/* =========================
+   ORDER ITEM MOLDINGS
+   Snapshot of molding data per order item
+========================= */
+export const orderItemMoldings = pgTable("order_item_moldings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id")
+    .notNull()
+    .references(() => orderItems.id, { onDelete: "cascade" }),
+  moldingTemplateId: uuid("molding_template_id").references(
+    () => moldingTemplates.id,
+    { onDelete: "set null" },
+  ),
+  combinationOrder: integer("combination_order").notNull().default(1),
+  // Snapshot of all technical fields from molding_templates
+  moldingCode: varchar("molding_code", { length: 50 }),
+  version: integer("version"),
+  garmentType: varchar("garment_type", { length: 80 }),
+  garmentSubtype: varchar("garment_subtype", { length: 80 }),
+  designDetail: varchar("design_detail", { length: 255 }),
+  fabric: varchar("fabric", { length: 100 }),
+  color: varchar("color", { length: 100 }),
+  gender: varchar("gender", { length: 50 }),
+  imageUrl: text("image_url"),
+  clothingImageOneUrl: text("clothing_image_one_url"),
+  clothingImageTwoUrl: text("clothing_image_two_url"),
+  logoImageUrl: text("logo_image_url"),
+  screenPrint: boolean("screen_print").default(false),
+  embroidery: boolean("embroidery").default(false),
+  buttonhole: boolean("buttonhole").default(false),
+  snap: boolean("snap").default(false),
+  tag: boolean("tag").default(false),
+  flag: boolean("flag").default(false),
+  process: varchar("process", { length: 100 }),
+  estimatedLeadDays: integer("estimated_lead_days"),
+  manufacturingId: varchar("manufacturing_id", { length: 100 }),
+  neckType: varchar("neck_type", { length: 100 }),
+  sesgoType: varchar("sesgo_type", { length: 80 }),
+  sesgoColor: varchar("sesgo_color", { length: 80 }),
+  hiladillaColor: varchar("hiladilla_color", { length: 80 }),
+  sleeveType: varchar("sleeve_type", { length: 80 }),
+  cuffType: varchar("cuff_type", { length: 80 }),
+  cuffMaterial: varchar("cuff_material", { length: 80 }),
+  zipperLocation: varchar("zipper_location", { length: 80 }),
+  zipperColor: varchar("zipper_color", { length: 80 }),
+  zipperSizeCm: numeric("zipper_size_cm", { precision: 6, scale: 1 }),
+  cordColor: varchar("cord_color", { length: 80 }),
+  hasElastic: boolean("has_elastic").default(false),
+  liningType: varchar("lining_type", { length: 80 }),
+  liningColor: varchar("lining_color", { length: 80 }),
+  hoodType: varchar("hood_type", { length: 80 }),
+  hasInnerLining: boolean("has_inner_lining").default(false),
+  hasPocket: boolean("has_pocket").default(false),
+  pocketZipperColor: varchar("pocket_zipper_color", { length: 80 }),
+  hasLateralMesh: boolean("has_lateral_mesh").default(false),
+  lateralMeshColor: varchar("lateral_mesh_color", { length: 80 }),
+  hasFajon: boolean("has_fajon").default(false),
+  hasTanca: boolean("has_tanca").default(false),
+  hasProtection: boolean("has_protection").default(false),
+  buttonType: varchar("button_type", { length: 80 }),
+  buttonholeType: varchar("buttonhole_type", { length: 80 }),
+  perillaColor: varchar("perilla_color", { length: 80 }),
+  collarType: varchar("collar_type", { length: 80 }),
+  fusioningNotes: text("fusioning_notes"),
+  hasEntretela: boolean("has_entretela").default(false),
+  invisibleZipperColor: varchar("invisible_zipper_color", { length: 80 }),
+  observations: text("observations"),
+  assignedBy: uuid("assigned_by").references(() => employees.id),
+  updatedBy: uuid("updated_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   ORDER ITEM MOLDING INSUMOS
+   Actual calculated supplies for an order item molding
+========================= */
+export const orderItemMoldingInsumos = pgTable(
+  "order_item_molding_insumos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderItemMoldingId: uuid("order_item_molding_id")
+      .notNull()
+      .references(() => orderItemMoldings.id, { onDelete: "cascade" }),
+    moldingTemplateInsumoId: uuid("molding_template_insumo_id").references(
+      () => moldingTemplateInsumos.id,
+      { onDelete: "set null" },
+    ),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItems.id),
+    variantId: uuid("variant_id").references(() => inventoryItemVariants.id),
+    additionId: uuid("addition_id").references(() => additions.id),
+    size: varchar("size", { length: 20 }),
+    qtyRequired: numeric("qty_required", {
+      precision: 12,
+      scale: 4,
+    }).notNull(),
+    qtyAvailable: numeric("qty_available", {
+      precision: 12,
+      scale: 4,
+    })
+      .notNull()
+      .default("0"),
+    qtyToPurchase: numeric("qty_to_purchase", {
+      precision: 12,
+      scale: 4,
+    })
+      .notNull()
+      .default("0"),
+    unit: varchar("unit", { length: 50 }).notNull(),
+    status: moldingInsumoStatusEnum("status")
+      .notNull()
+      .default("PENDIENTE"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_oimi_molding_item_variant_addition_size").on(
+      t.orderItemMoldingId,
+      t.inventoryItemId,
+      t.variantId,
+      t.additionId,
+      t.size,
+    ),
+  ],
+);

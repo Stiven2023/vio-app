@@ -147,6 +147,7 @@ export const buildNavbarSections = ({
                 { name: "Packing", href: "/packers" },
                 { name: "Pattern board", href: "/patterns/tablero" },
                 { name: "Patterns & molds", href: "/patterns/trazos-moldes" },
+                { name: "Molding templates", href: "/molding" },
             ],
         },
         {
