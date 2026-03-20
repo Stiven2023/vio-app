@@ -168,7 +168,7 @@ export async function PATCH(
     return Number.isFinite(n) && n > 0 ? String(n) : null;
   }
 
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  const updates: Partial<typeof moldingTemplates.$inferInsert> = { updatedAt: new Date() };
 
   const strFields80 = [
     "garmentType", "garmentSubtype", "sesgoType", "sesgoColor",
@@ -219,7 +219,7 @@ export async function PATCH(
   try {
     const [updated] = await db
       .update(moldingTemplates)
-      .set(updates as Parameters<typeof db.update>[0]["set"])
+      .set(updates)
       .where(eq(moldingTemplates.id, id))
       .returning();
 
