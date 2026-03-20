@@ -15,12 +15,12 @@ import { BsEnvelopeFill } from "react-icons/bs";
 import { AlertToast } from "@/components/alert-toast";
 
 function validateNewPassword(newPassword: string): string {
-  if (!newPassword) return "La contraseña es obligatoria.";
-  if (newPassword.length < 7) return "Debe tener al menos 7 caracteres.";
+  if (!newPassword) return "Password is required.";
+  if (newPassword.length < 7) return "Must be at least 7 characters.";
   if (!/[A-Z]/.test(newPassword))
-    return "Debe contener al menos una letra mayúscula.";
+    return "Must contain at least one uppercase letter.";
   if (/[^A-Za-z0-9.*]/.test(newPassword)) {
-    return 'Solo puede contener letras, números, "." y "*".';
+    return 'Only letters, numbers, "." and "*" are allowed.';
   }
 
   return "";
@@ -59,7 +59,7 @@ export function ResetPasswordModal({
     const t = token.trim();
 
     if (!e || !t) {
-      setToast({ message: "Email y token son obligatorios.", type: "error" });
+      setToast({ message: "Email and token are required.", type: "error" });
 
       return;
     }
@@ -84,17 +84,17 @@ export function ResetPasswordModal({
         const text = await res.text();
 
         setToast({
-          message: text || "No se pudo cambiar la contraseña.",
+          message: text || "Could not change the password.",
           type: "error",
         });
 
         return;
       }
 
-      setToast({ message: "Contraseña actualizada.", type: "success" });
+      setToast({ message: "Password updated.", type: "success" });
       setTimeout(() => onOpenChange(false), 800);
     } catch {
-      setToast({ message: "No se pudo cambiar la contraseña.", type: "error" });
+      setToast({ message: "Could not change the password.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ export function ResetPasswordModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>Ingresar token</ModalHeader>
+        <ModalHeader>Enter token</ModalHeader>
         <ModalBody>
           {toast ? (
             <AlertToast message={toast.message} type={toast.type} />
@@ -111,7 +111,7 @@ export function ResetPasswordModal({
 
           <Input
             isDisabled={loading}
-            label="Correo electrónico"
+            label="Email address"
             startContent={
               <BsEnvelopeFill className="text-xl text-default-500" />
             }
@@ -127,14 +127,14 @@ export function ResetPasswordModal({
           />
           <Input
             isDisabled={loading}
-            label="Nueva contraseña"
+            label="New password"
             type="password"
             value={newPassword}
             onValueChange={setNewPassword}
           />
           <p className="text-sm text-default-500">
-            La contraseña debe tener 7+ caracteres, una mayúscula, y solo
-            letras/números/./*.
+            Password must be 7+ chars, one uppercase letter, and only
+            letters/numbers/./×.
           </p>
         </ModalBody>
         <ModalFooter>
@@ -143,10 +143,10 @@ export function ResetPasswordModal({
             variant="flat"
             onPress={() => onOpenChange(false)}
           >
-            Cancelar
+            Cancel
           </Button>
           <Button color="primary" isDisabled={loading} onPress={submit}>
-            Cambiar
+            Change
           </Button>
         </ModalFooter>
       </ModalContent>

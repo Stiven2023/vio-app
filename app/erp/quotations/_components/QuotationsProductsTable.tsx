@@ -85,32 +85,32 @@ export function QuotationsProductsTable({
   return (
     <Card radius="md" shadow="none" className="border border-default-200">
       <CardHeader className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Detalle de Productos</span>
+        <span className="text-sm font-semibold">Product Details</span>
         <Button variant="flat" onPress={onAddItem}>
-          Agregar producto
+          Add product
         </Button>
       </CardHeader>
       <CardBody className="space-y-4">
         <Card radius="sm" shadow="none" className="border border-default-200">
           <CardHeader className="py-3">
-            <span className="text-sm font-semibold">Tabla resumida de productos</span>
+            <span className="text-sm font-semibold">Products summary table</span>
           </CardHeader>
           <CardBody className="pt-0">
             {summaryRows.length === 0 ? (
-              <p className="text-xs text-default-500">Aún no hay productos agregados temporalmente.</p>
+              <p className="text-xs text-default-500">No products added yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-xs">
                   <thead>
                     <tr className="border-b border-default-200 text-default-600">
                       <th className="py-2 px-2 text-left font-semibold">#</th>
-                      <th className="py-2 px-2 text-left font-semibold">Producto</th>
-                      <th className="py-2 px-2 text-left font-semibold">Proceso</th>
-                      <th className="py-2 px-2 text-right font-semibold">Cant.</th>
-                      <th className="py-2 px-2 text-right font-semibold">Total diseño</th>
-                      <th className="py-2 px-2 text-right font-semibold">Adiciones</th>
-                      <th className="py-2 px-2 text-right font-semibold">Total item</th>
-                      <th className="py-2 px-2 text-right font-semibold">Acciones</th>
+                      <th className="py-2 px-2 text-left font-semibold">Product</th>
+                      <th className="py-2 px-2 text-left font-semibold">Process</th>
+                      <th className="py-2 px-2 text-right font-semibold">Qty.</th>
+                      <th className="py-2 px-2 text-right font-semibold">Design Total</th>
+                      <th className="py-2 px-2 text-right font-semibold">Additions</th>
+                      <th className="py-2 px-2 text-right font-semibold">Item Total</th>
+                      <th className="py-2 px-2 text-right font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -130,7 +130,7 @@ export function QuotationsProductsTable({
                               variant="flat"
                               onPress={() => setEditingItemId(row.key)}
                             >
-                              Editar
+                              Edit
                             </Button>
                             <Button
                               size="sm"
@@ -138,7 +138,7 @@ export function QuotationsProductsTable({
                               color="danger"
                               onPress={() => onRemoveItem(row.key)}
                             >
-                              Quitar
+                              Remove
                             </Button>
                           </div>
                         </td>
@@ -162,8 +162,8 @@ export function QuotationsProductsTable({
         <ModalContent>
           <ModalHeader>
             {editingRow
-              ? `Editar producto #${items.findIndex((i) => i.id === editingRow.id) + 1}`
-              : "Editar producto"}
+              ? `Edit product #${items.findIndex((i) => i.id === editingRow.id) + 1}`
+              : "Edit product"}
           </ModalHeader>
           <ModalBody className="space-y-4 pb-5">
             {editingRow ? (
@@ -172,8 +172,8 @@ export function QuotationsProductsTable({
                   <Select
                     size="sm"
                     variant="bordered"
-                    label="Tipo diseño"
-                    aria-label="Tipo de diseño"
+                    label="Design Type"
+                    aria-label="Design type"
                     selectedKeys={editingRow.orderType ? [editingRow.orderType] : []}
                     onSelectionChange={(keys) => {
                       const first = Array.from(keys)[0];
@@ -206,8 +206,8 @@ export function QuotationsProductsTable({
                   <Select
                     size="sm"
                     variant="bordered"
-                    label="Proceso"
-                    aria-label="Proceso del diseño"
+                    label="Process"
+                    aria-label="Design process"
                     selectedKeys={editingRow.process ? [editingRow.process] : []}
                     onSelectionChange={(keys) => {
                       const first = Array.from(keys)[0];
@@ -225,9 +225,9 @@ export function QuotationsProductsTable({
                   <Autocomplete
                     size="sm"
                     variant="bordered"
-                    label="Producto (buscar por código)"
+                    label="Product (search by code)"
                     isLoading={loadingProducts}
-                    aria-label="Buscar producto por código"
+                    aria-label="Search product by code"
                     selectedKey={editingRow.productId || null}
                     defaultItems={products}
                     onSelectionChange={(key) => {
@@ -249,11 +249,11 @@ export function QuotationsProductsTable({
                 <Input
                   size="sm"
                   variant="bordered"
-                  label="Descripción"
+                  label="Description"
                   isReadOnly
                   value={editingRow.description}
                   classNames={{ input: "text-sm leading-5" }}
-                  aria-label="Descripción"
+                  aria-label="Description"
                 />
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -261,9 +261,9 @@ export function QuotationsProductsTable({
                     size="sm"
                     type="number"
                     variant="bordered"
-                    label="Cantidad"
+                    label="Quantity"
                     value={String(editingRow.quantity)}
-                    aria-label="Cantidad"
+                    aria-label="Quantity"
                     onValueChange={(v) =>
                       onUpdateItem(editingRow.id, { quantity: Math.max(0, Number(v || 0)) })
                     }
@@ -272,10 +272,10 @@ export function QuotationsProductsTable({
                     size="sm"
                     type="number"
                     variant="bordered"
-                    label="Vr. Unitario"
+                    label="Unit Price"
                     isReadOnly={!isAuthorizedManual}
                     value={String(editingRow.unitPrice)}
-                    aria-label="Valor unitario"
+                    aria-label="Unit price"
                     onValueChange={(v) => {
                       if (!isAuthorizedManual) return;
                       onUpdateItem(editingRow.id, { unitPrice: Math.max(0, Number(v || 0)) });
@@ -285,10 +285,10 @@ export function QuotationsProductsTable({
                     size="sm"
                     type="number"
                     variant="bordered"
-                    label="Descuento %"
+                    label="Discount %"
                     placeholder="0"
                     value={String(editingRow.discount)}
-                    aria-label="Descuento porcentaje"
+                    aria-label="Discount percentage"
                     onValueChange={(v) =>
                       onUpdateItem(editingRow.id, { discount: Math.max(0, Math.min(100, Number(v || 0))) })
                     }
@@ -296,13 +296,13 @@ export function QuotationsProductsTable({
                   <Input
                     size="sm"
                     variant="bordered"
-                    label="Vr. Total"
+                    label="Total Value"
                     isReadOnly
                     value={asMoney(
                       editingRow.quantity * editingRow.unitPrice -
                         editingRow.quantity * editingRow.unitPrice * (editingRow.discount / 100),
                     )}
-                    aria-label="Valor total"
+                    aria-label="Total value"
                   />
                 </div>
 
@@ -321,7 +321,7 @@ export function QuotationsProductsTable({
 
                 <div className="flex justify-end">
                   <Button variant="flat" onPress={() => setEditingItemId(null)}>
-                    Cerrar
+                    Close
                   </Button>
                 </div>
               </>

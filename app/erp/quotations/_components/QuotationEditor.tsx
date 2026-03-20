@@ -10,13 +10,14 @@ import { Select, SelectItem } from "@heroui/select";
 import { toast } from "react-hot-toast";
 
 import { useSessionStore } from "@/store/session";
+import { FileUpload } from "@/components/file-upload";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import {
   buildExpiryDateFromDelivery,
 } from "@/src/utils/quotation-delivery";
 import { QuotationsForm } from "./QuotationsForm";
 import { QuotationsProductsTable } from "./QuotationsProductsTable";
-import type { ClientPriceType, QuoteForm } from "../_lib/types";
+import type { ClientPriceType, QuoteForm, TaxZone } from "../_lib/types";
 import {
   useClientsData,
   useProductsData,
@@ -32,6 +33,32 @@ type QuotationEditorProps = {
 };
 
 type PrefacturaOrderType = "VN" | "VI" | "VT" | "VW";
+
+const TAX_ZONE_DEFAULT_RATES: Record<
+  TaxZone,
+  { withholdingTaxRate: number; withholdingIcaRate: number; withholdingIvaRate: number }
+> = {
+  CONTINENTAL: { withholdingTaxRate: 2.5, withholdingIcaRate: 0.966, withholdingIvaRate: 15 },
+  FREE_ZONE: { withholdingTaxRate: 0, withholdingIcaRate: 0, withholdingIvaRate: 0 },
+  SAN_ANDRES: { withholdingTaxRate: 0, withholdingIcaRate: 0.5, withholdingIvaRate: 0 },
+  SPECIAL_REGIME: { withholdingTaxRate: 1, withholdingIcaRate: 0.7, withholdingIvaRate: 0 },
+};
+
+function normalizeTaxZone(value: unknown): TaxZone {
+  const raw = String(value ?? "CONTINENTAL").trim().toUpperCase();
+
+  if (raw === "FREE_ZONE" || raw === "SAN_ANDRES" || raw === "SPECIAL_REGIME") {
+    return raw;
+  }
+
+  return "CONTINENTAL";
+}
+
+function safeRate(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return parsed;
+}
 
 type QuotationDetailResponse = {
   id: string;
@@ -49,6 +76,15 @@ type QuotationDetailResponse = {
   shippingFee: string | null;
   insuranceEnabled: boolean | null;
   insuranceFee: string | null;
+  municipalityFiscalSnapshot: string | null;
+  taxZoneSnapshot: TaxZone | null;
+  withholdingTaxRate: string | null;
+  withholdingIcaRate: string | null;
+  withholdingIvaRate: string | null;
+  withholdingTaxAmount: string | null;
+  withholdingIcaAmount: string | null;
+  withholdingIvaAmount: string | null;
+  totalAfterWithholdings: string | null;
   items: Array<{
     id: string;
     productId: string;
@@ -96,6 +132,8 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
     paymentTerms: "TRANSFERENCIA",
     promissoryNoteNumber: "",
     clientPriceTypeDisplay: null,
+    municipalityFiscalSnapshot: "",
+    taxZoneSnapshot: "CONTINENTAL",
   });
 
   const [shippingEnabled, setShippingEnabled] = useState(false);
@@ -108,10 +146,13 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   const [prefacturaOrderType, setPrefacturaOrderType] =
     useState<PrefacturaOrderType>("VN");
   const [prefacturaOrderName, setPrefacturaOrderName] = useState("");
-  const [hasConvenio, setHasConvenio] = useState(false);
   const [hasClientApproval, setHasClientApproval] = useState(false);
+  const [clientApprovalImageUrl, setClientApprovalImageUrl] = useState("");
   const [hasAdvance, setHasAdvance] = useState(true);
   const [creatingPrefactura, setCreatingPrefactura] = useState(false);
+  const [withholdingTaxRate, setWithholdingTaxRate] = useState(0);
+  const [withholdingIcaRate, setWithholdingIcaRate] = useState(0);
+  const [withholdingIvaRate, setWithholdingIvaRate] = useState(0);
 
   const { products, loading: loadingProducts } = useProductsData(form.currency);
   const { additions, loading: loadingAdditions } = useAdditionsData(form.currency);
@@ -217,7 +258,15 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
           expiryDate: quote.expiryDate ?? "",
           paymentTerms: quote.paymentTerms ?? "TRANSFERENCIA",
           promissoryNoteNumber: quote.promissoryNoteNumber ?? "",
+          municipalityFiscalSnapshot: quote.municipalityFiscalSnapshot ?? "",
+          taxZoneSnapshot: normalizeTaxZone(quote.taxZoneSnapshot),
         }));
+
+        const snapshotZone = normalizeTaxZone(quote.taxZoneSnapshot);
+        const fallbackRates = TAX_ZONE_DEFAULT_RATES[snapshotZone];
+        setWithholdingTaxRate(safeRate(quote.withholdingTaxRate, fallbackRates.withholdingTaxRate));
+        setWithholdingIcaRate(safeRate(quote.withholdingIcaRate, fallbackRates.withholdingIcaRate));
+        setWithholdingIvaRate(safeRate(quote.withholdingIvaRate, fallbackRates.withholdingIvaRate));
 
         setShippingEnabled(Boolean(quote.shippingEnabled));
         setInsuranceEnabled(Boolean(quote.insuranceEnabled));
@@ -237,10 +286,20 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   }, [quoteId]);
 
   useEffect(() => {
-    if (!hasConvenio) {
-      setHasAdvance(true);
-    }
-  }, [hasConvenio]);
+    if (!selectedClient || quoteId) return;
+
+    const zone = normalizeTaxZone(selectedClient.taxZone);
+    const fallbackRates = TAX_ZONE_DEFAULT_RATES[zone];
+
+    setForm((s) => ({
+      ...s,
+      municipalityFiscalSnapshot: selectedClient.municipalityFiscal ?? "",
+      taxZoneSnapshot: zone,
+    }));
+    setWithholdingTaxRate(safeRate(selectedClient.withholdingTaxRate, fallbackRates.withholdingTaxRate));
+    setWithholdingIcaRate(safeRate(selectedClient.withholdingIcaRate, fallbackRates.withholdingIcaRate));
+    setWithholdingIvaRate(safeRate(selectedClient.withholdingIvaRate, fallbackRates.withholdingIvaRate));
+  }, [quoteId, selectedClient]);
 
   useEffect(() => {
     if (!selectedClient) return;
@@ -282,9 +341,25 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
     form.documentType,
   );
 
+  const withholdingTaxAmount = useMemo(
+    () => (computed.subtotal * withholdingTaxRate) / 100,
+    [computed.subtotal, withholdingTaxRate],
+  );
+  const withholdingIcaAmount = useMemo(
+    () => (computed.subtotal * withholdingIcaRate) / 100,
+    [computed.subtotal, withholdingIcaRate],
+  );
+  const withholdingIvaAmount = useMemo(
+    () => (computed.iva * withholdingIvaRate) / 100,
+    [computed.iva, withholdingIvaRate],
+  );
+  const totalWithholdings =
+    withholdingTaxAmount + withholdingIcaAmount + withholdingIvaAmount;
+  const totalAfterWithholdings = computed.total - totalWithholdings;
+
   const { quoteCode, submitting, saveQuotation } = useSaveQuotation(
     quoteId,
-    quoteId ? "" : "Se asigna al guardar",
+    quoteId ? "" : "Assigned on save",
   );
 
   const asMoney = (value: number) =>
@@ -312,8 +387,8 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       if (!hasActiveCredit || !hasPromissoryNumber) {
         toast.error(
           !hasActiveCredit
-            ? "El cliente no tiene crédito activo."
-            : "El cliente no tiene número de pagaré registrado.",
+            ? "The client has no active credit."
+            : "The client has no promissory note number registered.",
         );
         return;
       }
@@ -323,7 +398,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       if (creatingPrefactura) return;
 
       if (!form.clientId) {
-        toast.error("Selecciona un cliente activo");
+        toast.error("Select an active client");
         return;
       }
 
@@ -332,15 +407,20 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       );
 
       if (validItems.length === 0) {
-        toast.error("Agrega al menos un item válido");
+        toast.error("Add at least one valid item");
+        return;
+      }
+
+      if (hasClientApproval && !clientApprovalImageUrl.trim()) {
+        toast.error("You must attach the screenshot/evidence of the client's approval");
         return;
       }
 
       const orderName = prefacturaOrderName.trim()
         ? prefacturaOrderName.trim()
         : String(form.customerName ?? "").trim()
-          ? `Pedido ${String(form.customerName ?? "").trim()}`
-          : "Pedido prefactura";
+          ? `Order ${String(form.customerName ?? "").trim()}`
+          : "Prefacture order";
 
       try {
         setCreatingPrefactura(true);
@@ -354,11 +434,23 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
             shippingFee,
             subtotal: computed.subtotal,
             total: computed.total,
+            municipalityFiscalSnapshot: form.municipalityFiscalSnapshot,
+            taxZoneSnapshot: form.taxZoneSnapshot,
+            withholdingTaxRate,
+            withholdingIcaRate,
+            withholdingIvaRate,
+            withholdingTaxAmount,
+            withholdingIcaAmount,
+            withholdingIvaAmount,
+            totalAfterWithholdings,
             orderName,
             orderType: prefacturaOrderType,
             advanceRequired: hasAdvance ? computed.advancePayment : 0,
-            hasConvenio,
+            hasConvenio: false,
             hasClientApproval,
+            clientApprovalImageUrl: hasClientApproval
+              ? clientApprovalImageUrl.trim() || null
+              : null,
             items: validItems.map((item) => ({
               productId: item.productId,
               orderType: item.orderType,
@@ -377,7 +469,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
           }),
         });
 
-        toast.success("Prefactura creada");
+        toast.success("Prefacture created");
 
         if (!quoteId) {
           try {
@@ -388,12 +480,12 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
         }
 
         if (created?.prefactura?.id) {
-          router.push("/prefacturas");
+          router.push("/erp/pre-invoices");
           router.refresh();
           return;
         }
 
-        router.push("/prefacturas");
+        router.push("/erp/pre-invoices");
         router.refresh();
         return;
       } catch (error) {
@@ -418,6 +510,17 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       shippingFee,
       insuranceEnabled,
       insuranceFee,
+      {
+        municipalityFiscalSnapshot: form.municipalityFiscalSnapshot,
+        taxZoneSnapshot: form.taxZoneSnapshot,
+        withholdingTaxRate,
+        withholdingIcaRate,
+        withholdingIvaRate,
+        withholdingTaxAmount,
+        withholdingIcaAmount,
+        withholdingIvaAmount,
+        totalAfterWithholdings,
+      },
     );
 
     if (saved.ok) {
@@ -439,23 +542,23 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
         <div>
           <h1 className="text-2xl font-bold">
             {quoteId
-              ? "Editar cotización"
+              ? "Edit quotation"
               : mode === "prefactura"
-                ? "Crear prefactura"
-                : "Crear cotización"}
+                ? "Create prefacture"
+                : "Create quotation"}
           </h1>
           <p className="text-default-600">
-            Código: {loadedQuoteCode || quoteCode}
-            {mode === "prefactura" && !quoteId ? " (se creará como prefactura directa)" : ""}
+            Code: {loadedQuoteCode || quoteCode}
+            {mode === "prefactura" && !quoteId ? " (will be created as direct prefacture)" : ""}
           </p>
         </div>
         <Button
           variant="flat"
           onPress={() =>
-            router.push(mode === "prefactura" && !quoteId ? "/prefacturas" : "/quotations")
+            router.push(mode === "prefactura" && !quoteId ? "/erp/pre-invoices" : "/quotations")
           }
         >
-          Volver
+          Back
         </Button>
       </div>
 
@@ -463,13 +566,13 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
         <Card radius="md" shadow="none" className="border border-default-200">
           <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input
-              label="Nombre del pedido"
-              placeholder="Ej: Pedido Club Deportivo"
+              label="Order name"
+              placeholder="E.g: Order Sports Club"
               value={prefacturaOrderName}
               onValueChange={setPrefacturaOrderName}
             />
             <Select
-              label="Tipo de pedido"
+              label="Order type"
               selectedKeys={[prefacturaOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
@@ -478,8 +581,8 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
                 );
               }}
             >
-              <SelectItem key="VN">VN - Nacional</SelectItem>
-              <SelectItem key="VI">VI - Internacional</SelectItem>
+              <SelectItem key="VN">VN - National</SelectItem>
+              <SelectItem key="VI">VI - International</SelectItem>
               <SelectItem key="VT">VT</SelectItem>
               <SelectItem key="VW">VW</SelectItem>
             </Select>
@@ -487,47 +590,32 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
             <div className="rounded-medium border border-default-200 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold">Convenio</p>
-                  <p className="text-xs text-default-500">Habilita edición del anticipo.</p>
-                </div>
-                <Switch isSelected={hasConvenio} onValueChange={setHasConvenio} />
-              </div>
-            </div>
-
-            <div className="rounded-medium border border-default-200 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Aval del cliente</p>
-                  <p className="text-xs text-default-500">Confirmación comercial del cliente.</p>
+                  <p className="text-sm font-semibold">Client approval</p>
+                  <p className="text-xs text-default-500">Client's commercial confirmation.</p>
                 </div>
                 <Switch isSelected={hasClientApproval} onValueChange={setHasClientApproval} />
               </div>
             </div>
 
-            <div className="rounded-medium border border-default-200 p-3 md:col-span-2">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Anticipo</p>
-                  <p className="text-xs text-default-500">
-                    Inicia en true y solo se puede cambiar cuando Convenio está en true.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-default-500">{hasAdvance ? "true" : "false"}</span>
-                  <Switch
-                    isDisabled={!hasConvenio}
-                    isSelected={hasAdvance}
-                    onValueChange={setHasAdvance}
-                  />
-                </div>
+            {hasClientApproval ? (
+              <div className="rounded-medium border border-default-200 p-3 md:col-span-2">
+                <FileUpload
+                  acceptedFileTypes="image/*"
+                  label="Screenshot / approval evidence"
+                  uploadFolder="prefacturas/avales"
+                  value={clientApprovalImageUrl}
+                  onChange={setClientApprovalImageUrl}
+                  onClear={() => setClientApprovalImageUrl("")}
+                />
               </div>
-            </div>
+            ) : null}
+
           </CardBody>
         </Card>
       ) : null}
 
       <Card radius="md" shadow="none" className="border border-default-200">
-        <CardHeader className="text-sm font-semibold">Información General</CardHeader>
+        <CardHeader className="text-sm font-semibold">General Information</CardHeader>
         <CardBody className="space-y-4">
           <QuotationsForm
             form={form}
@@ -538,7 +626,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
           <Card radius="md" shadow="none" className="border border-default-200">
             <CardBody className="py-3">
-              <p className="text-xs text-default-500">Tipo de cliente (COP)</p>
+              <p className="text-xs text-default-500">Client type (COP)</p>
               <p className="text-sm font-semibold">{selectedClientPriceType}</p>
             </CardBody>
           </Card>
@@ -567,25 +655,25 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2" />
         <Card radius="md" shadow="none" className="border border-default-200 lg:col-span-1">
-          <CardHeader className="text-sm font-semibold">Totales</CardHeader>
+          <CardHeader className="text-sm font-semibold">Totals</CardHeader>
           <CardBody className="space-y-3">
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
               <span>{asMoney(computed.subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span>IVA (19%)</span>
+              <span>VAT (19%)</span>
               <span>{asMoney(computed.iva)}</span>
             </div>
 
             <div className="space-y-2 border-t border-default-200 pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Envío</span>
+                <span className="text-sm">Shipping</span>
                 <Switch isSelected={shippingEnabled} onValueChange={setShippingEnabled} />
               </div>
               <Input
                 isDisabled={!shippingEnabled}
-                label="Valor envío"
+                label="Shipping value"
                 type="number"
                 value={String(shippingFee)}
                 variant="flat"
@@ -595,12 +683,12 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
             <div className="space-y-2 border-t border-default-200 pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Seguro</span>
+                <span className="text-sm">Insurance</span>
                 <Switch isSelected={insuranceEnabled} onValueChange={setInsuranceEnabled} />
               </div>
               <Input
                 isDisabled={!insuranceEnabled}
-                label="Valor seguro"
+                label="Insurance value"
                 type="number"
                 value={String(insuranceFee)}
                 variant="flat"
@@ -608,13 +696,78 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
               />
             </div>
 
+            {mode === "prefactura" ? (
+              <div className="space-y-2 border-t border-default-200 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm">Advance</span>
+                    <p className="text-xs text-default-500">Commercial control at 50% for the prefacture.</p>
+                  </div>
+                  <Switch isSelected={hasAdvance} onValueChange={setHasAdvance} />
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Advance (50%)</span>
+                  <span>{hasAdvance ? asMoney(computed.advancePayment) : "Not applicable"}</span>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex justify-between text-sm font-semibold border-t border-default-200 pt-3">
-              <span>Total General</span>
+              <span>General Total</span>
               <span>{asMoney(computed.total)}</span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span>Anticipo (50%)</span>
-              <span>{asMoney(computed.advancePayment)}</span>
+
+            <div className="space-y-2 border-t border-default-200 pt-3">
+              <p className="text-sm font-semibold">Withholdings</p>
+              <div className="grid grid-cols-1 gap-2">
+                <Input
+                  label="Withholding tax (%)"
+                  type="number"
+                  value={String(withholdingTaxRate)}
+                  variant="flat"
+                  onValueChange={(v) => setWithholdingTaxRate(Math.max(0, Number(v || 0)))}
+                />
+                <Input
+                  label="ICA withholding (%)"
+                  type="number"
+                  value={String(withholdingIcaRate)}
+                  variant="flat"
+                  onValueChange={(v) => setWithholdingIcaRate(Math.max(0, Number(v || 0)))}
+                />
+                <Input
+                  label="IVA withholding (%)"
+                  type="number"
+                  value={String(withholdingIvaRate)}
+                  variant="flat"
+                  onValueChange={(v) => setWithholdingIvaRate(Math.max(0, Number(v || 0)))}
+                />
+              </div>
+              <div className="rounded-medium border border-default-200 p-3 text-xs text-default-600">
+                <p>
+                  Fiscal snapshot: {form.municipalityFiscalSnapshot || "No municipality"} /{" "}
+                  {form.taxZoneSnapshot}
+                </p>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Withholding value</span>
+                <span>{asMoney(withholdingTaxAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>ICA withholding value</span>
+                <span>{asMoney(withholdingIcaAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>IVA withholding value</span>
+                <span>{asMoney(withholdingIvaAmount)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span>Total withholdings</span>
+                <span>{asMoney(totalWithholdings)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold text-primary">
+                <span>Total after withholdings</span>
+                <span>{asMoney(totalAfterWithholdings)}</span>
+              </div>
             </div>
 
             <Button
@@ -622,7 +775,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
               isLoading={submitting || creatingPrefactura}
               onPress={handleSaveQuotation}
             >
-              {quoteId ? "Guardar cambios" : mode === "prefactura" ? "Guardar prefactura" : "Guardar cotización"}
+              {quoteId ? "Save changes" : mode === "prefactura" ? "Save prefacture" : "Save quotation"}
             </Button>
           </CardBody>
         </Card>

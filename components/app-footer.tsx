@@ -6,15 +6,15 @@ import { usePathname } from "next/navigation";
 const moduleMeta = {
   erp: {
     title: "ERP",
-    description: "Operación integral: comercial, compras, producción y contabilidad",
+    description: "Comprehensive operations: sales, purchasing, production and accounting",
   },
   mes: {
     title: "MES",
-    description: "Ejecución de manufactura y control de planta",
+    description: "Manufacturing execution and plant control",
   },
   crm: {
     title: "CRM",
-    description: "Gestión comercial y relacionamiento con clientes",
+    description: "Commercial management and customer relationships",
   },
 };
 
@@ -32,7 +32,7 @@ export function AppFooter() {
     return (
       <footer className="border-t border-default-200/80 bg-content1/70 backdrop-blur">
         <div className="container mx-auto flex max-w-7xl items-center justify-center px-6 py-4 text-sm text-default-600">
-          © {currentYear} Viomar App. Todos los derechos reservados.
+          © {currentYear} Viomar App. All rights reserved.
         </div>
       </footer>
     );
@@ -60,7 +60,7 @@ export function AppFooter() {
           <NextLink className="hover:text-default-900" href="/crm">
             CRM
           </NextLink>
-          <span className="text-default-400">Plataforma Viomar v2</span>
+            <span className="text-default-400">Viomar Platform v2</span>
         </div>
       </div>
     </footer>

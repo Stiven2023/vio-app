@@ -37,29 +37,29 @@ import {
 } from "./supplier-modal-sections";
 
 const identificationTypes = [
-  { value: "CC", label: "Cédula de Ciudadanía" },
+  { value: "CC", label: "C├®dula de Ciudadan├¡a" },
   { value: "NIT", label: "NIT" },
-  { value: "CE", label: "Cédula de Extranjería" },
+  { value: "CE", label: "C├®dula de Extranjer├¡a" },
   { value: "PAS", label: "Pasaporte" },
   { value: "EMPRESA_EXTERIOR", label: "Empresa Exterior" },
 ];
 
 const taxRegimes = [
-  { value: "REGIMEN_COMUN", label: "Régimen Común" },
-  { value: "REGIMEN_SIMPLIFICADO", label: "Régimen Simplificado" },
+  { value: "REGIMEN_COMUN", label: "R├®gimen Com├║n" },
+  { value: "REGIMEN_SIMPLIFICADO", label: "R├®gimen Simplificado" },
   { value: "NO_RESPONSABLE", label: "No Responsable" },
 ];
 
 const supplierSchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido"),
-  identificationType: z.string().min(1, "Tipo de identificación requerido"),
-  identification: z.string().trim().min(1, "Identificación requerida"),
+  identificationType: z.string().min(1, "Tipo de identificaci├│n requerido"),
+  identification: z.string().trim().min(1, "Identificaci├│n requerida"),
   dv: z.string().optional(),
   branch: z.string(),
-  taxRegime: z.string().min(1, "Régimen fiscal requerido"),
+  taxRegime: z.string().min(1, "R├®gimen fiscal requerido"),
   contactName: z.string().trim().min(1, "Nombre de contacto requerido"),
-  email: z.string().trim().email("Email inválido"),
-  address: z.string().trim().min(1, "Dirección requerida"),
+  email: z.string().trim().email("Email inv├ílido"),
+  address: z.string().trim().min(1, "Direcci├│n requerida"),
   postalCode: z.string().optional(),
   country: z.string(),
   department: z.string(),
@@ -165,7 +165,7 @@ export function SupplierModal({
     postalCode: "",
     country: "COLOMBIA",
     department: "ANTIOQUIA",
-    city: "Medellín",
+    city: "Medell├¡n",
     intlDialCode: "57",
     mobile: "",
     fullMobile: "",
@@ -215,7 +215,7 @@ export function SupplierModal({
         postalCode: supplier.postalCode ?? "",
         country: supplier.country ?? "COLOMBIA",
         department: supplier.department ?? "ANTIOQUIA",
-        city: supplier.city ?? "Medellín",
+        city: supplier.city ?? "Medell├¡n",
         intlDialCode: supplier.intlDialCode ?? "57",
         mobile: supplier.mobile ?? "",
         fullMobile: supplier.fullMobile ?? "",
@@ -250,7 +250,7 @@ export function SupplierModal({
         postalCode: prefill.postalCode ?? "",
         country: prefill.country ?? "COLOMBIA",
         department: prefill.department ?? "ANTIOQUIA",
-        city: prefill.city ?? "Medellín",
+        city: prefill.city ?? "Medell├¡n",
         intlDialCode: prefill.intlDialCode ?? "57",
         mobile: prefill.mobile ?? "",
         fullMobile: prefill.fullMobile ?? "",
@@ -283,7 +283,7 @@ export function SupplierModal({
         postalCode: "",
         country: "COLOMBIA",
         department: "ANTIOQUIA",
-        city: "Medellín",
+        city: "Medell├¡n",
         intlDialCode: "57",
         mobile: "",
         fullMobile: "",
@@ -326,7 +326,7 @@ export function SupplierModal({
       if (result.sameModule) {
         setErrors((prev) => ({
           ...prev,
-          identification: result.sameModule?.message ?? "Identificación duplicada",
+          identification: result.sameModule?.message ?? "Duplicate identification",
         }));
         return;
       }
@@ -343,7 +343,7 @@ export function SupplierModal({
         setImportPromptOpen(true);
       }
     } catch {
-      // El backend valida nuevamente al guardar.
+      // The backend validates again on save.
     }
   };
 
@@ -371,7 +371,7 @@ export function SupplierModal({
     setImportPromptOpen(false);
     setImportCandidate(null);
     setImportMessage("");
-    toast.success("Datos importados desde otro módulo");
+    toast.success("Data imported from another module");
   };
 
   const isIdentificationValidByType = (identificationType: string, identification: string) => {
@@ -397,17 +397,19 @@ export function SupplierModal({
   const submit = async () => {
     if (submitting) return;
 
-    // Validar formato de identificación por tipo
     if (!isIdentificationValidByType(form.identificationType, form.identification)) {
-      const typeLabel = identificationTypes.find((t) => t.value === form.identificationType)?.label || form.identificationType;
+      const typeLabel =
+        identificationTypes.find((t) => t.value === form.identificationType)?.label ||
+        form.identificationType;
       const formatMessages: Record<string, string> = {
-        CC: "La Cédula debe tener entre 6 y 10 dígitos",
-        NIT: "El NIT debe tener entre 8 y 12 dígitos",
-        CE: "La Cédula de Extranjería debe tener entre 5 y 15 caracteres alfanuméricos",
-        PAS: "El Pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
-        EMPRESA_EXTERIOR: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+        CC: "National ID must be 6-10 digits",
+        NIT: "NIT must be 8-12 digits",
+        CE: "Foreign ID must be 5-15 alphanumeric characters",
+        PAS: "Passport must be 5-20 alphanumeric characters",
+        EMPRESA_EXTERIOR: "Foreign company ID must be at least 3 characters",
       };
-      const message = formatMessages[form.identificationType] || `Formato inválido para ${typeLabel}`;
+      const message =
+        formatMessages[form.identificationType] || `Invalid format for ${typeLabel}`;
       setErrors((prev) => ({ ...prev, identification: message }));
       toast.error(message);
       return;
@@ -472,7 +474,7 @@ export function SupplierModal({
         ),
       });
 
-      toast.success(supplier ? "Proveedor actualizado" : "Proveedor creado");
+      toast.success(supplier ? "Supplier updated" : "Supplier created");
       onOpenChange(false);
       onSaved();
     } catch (e) {
@@ -512,10 +514,10 @@ export function SupplierModal({
       <ModalContent>
         <ModalHeader className="flex justify-between items-start">
           <div>
-            <div>{supplier ? "Editar proveedor" : "Crear proveedor"}</div>
+            <div>{supplier ? "Edit supplier" : "Create supplier"}</div>
             <p className="mt-1 text-xs font-normal text-default-500">
-              Los campos marcados con <span className="text-danger">*</span> son
-              críticos
+              Fields marked with <span className="text-danger">*</span> are
+              required
             </p>
             {supplier?.supplierCode && (
               <span className="mt-1 block font-mono text-xs font-normal text-primary">
@@ -525,10 +527,10 @@ export function SupplierModal({
           </div>
         </ModalHeader>
         <ModalBody>
-          <Tabs aria-label="Secciones del formulario" variant="underlined">
+          <Tabs aria-label="Form sections" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identification" />}
             >
               <SupplierIdentificationSection
                 errors={errors}
@@ -540,7 +542,7 @@ export function SupplierModal({
 
               <div className="space-y-4 border-t border-default-200 pt-4">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Documentos
+                  Documents
                 </h3>
 
                 <IdentificationDocumentsSection
@@ -558,7 +560,7 @@ export function SupplierModal({
                 <FileUpload
                   acceptedFileTypes=".pdf"
                   errorMessage={errors.bankCertificateUrl}
-                  label="Comprobante bancario"
+                  label="Bank certificate"
                   maxSizeMB={10}
                   uploadFolder="suppliers/documents"
                   value={form.bankCertificateUrl}
@@ -574,7 +576,7 @@ export function SupplierModal({
 
             <Tab
               key="contacto"
-              title={<FormTabTitle icon={<ContactIcon />} label="Contacto y fiscal" />}
+              title={<FormTabTitle icon={<ContactIcon />} label="Contact and tax" />}
             >
               <SupplierContactSection
                 errors={errors}
@@ -586,7 +588,7 @@ export function SupplierModal({
 
             <Tab
               key="ubicacion"
-              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+              title={<FormTabTitle icon={<LocationIcon />} label="Location" />}
             >
               <SupplierLocationSection
                 errors={errors}
@@ -597,7 +599,7 @@ export function SupplierModal({
 
             <Tab
               key="telefonos"
-              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+              title={<FormTabTitle icon={<PhoneIcon />} label="Phones" />}
             >
               <SupplierPhonesSection
                 errors={errors}
@@ -608,7 +610,7 @@ export function SupplierModal({
 
             <Tab
               key="credito"
-              title={<FormTabTitle icon={<FinanceIcon />} label="Estado y crédito" />}
+              title={<FormTabTitle icon={<FinanceIcon />} label="Status and credit" />}
             >
               <SupplierCreditSection
                 errors={errors}
@@ -625,24 +627,24 @@ export function SupplierModal({
             variant="flat"
             onPress={() => onOpenChange(false)}
           >
-            Cancelar
+            Cancel
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>
-            {supplier ? "Guardar" : "Crear"}
+            {supplier ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>
 
       <ConfirmActionModal
-        cancelLabel="No importar"
+        cancelLabel="Do not import"
         confirmColor="primary"
-        confirmLabel="Importar datos"
+        confirmLabel="Import data"
         description={
           importMessage ||
-          "Esta identificación ya existe en otro módulo. ¿Deseas importar esos datos?"
+          "This identification already exists in another module. Import that data?"
         }
         isOpen={importPromptOpen}
-        title="Identificación encontrada"
+        title="Identification found"
         onConfirm={importFromOtherModule}
         onOpenChange={(open) => {
           if (!open) {

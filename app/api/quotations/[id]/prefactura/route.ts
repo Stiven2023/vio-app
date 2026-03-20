@@ -27,6 +27,25 @@ function asNumber(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function toNumericString(value: unknown) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0.00";
+  return n.toFixed(2);
+}
+
+function normalizeTaxZone(value: unknown) {
+  const normalized = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  if (
+    normalized === "FREE_ZONE" ||
+    normalized === "SAN_ANDRES" ||
+    normalized === "SPECIAL_REGIME"
+  ) {
+    return normalized as "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+  }
+
+  return "CONTINENTAL" as const;
+}
+
 function toPositiveInt(v: unknown) {
   const n = Number(String(v));
   if (!Number.isFinite(n)) return 1;
@@ -117,6 +136,7 @@ export async function POST(
 
   let orderNameFromBody: string | null = null;
   let orderTypeFromBody: OrderTypeCode | null = null;
+  let prefacturaFiscalInput: Record<string, unknown> = {};
   try {
     const body = await request.json();
     const rawOrderName = String(body?.orderName ?? "").trim();
@@ -129,9 +149,21 @@ export async function POST(
         : rawOrderType === "VN"
           ? "VN"
           : null;
+    prefacturaFiscalInput = {
+      municipalityFiscalSnapshot: body?.municipalityFiscalSnapshot,
+      taxZoneSnapshot: body?.taxZoneSnapshot,
+      withholdingTaxRate: body?.withholdingTaxRate,
+      withholdingIcaRate: body?.withholdingIcaRate,
+      withholdingIvaRate: body?.withholdingIvaRate,
+      withholdingTaxAmount: body?.withholdingTaxAmount,
+      withholdingIcaAmount: body?.withholdingIcaAmount,
+      withholdingIvaAmount: body?.withholdingIvaAmount,
+      totalAfterWithholdings: body?.totalAfterWithholdings,
+    };
   } catch {
     orderNameFromBody = null;
     orderTypeFromBody = null;
+    prefacturaFiscalInput = {};
   }
 
   try {
@@ -187,6 +219,43 @@ export async function POST(
             .set(updateData)
             .where(eq(orders.id, linkedOrder.id));
         }
+
+        await tx
+          .update(prefacturas)
+          .set({
+            municipalityFiscalSnapshot: prefacturaFiscalInput.municipalityFiscalSnapshot
+              ? String(prefacturaFiscalInput.municipalityFiscalSnapshot).trim()
+              : String(quotation.municipalityFiscalSnapshot ?? "").trim() || null,
+            taxZoneSnapshot: normalizeTaxZone(
+              prefacturaFiscalInput.taxZoneSnapshot ?? quotation.taxZoneSnapshot,
+            ),
+            withholdingTaxRate: toNumericString(
+              prefacturaFiscalInput.withholdingTaxRate ?? quotation.withholdingTaxRate,
+            ),
+            withholdingIcaRate: toNumericString(
+              prefacturaFiscalInput.withholdingIcaRate ?? quotation.withholdingIcaRate,
+            ),
+            withholdingIvaRate: toNumericString(
+              prefacturaFiscalInput.withholdingIvaRate ?? quotation.withholdingIvaRate,
+            ),
+            withholdingTaxAmount: toNumericString(
+              prefacturaFiscalInput.withholdingTaxAmount ?? quotation.withholdingTaxAmount,
+            ),
+            withholdingIcaAmount: toNumericString(
+              prefacturaFiscalInput.withholdingIcaAmount ?? quotation.withholdingIcaAmount,
+            ),
+            withholdingIvaAmount: toNumericString(
+              prefacturaFiscalInput.withholdingIvaAmount ?? quotation.withholdingIvaAmount,
+            ),
+            totalAfterWithholdings: toNumericString(
+              prefacturaFiscalInput.totalAfterWithholdings ??
+                (asNumber(quotation.total) -
+                  asNumber(quotation.withholdingTaxAmount) -
+                  asNumber(quotation.withholdingIcaAmount) -
+                  asNumber(quotation.withholdingIvaAmount)),
+            ),
+          })
+          .where(eq(prefacturas.id, existingPrefactura.id));
 
         await tx
           .update(quotations)
@@ -601,6 +670,37 @@ export async function POST(
                 totalProducts: String(quotation.totalProducts ?? "0"),
                 subtotal: String(quotation.subtotal ?? "0"),
                 total: String(quotation.total ?? "0"),
+                municipalityFiscalSnapshot: prefacturaFiscalInput.municipalityFiscalSnapshot
+                  ? String(prefacturaFiscalInput.municipalityFiscalSnapshot).trim()
+                  : String(quotation.municipalityFiscalSnapshot ?? "").trim() || null,
+                taxZoneSnapshot: normalizeTaxZone(
+                  prefacturaFiscalInput.taxZoneSnapshot ?? quotation.taxZoneSnapshot,
+                ),
+                withholdingTaxRate: toNumericString(
+                  prefacturaFiscalInput.withholdingTaxRate ?? quotation.withholdingTaxRate,
+                ),
+                withholdingIcaRate: toNumericString(
+                  prefacturaFiscalInput.withholdingIcaRate ?? quotation.withholdingIcaRate,
+                ),
+                withholdingIvaRate: toNumericString(
+                  prefacturaFiscalInput.withholdingIvaRate ?? quotation.withholdingIvaRate,
+                ),
+                withholdingTaxAmount: toNumericString(
+                  prefacturaFiscalInput.withholdingTaxAmount ?? quotation.withholdingTaxAmount,
+                ),
+                withholdingIcaAmount: toNumericString(
+                  prefacturaFiscalInput.withholdingIcaAmount ?? quotation.withholdingIcaAmount,
+                ),
+                withholdingIvaAmount: toNumericString(
+                  prefacturaFiscalInput.withholdingIvaAmount ?? quotation.withholdingIvaAmount,
+                ),
+                totalAfterWithholdings: toNumericString(
+                  prefacturaFiscalInput.totalAfterWithholdings ??
+                    (asNumber(quotation.total) -
+                      asNumber(quotation.withholdingTaxAmount) -
+                      asNumber(quotation.withholdingIcaAmount) -
+                      asNumber(quotation.withholdingIvaAmount)),
+                ),
                 approvedAt: new Date(),
               })
               .returning({

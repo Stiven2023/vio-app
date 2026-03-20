@@ -1,7 +1,12 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { shipments } from "@/src/db/schema";
+import {
+  clientLegalStatusHistory,
+  operativeDashboardLogs,
+  orders,
+  shipments,
+} from "@/src/db/schema";
 import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
@@ -130,6 +135,59 @@ export async function POST(request: Request) {
   let emailTo: string | null = null;
 
   if (mode === "CLIENT") {
+    const [orderRow] = await db
+      .select({ id: orders.id, clientId: orders.clientId, status: orders.status })
+      .from(orders)
+      .where(eq(orders.orderCode, orderCode))
+      .limit(1);
+
+    if (!orderRow) {
+      return new Response("Pedido no encontrado para validar despacho", {
+        status: 404,
+      });
+    }
+
+    if (orderRow.clientId) {
+      const [latestLegal] = await db
+        .select({ status: clientLegalStatusHistory.status })
+        .from(clientLegalStatusHistory)
+        .where(eq(clientLegalStatusHistory.clientId, orderRow.clientId))
+        .orderBy(desc(clientLegalStatusHistory.createdAt))
+        .limit(1);
+
+      const legalStatus = String(latestLegal?.status ?? "");
+      const inMontajeOrHigher = [
+        "PRODUCCION",
+        "ATRASADO",
+        "FINALIZADO",
+        "ENTREGADO",
+      ].includes(String(orderRow.status ?? ""));
+
+      const [progressRow] = await db
+        .select({
+          totalQty: sql<number>`coalesce(sum(${operativeDashboardLogs.quantityOp}), 0)::int`,
+          producedQty: sql<number>`coalesce(sum(${operativeDashboardLogs.producedQuantity}), 0)::int`,
+        })
+        .from(operativeDashboardLogs)
+        .where(eq(operativeDashboardLogs.orderCode, orderCode));
+
+      const totalQty = Number(progressRow?.totalQty ?? 0);
+      const producedQty = Number(progressRow?.producedQty ?? 0);
+      const progressPercent = totalQty > 0 ? (producedQty / totalQty) * 100 : 0;
+      const reachedTwentyPercent = progressPercent >= 20;
+
+      if (
+        (legalStatus === "EN_REVISION" || legalStatus === "BLOQUEADO") &&
+        !inMontajeOrHigher &&
+        !reachedTwentyPercent
+      ) {
+        return new Response(
+          "No se puede despachar: cliente en revisión/bloqueado sin avance mínimo del 20% ni estado de montaje.",
+          { status: 422 },
+        );
+      }
+    }
+
     const paymentInput = up(body.paymentStatus);
     const documentInput = up(body.customerDocumentType);
     const emailModeInput = up(body.emailMode);

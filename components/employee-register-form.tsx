@@ -145,7 +145,7 @@ export function EmployeeRegisterForm({
           const text = await res.text();
           if (!cancelled) {
             setToast({
-              message: text || "No se pudo cargar el empleado.",
+              message: text || "Could not load the employee.",
               type: "error",
             });
           }
@@ -189,7 +189,7 @@ export function EmployeeRegisterForm({
       } catch {
         if (!cancelled)
           setToast({
-            message: "No se pudo cargar el empleado.",
+            message: "Could not load the employee.",
             type: "error",
           });
       } finally {
@@ -219,7 +219,7 @@ export function EmployeeRegisterForm({
 
           if (!cancelled) {
             setToast({
-              message: text || "No se pudieron cargar los roles.",
+              message: text || "Could not load roles.",
               type: "error",
             });
             setRoles([]);
@@ -234,7 +234,7 @@ export function EmployeeRegisterForm({
       } catch {
         if (!cancelled)
           setToast({
-            message: "No se pudieron cargar los roles.",
+            message: "Could not load roles.",
             type: "error",
           });
       } finally {
@@ -436,37 +436,37 @@ export function EmployeeRegisterForm({
   const submit = async () => {
     const userId = form.userId?.trim();
     if (!userId) {
-      setToast({ message: "Debes crear el usuario primero (correo).", type: "error" });
+      setToast({ message: "You must create a user first (email).", type: "error" });
       return;
     }
     if (!form.name.trim()) {
-      setToast({ message: "El nombre es obligatorio.", type: "error" });
+      setToast({ message: "Name is required.", type: "error" });
       return;
     }
     if (!form.roleId.trim()) {
-      setToast({ message: "El rol es obligatorio.", type: "error" });
+      setToast({ message: "Role is required.", type: "error" });
       return;
     }
     if (!form.identificationType.trim()) {
-      setToast({ message: "El tipo de identificación es obligatorio.", type: "error" });
+      setToast({ message: "Identification type is required.", type: "error" });
       return;
     }
     if (!form.identification.trim()) {
-      setToast({ message: "La identificación es obligatoria.", type: "error" });
+      setToast({ message: "Identification is required.", type: "error" });
       return;
     }
     if (!isIdentificationValidByType(form.identificationType, form.identification)) {
       setToast({
         message:
           form.identificationType === "CC"
-            ? "La CC debe tener entre 6 y 10 dígitos."
+            ? "CC must have 6 to 10 digits."
             : form.identificationType === "NIT"
-              ? "El NIT debe tener entre 8 y 12 dígitos."
+              ? "NIT must have 8 to 12 digits."
               : form.identificationType === "CE"
-                ? "La CE debe tener entre 5 y 15 caracteres alfanuméricos."
+                ? "CE must have 5 to 15 alphanumeric characters."
                 : form.identificationType === "PAS"
-                  ? "El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos."
-                  : "El identificador no cumple el formato requerido.",
+                  ? "Passport must have 5 to 20 alphanumeric characters."
+                  : "The identifier does not meet the required format.",
         type: "error",
       });
       return;
@@ -479,7 +479,7 @@ export function EmployeeRegisterForm({
     }
 
     if (!isValidEmail(form.email)) {
-      setToast({ message: "El correo no es válido.", type: "error" });
+      setToast({ message: "Email is not valid.", type: "error" });
       return;
     }
 
@@ -511,7 +511,7 @@ export function EmployeeRegisterForm({
           };
           setPendingFiles({});
         } catch {
-          setToast({ message: "No se pudieron subir los documentos.", type: "error" });
+          setToast({ message: "Could not upload documents.", type: "error" });
           return;
         }
       }
@@ -527,22 +527,22 @@ export function EmployeeRegisterForm({
           };
           setPendingBeneficiaryFiles({});
         } catch {
-          setToast({ message: "No se pudieron subir los documentos de beneficiarios.", type: "error" });
+          setToast({ message: "Could not upload beneficiary documents.", type: "error" });
           return;
         }
       }
 
       for (const b of updatedForm.beneficiaries) {
         if (!b.name.trim()) {
-          setToast({ message: "Todos los beneficiarios deben tener nombre.", type: "error" });
+          setToast({ message: "All beneficiaries must have a name.", type: "error" });
           return;
         }
         if (!b.identityDocumentUrl) {
-          setToast({ message: "Todos los beneficiarios deben tener documento de identidad.", type: "error" });
+          setToast({ message: "All beneficiaries must have an identity document.", type: "error" });
           return;
         }
         if (b.type === "HIJO" && !b.birthCertificateUrl) {
-          setToast({ message: "El hijo beneficiario debe tener registro civil.", type: "error" });
+          setToast({ message: "Child beneficiary must have a birth certificate.", type: "error" });
           return;
         }
       }
@@ -581,18 +581,18 @@ export function EmployeeRegisterForm({
       if (!res.ok) {
         const text = await res.text();
         setToast({
-          message: text || "No se pudo registrar el empleado.",
+          message: text || "Could not register employee.",
           type: "error",
         });
         return;
       }
       setToast({
-        message: employeeId ? "Empleado actualizado." : "Empleado registrado.",
+        message: employeeId ? "Employee updated." : "Employee registered.",
         type: "success",
       });
       onSuccess?.();
     } catch {
-      setToast({ message: "No se pudo registrar el empleado.", type: "error" });
+      setToast({ message: "Could not register employee.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -617,30 +617,30 @@ export function EmployeeRegisterForm({
           <Skeleton className="h-10 w-full" />
         </div>
       ) : (
-        <Tabs aria-label="Formulario de empleado" variant="underlined">
-          <Tab key="identificacion" title="Identificación">
+        <Tabs aria-label="Employee registration form" variant="underlined">
+          <Tab key="identificacion" title="Identification">
             <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
               <Input
-                label="Nombre"
+                label="Name"
                 value={form.name}
                 onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
               />
               <Select
-                label="Tipo de identificación"
+                label="Identification type"
                 selectedKeys={[form.identificationType]}
                 onSelectionChange={(keys) => {
                   const first = Array.from(keys)[0];
                   setForm((s) => ({ ...s, identificationType: String(first ?? "CC") }));
                 }}
               >
-                <SelectItem key="CC">Cédula de ciudadanía (CC)</SelectItem>
+                <SelectItem key="CC">National ID (CC)</SelectItem>
                 <SelectItem key="NIT">NIT</SelectItem>
-                <SelectItem key="CE">Cédula de extranjería (CE)</SelectItem>
-                <SelectItem key="PAS">Pasaporte (PAS)</SelectItem>
-                <SelectItem key="EMPRESA_EXTERIOR">Empresa exterior</SelectItem>
+                <SelectItem key="CE">Foreign ID (CE)</SelectItem>
+                <SelectItem key="PAS">Passport (PAS)</SelectItem>
+                <SelectItem key="EMPRESA_EXTERIOR">Foreign Company</SelectItem>
               </Select>
               <Input
-                label="Identificación"
+                label="Identification"
                 value={form.identification}
                 errorMessage={identificationError}
                 isInvalid={Boolean(identificationError)}
@@ -659,98 +659,98 @@ export function EmployeeRegisterForm({
                 }}
               />
               <Input
-                label="Dígito verificación"
+                label="Check digit"
                 maxLength={1}
                 value={form.dv}
                 onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
               />
             </div>
           </Tab>
-        <Tab key="contacto" title="Contacto">
+        <Tab key="contacto" title="Contact">
           <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
             <Input
-              label="Código internacional"
+              label="International code"
               value={form.intlDialCode}
               onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
             />
             <Input
-              label="Móvil"
+              label="Mobile"
               value={form.mobile}
               onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
             />
             <Input
-              label="Fijo"
+              label="Landline"
               value={form.landline}
               onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
             />
             <Input
-              label="Extensión"
+              label="Extension"
               value={form.extension}
               onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
             />
           </div>
         </Tab>
-        <Tab key="ubicacion" title="Ubicación">
+        <Tab key="ubicacion" title="Location">
           <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
             <Input
-              label="Dirección"
+              label="Address"
               value={form.address}
               onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
             />
             <Input
-              label="Ciudad"
+              label="City"
               value={form.city}
               onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
             />
             <Input
-              label="Departamento"
+              label="Department"
               value={form.department}
               onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
             />
           </div>
         </Tab>
-        <Tab key="usuario-rol" title="Usuario y rol">
+        <Tab key="usuario-rol" title="User and role">
           <div className="space-y-4 pt-3">
             <Input
-              label="Usuario (correo)"
+              label="User (email)"
               value={form.email}
               isDisabled
               startContent={<BsEnvelope className="text-xl text-default-500" />}
             />
             <p className="text-xs text-default-500">
               {form.userId
-                ? "Usuario creado y asignado. Ya puedes registrar el empleado."
-                : "Primero crea y asigna el usuario para habilitar el registro del empleado."}
+                ? "User created and assigned. You can now register the employee."
+                : "First create and assign a user to enable employee registration."}
             </p>
             <Dropdown isOpen={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
               <DropdownTrigger>
                 <Button variant="flat">
-                  Crear usuario
+                  Create user
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu aria-label="Creador de usuario" closeOnSelect={false}>
-                <DropdownItem key="creator" textValue="Creador de usuario">
+              <DropdownMenu aria-label="User creator" closeOnSelect={false}>
+                <DropdownItem key="creator" textValue="User creator">
                   <div className="w-[280px] space-y-2 py-1">
                     <Input
-                      label="Email usuario"
-                      placeholder="usuario@dominio.com"
+                      label="User email"
+                      placeholder="user@domain.com"
                       type="text"
                       inputMode="email"
                       autoComplete="email"
                       value={form.createUserEmail}
                       onValueChange={(v) => setForm((s) => ({ ...s, createUserEmail: v }))}
                       startContent={<BsEnvelope className="text-xl text-default-500" />}
-                      errorMessage={form.createUserEmail && !isValidEmail(form.createUserEmail) ? "Correo inválido" : undefined}
+                      errorMessage={form.createUserEmail && !isValidEmail(form.createUserEmail) ? "Invalid email" : undefined}
                       isInvalid={!!form.createUserEmail && !isValidEmail(form.createUserEmail)}
                     />
                     <Input
-                      label="Contraseña"
-                      placeholder="Mínimo 7, 1 mayúscula"
+                      label="Password"
+                      placeholder="Minimum 7, 1 uppercase"
                       type="password"
                       value={form.createUserPassword}
                       onValueChange={(v) => setForm((s) => ({ ...s, createUserPassword: v }))}
                       startContent={<BsKey className="text-xl text-default-500" />}
-                      errorMessage={form.createUserPassword && !isValidPassword(form.createUserPassword) ? "Debe tener mínimo 7 caracteres y 1 mayúscula" : undefined}
+                      errorMessage={form.createUserPassword && !isValidPassword(form.createUserPassword) ? "Must have minimum 7 characters and 1 uppercase" : undefined}
                       isInvalid={!!form.createUserPassword && !isValidPassword(form.createUserPassword)}
                     />
                     <Button
@@ -760,12 +760,12 @@ export function EmployeeRegisterForm({
                       isLoading={creatingUser}
                       onPress={async () => {
                         if (!isValidEmail(form.createUserEmail)) {
-                          setToast({ message: "El correo del usuario no es válido.", type: "error" });
+                          setToast({ message: "User email is not valid.", type: "error" });
                           return;
                         }
                         if (!isValidPassword(form.createUserPassword)) {
                           setToast({
-                            message: "La contraseña debe tener mínimo 7 caracteres y 1 mayúscula.",
+                            message: "Password must have minimum 7 characters and 1 uppercase letter.",
                             type: "error",
                           });
                           return;
@@ -793,7 +793,7 @@ export function EmployeeRegisterForm({
                           const createdUserEmail = createdUser?.email?.trim() ?? form.createUserEmail.trim();
 
                           if (!createdUserId) {
-                            throw new Error("No se recibió el id del usuario creado.");
+                            throw new Error("No user ID received from creation.");
                           }
 
                           setForm((s) => ({
@@ -803,25 +803,25 @@ export function EmployeeRegisterForm({
                             createUserEmail: "",
                             createUserPassword: "",
                           }));
-                          setToast({ message: "Usuario creado y asignado.", type: "success" });
+                          setToast({ message: "User created and assigned.", type: "success" });
                           setUserDropdownOpen(false);
                         } catch (e: unknown) {
-                          const message = e instanceof Error ? e.message : "Error desconocido";
-                          setToast({ message: `Error al crear usuario: ${message}`, type: "error" });
+                          const message = e instanceof Error ? e.message : "Unknown error";
+                          setToast({ message: `Error creating user: ${message}`, type: "error" });
                         } finally {
                           setCreatingUser(false);
                         }
                       }}
-                    >Crear y asignar</Button>
+                    >Create and assign</Button>
                     <p className="text-xs text-default-500">
-                      Opcional. Si completas estos campos, se crea y asocia el usuario sin exigir verificación de email.
+                      Optional. If you fill in these fields, the user will be created and associated without requiring email verification.
                     </p>
                   </div>
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
             <Select
-              label="Rol"
+              label="Role"
               selectedKeys={form.roleId ? [form.roleId] : []}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
@@ -834,7 +834,7 @@ export function EmployeeRegisterForm({
               ))}
             </Select>
             <div className="flex items-center justify-between">
-              <span className="text-sm">Activo</span>
+              <span className="text-sm">Active</span>
               <Switch
                 isDisabled={loading}
                 isSelected={form.isActive}
@@ -843,14 +843,14 @@ export function EmployeeRegisterForm({
             </div>
           </div>
         </Tab>
-        <Tab key="documentos" title="Documentos">
+        <Tab key="documentos" title="Documents">
           {form.identificationType ? (
             <div className="space-y-4 pt-4">
               <FileUpload
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Cédula"
+                label="ID"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.identityDocumentUrl}
@@ -865,7 +865,7 @@ export function EmployeeRegisterForm({
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Hoja de vida"
+                label="CV"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.hojaDeVidaUrl}
@@ -880,7 +880,7 @@ export function EmployeeRegisterForm({
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Certificado laboral"
+                label="Work certificate"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.certificadoLaboralUrl}
@@ -895,7 +895,7 @@ export function EmployeeRegisterForm({
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Certificado de estudios"
+                label="Education certificate"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.certificadoEstudiosUrl}
@@ -910,7 +910,7 @@ export function EmployeeRegisterForm({
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Certificado EPS"
+                label="Health insurance certificate"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.epsCertificateUrl}
@@ -925,7 +925,7 @@ export function EmployeeRegisterForm({
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Certificado de pensión"
+                label="Pension certificate"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.pensionCertificateUrl}
@@ -940,7 +940,7 @@ export function EmployeeRegisterForm({
                 acceptedFileTypes=".pdf"
                 autoUpload={false}
                 isRequired
-                label="Certificado bancario"
+                label="Bank certificate"
                 maxSizeMB={10}
                 uploadFolder="employees/documents"
                 value={form.bankCertificateUrl}
@@ -955,16 +955,16 @@ export function EmployeeRegisterForm({
           ) : (
             <div className="rounded-lg border border-warning bg-warning/10 p-4">
               <p className="text-sm text-warning">
-                Selecciona un tipo de identificación para cargar documentos.
+                Select an identification type to upload documents.
               </p>
             </div>
           )}
         </Tab>
         {form.userId.trim() ? (
-        <Tab key="beneficiarios" title="Beneficiarios">
+        <Tab key="beneficiarios" title="Beneficiaries">
           <div className="space-y-4 pt-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Beneficiarios</h3>
+              <h3 className="text-sm font-semibold text-foreground">Beneficiaries</h3>
               <button
                 type="button"
                 className="flex items-center gap-1 text-primary"
@@ -976,25 +976,25 @@ export function EmployeeRegisterForm({
                   ],
                 }))}
               >
-                <BsPlusCircle /> Agregar beneficiario
+                <BsPlusCircle /> Add beneficiary
               </button>
             </div>
             {form.beneficiaries.length === 0 && (
-              <p className="text-xs text-default-500">No hay beneficiarios agregados.</p>
+              <p className="text-xs text-default-500">No beneficiaries added.</p>
             )}
             {form.beneficiaries.map((b, idx) => (
               <div key={idx} className="border rounded p-3 mb-2 relative bg-default-50">
                 <button
                   type="button"
                   className="absolute top-2 right-2 text-danger"
-                  title="Eliminar beneficiario"
+                  title="Delete beneficiary"
                   onClick={() => removeBeneficiaryAtIndex(idx)}
                 >
                   <BsTrash />
                 </button>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <Input
-                    label="Nombre beneficiario"
+                    label="Beneficiary name"
                     value={b.name}
                     onValueChange={(v) => setForm((s) => {
                       const beneficiaries = [...s.beneficiaries];
@@ -1003,7 +1003,7 @@ export function EmployeeRegisterForm({
                     })}
                   />
                   <Input
-                    label="Parentesco"
+                    label="Relationship"
                     value={b.relationship}
                     onValueChange={(v) => setForm((s) => {
                       const beneficiaries = [...s.beneficiaries];
@@ -1012,7 +1012,7 @@ export function EmployeeRegisterForm({
                     })}
                   />
                   <Select
-                    label="Tipo de beneficiario"
+                    label="Beneficiary type"
                     selectedKeys={[b.type]}
                     onSelectionChange={(keys) => {
                       const first = Array.from(keys)[0] as "HIJO" | "CONYUGE" | "PADRE";
@@ -1029,9 +1029,9 @@ export function EmployeeRegisterForm({
                       }
                     }}
                   >
-                    <SelectItem key="HIJO">Hijo</SelectItem>
-                    <SelectItem key="CONYUGE">Cónyuge</SelectItem>
-                    <SelectItem key="PADRE">Padre</SelectItem>
+                    <SelectItem key="HIJO">Child</SelectItem>
+                    <SelectItem key="CONYUGE">Spouse</SelectItem>
+                    <SelectItem key="PADRE">Parent</SelectItem>
                   </Select>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
@@ -1039,7 +1039,7 @@ export function EmployeeRegisterForm({
                     acceptedFileTypes=".pdf"
                     autoUpload={false}
                     isRequired
-                    label="Documento de identidad beneficiario"
+                    label="Beneficiary identity document"
                     maxSizeMB={10}
                     uploadFolder="employees/beneficiaries"
                     value={b.identityDocumentUrl}
@@ -1066,7 +1066,7 @@ export function EmployeeRegisterForm({
                       acceptedFileTypes=".pdf"
                       autoUpload={false}
                       isRequired
-                      label="Registro civil de nacimiento"
+                      label="Birth certificate"
                       maxSizeMB={10}
                       uploadFolder="employees/beneficiaries"
                       value={b.birthCertificateUrl}

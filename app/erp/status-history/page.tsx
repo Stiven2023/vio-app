@@ -20,9 +20,9 @@ export default async function StatusHistoryPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Historial de estados</h1>
+      <h1 className="text-2xl font-bold">Status History</h1>
       <p className="text-default-600 mt-1">
-        Consulta cambios de estado de pedidos y diseños.
+        Review status changes for orders and designs.
       </p>
       <div className="mt-6">
         <StatusHistoryClient />

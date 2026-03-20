@@ -1,7 +1,7 @@
 import { and, eq, isNotNull, or } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { additions, clients, products } from "@/src/db/schema";
+import { additions, clients, products, taxZoneRates } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -41,12 +41,17 @@ export async function GET(request: Request) {
         contactPhone: clients.fullMobile,
         contactPhoneAlt: clients.mobile,
         contactPhoneLandline: clients.landline,
-        priceClientType: clients.priceClientType,
         isActive: clients.isActive,
         hasCredit: clients.hasCredit,
         promissoryNoteNumber: clients.promissoryNoteNumber,
+        municipalityFiscal: clients.municipalityFiscal,
+        taxZone: clients.taxZone,
+        withholdingTaxRate: taxZoneRates.withholdingTaxRate,
+        withholdingIcaRate: taxZoneRates.withholdingIcaRate,
+        withholdingIvaRate: taxZoneRates.withholdingIvaRate,
       })
       .from(clients)
+      .leftJoin(taxZoneRates, eq(taxZoneRates.taxZone, clients.taxZone))
       .where(eq(clients.isActive, true));
 
     const normalizedClients = clientItems.map((client) => ({
@@ -68,10 +73,15 @@ export async function GET(request: Request) {
         client.contactPhoneAlt ||
         client.contactPhoneLandline ||
         null,
-      priceClientType: client.priceClientType,
+      priceClientType: "VIOMAR",
       isActive: client.isActive,
       hasCredit: client.hasCredit,
       promissoryNoteNumber: client.promissoryNoteNumber,
+      municipalityFiscal: client.municipalityFiscal,
+      taxZone: client.taxZone,
+      withholdingTaxRate: client.withholdingTaxRate,
+      withholdingIcaRate: client.withholdingIcaRate,
+      withholdingIvaRate: client.withholdingIvaRate,
     }));
 
     const productBaseFilters = [eq(products.isActive, true)];

@@ -5,7 +5,6 @@ import {
   clients,
   orderPayments,
   orders,
-  orderStatusHistory,
   prefacturas,
   quotations,
 } from "@/src/db/schema";
@@ -14,7 +13,6 @@ import {
   getRoleFromRequest,
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 import {
   resolvePaymentBankById,
   validatePaymentBankCurrency,
@@ -23,6 +21,7 @@ import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 const ADVANCE_PAYMENT_METHODS = new Set(["EFECTIVO", "TRANSFERENCIA"]);
+const CLIENT_PRICE_TYPES = new Set(["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"]);
 
 function toNullableNumericValue(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
@@ -35,70 +34,6 @@ function toNullableNumericValue(value: unknown) {
 
 function normalizeCurrency(value: unknown) {
   return String(value ?? "COP").trim().toUpperCase() === "USD" ? "USD" : "COP";
-}
-
-async function syncOrderStatusByPaymentsTx(tx: any, orderId: string) {
-  const [orderRow] = await tx
-    .select({ id: orders.id, total: orders.total, status: orders.status })
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1);
-
-  if (!orderRow) return;
-
-  const paidRows = await tx
-    .select({ amount: orderPayments.amount, status: orderPayments.status })
-    .from(orderPayments)
-    .where(eq(orderPayments.orderId, orderId));
-
-  const total = Math.max(0, Number(orderRow.total ?? 0));
-  const paidTotal = Math.max(
-    0,
-    paidRows.reduce((acc: number, row: any) => {
-      if (!isConfirmedPaymentStatus(row.status)) return acc;
-      const amount = Number(row.amount ?? 0);
-      return acc + (Number.isFinite(amount) ? amount : 0);
-    }, 0),
-  );
-  const paidPercent = total > 0 ? (paidTotal / total) * 100 : 0;
-
-  const nextOrderStatus =
-    paidPercent >= 50
-      ? "PROGRAMACION"
-      : paidTotal > 0
-        ? "APROBACION"
-        : "PENDIENTE";
-
-  const nextPrefacturaStatus =
-    paidPercent >= 50
-      ? "PROGRAMACION"
-      : paidTotal > 0
-        ? "APROBACION"
-        : "PENDIENTE_CONTABILIDAD";
-
-  const [currentOrder] = await tx
-    .select({ status: orders.status })
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1);
-
-  if (String(currentOrder?.status ?? "") !== nextOrderStatus) {
-    await tx
-      .update(orders)
-      .set({ status: nextOrderStatus as any })
-      .where(eq(orders.id, orderId));
-
-    await tx.insert(orderStatusHistory).values({
-      orderId,
-      status: nextOrderStatus as any,
-      changedBy: null,
-    });
-  }
-
-  await tx
-    .update(prefacturas)
-    .set({ status: nextPrefacturaStatus })
-    .where(eq(prefacturas.orderId, orderId));
 }
 
 function isMissingColumnError(error: unknown) {
@@ -152,6 +87,15 @@ const PREFAC_PATCH_COLUMN_TO_KEY: Record<string, string> = {
   advance_payment_image_url: "advancePaymentImageUrl",
   client_approval_image_url: "clientApprovalImageUrl",
   convenio_image_url: "convenioImageUrl",
+  municipality_fiscal_snapshot: "municipalityFiscalSnapshot",
+  tax_zone_snapshot: "taxZoneSnapshot",
+  withholding_tax_rate: "withholdingTaxRate",
+  withholding_ica_rate: "withholdingIcaRate",
+  withholding_iva_rate: "withholdingIvaRate",
+  withholding_tax_amount: "withholdingTaxAmount",
+  withholding_ica_amount: "withholdingIcaAmount",
+  withholding_iva_amount: "withholdingIvaAmount",
+  total_after_withholdings: "totalAfterWithholdings",
 };
 
 async function applyPrefacturaPatchWithFallback(
@@ -226,7 +170,17 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         status: prefacturas.status,
         totalProducts: prefacturas.totalProducts,
         subtotal: prefacturas.subtotal,
+        ivaAmount: prefacturas.ivaAmount,
         total: prefacturas.total,
+        municipalityFiscalSnapshot: prefacturas.municipalityFiscalSnapshot,
+        taxZoneSnapshot: prefacturas.taxZoneSnapshot,
+        withholdingTaxRate: prefacturas.withholdingTaxRate,
+        withholdingIcaRate: prefacturas.withholdingIcaRate,
+        withholdingIvaRate: prefacturas.withholdingIvaRate,
+        withholdingTaxAmount: prefacturas.withholdingTaxAmount,
+        withholdingIcaAmount: prefacturas.withholdingIcaAmount,
+        withholdingIvaAmount: prefacturas.withholdingIvaAmount,
+        totalAfterWithholdings: prefacturas.totalAfterWithholdings,
         clientName: sql<
           string | null
         >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
@@ -285,6 +239,9 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         clientPostalCode: sql<
           string | null
         >`coalesce(${clients.postalCode}, (select c2.postal_code from clients c2 where c2.id = ${quotations.clientId}))`,
+        clientPriceType: sql<
+          string | null
+        >`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
       })
       .from(prefacturas)
       .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -311,7 +268,17 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         status: prefacturas.status,
         totalProducts: prefacturas.totalProducts,
         subtotal: prefacturas.subtotal,
+        ivaAmount: prefacturas.ivaAmount,
         total: prefacturas.total,
+        municipalityFiscalSnapshot: prefacturas.municipalityFiscalSnapshot,
+        taxZoneSnapshot: prefacturas.taxZoneSnapshot,
+        withholdingTaxRate: prefacturas.withholdingTaxRate,
+        withholdingIcaRate: prefacturas.withholdingIcaRate,
+        withholdingIvaRate: prefacturas.withholdingIvaRate,
+        withholdingTaxAmount: prefacturas.withholdingTaxAmount,
+        withholdingIcaAmount: prefacturas.withholdingIcaAmount,
+        withholdingIvaAmount: prefacturas.withholdingIvaAmount,
+        totalAfterWithholdings: prefacturas.totalAfterWithholdings,
         clientName: sql<
           string | null
         >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
@@ -366,6 +333,9 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         clientPostalCode: sql<
           string | null
         >`coalesce(${clients.postalCode}, (select c2.postal_code from clients c2 where c2.id = ${quotations.clientId}))`,
+        clientPriceType: sql<
+          string | null
+        >`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
       })
       .from(prefacturas)
       .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -614,7 +584,11 @@ export async function PATCH(
         .select({
           id: prefacturas.id,
           orderId: prefacturas.orderId,
+          orderClientId: orders.clientId,
+          quotationClientId: quotations.clientId,
           orderCreatedBy: orders.createdBy,
+          hasClientApproval: prefacturas.hasClientApproval,
+          clientApprovalImageUrl: prefacturas.clientApprovalImageUrl,
           advanceReceived: prefacturas.advanceReceived,
           advanceMethod: prefacturas.advanceMethod,
           advanceBankId: prefacturas.advanceBankId,
@@ -624,6 +598,7 @@ export async function PATCH(
         })
         .from(prefacturas)
         .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+        .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
         .where(eq(prefacturas.id, prefacturaId))
         .limit(1);
 
@@ -737,6 +712,67 @@ export async function PATCH(
           : null;
       }
 
+      if ("municipalityFiscalSnapshot" in body) {
+        patch.municipalityFiscalSnapshot = body.municipalityFiscalSnapshot
+          ? String(body.municipalityFiscalSnapshot).trim()
+          : null;
+      }
+      if ("taxZoneSnapshot" in body) {
+        const zone = String(body.taxZoneSnapshot ?? "").trim().toUpperCase();
+        patch.taxZoneSnapshot =
+          zone === "FREE_ZONE" || zone === "SAN_ANDRES" || zone === "SPECIAL_REGIME"
+            ? zone
+            : "CONTINENTAL";
+      }
+      if ("withholdingTaxRate" in body) {
+        patch.withholdingTaxRate = String(Math.max(0, Number(body.withholdingTaxRate) || 0));
+      }
+      if ("withholdingIcaRate" in body) {
+        patch.withholdingIcaRate = String(Math.max(0, Number(body.withholdingIcaRate) || 0));
+      }
+      if ("withholdingIvaRate" in body) {
+        patch.withholdingIvaRate = String(Math.max(0, Number(body.withholdingIvaRate) || 0));
+      }
+      if ("withholdingTaxAmount" in body) {
+        patch.withholdingTaxAmount = String(Math.max(0, Number(body.withholdingTaxAmount) || 0));
+      }
+      if ("withholdingIcaAmount" in body) {
+        patch.withholdingIcaAmount = String(Math.max(0, Number(body.withholdingIcaAmount) || 0));
+      }
+      if ("withholdingIvaAmount" in body) {
+        patch.withholdingIvaAmount = String(Math.max(0, Number(body.withholdingIvaAmount) || 0));
+      }
+      if ("totalAfterWithholdings" in body) {
+        patch.totalAfterWithholdings = String(
+          Math.max(0, Number(body.totalAfterWithholdings) || 0),
+        );
+      }
+
+      if ("clientPriceType" in body) {
+        const clientPriceType = String(body.clientPriceType ?? "")
+          .trim()
+          .toUpperCase();
+        if (!CLIENT_PRICE_TYPES.has(clientPriceType)) {
+          throw new Error("bad_request:Tipo de cliente (COP) inválido.");
+        }
+        patch.clientPriceType = clientPriceType;
+      }
+
+      const effectiveHasClientApproval =
+        patch.hasClientApproval !== undefined
+          ? Boolean(patch.hasClientApproval)
+          : Boolean(current.hasClientApproval);
+      const effectiveClientApprovalImageUrl =
+        patch.clientApprovalImageUrl !== undefined
+          ? String(patch.clientApprovalImageUrl ?? "").trim()
+          : String(current.clientApprovalImageUrl ?? "").trim();
+
+      if (effectiveHasClientApproval && !effectiveClientApprovalImageUrl) {
+        throw new Error(
+          "bad_request:Debes adjuntar la captura/evidencia del aval del cliente.",
+        );
+      }
+
       if (Object.keys(patch).length === 0) return;
 
       const previousAdvanceReceived = Math.max(
@@ -820,14 +856,8 @@ export async function PATCH(
         }
       }
 
-      const shouldSyncByAdvance =
-        "advanceReceived" in body ||
-        "advanceStatus" in body ||
-        registeredAdvanceDelta > 0;
-
-      if (shouldSyncByAdvance && current.orderId) {
-        await syncOrderStatusByPaymentsTx(tx, String(current.orderId));
-      }
+      // Desde ahora el envío a aprobación/programación se hace de forma manual
+      // desde acciones de Pedido/Prefactura con confirmación explícita.
     });
 
     return Response.json({ ok: true });

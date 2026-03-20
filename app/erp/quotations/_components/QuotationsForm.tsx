@@ -60,7 +60,7 @@ export function QuotationsForm({
         {isMounted ? (
           <Autocomplete
             isLoading={loadingClients}
-            label="Código Cliente"
+            label="Client Code"
             selectedKey={form.clientId || null}
             variant="bordered"
             classNames={{
@@ -86,7 +86,7 @@ export function QuotationsForm({
         )}
         {isMounted ? (
           <Select
-            label="Tipo Documento"
+            label="Document Type"
             selectedKeys={[form.documentType]}
             variant="bordered"
             classNames={{ trigger: "min-h-12" }}
@@ -123,38 +123,38 @@ export function QuotationsForm({
           isReadOnly
         />
         <Input
-          label="Nombre Contacto"
+          label="Contact Name"
           value={form.contactName}
           variant="bordered"
           isReadOnly
         />
         <Input
-          label="Teléfono Contacto"
+          label="Contact Phone"
           type="tel"
           value={form.contactPhone}
           variant="bordered"
           isReadOnly
         />
         <Input
-          label="Dirección"
+          label="Address"
           value={form.address}
           variant="bordered"
           isReadOnly
         />
         <Input
-          label="País"
+          label="Country"
           value={form.country}
           variant="bordered"
           isReadOnly
         />
         <Input
-          label="Ciudad"
+          label="City"
           value={form.city}
           variant="bordered"
           isReadOnly
         />
         <Input
-          label="Código Postal"
+          label="Postal Code"
           value={form.postalCode}
           variant="bordered"
           isReadOnly
@@ -185,7 +185,7 @@ export function QuotationsForm({
           <Skeleton className="rounded-lg h-12" />
         )}
         <Input
-          label="Fecha Vencimiento"
+          label="Expiration Date"
           type="date"
           value={form.expiryDate}
           variant="bordered"
@@ -193,15 +193,15 @@ export function QuotationsForm({
         />
         {isMounted ? (
           <Select
-            label="Condiciones de Pago"
+            label="Payment Terms"
             selectedKeys={form.paymentTerms ? [form.paymentTerms] : []}
             variant="bordered"
             isInvalid={creditInvalid}
             errorMessage={
               creditInvalid
                 ? !hasActiveCredit
-                  ? "Cliente sin crédito activo. No se puede guardar con pago a crédito."
-                  : "Cliente sin número de pagaré. No se puede guardar con pago a crédito."
+                  ? "Client has no active credit. Cannot save with credit payment."
+                  : "Client has no promissory note number. Cannot save with credit payment."
                 : undefined
             }
             classNames={{ trigger: "min-h-12" }}
@@ -210,24 +210,24 @@ export function QuotationsForm({
               onFormChange({ paymentTerms: String(first ?? "") });
             }}
           >
-            <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
-            <SelectItem key="EFECTIVO">Efectivo</SelectItem>
-            <SelectItem key="TARJETA">Tarjeta</SelectItem>
-            <SelectItem key="CHEQUE">Cheque</SelectItem>
-            <SelectItem key="CREDITO">Crédito</SelectItem>
-            <SelectItem key="OTROS">Otros</SelectItem>
+            <SelectItem key="TRANSFERENCIA">Transfer</SelectItem>
+            <SelectItem key="EFECTIVO">Cash</SelectItem>
+            <SelectItem key="TARJETA">Card</SelectItem>
+            <SelectItem key="CHEQUE">Check</SelectItem>
+            <SelectItem key="CREDITO">Credit</SelectItem>
+            <SelectItem key="OTROS">Others</SelectItem>
           </Select>
         ) : (
           <Skeleton className="rounded-lg h-12" />
         )}
         {form.paymentTerms === "CREDITO" && (
           <Input
-            label="Número Pagaré"
+            label="Promissory Note Number"
             value={clientPromissoryNumber || form.promissoryNoteNumber}
             variant="bordered"
             isReadOnly
             isInvalid={!clientPromissoryNumber}
-            errorMessage={!clientPromissoryNumber ? "El cliente no tiene número de pagaré registrado." : undefined}
+            errorMessage={!clientPromissoryNumber ? "The client has no promissory note number registered." : undefined}
           />
         )}
       </div>

@@ -32,7 +32,7 @@ export function ImageDropPasteInput({
   existingImageUrl,
   disabled = false,
   accept = "image/*",
-  helperText = "Arrastra una imagen aquí, selecciónala o pégala con Ctrl+V.",
+  helperText = "Drag an image here, select it or paste it with Ctrl+V.",
 }: ImageDropPasteInputProps) {
   const localPreviewUrl = useMemo(() => {
     if (!file) return null;

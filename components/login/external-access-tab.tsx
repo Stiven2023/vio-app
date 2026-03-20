@@ -46,7 +46,7 @@ export function ExternalAccessTab({
 
   const requestToken = async () => {
     if (!clientCode.trim()) {
-      setToast({ message: "El ID del cliente es obligatorio.", type: "error" });
+      setToast({ message: "Client ID is required.", type: "error" });
 
       return;
     }
@@ -65,7 +65,7 @@ export function ExternalAccessTab({
       const body = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = typeof body?.message === "string" ? body.message : "No se pudo enviar el token.";
+        const msg = typeof body?.message === "string" ? body.message : "Could not send the token.";
         if (body?.retryAt) setRetryAt(String(body.retryAt));
         setToast({ message: msg, type: "error" });
 
@@ -76,9 +76,9 @@ export function ExternalAccessTab({
       setTokenSent(true);
       setVerified(false);
       setOtp("");
-      setToast({ message: "Token enviado al correo del cliente.", type: "success" });
+      setToast({ message: "Token sent to the client's email.", type: "success" });
     } catch {
-      setToast({ message: "No se pudo enviar el token.", type: "error" });
+      setToast({ message: "Could not send the token.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -86,7 +86,7 @@ export function ExternalAccessTab({
 
   const verifyToken = async () => {
     if (!clientCode.trim() || otp.length !== 6) {
-      setToast({ message: "Debes ingresar ID cliente y token de 6 dígitos.", type: "error" });
+      setToast({ message: "Enter client ID and a 6-digit token.", type: "error" });
 
       return;
     }
@@ -105,15 +105,15 @@ export function ExternalAccessTab({
 
       if (!res.ok) {
         const text = await res.text();
-        setToast({ message: text || "Token inválido.", type: "error" });
+        setToast({ message: text || "Invalid token.", type: "error" });
 
         return;
       }
 
       setVerified(true);
-      setToast({ message: "Acceso verificado por 1 día.", type: "success" });
+      setToast({ message: "Access verified for 1 day.", type: "success" });
     } catch {
-      setToast({ message: "No se pudo verificar el token.", type: "error" });
+      setToast({ message: "Could not verify the token.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -123,8 +123,8 @@ export function ExternalAccessTab({
     <div className="space-y-4">
       <Input
         isRequired
-        label="ID cliente"
-        placeholder="Ej: CN10001"
+        label="Client ID"
+        placeholder="e.g. CN10001"
         value={clientCode}
         onChange={(e) => setClientCode(e.target.value)}
       />
@@ -136,12 +136,12 @@ export function ExternalAccessTab({
         variant="flat"
         onPress={requestToken}
       >
-        {remainingSeconds > 0 ? `Solicitar token (${remainingSeconds}s)` : "Solicitar token"}
+        {remainingSeconds > 0 ? `Request token (${remainingSeconds}s)` : "Request token"}
       </Button>
 
       {tokenSent ? (
         <div className="space-y-2">
-          <p className="text-sm text-default-600">Ingresa el código OTP de 6 dígitos enviado al correo del cliente.</p>
+          <p className="text-sm text-default-600">Enter the 6-digit OTP code sent to the client's email.</p>
           <OtpInput focusOnMount length={6} value={otp} onValueChange={setOtp} />
           <Button
             className="w-full"
@@ -150,7 +150,7 @@ export function ExternalAccessTab({
             isLoading={loading}
             onPress={verifyToken}
           >
-            Validar token
+            Verify token
           </Button>
         </div>
       ) : null}
@@ -158,8 +158,8 @@ export function ExternalAccessTab({
       {verified ? (
         <div className="space-y-2 border border-default-200 rounded-medium p-3">
           <Input
-            label="Código del pedido"
-            placeholder="Ej: VN-1001"
+            label="Order code"
+            placeholder="e.g. VN-1001"
             value={orderCode}
             onChange={(e) => setOrderCode(e.target.value)}
           />
@@ -171,7 +171,7 @@ export function ExternalAccessTab({
               router.push(normalized ? `/portal/pedidos?orderCode=${encodeURIComponent(normalized)}` : "/portal/pedidos");
             }}
           >
-            Ingresar al portal
+            Enter portal
           </Button>
         </div>
       ) : null}

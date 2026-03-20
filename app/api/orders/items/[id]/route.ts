@@ -5,7 +5,6 @@ import { db } from "@/src/db";
 import { ORDER_ITEM_STATUS, ORDER_ITEM_STATUS_VALUES, ORDER_STATUS } from "@/src/utils/order-status";
 import {
   additions,
-  clients,
   employees,
   inventoryItems,
   orderItemAdditions,
@@ -17,7 +16,9 @@ import {
   orderItems,
   orders,
   orderStatusHistory,
+  prefacturas,
   products,
+  quotations,
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
@@ -472,11 +473,13 @@ export async function PUT(
     .select({
       kind: orders.kind,
       currency: orders.currency,
-      clientPriceType: clients.priceClientType,
+      clientPriceType:
+        sql<string>`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
       orderStatus: orders.status,
     })
     .from(orders)
-    .leftJoin(clients, eq(orders.clientId, clients.id))
+    .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
+    .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
     .where(eq(orders.id, existing.orderId!))
     .limit(1);
 

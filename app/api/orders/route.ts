@@ -16,6 +16,7 @@ import {
   orderPayments,
   orderStatusHistory,
   prefacturas,
+  clientLegalStatusHistory,
   quotations,
 } from "@/src/db/schema";
 import {
@@ -760,6 +761,7 @@ export async function PUT(request: Request) {
       status: orders.status,
       total: orders.total,
       shippingFee: (orders as any).shippingFee,
+      clientId: orders.clientId,
     })
     .from(orders)
     .where(eq(orders.id, String(id)))
@@ -843,6 +845,22 @@ export async function PUT(request: Request) {
         String(patch.status),
         employeeId,
       );
+
+      if (String(patch.status) === "FINALIZADO" && orderRow.clientId) {
+        const [latestLegal] = await tx
+          .select({ status: clientLegalStatusHistory.status })
+          .from(clientLegalStatusHistory)
+          .where(eq(clientLegalStatusHistory.clientId, String(orderRow.clientId)))
+          .orderBy(desc(clientLegalStatusHistory.createdAt))
+          .limit(1);
+
+        if (String(latestLegal?.status ?? "") === "BLOQUEADO") {
+          await tx
+            .update(clients)
+            .set({ isActive: false, status: "INACTIVO" as any })
+            .where(eq(clients.id, String(orderRow.clientId)));
+        }
+      }
     }
 
     if (itemInputs) {

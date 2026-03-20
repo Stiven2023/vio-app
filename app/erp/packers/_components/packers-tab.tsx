@@ -150,7 +150,6 @@ export function PackersTab({
         method: "POST",
         body: JSON.stringify({
           clientType: "NACIONAL",
-          priceClientType: "VIOMAR",
           name: packer.name,
           identificationType: packer.identificationType,
           identification: packer.identification,

@@ -80,7 +80,6 @@ export function ClientModal({
 
   const [form, setForm] = useState<FormState>({
     clientType: "NACIONAL",
-    priceClientType: "VIOMAR",
     name: "",
     identificationType: "CC",
     identification: "",
@@ -99,11 +98,16 @@ export function ClientModal({
     localDialCode: "",
     landline: "",
     extension: "",
+    municipalityFiscal: "",
+    taxZone: "CONTINENTAL",
+    paymentType: "CASH",
     hasCredit: false,
+    creditLimit: "",
+    creditBackingType: "",
     promissoryNoteNumber: "",
     promissoryNoteDate: "",
-    status: "INACTIVO",
-    isActive: false,
+    status: "ACTIVO",
+    isActive: true,
     identityDocumentUrl: "",
     rutDocumentUrl: "",
     commerceChamberDocumentUrl: "",
@@ -117,7 +121,7 @@ export function ClientModal({
   const [importCandidate, setImportCandidate] =
     useState<EmployeeImportData | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  
+
   // Archivos pendientes de subir: { fieldName: File }
   const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
 
@@ -130,7 +134,6 @@ export function ClientModal({
     setImportCandidate(null);
     const baseForm: FormState = {
       clientType: "NACIONAL",
-      priceClientType: "VIOMAR",
       name: "",
       identificationType: "CC",
       identification: "",
@@ -149,11 +152,16 @@ export function ClientModal({
       localDialCode: "",
       landline: "",
       extension: "",
+      municipalityFiscal: "",
+      taxZone: "CONTINENTAL",
+      paymentType: "CASH",
       hasCredit: false,
+      creditLimit: "",
+      creditBackingType: "",
       promissoryNoteNumber: "",
       promissoryNoteDate: "",
-      status: "INACTIVO",
-      isActive: false,
+      status: "ACTIVO",
+      isActive: true,
       identityDocumentUrl: "",
       rutDocumentUrl: "",
       commerceChamberDocumentUrl: "",
@@ -166,7 +174,6 @@ export function ClientModal({
       setForm({
         ...baseForm,
         clientType: client.clientType ?? "NACIONAL",
-        priceClientType: client.priceClientType ?? "VIOMAR",
         name: client.name ?? "",
         identificationType: client.identificationType ?? "CC",
         identification: client.identification ?? "",
@@ -185,7 +192,22 @@ export function ClientModal({
         localDialCode: client.localDialCode ?? "",
         landline: client.landline ?? "",
         extension: client.extension ?? "",
+        municipalityFiscal: client.municipalityFiscal ?? "",
+        taxZone:
+          (client.taxZone as
+            | "CONTINENTAL"
+            | "FREE_ZONE"
+            | "SAN_ANDRES"
+            | "SPECIAL_REGIME") ?? "CONTINENTAL",
+        paymentType: (client.paymentType as "CASH" | "CREDIT") ?? "CASH",
         hasCredit: Boolean(client.hasCredit ?? false),
+        creditLimit: client.creditLimit ? String(client.creditLimit) : "",
+        creditBackingType:
+          (client.creditBackingType as
+            | "PROMISSORY_NOTE"
+            | "PURCHASE_ORDER"
+            | "VERBAL_AGREEMENT"
+            | null) ?? "",
         promissoryNoteNumber: client.promissoryNoteNumber ?? "",
         promissoryNoteDate: client.promissoryNoteDate ?? "",
         status: client.status ?? "ACTIVO",
@@ -254,7 +276,8 @@ export function ClientModal({
     setForm((s) => ({
       ...s,
       name: importCandidate.name ?? s.name,
-      identificationType: importCandidate.identificationType ?? s.identificationType,
+      identificationType:
+        importCandidate.identificationType ?? s.identificationType,
       identification: importCandidate.identification ?? s.identification,
       dv: importCandidate.dv ?? s.dv,
       contactName: importCandidate.name ?? s.contactName,
@@ -266,8 +289,8 @@ export function ClientModal({
       mobile: importCandidate.mobile ?? s.mobile,
       landline: importCandidate.landline ?? s.landline,
       extension: importCandidate.extension ?? s.extension,
-      isActive: false,
-      status: "INACTIVO",
+      isActive: true,
+      status: "ACTIVO",
     }));
 
     setImportPromptOpen(false);
@@ -293,11 +316,11 @@ export function ClientModal({
   // Subir todos los archivos pendientes antes de guardar
   const uploadPendingFiles = async (): Promise<Record<string, string>> => {
     const uploadedUrls: Record<string, string> = {};
-    
+
     // Si es edición, usar el clientCode del cliente existente
     // Si es creación, usar la identification limpia
-    const fileNameBase = client 
-      ? client.clientCode 
+    const fileNameBase = client
+      ? client.clientCode
       : form.identification.replace(/\D/g, ""); // Solo dígitos
 
     // En producción con Cloudinary:
@@ -310,14 +333,20 @@ export function ClientModal({
       try {
         const abbr = documentAbbreviations[fieldName] || fieldName;
         const customFileName = `${fileNameBase}-${abbr}`; // Ejemplo: "CN10001-ct" o "1053123456-ct"
-        
-        const url = await uploadFileToCldinary(file, uploadFolder, customFileName);
+
+        const url = await uploadFileToCldinary(
+          file,
+          uploadFolder,
+          customFileName,
+        );
         console.log(`✅ Subido ${fieldName} (${customFileName}):`, url);
         console.log(`📁 Guardado en carpeta: ${uploadFolder}`);
         uploadedUrls[fieldName] = url;
       } catch (error) {
         console.log(`❌ Error al subir ${fieldName}:`, error);
-        throw new Error(`Error al subir ${fieldName}: ${error instanceof Error ? error.message : "Error desconocido"}`);
+        throw new Error(
+          `Error al subir ${fieldName}: ${error instanceof Error ? error.message : "Error desconocido"}`,
+        );
       }
     }
 
@@ -341,23 +370,34 @@ export function ClientModal({
         try {
           const uploadedUrls = await uploadPendingFiles();
           console.log("✅ Archivos subidos:", uploadedUrls);
-          
+
           // Actualizar formulario con las URLs de los archivos subidos
           updatedForm = {
             ...updatedForm,
-            identityDocumentUrl: uploadedUrls.identityDocumentUrl || updatedForm.identityDocumentUrl,
-            rutDocumentUrl: uploadedUrls.rutDocumentUrl || updatedForm.rutDocumentUrl,
-            commerceChamberDocumentUrl: uploadedUrls.commerceChamberDocumentUrl || updatedForm.commerceChamberDocumentUrl,
-            passportDocumentUrl: uploadedUrls.passportDocumentUrl || updatedForm.passportDocumentUrl,
-            taxCertificateDocumentUrl: uploadedUrls.taxCertificateDocumentUrl || updatedForm.taxCertificateDocumentUrl,
-            companyIdDocumentUrl: uploadedUrls.companyIdDocumentUrl || updatedForm.companyIdDocumentUrl,
+            identityDocumentUrl:
+              uploadedUrls.identityDocumentUrl ||
+              updatedForm.identityDocumentUrl,
+            rutDocumentUrl:
+              uploadedUrls.rutDocumentUrl || updatedForm.rutDocumentUrl,
+            commerceChamberDocumentUrl:
+              uploadedUrls.commerceChamberDocumentUrl ||
+              updatedForm.commerceChamberDocumentUrl,
+            passportDocumentUrl:
+              uploadedUrls.passportDocumentUrl ||
+              updatedForm.passportDocumentUrl,
+            taxCertificateDocumentUrl:
+              uploadedUrls.taxCertificateDocumentUrl ||
+              updatedForm.taxCertificateDocumentUrl,
+            companyIdDocumentUrl:
+              uploadedUrls.companyIdDocumentUrl ||
+              updatedForm.companyIdDocumentUrl,
           };
-          
+
           console.log("📝 UpdatedForm después de URLs:", {
             identityDocumentUrl: updatedForm.identityDocumentUrl,
             rutDocumentUrl: updatedForm.rutDocumentUrl,
           });
-          
+
           // Limpiar archivos pendientes en state
           setPendingFiles({});
           toast.dismiss();
@@ -365,8 +405,17 @@ export function ClientModal({
           console.error("❌ Error subiendo archivos:", uploadError);
           setSubmitting(false);
           toast.dismiss();
-          toast.error(uploadError instanceof Error ? uploadError.message : "Error al subir documentos");
-          setErrors({ documents: uploadError instanceof Error ? uploadError.message : "Error al subir documentos" });
+          toast.error(
+            uploadError instanceof Error
+              ? uploadError.message
+              : "Error al subir documentos",
+          );
+          setErrors({
+            documents:
+              uploadError instanceof Error
+                ? uploadError.message
+                : "Error al subir documentos",
+          });
           return;
         }
       } else {
@@ -384,7 +433,6 @@ export function ClientModal({
 
       const parseData = {
         clientType: updatedForm.clientType,
-        priceClientType: updatedForm.priceClientType,
         name: updatedForm.name,
         identificationType: updatedForm.identificationType,
         identification: updatedForm.identification,
@@ -403,17 +451,27 @@ export function ClientModal({
         localDialCode: updatedForm.localDialCode || undefined,
         landline: updatedForm.landline || undefined,
         extension: updatedForm.extension || undefined,
+        municipalityFiscal: updatedForm.municipalityFiscal?.trim() || undefined,
+        taxZone: updatedForm.taxZone,
+        paymentType: updatedForm.paymentType,
         hasCredit: updatedForm.hasCredit,
+        creditLimit: updatedForm.creditLimit || undefined,
+        creditBackingType: updatedForm.creditBackingType || undefined,
         promissoryNoteNumber: updatedForm.promissoryNoteNumber || undefined,
         promissoryNoteDate: updatedForm.promissoryNoteDate || undefined,
-        status: "INACTIVO" as "ACTIVO" | "INACTIVO" | "SUSPENDIDO",
-        isActive: false,
-        identityDocumentUrl: updatedForm.identityDocumentUrl?.trim() || undefined,
+        status: updatedForm.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO",
+        isActive: Boolean(updatedForm.isActive),
+        identityDocumentUrl:
+          updatedForm.identityDocumentUrl?.trim() || undefined,
         rutDocumentUrl: updatedForm.rutDocumentUrl?.trim() || undefined,
-        commerceChamberDocumentUrl: updatedForm.commerceChamberDocumentUrl?.trim() || undefined,
-        passportDocumentUrl: updatedForm.passportDocumentUrl?.trim() || undefined,
-        taxCertificateDocumentUrl: updatedForm.taxCertificateDocumentUrl?.trim() || undefined,
-        companyIdDocumentUrl: updatedForm.companyIdDocumentUrl?.trim() || undefined,
+        commerceChamberDocumentUrl:
+          updatedForm.commerceChamberDocumentUrl?.trim() || undefined,
+        passportDocumentUrl:
+          updatedForm.passportDocumentUrl?.trim() || undefined,
+        taxCertificateDocumentUrl:
+          updatedForm.taxCertificateDocumentUrl?.trim() || undefined,
+        companyIdDocumentUrl:
+          updatedForm.companyIdDocumentUrl?.trim() || undefined,
       };
 
       console.log("📝 Datos a parsear:", parseData);
@@ -426,10 +484,10 @@ export function ClientModal({
         for (const issue of parsed.error.issues) {
           next[String(issue.path[0] ?? "form")] = issue.message;
         }
-        
+
         console.error("❌ Error de validación del esquema:", next);
         console.error("Issues:", parsed.error.issues);
-        
+
         setErrors(next);
         setSubmitting(false);
         toast.error("Por favor revisa los campos requeridos");
@@ -449,7 +507,7 @@ export function ClientModal({
       });
 
       console.log("📤 Enviando POST/PUT a /api/clients...");
-      
+
       await apiJson(`/api/clients`, {
         method: client ? "PUT" : "POST",
         body: JSON.stringify(
@@ -527,7 +585,10 @@ export function ClientModal({
             <Tab
               key="contact"
               title={
-                <FormTabTitle icon={<ContactIcon />} label="Contacto y fiscal" />
+                <FormTabTitle
+                  icon={<ContactIcon />}
+                  label="Contacto y fiscal"
+                />
               }
             >
               <ContactTab errors={errors} form={form} setForm={setForm} />
@@ -553,13 +614,10 @@ export function ClientModal({
             <Tab
               key="status-credit"
               title={
-                <FormTabTitle
-                  icon={<FinanceIcon />}
-                  label="Estado y crédito"
-                />
+                <FormTabTitle icon={<FinanceIcon />} label="Estado y crédito" />
               }
             >
-              <StatusCreditTab form={form} setForm={setForm} />
+              <StatusCreditTab errors={errors} form={form} setForm={setForm} />
             </Tab>
           </Tabs>
         </ModalBody>

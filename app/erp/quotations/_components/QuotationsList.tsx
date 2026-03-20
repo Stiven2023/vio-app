@@ -36,9 +36,10 @@ import {
   BsTrash,
 } from "react-icons/bs";
 
+import { useClientOnly } from "../_hooks/useClientOnly";
+
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import { useClientOnly } from "../_hooks/useClientOnly";
 
 type QuotationRow = {
   id: string;
@@ -66,6 +67,7 @@ type Paginated<T> = {
 function parseDateOnly(input: string | null | undefined) {
   if (!input) return null;
   const value = String(input).trim();
+
   if (!value) return null;
 
   const normalized = value.includes("T") ? value.slice(0, 10) : value;
@@ -76,6 +78,7 @@ function parseDateOnly(input: string | null | undefined) {
 
 function getExpiryBadge(expiryDate: string | null | undefined) {
   const expiry = parseDateOnly(expiryDate);
+
   if (!expiry) {
     return {
       label: "-",
@@ -85,7 +88,9 @@ function getExpiryBadge(expiryDate: string | null | undefined) {
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffDays = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const diffDays = Math.floor(
+    (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+  );
 
   const formatted = new Intl.DateTimeFormat("es-CO", {
     day: "2-digit",
@@ -95,21 +100,21 @@ function getExpiryBadge(expiryDate: string | null | undefined) {
 
   if (diffDays < 0) {
     return {
-      label: `${formatted} · Vencida`,
+      label: `${formatted} · Expired`,
       className: "text-danger font-semibold",
     };
   }
 
   if (diffDays <= 1) {
     return {
-      label: `${formatted} · Crítica`,
+      label: `${formatted} · Critical`,
       className: "text-danger font-semibold",
     };
   }
 
   if (diffDays <= 5) {
     return {
-      label: `${formatted} · Próxima`,
+      label: `${formatted} · Upcoming`,
       className: "text-warning font-semibold",
     };
   }
@@ -120,11 +125,16 @@ function getExpiryBadge(expiryDate: string | null | undefined) {
   };
 }
 
-function formatMoneyByCurrency(value: string | number | null | undefined, currency: string | null | undefined) {
+function formatMoneyByCurrency(
+  value: string | number | null | undefined,
+  currency: string | null | undefined,
+) {
   const amount = Number(value ?? 0);
+
   if (!Number.isFinite(amount)) return "-";
 
-  const code = String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
+  const code =
+    String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
 
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -150,7 +160,8 @@ export function QuotationsList() {
   const [prefacturaId, setPrefacturaId] = useState<string | null>(null);
   const [prefacturaRow, setPrefacturaRow] = useState<QuotationRow | null>(null);
   const [prefacturaOrderName, setPrefacturaOrderName] = useState("");
-  const [prefacturaOrderType, setPrefacturaOrderType] = useState<OrderType>("VN");
+  const [prefacturaOrderType, setPrefacturaOrderType] =
+    useState<OrderType>("VN");
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams({
@@ -169,6 +180,7 @@ export function QuotationsList() {
     setLoading(true);
     try {
       const data = await apiJson<Paginated<QuotationRow>>(endpoint);
+
       setRows(data);
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -182,7 +194,7 @@ export function QuotationsList() {
     fetchRows();
   }, [endpoint]);
 
-  const emptyContent = loading ? "" : "Sin cotizaciones";
+  const emptyContent = loading ? "" : "No quotations";
 
   const downloadPdf = async (
     row: QuotationRow,
@@ -193,10 +205,13 @@ export function QuotationsList() {
     try {
       setDownloadingId(row.id);
       const params = new URLSearchParams({ audience });
-      const response = await fetch(`/api/exports/quotations/${row.id}/pdf?${params.toString()}`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `/api/exports/quotations/${row.id}/pdf?${params.toString()}`,
+        {
+          method: "GET",
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         throw new Error(await response.text());
@@ -205,8 +220,9 @@ export function QuotationsList() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
+
       anchor.href = url;
-      anchor.download = `cotizacion-${row.quoteCode}.pdf`;
+      anchor.download = `quotation-${row.quoteCode}.pdf`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -241,8 +257,9 @@ export function QuotationsList() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
+
       anchor.href = url;
-      anchor.download = `cotizacion-${row.quoteCode}.xlsx`;
+      anchor.download = `quotation-${row.quoteCode}.xlsx`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -255,7 +272,7 @@ export function QuotationsList() {
   };
 
   const openPrefacturaModal = (row: QuotationRow) => {
-    const defaultName = `Pedido ${row.quoteCode}`;
+    const defaultName = `Order ${row.quoteCode}`;
     const defaultType: OrderType =
       String(row.currency ?? "COP").toUpperCase() === "USD" ? "VI" : "VN";
 
@@ -274,12 +291,17 @@ export function QuotationsList() {
   const convertToPrefactura = async () => {
     if (!prefacturaRow || prefacturaId) return;
 
-    const orderName = prefacturaOrderName.trim() || `Pedido ${prefacturaRow.quoteCode}`;
+    const orderName =
+      prefacturaOrderName.trim() || `Order ${prefacturaRow.quoteCode}`;
 
     try {
       setPrefacturaId(prefacturaRow.id);
       const result = await apiJson<{
-        order: { id: string; orderCode: string; orderName: string | null } | null;
+        order: {
+          id: string;
+          orderCode: string;
+          orderName: string | null;
+        } | null;
         reused: boolean;
       }>(`/api/quotations/${prefacturaRow.id}/prefactura`, {
         method: "POST",
@@ -288,8 +310,8 @@ export function QuotationsList() {
 
       toast.success(
         result.reused
-          ? `Prefactura actualizada. Pedido: ${result.order?.orderCode ?? "-"}`
-          : `Prefactura creada. Pedido: ${result.order?.orderCode ?? "-"}`,
+          ? `Prefacture updated. Order: ${result.order?.orderCode ?? "-"}`
+          : `Prefacture created. Order: ${result.order?.orderCode ?? "-"}`,
       );
 
       fetchRows();
@@ -314,8 +336,8 @@ export function QuotationsList() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Input
             className="sm:w-80"
-            label="Buscar"
-            placeholder="Código, cliente o vendedor"
+            label="Search"
+            placeholder="Code, client or seller"
             value={query}
             onValueChange={(v) => {
               setPage(1);
@@ -326,31 +348,33 @@ export function QuotationsList() {
             <>
               <Select
                 className="sm:w-44"
-                label="Moneda"
+                label="Currency"
                 selectedKeys={[currency]}
                 onSelectionChange={(keys) => {
                   const first = String(Array.from(keys)[0] ?? "ALL");
+
                   setPage(1);
                   setCurrency(first);
                 }}
               >
-                <SelectItem key="ALL">Todas</SelectItem>
+                <SelectItem key="ALL">All</SelectItem>
                 <SelectItem key="COP">COP</SelectItem>
                 <SelectItem key="USD">USD</SelectItem>
               </Select>
               <Select
                 className="sm:w-44"
-                label="Estado"
+                label="Status"
                 selectedKeys={[status]}
                 onSelectionChange={(keys) => {
                   const first = String(Array.from(keys)[0] ?? "active");
+
                   setPage(1);
                   setStatus(first);
                 }}
               >
-                <SelectItem key="active">Activas</SelectItem>
-                <SelectItem key="inactive">Inactivas</SelectItem>
-                <SelectItem key="all">Todas</SelectItem>
+                <SelectItem key="active">Active</SelectItem>
+                <SelectItem key="inactive">Inactive</SelectItem>
+                <SelectItem key="all">All</SelectItem>
               </Select>
             </>
           ) : (
@@ -362,23 +386,34 @@ export function QuotationsList() {
         </div>
 
         <div className="flex gap-2">
-          <Button variant="flat" onPress={fetchRows}>Refrescar</Button>
-          <Button color="primary" onPress={() => router.push("/quotations/new")}>Crear cotización</Button>
+          <Button variant="flat" onPress={fetchRows}>
+            Refresh
+          </Button>
+          <Button
+            color="primary"
+            onPress={() => router.push("/quotations/new")}
+          >
+            Create quotation
+          </Button>
         </div>
       </div>
 
-      <Table aria-label="Cotizaciones">
+      <Table aria-label="Quotations">
         <TableHeader>
-          <TableColumn>Código</TableColumn>
-          <TableColumn>Cliente</TableColumn>
-          <TableColumn>Vendedor</TableColumn>
-          <TableColumn>Vencimiento</TableColumn>
-          <TableColumn>Moneda</TableColumn>
+          <TableColumn>Code</TableColumn>
+          <TableColumn>Client</TableColumn>
+          <TableColumn>Seller</TableColumn>
+          <TableColumn>Expiration</TableColumn>
+          <TableColumn>Currency</TableColumn>
           <TableColumn>Total</TableColumn>
-          <TableColumn>Estado</TableColumn>
-          <TableColumn>Acciones</TableColumn>
+          <TableColumn>Status</TableColumn>
+          <TableColumn>Actions</TableColumn>
         </TableHeader>
-        <TableBody emptyContent={emptyContent} isLoading={loading} items={rows?.items ?? []}>
+        <TableBody
+          emptyContent={emptyContent}
+          isLoading={loading}
+          items={rows?.items ?? []}
+        >
           {(row) => (
             <TableRow key={row.id}>
               <TableCell>{row.quoteCode}</TableCell>
@@ -387,12 +422,19 @@ export function QuotationsList() {
               <TableCell>
                 {(() => {
                   const expiryBadge = getExpiryBadge(row.expiryDate);
-                  return <span className={expiryBadge.className}>{expiryBadge.label}</span>;
+
+                  return (
+                    <span className={expiryBadge.className}>
+                      {expiryBadge.label}
+                    </span>
+                  );
                 })()}
               </TableCell>
               <TableCell>{row.currency ?? "-"}</TableCell>
-              <TableCell>{formatMoneyByCurrency(row.total, row.currency)}</TableCell>
-              <TableCell>{row.isActive ? "Activa" : "Inactiva"}</TableCell>
+              <TableCell>
+                {formatMoneyByCurrency(row.total, row.currency)}
+              </TableCell>
+              <TableCell>{row.isActive ? "Active" : "Inactive"}</TableCell>
               <TableCell>
                 <Dropdown>
                   <DropdownTrigger>
@@ -400,34 +442,38 @@ export function QuotationsList() {
                       <BsThreeDotsVertical />
                     </Button>
                   </DropdownTrigger>
-                  <DropdownMenu aria-label="Acciones cotización">
+                  <DropdownMenu aria-label="Quotation actions">
                     <DropdownItem
                       key="view"
                       startContent={<BsEye />}
                       onPress={() => router.push(`/quotations/${row.id}`)}
                     >
-                      Ver / Editar
+                      View / Edit
                     </DropdownItem>
                     <DropdownItem
                       key="edit"
                       startContent={<BsPencilSquare />}
                       onPress={() => router.push(`/quotations/${row.id}`)}
                     >
-                      Editar
+                      Edit
                     </DropdownItem>
                     <DropdownItem
                       key="download"
                       startContent={<BsDownload />}
                       onPress={() => openDownloadModal(row)}
                     >
-                      {downloadingId === row.id ? "Descargando PDF..." : "Descargar PDF"}
+                      {downloadingId === row.id
+                        ? "Downloading PDF..."
+                        : "Download PDF"}
                     </DropdownItem>
                     <DropdownItem
                       key="download-excel"
                       startContent={<BsDownload />}
                       onPress={() => downloadExcel(row)}
                     >
-                      {downloadingId === row.id ? "Descargando Excel..." : "Descargar Excel"}
+                      {downloadingId === row.id
+                        ? "Downloading Excel..."
+                        : "Download Excel"}
                     </DropdownItem>
                     <DropdownItem
                       key="prefactura"
@@ -435,10 +481,10 @@ export function QuotationsList() {
                       onPress={() => openPrefacturaModal(row)}
                     >
                       {prefacturaId === row.id
-                        ? "Convirtiendo..."
+                        ? "Converting..."
                         : row.prefacturaApproved
-                          ? "Volver prefactura"
-                          : "Aprobar prefactura"}
+                          ? "Revert prefacture"
+                          : "Approve prefacture"}
                     </DropdownItem>
                     <DropdownItem
                       key="delete"
@@ -446,7 +492,7 @@ export function QuotationsList() {
                       startContent={<BsTrash />}
                       onPress={() => setPendingDelete(row)}
                     >
-                      Eliminar
+                      Delete
                     </DropdownItem>
                   </DropdownMenu>
                 </Dropdown>
@@ -459,32 +505,42 @@ export function QuotationsList() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-default-500">Total: {rows?.total ?? 0}</p>
         <div className="flex gap-2">
-          <Button isDisabled={page <= 1 || loading} variant="flat" onPress={() => setPage((p) => Math.max(1, p - 1))}>
-            Anterior
+          <Button
+            isDisabled={page <= 1 || loading}
+            variant="flat"
+            onPress={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Previous
           </Button>
-          <Button isDisabled={!rows?.hasNextPage || loading} variant="flat" onPress={() => setPage((p) => p + 1)}>
-            Siguiente
+          <Button
+            isDisabled={!rows?.hasNextPage || loading}
+            variant="flat"
+            onPress={() => setPage((p) => p + 1)}
+          >
+            Next
           </Button>
         </div>
       </div>
 
       <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Eliminar"
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
         description={
           pendingDelete
-            ? `¿Eliminar la cotización ${pendingDelete.quoteCode}?`
+            ? `Delete quotation ${pendingDelete.quoteCode}?`
             : undefined
         }
         isLoading={deleting}
         isOpen={Boolean(pendingDelete)}
-        title="Confirmar eliminación"
+        title="Confirm deletion"
         onConfirm={async () => {
           if (!pendingDelete || deleting) return;
           try {
             setDeleting(true);
-            await apiJson(`/api/quotations/${pendingDelete.id}`, { method: "DELETE" });
-            toast.success("Cotización eliminada");
+            await apiJson(`/api/quotations/${pendingDelete.id}`, {
+              method: "DELETE",
+            });
+            toast.success("Quotation deleted");
             setPendingDelete(null);
             fetchRows();
           } catch (error) {
@@ -507,29 +563,29 @@ export function QuotationsList() {
         }}
       >
         <ModalContent>
-          <ModalHeader>Descargar cotización PDF</ModalHeader>
+          <ModalHeader>Download quotation PDF</ModalHeader>
           <ModalBody>
             <p className="text-sm text-default-600">
-              Elige el formato del PDF: interno o externo.
+              Choose the PDF format: internal or external.
             </p>
           </ModalBody>
           <ModalFooter>
             <Button
-              variant="light"
               isDisabled={Boolean(downloadingId)}
+              variant="light"
               onPress={() => setDownloadRow(null)}
             >
-              Cancelar
+              Cancel
             </Button>
             <Button
-              variant="flat"
               isDisabled={Boolean(downloadingId) || !downloadRow}
+              variant="flat"
               onPress={() => {
                 if (!downloadRow) return;
                 downloadPdf(downloadRow, "interno");
               }}
             >
-              PDF interno
+              Internal PDF
             </Button>
             <Button
               color="primary"
@@ -539,7 +595,7 @@ export function QuotationsList() {
                 downloadPdf(downloadRow, "externo");
               }}
             >
-              PDF externo
+              External PDF
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -556,38 +612,49 @@ export function QuotationsList() {
         <ModalContent>
           <ModalHeader>
             {prefacturaRow?.prefacturaApproved
-              ? "Volver prefactura"
-              : "Aprobar prefactura"}
+              ? "Revert prefacture"
+              : "Approve prefacture"}
           </ModalHeader>
           <ModalBody className="space-y-3">
             <Input
-              label="Nombre del pedido"
-              placeholder="Ej: Pedido COT10001"
+              label="Order name"
+              placeholder="E.g: Order COT10001"
               value={prefacturaOrderName}
               onValueChange={setPrefacturaOrderName}
             />
             <Select
-              label="Tipo de pedido"
+              label="Order type"
               selectedKeys={[prefacturaOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
+
                 setPrefacturaOrderType(
-                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
+                  first === "VI" || first === "VT" || first === "VW"
+                    ? first
+                    : "VN",
                 );
               }}
             >
-              <SelectItem key="VN">Nacional</SelectItem>
-              <SelectItem key="VI">Internacional</SelectItem>
+              <SelectItem key="VN">National</SelectItem>
+              <SelectItem key="VI">International</SelectItem>
               <SelectItem key="VT">VT</SelectItem>
               <SelectItem key="VW">VW</SelectItem>
             </Select>
           </ModalBody>
           <ModalFooter>
-            <Button isDisabled={Boolean(prefacturaId)} variant="flat" onPress={closePrefacturaModal}>
-              Cancelar
+            <Button
+              isDisabled={Boolean(prefacturaId)}
+              variant="flat"
+              onPress={closePrefacturaModal}
+            >
+              Cancel
             </Button>
-            <Button color="primary" isLoading={Boolean(prefacturaId)} onPress={convertToPrefactura}>
-              Confirmar
+            <Button
+              color="primary"
+              isLoading={Boolean(prefacturaId)}
+              onPress={convertToPrefactura}
+            >
+              Confirm
             </Button>
           </ModalFooter>
         </ModalContent>

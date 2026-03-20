@@ -5,8 +5,6 @@ import {
   banks,
   orderPayments,
   orders,
-  orderStatusHistory,
-  prefacturas,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
@@ -38,74 +36,6 @@ function toPositiveNumericString(v: unknown) {
 }
 
 const methods = new Set(["EFECTIVO", "TRANSFERENCIA", "CREDITO"]);
-async function syncOrderStatusByPayments(orderId: string) {
-  const [orderRow] = await db
-    .select({ id: orders.id, total: orders.total, status: orders.status })
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1);
-
-  if (!orderRow) return;
-
-  const paidRows = await db
-    .select({
-      amount: orderPayments.amount,
-      status: orderPayments.status,
-    })
-    .from(orderPayments)
-    .where(eq(orderPayments.orderId, orderId));
-
-  const total = Math.max(0, Number(orderRow.total ?? 0));
-  const paidTotal = Math.max(
-    0,
-    paidRows.reduce((acc, row) => {
-      if (!isConfirmedPaymentStatus(row.status)) return acc;
-      const amount = Number(row.amount ?? 0);
-      return acc + (Number.isFinite(amount) ? amount : 0);
-    }, 0),
-  );
-  const paidPercent = total > 0 ? (paidTotal / total) * 100 : 0;
-
-  const nextStatus =
-    paidPercent >= 50
-      ? "PRODUCCION"
-      : paidTotal > 0
-        ? "APROBACION"
-        : "PENDIENTE";
-
-  const nextPrefacturaStatus =
-    paidPercent >= 50
-      ? "PROGRAMACION"
-      : paidTotal > 0
-        ? "APROBACION"
-        : "PENDIENTE_CONTABILIDAD";
-
-  await db.transaction(async (tx) => {
-    const [currentOrder] = await tx
-      .select({ status: orders.status })
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .limit(1);
-
-    if (String(currentOrder?.status ?? "") !== nextStatus) {
-      await tx
-        .update(orders)
-        .set({ status: nextStatus as any })
-        .where(eq(orders.id, orderId));
-
-      await tx.insert(orderStatusHistory).values({
-        orderId,
-        status: nextStatus as any,
-        changedBy: null,
-      });
-    }
-
-    await tx
-      .update(prefacturas)
-      .set({ status: nextPrefacturaStatus })
-      .where(eq(prefacturas.orderId, orderId));
-  });
-}
 
 export async function GET(
   request: Request,
@@ -302,8 +232,6 @@ export async function POST(
 
     return { payment: p, orderCode: o.orderCode };
   });
-
-  await syncOrderStatusByPayments(orderId);
 
   await createNotificationsForPermission("VER_PAGO", {
     title: "Pago registrado",

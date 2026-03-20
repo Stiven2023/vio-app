@@ -229,7 +229,7 @@ export function FileUpload({
             <p className="text-sm text-foreground font-medium">
               {selectedFileName}
             </p>
-            <p className="text-xs text-warning">Se subirá al guardar</p>
+            <p className="text-xs text-warning">Will be uploaded on save</p>
           </div>
           <Button
             isIconOnly

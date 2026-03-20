@@ -21,6 +21,7 @@ import {
 } from "@heroui/table";
 import NextLink from "next/link";
 import {
+  BsCheck2Circle,
   BsClockHistory,
   BsEye,
   BsPencilSquare,
@@ -44,23 +45,24 @@ import {
   Modal,
   ModalBody,
   ModalContent,
+  ModalFooter,
   ModalHeader,
 } from "@heroui/modal";
 
 const statusOptions: Array<{ value: string; label: string }> = [
-  { value: "all", label: "Todos" },
-  { value: "PENDIENTE", label: "Pendiente" },
-  { value: "APROBACION", label: "Aprobación" },
-  { value: "PROGRAMACION", label: "Programación" },
-  { value: "PRODUCCION", label: "Producción" },
-  { value: "ATRASADO", label: "Atrasado" },
-  { value: "FINALIZADO", label: "Finalizado" },
-  { value: "ENTREGADO", label: "Entregado" },
-  { value: "CANCELADO", label: "Cancelado" },
+  { value: "all", label: "All" },
+  { value: "PENDIENTE", label: "Pending" },
+  { value: "APROBACION", label: "Approval" },
+  { value: "PROGRAMACION", label: "Scheduling" },
+  { value: "PRODUCCION", label: "Production" },
+  { value: "ATRASADO", label: "Delayed" },
+  { value: "FINALIZADO", label: "Completed" },
+  { value: "ENTREGADO", label: "Delivered" },
+  { value: "CANCELADO", label: "Canceled" },
 ];
 
 const typeOptions: Array<{ value: string; label: string }> = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "All" },
   { value: "VN", label: "VN" },
   { value: "VI", label: "VI" },
   { value: "VT", label: "VT" },
@@ -137,6 +139,51 @@ export function OrdersTab({
   const [pendingDelete, setPendingDelete] = useState<OrderListItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const [readyOpen, setReadyOpen] = useState(false);
+  const [readySubmitting, setReadySubmitting] = useState(false);
+  const [readyOrder, setReadyOrder] = useState<OrderListItem | null>(null);
+
+  const resolveTargetStatus = (
+    order: OrderListItem,
+    paidPercent: number,
+  ): { targetStatus: "APROBACION" | "PROGRAMACION" | null; reason: string } => {
+    const currentStatus = String(order.status ?? "").trim().toUpperCase();
+    const isPaidAtLeast50 = paidPercent >= 50;
+
+    if (["PROGRAMACION", "PRODUCCION", "ATRASADO", "FINALIZADO", "ENTREGADO", "CANCELADO"].includes(currentStatus)) {
+      return {
+        targetStatus: null,
+        reason: `The order is already in ${currentStatus} and does not require this manual dispatch.`,
+      };
+    }
+
+    if (isPaidAtLeast50) {
+      if (currentStatus === "APROBACION") {
+        return {
+          targetStatus: "PROGRAMACION",
+          reason: "Confirmed advance is 50% or more; it will be sent to Scheduling.",
+        };
+      }
+
+      return {
+        targetStatus: "APROBACION",
+        reason: "Although the advance is 50% or more, workflow requires passing through Approval before Scheduling.",
+      };
+    }
+
+    if (currentStatus === "APROBACION") {
+      return {
+        targetStatus: null,
+        reason: "The order is already in Approval. When it meets the rules you can send it to Scheduling.",
+      };
+    }
+
+    return {
+      targetStatus: "APROBACION",
+      reason: "With confirmed advance below 50%, the order should be sent to Approval.",
+    };
+  };
+
   const canAccessOrder = (order: OrderListItem) => {
     if (!isAdvisor) return true;
     if (!advisorEmployeeId) return false;
@@ -163,9 +210,9 @@ export function OrdersTab({
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (q.trim() !== "" || status !== "all" || type !== "all") return "Sin resultados";
+    if (q.trim() !== "" || status !== "all" || type !== "all") return "No results";
 
-    return "Sin pedidos";
+    return "No orders";
   }, [loading, q, status, type]);
 
   const remove = async () => {
@@ -180,7 +227,7 @@ export function OrdersTab({
         method: "DELETE",
         body: JSON.stringify({ id: o.id }),
       });
-      toast.success("Pedido deshabilitado");
+      toast.success("Order disabled");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -214,26 +261,68 @@ export function OrdersTab({
     }
   };
 
+  const openReadyModal = (order: OrderListItem) => {
+    setReadyOrder(order);
+    setReadyOpen(true);
+  };
+
+  const confirmReadyDispatch = async () => {
+    if (!readyOrder || readySubmitting || !canChangeStatus) return;
+
+    const total = Number(readyOrder.total ?? 0);
+    const shipping = Number(readyOrder.shippingFee ?? 0);
+    const paid = Number(readyOrder.paidTotal ?? 0);
+    const denominator = Math.max(0, total) + Math.max(0, shipping);
+    const paidPercent = denominator > 0 ? Math.max(0, (paid / denominator) * 100) : 0;
+    const target = resolveTargetStatus(readyOrder, paidPercent);
+
+    if (!target.targetStatus) {
+      toast.error(target.reason);
+      return;
+    }
+
+    try {
+      setReadySubmitting(true);
+      await apiJson("/api/orders", {
+        method: "PUT",
+        body: JSON.stringify({ id: readyOrder.id, status: target.targetStatus }),
+      });
+
+      toast.success(
+        target.targetStatus === "PROGRAMACION"
+          ? "Order sent to Scheduling"
+          : "Order sent to Approval",
+      );
+      setReadyOpen(false);
+      setReadyOrder(null);
+      refresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setReadySubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
-            placeholder="Buscar por código…"
+            placeholder="Search by code..."
             value={q}
             onValueChange={setQ}
           />
           <FilterSelect
             className="sm:w-56"
-            label="Estado"
+            label="Status"
             options={statusOptions}
             value={status}
             onChange={setStatus}
           />
           <FilterSelect
             className="sm:w-40"
-            label="Tipo"
+            label="Type"
             options={typeOptions}
             value={type}
             onChange={setType}
@@ -242,36 +331,36 @@ export function OrdersTab({
 
         <div className="flex gap-2">
           <Button variant="flat" onPress={refresh}>
-            Refrescar
+            Refresh
           </Button>
         </div>
       </div>
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Pedidos"
+          ariaLabel="Orders"
           headers={[
-            "Código",
-            "Cliente",
-            "Tipo",
-            "Estado",
-            "Ultimo cambio",
+            "Code",
+            "Client",
+            "Type",
+            "Status",
+            "Last update",
             "Total",
-            "Abono %",
-            "Acciones",
+            "Paid %",
+            "Actions",
           ]}
         />
       ) : (
-        <Table aria-label="Pedidos">
+        <Table aria-label="Orders">
           <TableHeader>
-            <TableColumn>Código</TableColumn>
-            <TableColumn>Cliente</TableColumn>
-            <TableColumn>Tipo</TableColumn>
-            <TableColumn>Estado</TableColumn>
-            <TableColumn>Ultimo cambio</TableColumn>
+            <TableColumn>Code</TableColumn>
+            <TableColumn>Client</TableColumn>
+            <TableColumn>Type</TableColumn>
+            <TableColumn>Status</TableColumn>
+            <TableColumn>Last update</TableColumn>
             <TableColumn>Total</TableColumn>
-            <TableColumn>Abono %</TableColumn>
-            <TableColumn>Acciones</TableColumn>
+            <TableColumn>Paid %</TableColumn>
+            <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(o) => (
@@ -299,7 +388,7 @@ export function OrdersTab({
                         variant="light"
                         onPress={() => openHistory(o)}
                       >
-                        Ver historial
+                        View history
                       </Button>
                     </div>
                   ) : null}
@@ -353,7 +442,7 @@ export function OrdersTab({
                         href={`/orders/${o.id}/items`}
                         startContent={<BsWindowStack />}
                       >
-                        Diseños
+                        Designs
                       </DropdownItem>
 
                       {canAccessOrder(o) ? (
@@ -363,7 +452,7 @@ export function OrdersTab({
                         href={`/orders/${o.id}/detail`}
                         startContent={<BsEye />}
                         >
-                          Ver detalle
+                          View details
                         </DropdownItem>
                       ) : null}
 
@@ -374,7 +463,7 @@ export function OrdersTab({
                         href={`/orders/${o.id}/prefactura`}
                         startContent={<BsReceipt />}
                         >
-                          Prefactura
+                          Pre-invoice
                         </DropdownItem>
                       ) : null}
 
@@ -387,7 +476,7 @@ export function OrdersTab({
                         )}`}
                         startContent={<BsClockHistory />}
                         >
-                          Historial
+                          History
                         </DropdownItem>
                       ) : null}
 
@@ -400,7 +489,17 @@ export function OrdersTab({
                             setModalOpen(true);
                           }}
                         >
-                          Editar
+                          Edit
+                        </DropdownItem>
+                      ) : null}
+
+                      {canChangeStatus && canAccessOrder(o) ? (
+                        <DropdownItem
+                          key="ready-dispatch"
+                          startContent={<BsCheck2Circle />}
+                          onPress={() => openReadyModal(o)}
+                        >
+                          Order / designs ready
                         </DropdownItem>
                       ) : null}
 
@@ -414,7 +513,7 @@ export function OrdersTab({
                             setConfirmOpen(true);
                           }}
                         >
-                          Eliminar
+                          Delete
                         </DropdownItem>
                       ) : null}
                     </DropdownMenu>
@@ -438,14 +537,14 @@ export function OrdersTab({
       />
 
       <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Eliminar"
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
         description={
-          pendingDelete ? `¿Eliminar el pedido ${pendingDelete.orderCode}?` : undefined
+          pendingDelete ? `Delete order ${pendingDelete.orderCode}?` : undefined
         }
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
-        title="Confirmar eliminación"
+        title="Confirm deletion"
         onConfirm={remove}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
@@ -455,12 +554,12 @@ export function OrdersTab({
 
       <Modal isOpen={historyOpen} onOpenChange={setHistoryOpen}>
         <ModalContent>
-          <ModalHeader>Historial de estado</ModalHeader>
+          <ModalHeader>Status history</ModalHeader>
           <ModalBody>
             {historyLoading ? (
-              <div className="text-sm text-default-500">Cargando...</div>
+              <div className="text-sm text-default-500">Loading...</div>
             ) : historyItems.length === 0 ? (
-              <div className="text-sm text-default-500">Sin cambios.</div>
+              <div className="text-sm text-default-500">No changes.</div>
             ) : (
               <div className="space-y-2 text-sm">
                 {historyItems.map((item) => (
@@ -468,7 +567,7 @@ export function OrdersTab({
                     <div>
                       <div className="font-medium">{item.status ?? "-"}</div>
                       <div className="text-xs text-default-500">
-                        {item.changedByName ?? "Sistema"}
+                        {item.changedByName ?? "System"}
                       </div>
                     </div>
                     <div className="text-xs text-default-500">
@@ -481,6 +580,83 @@ export function OrdersTab({
               </div>
             )}
           </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={readyOpen}
+        onOpenChange={(open) => {
+          setReadyOpen(open);
+          if (!open) setReadyOrder(null);
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>Confirm order dispatch</ModalHeader>
+          <ModalBody>
+            {(() => {
+              if (!readyOrder) {
+                return (
+                  <div className="text-sm text-default-500">Select an order to continue.</div>
+                );
+              }
+
+              const total = Number(readyOrder.total ?? 0);
+              const shipping = Number(readyOrder.shippingFee ?? 0);
+              const paid = Number(readyOrder.paidTotal ?? 0);
+              const orderTotal = Math.max(0, total) + Math.max(0, shipping);
+              const paidPercent = orderTotal > 0 ? Math.max(0, (paid / orderTotal) * 100) : 0;
+              const target = resolveTargetStatus(readyOrder, paidPercent);
+
+              return (
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-default-500">Order:</span>{" "}
+                    <strong>{readyOrder.orderCode}</strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Client:</span>{" "}
+                    <strong>{readyOrder.clientName ?? "-"}</strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Current status:</span>{" "}
+                    <strong>{readyOrder.status}</strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Order total:</span>{" "}
+                    <strong>{formatCurrency(orderTotal, readyOrder.currency)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Confirmed paid:</span>{" "}
+                    <strong>{formatCurrency(Math.max(0, paid), readyOrder.currency)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Paid percentage:</span>{" "}
+                    <strong>{paidPercent.toFixed(0)}%</strong>
+                  </div>
+                  <div>
+                    <span className="text-default-500">Destination:</span>{" "}
+                    <strong>{target.targetStatus ?? "Not applicable"}</strong>
+                  </div>
+                  <div className="rounded-medium border border-default-200 bg-default-50 p-2 text-default-700">
+                    {target.reason}
+                  </div>
+                </div>
+              );
+            })()}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setReadyOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!readyOrder || readySubmitting}
+              isLoading={readySubmitting}
+              onPress={confirmReadyDispatch}
+            >
+              Confirm dispatch
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
     </div>

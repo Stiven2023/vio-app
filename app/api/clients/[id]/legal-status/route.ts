@@ -54,8 +54,9 @@ export async function POST(
       reviewedBy: reviewedBy || null,
     });
 
-    // Actualizar isActive del cliente basado en el estado jurídico
-    const shouldBeActive = status === "VIGENTE";
+      // Actualizar isActive del cliente basado en el estado jurídico.
+      // EN_REVISION sigue operativo; BLOQUEADO se inactiva.
+      const shouldBeActive = status !== "BLOQUEADO";
     
     if (shouldBeActive !== client.isActive) {
       await db

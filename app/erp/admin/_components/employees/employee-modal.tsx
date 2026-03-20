@@ -597,7 +597,6 @@ export function EmployeeModal({
             onPress={() => {
               onRequestCreateClient?.({
                 clientType: "EMPLEADO",
-                priceClientType: "VIOMAR",
                 name: form.name,
                 identificationType: form.identificationType,
                 identification: form.identification,

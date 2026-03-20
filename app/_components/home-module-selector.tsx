@@ -84,7 +84,7 @@ export function HomeModuleSelector() {
 
     const tick = () =>
       setTime(
-        new Date().toLocaleTimeString("es-CO", {
+        new Date().toLocaleTimeString("en-US", {
           hour: "2-digit",
           minute: "2-digit",
         }),
@@ -527,7 +527,7 @@ export function HomeModuleSelector() {
                         router.push(section.route);
                       }}
                     >
-                      Entrar
+                      Enter
                     </button>
                   </motion.div>
                 </div>
@@ -582,7 +582,7 @@ export function HomeModuleSelector() {
         </div>
 
         <span className="footer-legal" style={{ fontFamily: "'Barlow', sans-serif", fontSize: "0.72rem", color: "#8D8982" }}>
-          © {footerYear} Viomar App. Todos los derechos reservados.
+          © {footerYear} Viomar App. All rights reserved.
         </span>
 
         <div className="footer-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>

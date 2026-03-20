@@ -7,6 +7,7 @@ import {
   orderPayments,
   orders,
   prefacturas,
+  quotations,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
@@ -56,7 +57,14 @@ export async function GET(
         clientId: orders.clientId,
         clientName: clients.name,
         clientNit: clients.identification,
-        clientPriceType: (clients as any).priceClientType,
+        clientPriceType: sql<string>`coalesce((
+          select coalesce(cast(p.client_price_type as text), cast(q.client_price_type as text), 'VIOMAR')
+          from prefacturas p
+          left join quotations q on q.id = p.quotation_id
+          where p.order_id = ${orders.id}
+          order by p.created_at desc
+          limit 1
+        ), 'VIOMAR')`,
         type: orders.type,
         status: orders.status,
         ivaEnabled: orders.ivaEnabled,

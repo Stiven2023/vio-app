@@ -1,6 +1,11 @@
 export type Currency = "COP" | "USD";
 export type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
 export type DocumentType = "F" | "R"; // F = Factura (con IVA), R = Razón social (sin IVA)
+export type TaxZone =
+  | "CONTINENTAL"
+  | "FREE_ZONE"
+  | "SAN_ANDRES"
+  | "SPECIAL_REGIME";
 export type OrderType =
   | "NORMAL"
   | "COMPLETACION"
@@ -29,6 +34,11 @@ export type ClientOption = {
   isActive: boolean | null;
   hasCredit: boolean | null;
   promissoryNoteNumber: string | null;
+  municipalityFiscal: string | null;
+  taxZone: TaxZone | null;
+  withholdingTaxRate: string | null;
+  withholdingIcaRate: string | null;
+  withholdingIvaRate: string | null;
 };
 
 export type ProductOption = {
@@ -100,4 +110,6 @@ export type QuoteForm = {
   postalCode: string;
   seller: string;
   clientPriceTypeDisplay: ClientPriceType | null;
+  municipalityFiscalSnapshot: string;
+  taxZoneSnapshot: TaxZone;
 };

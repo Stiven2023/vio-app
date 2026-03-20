@@ -138,7 +138,7 @@ export function QuotationsAdditionsPanel({
   return (
     <Card radius="md" shadow="none" className="border border-default-200 mt-2">
       <CardHeader className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Adiciones para {row.product}</span>
+        <span className="text-sm font-semibold">Additions for {row.product}</span>
         <Button
           size="sm"
           variant="light"
@@ -152,7 +152,7 @@ export function QuotationsAdditionsPanel({
             onAddAddition(row.id, newAddition);
           }}
         >
-          + Agregar Adición
+          + Add Addition
         </Button>
       </CardHeader>
       <CardBody className="space-y-3">
@@ -162,8 +162,8 @@ export function QuotationsAdditionsPanel({
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <Input
                 size="sm"
-                label="Buscar pedido por código"
-                placeholder="Ej: PED-001"
+                label="Search order by code"
+                placeholder="E.g: ORD-001"
                 value={orderSearch}
                 variant="bordered"
                 onValueChange={setOrderSearch}
@@ -171,7 +171,7 @@ export function QuotationsAdditionsPanel({
 
               <Select
                 size="sm"
-                label="Pedido origen"
+                label="Reference order"
                 variant="bordered"
                 isLoading={ordersLoading}
                 selectedKeys={selectedOrderId ? [selectedOrderId] : []}
@@ -186,13 +186,13 @@ export function QuotationsAdditionsPanel({
                 }}
               >
                 {orderOptions.map((order) => (
-                  <SelectItem key={order.id}>{`${order.orderCode} · ${order.clientName ?? "Sin cliente"}`}</SelectItem>
+                  <SelectItem key={order.id}>{`${order.orderCode} · ${order.clientName ?? "No client"}`}</SelectItem>
                 ))}
               </Select>
 
               <Select
                 size="sm"
-                label="Diseño origen"
+                label="Reference design"
                 variant="bordered"
                 isLoading={designsLoading}
                 isDisabled={!selectedOrderId}
@@ -210,47 +210,47 @@ export function QuotationsAdditionsPanel({
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <div className="rounded-md border border-default-200 bg-content1 p-3">
-                <p className="text-xs font-semibold text-default-600">Preview pedido</p>
+                <p className="text-xs font-semibold text-default-600">Order preview</p>
                 {selectedOrder ? (
                   <div className="mt-1 space-y-1 text-xs text-default-700">
-                    <p><span className="font-medium">Código:</span> {selectedOrder.orderCode}</p>
-                    <p><span className="font-medium">Cliente:</span> {selectedOrder.clientName ?? "-"}</p>
-                    <p><span className="font-medium">Tipo:</span> {selectedOrder.kind ?? "-"}</p>
-                    <p><span className="font-medium">Estado:</span> {selectedOrder.status ?? "-"}</p>
-                    <p><span className="font-medium">Diseños:</span> {selectedOrder.itemCount ?? 0}</p>
+                    <p><span className="font-medium">Code:</span> {selectedOrder.orderCode}</p>
+                    <p><span className="font-medium">Client:</span> {selectedOrder.clientName ?? "-"}</p>
+                    <p><span className="font-medium">Type:</span> {selectedOrder.kind ?? "-"}</p>
+                    <p><span className="font-medium">Status:</span> {selectedOrder.status ?? "-"}</p>
+                    <p><span className="font-medium">Designs:</span> {selectedOrder.itemCount ?? 0}</p>
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-default-500">Selecciona un pedido para ver su resumen.</p>
+                  <p className="mt-1 text-xs text-default-500">Select an order to see its summary.</p>
                 )}
               </div>
 
               <div className="rounded-md border border-default-200 bg-content1 p-3">
-                <p className="text-xs font-semibold text-default-600">Preview diseño</p>
+                <p className="text-xs font-semibold text-default-600">Design preview</p>
                 {selectedDesign ? (
                   <div className="mt-1 space-y-2 text-xs text-default-700">
-                    <p><span className="font-medium">Número:</span> {selectedDesign.designNumber}</p>
-                    <p><span className="font-medium">Nombre:</span> {selectedDesign.designName}</p>
-                    <p><span className="font-medium">Estado:</span> {selectedDesign.status ?? "-"}</p>
-                    <p><span className="font-medium">Cantidad:</span> {selectedDesign.quantity ?? 0}</p>
+                    <p><span className="font-medium">Number:</span> {selectedDesign.designNumber}</p>
+                    <p><span className="font-medium">Name:</span> {selectedDesign.designName}</p>
+                    <p><span className="font-medium">Status:</span> {selectedDesign.status ?? "-"}</p>
+                    <p><span className="font-medium">Quantity:</span> {selectedDesign.quantity ?? 0}</p>
                     {selectedDesign.previewImageUrl ? (
                       <img
                         src={selectedDesign.previewImageUrl}
-                        alt={`Diseño ${selectedDesign.designNumber}`}
+                        alt={`Design ${selectedDesign.designNumber}`}
                         className="h-28 w-full rounded border border-default-200 object-cover"
                       />
                     ) : null}
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-default-500">Selecciona un diseño para ver vista previa.</p>
+                  <p className="mt-1 text-xs text-default-500">Select a design to see preview.</p>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* Lista de adiciones */}
+        {/* Additions list */}
         {row.additions.length === 0 ? (
-          <p className="text-xs text-default-500">No hay adiciones para este producto</p>
+          <p className="text-xs text-default-500">No additions for this product</p>
         ) : (
           <div className="space-y-2">
             {row.additions.map((add, addIndex) => {
@@ -262,8 +262,8 @@ export function QuotationsAdditionsPanel({
                 >
                   <Select
                     size="sm"
-                    placeholder="Seleccionar producto"
-                    label="Adición"
+                    placeholder="Select product"
+                    label="Addition"
                     variant="flat"
                     className="flex-1 min-w-64"
                     isLoading={loadingAdditions}
@@ -302,7 +302,7 @@ export function QuotationsAdditionsPanel({
                   <Input
                     size="sm"
                     type="number"
-                    label="Cant"
+                    label="Qty"
                     value={String(row.quantity)}
                     variant="flat"
                     classNames={{ input: "w-16 text-center" }}
@@ -311,7 +311,7 @@ export function QuotationsAdditionsPanel({
                   <Input
                     size="sm"
                     type="number"
-                    placeholder={`Vr (${currency})`}
+                    placeholder={`Value (${currency})`}
                     value={String(add.unitPrice)}
                     variant="flat"
                     classNames={{ input: "w-20 text-center" }}

@@ -2,7 +2,6 @@ import type { Dispatch, SetStateAction } from "react";
 
 export type FormState = {
   clientType: string;
-  priceClientType: string;
   name: string;
   identificationType: string;
   identification: string;
@@ -21,7 +20,16 @@ export type FormState = {
   localDialCode: string;
   landline: string;
   extension: string;
+  municipalityFiscal: string;
+  taxZone: "CONTINENTAL" | "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+  paymentType: "CASH" | "CREDIT";
   hasCredit: boolean;
+  creditLimit: string;
+  creditBackingType:
+    | ""
+    | "PROMISSORY_NOTE"
+    | "PURCHASE_ORDER"
+    | "VERBAL_AGREEMENT";
   promissoryNoteNumber: string;
   promissoryNoteDate: string;
   status: string;

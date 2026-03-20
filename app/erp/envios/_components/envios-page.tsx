@@ -124,7 +124,7 @@ export function EnviosPage() {
         method: "POST",
         body: JSON.stringify(form),
       });
-      toast.success("Envío registrado");
+      toast.success("Shipment registered");
       setModalOpen(false);
       setForm((prev) => ({
         ...prev,
@@ -152,10 +152,10 @@ export function EnviosPage() {
         body: JSON.stringify({
           id: shipment.id,
           markReceived: true,
-          receivedBy: "Recepción Viomar",
+          receivedBy: "Viomar Reception",
         }),
       });
-      toast.success("Envío marcado como recibido");
+      toast.success("Shipment marked as received");
       refresh();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -167,41 +167,41 @@ export function EnviosPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <Input
           className="sm:w-80"
-          label="Buscar"
-          placeholder="Pedido, diseño, talla, origen o destino"
+          label="Search"
+          placeholder="Order, design, size, origin or destination"
           value={q}
           onValueChange={setQ}
         />
         <div className="flex gap-2">
           <Button color="primary" onPress={() => setModalOpen(true)}>
-            Nuevo envío
+            New shipment
           </Button>
           <Button variant="flat" onPress={refresh}>
-            Refrescar
+            Refresh
           </Button>
         </div>
       </div>
 
-      <Table aria-label="Tabla de envíos">
+      <Table aria-label="Shipments table">
         <TableHeader>
-          <TableColumn>Tipo</TableColumn>
-          <TableColumn>Pedido</TableColumn>
-          <TableColumn>Diseño</TableColumn>
-          <TableColumn>Talla</TableColumn>
-          <TableColumn>Envía</TableColumn>
-          <TableColumn>A quién va</TableColumn>
-          <TableColumn>Ruta</TableColumn>
-          <TableColumn>Pago/Doc</TableColumn>
-          <TableColumn>Estado</TableColumn>
-          <TableColumn>Acción</TableColumn>
+          <TableColumn>Type</TableColumn>
+          <TableColumn>Order</TableColumn>
+          <TableColumn>Design</TableColumn>
+          <TableColumn>Size</TableColumn>
+          <TableColumn>Sent by</TableColumn>
+          <TableColumn>Recipient</TableColumn>
+          <TableColumn>Route</TableColumn>
+          <TableColumn>Payment/Doc</TableColumn>
+          <TableColumn>Status</TableColumn>
+          <TableColumn>Action</TableColumn>
         </TableHeader>
         <TableBody
-          emptyContent={loading ? "" : "Sin envíos"}
+          emptyContent={loading ? "" : "No shipments"}
           items={data?.items ?? []}
         >
           {(row) => (
             <TableRow key={row.id}>
-              <TableCell>{row.mode === "CLIENT" ? "Cliente" : "Interno"}</TableCell>
+              <TableCell>{row.mode === "CLIENT" ? "Client" : "Internal"}</TableCell>
               <TableCell>{row.orderCode}</TableCell>
               <TableCell>{row.designName}</TableCell>
               <TableCell>{row.size}</TableCell>
@@ -217,15 +217,15 @@ export function EnviosPage() {
               </TableCell>
               <TableCell>
                 {row.isReceived ? (
-                  <Chip color="success" size="sm">Recibido</Chip>
+                  <Chip color="success" size="sm">Received</Chip>
                 ) : (
-                  <Chip color="warning" size="sm">Pendiente</Chip>
+                  <Chip color="warning" size="sm">Pending</Chip>
                 )}
               </TableCell>
               <TableCell>
                 {row.mode === "INTERNAL" && !row.isReceived ? (
                   <Button size="sm" variant="flat" onPress={() => markReceived(row)}>
-                    Marcar recibido
+                    Mark received
                   </Button>
                 ) : (
                   "-"
@@ -240,23 +240,23 @@ export function EnviosPage() {
 
       <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
         <ModalContent>
-          <ModalHeader>Registrar envío</ModalHeader>
+          <ModalHeader>Register shipment</ModalHeader>
           <ModalBody>
             <Select
-              label="Tipo"
+              label="Type"
               selectedKeys={[form.mode]}
               onSelectionChange={(keys) => {
                 const key = String(Array.from(keys)[0] ?? "INTERNAL");
                 setForm((prev) => ({ ...prev, mode: key === "CLIENT" ? "CLIENT" : "INTERNAL" }));
               }}
             >
-              <SelectItem key="INTERNAL">Interno</SelectItem>
-              <SelectItem key="CLIENT">Cliente</SelectItem>
+              <SelectItem key="INTERNAL">Internal</SelectItem>
+              <SelectItem key="CLIENT">Client</SelectItem>
             </Select>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Select
-                label="Desde"
+                label="From"
                 selectedKeys={[form.fromArea]}
                 onSelectionChange={(keys) =>
                   setForm((prev) => ({ ...prev, fromArea: String(Array.from(keys)[0] ?? "") }))
@@ -267,7 +267,7 @@ export function EnviosPage() {
               </Select>
 
               <Select
-                label="Hacia"
+                label="To"
                 selectedKeys={[form.toArea]}
                 onSelectionChange={(keys) => {
                   const toArea = String(Array.from(keys)[0] ?? "");
@@ -286,13 +286,13 @@ export function EnviosPage() {
               </Select>
             </div>
 
-            <Input label="Quién envía" value={form.sentBy} onValueChange={(v) => setForm((p) => ({ ...p, sentBy: v }))} />
+            <Input label="Sent by" value={form.sentBy} onValueChange={(v) => setForm((p) => ({ ...p, sentBy: v }))} />
             {form.toArea === "CONFECCIONISTA" ? (
               <Autocomplete
                 defaultItems={recipientOptions}
                 inputValue={recipientQuery}
-                label="A quién va (Confeccionista)"
-                placeholder="Buscar confeccionista"
+                label="Recipient (Confectionist)"
+                placeholder="Search confectionist"
                 selectedKey={form.recipientId || null}
                 onInputChange={(value) => {
                   setRecipientQuery(value);
@@ -315,57 +315,57 @@ export function EnviosPage() {
                   >
                     <div className="flex flex-col">
                       <span className="font-medium">{item.code ?? "-"} · {item.name}</span>
-                      <span className="text-xs text-default-500">{item.contactName ?? "Sin contacto"}</span>
+                      <span className="text-xs text-default-500">{item.contactName ?? "No contact"}</span>
                     </div>
                   </AutocompleteItem>
                 )}
               </Autocomplete>
             ) : (
-              <Input label="A quién va" value={form.recipientName} onValueChange={(v) => setForm((p) => ({ ...p, recipientName: v, recipientId: "" }))} />
+              <Input label="Recipient" value={form.recipientName} onValueChange={(v) => setForm((p) => ({ ...p, recipientName: v, recipientId: "" }))} />
             )}
-            <Input label="Pedido" value={form.orderCode} onValueChange={(v) => setForm((p) => ({ ...p, orderCode: v }))} />
-            <Input label="Diseño" value={form.designName} onValueChange={(v) => setForm((p) => ({ ...p, designName: v }))} />
-            <Input label="Talla" value={form.size} onValueChange={(v) => setForm((p) => ({ ...p, size: v }))} />
-            <Input label="Ruta / destino" value={form.routePath} onValueChange={(v) => setForm((p) => ({ ...p, routePath: v }))} />
+            <Input label="Order" value={form.orderCode} onValueChange={(v) => setForm((p) => ({ ...p, orderCode: v }))} />
+            <Input label="Design" value={form.designName} onValueChange={(v) => setForm((p) => ({ ...p, designName: v }))} />
+            <Input label="Size" value={form.size} onValueChange={(v) => setForm((p) => ({ ...p, size: v }))} />
+            <Input label="Route / destination" value={form.routePath} onValueChange={(v) => setForm((p) => ({ ...p, routePath: v }))} />
 
             {form.mode === "CLIENT" ? (
               <>
                 <Select
-                  label="¿Cliente paga?"
+                  label="Client pays?"
                   selectedKeys={[form.paymentStatus]}
                   onSelectionChange={(keys) =>
                     setForm((prev) => ({ ...prev, paymentStatus: String(Array.from(keys)[0] ?? "PENDIENTE") }))
                   }
                 >
-                  <SelectItem key="PAGADO">Pagado</SelectItem>
-                  <SelectItem key="PENDIENTE">Pendiente</SelectItem>
+                  <SelectItem key="PAGADO">Paid</SelectItem>
+                  <SelectItem key="PENDIENTE">Pending</SelectItem>
                 </Select>
 
                 <Select
-                  label="Tipo documento cliente"
+                  label="Client document type"
                   selectedKeys={[form.customerDocumentType]}
                   onSelectionChange={(keys) =>
                     setForm((prev) => ({ ...prev, customerDocumentType: String(Array.from(keys)[0] ?? "F") }))
                   }
                 >
-                  <SelectItem key="F">F (Recibo de caja)</SelectItem>
-                  <SelectItem key="R">R (Prefactura)</SelectItem>
+                  <SelectItem key="F">F (Cash receipt)</SelectItem>
+                  <SelectItem key="R">R (Pre-invoice)</SelectItem>
                 </Select>
 
                 <Select
-                  label="Correo"
+                  label="Email"
                   selectedKeys={[form.emailMode]}
                   onSelectionChange={(keys) =>
                     setForm((prev) => ({ ...prev, emailMode: String(Array.from(keys)[0] ?? "REGISTRADO") }))
                   }
                 >
-                  <SelectItem key="REGISTRADO">Registrado</SelectItem>
-                  <SelectItem key="NUEVO">Nuevo</SelectItem>
-                  <SelectItem key="AMBOS">Ambos</SelectItem>
+                  <SelectItem key="REGISTRADO">Registered</SelectItem>
+                  <SelectItem key="NUEVO">New</SelectItem>
+                  <SelectItem key="AMBOS">Both</SelectItem>
                 </Select>
 
                 <Input
-                  label="Correo nuevo (si aplica)"
+                  label="New email (if applicable)"
                   value={form.emailTo}
                   onValueChange={(v) => setForm((prev) => ({ ...prev, emailTo: v }))}
                 />
@@ -374,10 +374,10 @@ export function EnviosPage() {
           </ModalBody>
           <ModalFooter>
             <Button isDisabled={saving} variant="flat" onPress={() => setModalOpen(false)}>
-              Cancelar
+              Cancel
             </Button>
             <Button color="primary" isLoading={saving} onPress={createShipment}>
-              Guardar envío
+              Save shipment
             </Button>
           </ModalFooter>
         </ModalContent>

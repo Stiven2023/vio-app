@@ -1,13 +1,16 @@
-import type { identificationTypeEnum, taxRegimeEnum } from "@/src/db/schema";
+import type { 
+  identificationTypeValues, 
+  taxRegimeValues 
+} from "@/src/db/enums";
 import type { InferSelectModel } from "drizzle-orm";
 
 export type SupplierFormPrefill = {
   name?: string;
-  identificationType?: (typeof identificationTypeEnum.enumValues)[number];
+  identificationType?: (typeof identificationTypeValues)[number];
   identification?: string;
   dv?: string;
   branch?: string;
-  taxRegime?: (typeof taxRegimeEnum.enumValues)[number];
+  taxRegime?: (typeof taxRegimeValues)[number];
   contactName?: string;
   email?: string;
   address?: string;

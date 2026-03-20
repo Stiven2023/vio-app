@@ -39,8 +39,9 @@ export async function GET(
       });
     }
 
-    // Determinar si puede operar basado en el estado
-    const canOperate = latestStatus.status === "VIGENTE";
+    // Determinar si puede operar basado en el estado.
+    // EN_REVISION puede operar (creación/edición), pero puede tener restricciones de despacho.
+    const canOperate = latestStatus.status !== "BLOQUEADO";
 
     return Response.json({
       status: latestStatus.status,
@@ -49,7 +50,7 @@ export async function GET(
         latestStatus.status === "VIGENTE"
           ? "Cliente vigente y puede operar"
           : latestStatus.status === "EN_REVISION"
-            ? "Cliente en revisión, no puede operar"
+            ? "Cliente en revisión: puede operar, con restricción de despacho"
             : "Cliente bloqueado, no puede operar",
       lastUpdate: latestStatus.createdAt,
       notes: latestStatus.notes,

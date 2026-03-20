@@ -39,9 +39,9 @@ const orderTypes: Array<{ value: OrderType; label: string }> = [
 ];
 
 const orderKinds: Array<{ value: OrderKind; label: string }> = [
-  { value: "NUEVO", label: "Nuevo" },
-  { value: "COMPLETACION", label: "Completación" },
-  { value: "REFERENTE", label: "Referente" },
+  { value: "NUEVO", label: "New" },
+  { value: "COMPLETACION", label: "Completion" },
+  { value: "REFERENTE", label: "Referent" },
 ];
 
 const orderStatuses: Array<{ value: OrderStatus; label: string }> = [
@@ -159,7 +159,7 @@ export function OrderModal({
       form.kind === "COMPLETACION" || form.kind === "REFERENTE";
 
     if (needsSource && !form.sourceOrderCode.trim()) {
-      toast.error("Código del pedido origen requerido");
+      toast.error("Source order code is required");
 
       return;
     }
@@ -168,7 +168,7 @@ export function OrderModal({
     const shippingFee = form.shippingFee ? Number(form.shippingFee) : 0;
 
     if (!Number.isFinite(shippingFee) || shippingFee < 0) {
-      toast.error("El flete/envío debe ser un número mayor o igual a 0");
+      toast.error("Shipping fee must be a number greater than or equal to 0");
 
       return;
     }
@@ -178,7 +178,7 @@ export function OrderModal({
       discountPercent < 0 ||
       discountPercent > 100
     ) {
-      toast.error("Descuento debe ser un porcentaje entre 0 y 100");
+      toast.error("Discount must be a percentage between 0 and 100");
 
       return;
     }
@@ -202,7 +202,7 @@ export function OrderModal({
         method: order ? "PUT" : "POST",
         body: JSON.stringify(order ? { id: order.id, ...payload } : payload),
       });
-      toast.success(order ? "Pedido actualizado" : "Pedido creado");
+      toast.success(order ? "Order updated" : "Order created");
       onOpenChange(false);
       onSaved();
     } catch (e) {
@@ -232,15 +232,15 @@ export function OrderModal({
     <>
       <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{order ? "Editar pedido" : "Crear pedido"}</ModalHeader>
+        <ModalHeader>{order ? "Edit order" : "Create order"}</ModalHeader>
         <ModalBody>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {order ? (
-              <Input isReadOnly label="Código" value={order.orderCode} />
+              <Input isReadOnly label="Code" value={order.orderCode} />
             ) : null}
 
             <Select
-              label="Cliente"
+              label="Client"
               selectedKeys={form.clientId ? [form.clientId] : []}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
@@ -254,7 +254,7 @@ export function OrderModal({
             </Select>
 
             <Select
-              label="Tipo"
+              label="Type"
               selectedKeys={[form.type]}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
@@ -268,7 +268,7 @@ export function OrderModal({
             </Select>
 
             <Select
-              label="Tipo de pedido"
+              label="Order type"
               selectedKeys={[form.kind]}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0] as OrderKind | undefined;
@@ -288,7 +288,7 @@ export function OrderModal({
 
             {form.kind === "COMPLETACION" || form.kind === "REFERENTE" ? (
               <Input
-                label="Código pedido origen"
+                label="Source order code"
                 value={form.sourceOrderCode}
                 onValueChange={(v) =>
                   setForm((s) => ({ ...s, sourceOrderCode: v }))
@@ -297,8 +297,8 @@ export function OrderModal({
             ) : null}
 
             <Input
-              description="Opcional. Se usa para identificar el pedido antes del aval operativo."
-              label="Código provisional"
+              description="Optional. Used to identify the order before operational approval."
+              label="Provisional code"
               value={form.provisionalCode}
               onValueChange={(v) =>
                 setForm((s) => ({ ...s, provisionalCode: v }))
@@ -307,7 +307,7 @@ export function OrderModal({
 
             <Select
               isDisabled={!canChangeStatus && Boolean(order)}
-              label="Estado"
+              label="Status"
               selectedKeys={[form.status]}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
@@ -326,12 +326,12 @@ export function OrderModal({
             <Input
               isReadOnly
               className="hidden"
-              label="Moneda"
+              label="Currency"
               value={form.currency}
             />
 
             <Select
-              label="Moneda"
+              label="Currency"
               selectedKeys={[form.currency]}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
@@ -345,7 +345,7 @@ export function OrderModal({
             </Select>
 
             <Input
-              label="Descuento (%)"
+              label="Discount (%)"
               max={100}
               min={0}
               type="number"
@@ -356,7 +356,7 @@ export function OrderModal({
             />
 
             <Input
-              label="Flete / envío"
+              label="Shipping fee"
               min={0}
               type="number"
               value={form.shippingFee}
@@ -367,7 +367,7 @@ export function OrderModal({
           </div>
 
           <div className="flex items-center justify-between">
-            <span className="text-sm">IVA habilitado</span>
+            <span className="text-sm">VAT enabled</span>
             <Switch
               isSelected={form.ivaEnabled}
               onValueChange={(v) => setForm((s) => ({ ...s, ivaEnabled: v }))}
@@ -380,7 +380,7 @@ export function OrderModal({
             variant="flat"
             onPress={() => onOpenChange(false)}
           >
-            Cancelar
+            Cancel
           </Button>
           <Button
             color="primary"
@@ -388,19 +388,19 @@ export function OrderModal({
             isLoading={submitting}
             onPress={submit}
           >
-            {submitting ? "Guardando..." : order ? "Guardar" : "Crear"}
+            {submitting ? "Saving..." : order ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>
       </Modal>
 
       <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Enviar a aprobación"
-        description="El anticipo es menor al 50%. El pedido no puede avanzar a programación todavía. Si continúas, se enviará a APROBACIÓN para decidir si puede seguir o si debe esperar un nuevo abono."
+        cancelLabel="Cancel"
+        confirmLabel="Send to approval"
+        description="The advance is below 50%. The order cannot move to scheduling yet. If you continue, it will be sent to APPROVAL to decide whether it can proceed or should wait for a new payment."
         isLoading={submitting}
         isOpen={approvalFallbackOpen}
-        title="Anticipo menor al 50%"
+        title="Advance below 50%"
         onConfirm={() => submitPayload("APROBACION")}
         onOpenChange={setApprovalFallbackOpen}
       />

@@ -15,18 +15,18 @@ export const PROCESO_PREFIX: Record<string, string> = {
 };
 
 export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {
-  montaje: { label: "Montaje", role: "OPERARIO_MONTAJE", operationType: "MONTAJE" },
+  montaje: { label: "Assembly", role: "OPERARIO_MONTAJE", operationType: "MONTAJE" },
   plotter: { label: "Plotter", role: "OPERARIO_FLOTER", operationType: "PLOTTER" },
-  sublimacion: { label: "Sublimación", role: "OPERARIO_SUBLIMACION", operationType: "SUBLIMACION" },
-  corte: { label: "Corte", role: "OPERARIO_CORTE_MANUAL", operationType: "CORTE_MANUAL" },
+  sublimacion: { label: "Sublimation", role: "OPERARIO_SUBLIMACION", operationType: "SUBLIMACION" },
+  corte: { label: "Cutting", role: "OPERARIO_CORTE_MANUAL", operationType: "CORTE_MANUAL" },
   integracion: {
-    label: "Integración",
+    label: "Integration",
     role: "OPERARIO_INTEGRACION_CALIDAD",
     operationType: "INTEGRACION",
   },
-  confeccion: { label: "Confección", role: "CONFECCIONISTA", operationType: "CONFECCION" },
-  empaque: { label: "Empaque", role: "EMPAQUE", operationType: "EMPAQUE" },
-  despacho: { label: "Despacho", role: "OPERARIO_DESPACHO", operationType: "DESPACHO" },
+  confeccion: { label: "Sewing", role: "CONFECCIONISTA", operationType: "CONFECCION" },
+  empaque: { label: "Packing", role: "EMPAQUE", operationType: "EMPAQUE" },
+  despacho: { label: "Dispatch", role: "OPERARIO_DESPACHO", operationType: "DESPACHO" },
 };
 
 export const ESTADO_CONFIG: Record<
@@ -38,22 +38,22 @@ export const ESTADO_CONFIG: Record<
   }
 > = {
   completado: {
-    label: "Completado",
+    label: "Completed",
     color: "success",
     icon: <MdCheckCircle size={12} />,
   },
   en_proceso: {
-    label: "En proceso",
+    label: "In progress",
     color: "primary",
     icon: <MdSchedule size={12} />,
   },
   pendiente: {
-    label: "Pendiente",
+    label: "Pending",
     color: "default",
     icon: <MdSchedule size={12} />,
   },
   reponer: {
-    label: "Reponer",
+    label: "Restock",
     color: "danger",
     icon: <MdWarning size={12} />,
   },

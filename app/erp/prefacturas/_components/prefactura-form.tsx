@@ -32,6 +32,7 @@ type ClientOption = {
   id: string;
   clientCode?: string | null;
   name: string;
+  priceClientType?: string | null;
   email?: string | null;
   identification: string | null;
   dv?: string | null;
@@ -41,6 +42,11 @@ type ClientOption = {
   country?: string | null;
   city?: string | null;
   postalCode?: string | null;
+  municipalityFiscal?: string | null;
+  taxZone?: TaxZone | null;
+  withholdingTaxRate?: string | null;
+  withholdingIcaRate?: string | null;
+  withholdingIvaRate?: string | null;
 };
 
 type ProductItem = {
@@ -54,9 +60,44 @@ type ProductItem = {
   confectionistName: string | null;
 };
 
+type PaymentRow = {
+  id: string;
+  amount: string | null;
+  method: string | null;
+  status: string | null;
+  referenceCode: string | null;
+  createdAt: string | null;
+};
+
 type PrefacturaFormMode = "create" | "edit";
 
 type SupportedCurrency = "COP" | "USD";
+type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
+type TaxZone = "CONTINENTAL" | "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+
+const TAX_ZONE_DEFAULT_RATES: Record<
+  TaxZone,
+  { withholdingTaxRate: number; withholdingIcaRate: number; withholdingIvaRate: number }
+> = {
+  CONTINENTAL: { withholdingTaxRate: 2.5, withholdingIcaRate: 0.966, withholdingIvaRate: 15 },
+  FREE_ZONE: { withholdingTaxRate: 0, withholdingIcaRate: 0, withholdingIvaRate: 0 },
+  SAN_ANDRES: { withholdingTaxRate: 0, withholdingIcaRate: 0.5, withholdingIvaRate: 0 },
+  SPECIAL_REGIME: { withholdingTaxRate: 1, withholdingIcaRate: 0.7, withholdingIvaRate: 0 },
+};
+
+function normalizeTaxZone(value: unknown): TaxZone {
+  const raw = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  if (raw === "FREE_ZONE" || raw === "SAN_ANDRES" || raw === "SPECIAL_REGIME") {
+    return raw;
+  }
+  return "CONTINENTAL";
+}
+
+function safeRate(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return parsed;
+}
 
 export type PrefacturaFormData = {
   id?: string;
@@ -79,6 +120,7 @@ export type PrefacturaFormData = {
   clientCountry?: string | null;
   clientCity?: string | null;
   clientPostalCode?: string | null;
+  clientPriceType?: string | null;
   total?: string | null;
   subtotal?: string | null;
   advanceRequired?: string | null;
@@ -100,6 +142,16 @@ export type PrefacturaFormData = {
   clientApprovalBy?: string | null;
   clientApprovalNotes?: string | null;
   clientApprovalImageUrl?: string | null;
+  municipalityFiscalSnapshot?: string | null;
+  taxZoneSnapshot?: TaxZone | null;
+  withholdingTaxRate?: string | null;
+  withholdingIcaRate?: string | null;
+  withholdingIvaRate?: string | null;
+  withholdingTaxAmount?: string | null;
+  withholdingIcaAmount?: string | null;
+  withholdingIvaAmount?: string | null;
+  totalAfterWithholdings?: string | null;
+  ivaAmount?: string | null;
 };
 
 const typeOptions: Array<{ value: OrderType; label: string }> = [
@@ -107,6 +159,13 @@ const typeOptions: Array<{ value: OrderType; label: string }> = [
   { value: "VI", label: "VI - Internacional" },
   { value: "VT", label: "VT" },
   { value: "VW", label: "VW" },
+];
+
+const clientPriceTypeOptions: Array<{ value: ClientPriceType; label: string }> = [
+  { value: "AUTORIZADO", label: "Cliente autorizado" },
+  { value: "MAYORISTA", label: "Cliente mayorista" },
+  { value: "VIOMAR", label: "Cliente Viomar" },
+  { value: "COLANTA", label: "Cliente Colanta" },
 ];
 
 const STATUS_LABEL: Record<string, string> = {
@@ -194,6 +253,18 @@ export function PrefacturaForm({
     normalizeCurrency(initial?.currency),
   );
   const [paymentTerms, setPaymentTerms] = useState("TRANSFERENCIA");
+  const [priceClientType, setPriceClientType] = useState<ClientPriceType>(
+    String(initial?.clientPriceType ?? "VIOMAR").trim().toUpperCase() ===
+      "AUTORIZADO"
+      ? "AUTORIZADO"
+      : String(initial?.clientPriceType ?? "VIOMAR").trim().toUpperCase() ===
+          "MAYORISTA"
+        ? "MAYORISTA"
+        : String(initial?.clientPriceType ?? "VIOMAR").trim().toUpperCase() ===
+            "COLANTA"
+          ? "COLANTA"
+          : "VIOMAR",
+  );
 
   const [clientQuery, setClientQuery] = useState(initial?.clientName ?? "");
   const [clientId, setClientId] = useState(initial?.clientId ?? "");
@@ -203,6 +274,8 @@ export function PrefacturaForm({
 
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(false);
 
   const [hasAdvance, setHasAdvance] = useState(
     Number(initial?.advanceRequired ?? 0) > 0,
@@ -235,21 +308,30 @@ export function PrefacturaForm({
     initial?.clientApprovalImageUrl ?? "",
   );
 
-  const [hasConvenio, setHasConvenio] = useState(initial?.hasConvenio ?? false);
-  const [convenioType, setConvenioType] = useState(initial?.convenioType ?? "");
-  const [convenioNotes, setConvenioNotes] = useState(
-    initial?.convenioNotes ?? "",
-  );
-  const [convenioImageUrl, setConvenioImageUrl] = useState(
-    initial?.convenioImageUrl ?? "",
-  );
-
   const isCreationFromQuotation =
     mode === "create" && Boolean(quotationCode.trim());
 
   const [submitting, setSubmitting] = useState(false);
 
+  const [municipalityFiscalSnapshot, setMunicipalityFiscalSnapshot] = useState(
+    initial?.municipalityFiscalSnapshot ?? "",
+  );
+  const [taxZoneSnapshot, setTaxZoneSnapshot] = useState<TaxZone>(
+    normalizeTaxZone(initial?.taxZoneSnapshot),
+  );
+  const [withholdingTaxRate, setWithholdingTaxRate] = useState<number>(
+    safeRate(initial?.withholdingTaxRate, TAX_ZONE_DEFAULT_RATES[normalizeTaxZone(initial?.taxZoneSnapshot)].withholdingTaxRate),
+  );
+  const [withholdingIcaRate, setWithholdingIcaRate] = useState<number>(
+    safeRate(initial?.withholdingIcaRate, TAX_ZONE_DEFAULT_RATES[normalizeTaxZone(initial?.taxZoneSnapshot)].withholdingIcaRate),
+  );
+  const [withholdingIvaRate, setWithholdingIvaRate] = useState<number>(
+    safeRate(initial?.withholdingIvaRate, TAX_ZONE_DEFAULT_RATES[normalizeTaxZone(initial?.taxZoneSnapshot)].withholdingIvaRate),
+  );
+
   const totalPrefactura = Number(initial?.total ?? 0);
+  const subtotalValue = Number(initial?.subtotal ?? 0);
+  const ivaValue = Number(initial?.ivaAmount ?? 0);
   const halfTotal = totalPrefactura / 2;
   const requiredAdvanceValue = hasAdvance
     ? totalPrefactura > 0
@@ -258,6 +340,13 @@ export function PrefacturaForm({
         : Math.round(halfTotal)
       : Number(advanceRequired || 0)
     : 0;
+
+  const withholdingTaxAmount = (subtotalValue * withholdingTaxRate) / 100;
+  const withholdingIcaAmount = (subtotalValue * withholdingIcaRate) / 100;
+  const withholdingIvaAmount = (ivaValue * withholdingIvaRate) / 100;
+  const totalWithholdings =
+    withholdingTaxAmount + withholdingIcaAmount + withholdingIvaAmount;
+  const totalAfterWithholdings = totalPrefactura - totalWithholdings;
 
   useEffect(() => {
     if (mode !== "edit" || !initial?.orderId) return;
@@ -270,11 +359,23 @@ export function PrefacturaForm({
       .finally(() => setLoadingProducts(false));
   }, [mode, initial?.orderId]);
 
+  useEffect(() => {
+    if (mode !== "edit" || !initial?.orderId) return;
+
+    setLoadingPayments(true);
+    apiJson<{ items: PaymentRow[] }>(
+      `/api/orders/${initial.orderId}/payments?page=1&pageSize=200`,
+    )
+      .then((res) => setPayments(Array.isArray(res?.items) ? res.items : []))
+      .catch(() => setPayments([]))
+      .finally(() => setLoadingPayments(false));
+  }, [mode, initial?.orderId]);
+
   const searchClients = async (q: string) => {
     setClientLoading(true);
     try {
       const res = await apiJson<{ items: ClientOption[] }>(
-        `/api/clients?q=${encodeURIComponent(q.trim())}&pageSize=20&forAutocomplete=1&onlyVigente=1`,
+        `/api/clients?q=${encodeURIComponent(q.trim())}&pageSize=20&forAutocomplete=1`,
       );
 
       setClientOptions(Array.isArray(res?.items) ? res.items : []);
@@ -297,7 +398,31 @@ export function PrefacturaForm({
     setClientId(id);
     const opt = clientOptions.find((c) => c.id === id);
 
-    if (opt) setClientQuery(opt.name);
+    if (opt) {
+      setClientQuery(opt.name);
+
+      const nextType = String(opt.priceClientType ?? "VIOMAR")
+        .trim()
+        .toUpperCase();
+
+      setPriceClientType(
+        nextType === "AUTORIZADO"
+          ? "AUTORIZADO"
+          : nextType === "MAYORISTA"
+            ? "MAYORISTA"
+            : nextType === "COLANTA"
+              ? "COLANTA"
+              : "VIOMAR",
+      );
+
+          const zone = normalizeTaxZone(opt.taxZone);
+          const fallbackRates = TAX_ZONE_DEFAULT_RATES[zone];
+          setMunicipalityFiscalSnapshot(String(opt.municipalityFiscal ?? ""));
+          setTaxZoneSnapshot(zone);
+          setWithholdingTaxRate(safeRate(opt.withholdingTaxRate, fallbackRates.withholdingTaxRate));
+          setWithholdingIcaRate(safeRate(opt.withholdingIcaRate, fallbackRates.withholdingIcaRate));
+          setWithholdingIvaRate(safeRate(opt.withholdingIvaRate, fallbackRates.withholdingIvaRate));
+    }
   };
 
   const cf = (
@@ -338,6 +463,11 @@ export function PrefacturaForm({
       }
     }
 
+    if (hasClientApproval && !clientApprovalImageUrl.trim()) {
+      toast.error("Debes adjuntar la captura/evidencia del aval del cliente");
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (mode === "create") {
@@ -347,12 +477,13 @@ export function PrefacturaForm({
           orderName: oName || undefined,
           orderType,
           currency,
+          clientPriceType: priceClientType,
           advanceRequired: hasAdvance ? requiredAdvanceValue : 0,
           advanceMethod: hasAdvance ? advanceMethod : null,
-          hasConvenio,
-          convenioType: hasConvenio ? convenioType.trim() || null : null,
-          convenioNotes: hasConvenio ? convenioNotes.trim() || null : null,
-          convenioImageUrl: hasConvenio ? convenioImageUrl || null : null,
+          hasConvenio: false,
+          convenioType: null,
+          convenioNotes: null,
+          convenioImageUrl: null,
           hasClientApproval,
           clientApprovalBy: hasClientApproval
             ? clientApprovalBy.trim() || null
@@ -363,6 +494,15 @@ export function PrefacturaForm({
           clientApprovalImageUrl: hasClientApproval
             ? clientApprovalImageUrl || null
             : null,
+          municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
+          taxZoneSnapshot,
+          withholdingTaxRate,
+          withholdingIcaRate,
+          withholdingIvaRate,
+          withholdingTaxAmount,
+          withholdingIcaAmount,
+          withholdingIvaAmount,
+          totalAfterWithholdings,
         };
 
         const created = await apiJson<{ prefactura?: { id?: string } }>(
@@ -380,9 +520,9 @@ export function PrefacturaForm({
         );
 
         if (created?.prefactura?.id) {
-          router.push(`/erp/prefacturas/${created.prefactura.id}/edit`);
+          router.push(`/erp/pre-invoices/${created.prefactura.id}/edit`);
         } else {
-          router.push("/erp/prefacturas");
+          router.push("/erp/pre-invoices");
         }
       } else {
         if (!initial?.id) return;
@@ -399,12 +539,13 @@ export function PrefacturaForm({
         await apiJson(`/api/prefacturas/${initial.id}`, {
           method: "PATCH",
           body: JSON.stringify({
+            clientPriceType: priceClientType,
             advanceRequired: hasAdvance ? requiredAdvanceValue : 0,
             advanceMethod: hasAdvance ? advanceMethod : null,
-            hasConvenio,
-            convenioType: hasConvenio ? convenioType.trim() || null : null,
-            convenioNotes: hasConvenio ? convenioNotes.trim() || null : null,
-            convenioImageUrl: hasConvenio ? convenioImageUrl || null : null,
+            hasConvenio: false,
+            convenioType: null,
+            convenioNotes: null,
+            convenioImageUrl: null,
             hasClientApproval,
             clientApprovalBy: hasClientApproval
               ? clientApprovalBy.trim() || null
@@ -415,11 +556,20 @@ export function PrefacturaForm({
             clientApprovalImageUrl: hasClientApproval
               ? clientApprovalImageUrl || null
               : null,
+            municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
+            taxZoneSnapshot,
+            withholdingTaxRate,
+            withholdingIcaRate,
+            withholdingIvaRate,
+            withholdingTaxAmount,
+            withholdingIcaAmount,
+            withholdingIvaAmount,
+            totalAfterWithholdings,
           }),
         });
 
         toast.success("Prefactura actualizada");
-        router.push("/erp/prefacturas");
+        router.push("/erp/pre-invoices");
       }
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -469,7 +619,7 @@ export function PrefacturaForm({
         </div>
         <Button
           as={NextLink}
-          href="/erp/prefacturas"
+          href="/erp/pre-invoices"
           isDisabled={submitting}
           variant="flat"
         >
@@ -651,6 +801,42 @@ export function PrefacturaForm({
                   <SelectItem key={opt.value}>{opt.label}</SelectItem>
                 ))}
               </Select>
+              <Select
+                label="Tipo de cliente (COP)"
+                selectedKeys={[priceClientType]}
+                variant="bordered"
+                onSelectionChange={(keys) => {
+                  const first = String(Array.from(keys)[0] ?? "VIOMAR")
+                    .trim()
+                    .toUpperCase();
+
+                  setPriceClientType(
+                    first === "AUTORIZADO"
+                      ? "AUTORIZADO"
+                      : first === "MAYORISTA"
+                        ? "MAYORISTA"
+                        : first === "COLANTA"
+                          ? "COLANTA"
+                          : "VIOMAR",
+                  );
+                }}
+              >
+                {clientPriceTypeOptions.map((opt) => (
+                  <SelectItem key={opt.value}>{opt.label}</SelectItem>
+                ))}
+              </Select>
+              <Input
+                isReadOnly
+                label="Municipio fiscal (snapshot)"
+                value={municipalityFiscalSnapshot}
+                variant="bordered"
+              />
+              <Input
+                isReadOnly
+                label="Zona fiscal (snapshot)"
+                value={taxZoneSnapshot}
+                variant="bordered"
+              />
             </div>
 
             <Select
@@ -761,65 +947,53 @@ export function PrefacturaForm({
         </Card>
       ) : null}
 
+      {mode === "edit" && initial?.orderId ? (
+        <Card className="border border-default-200" radius="md" shadow="none">
+          <CardHeader className="text-sm font-semibold">Abonos registrados</CardHeader>
+          <Divider />
+          <CardBody className="px-0 py-0">
+            {loadingPayments ? (
+              <p className="px-4 py-6 text-sm text-default-400">Cargando abonos...</p>
+            ) : payments.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-default-400">Sin abonos registrados.</p>
+            ) : (
+              <Table aria-label="Abonos de la prefactura" classNames={{ wrapper: "rounded-none shadow-none" }}>
+                <TableHeader>
+                  <TableColumn>Fecha</TableColumn>
+                  <TableColumn>Método</TableColumn>
+                  <TableColumn>Estado</TableColumn>
+                  <TableColumn>Referencia</TableColumn>
+                  <TableColumn className="text-right">Valor</TableColumn>
+                </TableHeader>
+                <TableBody>
+                  {payments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>
+                        {p.createdAt
+                          ? new Date(p.createdAt).toLocaleString("es-CO")
+                          : "-"}
+                      </TableCell>
+                      <TableCell>{p.method ?? "-"}</TableCell>
+                      <TableCell>
+                        <Chip size="sm" variant="flat">
+                          {p.status ?? "-"}
+                        </Chip>
+                      </TableCell>
+                      <TableCell>{p.referenceCode ?? "-"}</TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(p.amount, currency)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <Card className="border border-default-200" radius="md" shadow="none">
-            <CardHeader className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Anticipo</p>
-                <p className="text-xs text-default-500">Define si la prefactura exige anticipo.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Chip color={hasAdvance ? "success" : "default"} size="sm" variant="flat">
-                  {hasAdvance ? "true" : "false"}
-                </Chip>
-                <Switch isSelected={hasAdvance} size="sm" onValueChange={setHasAdvance} />
-              </div>
-            </CardHeader>
-            <Divider />
-            {hasAdvance ? (
-              <CardBody className="space-y-3">
-                {totalPrefactura > 0 ? (
-                  <div className="space-y-1 rounded-lg bg-default-50 p-3 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-default-500">Total prefactura</span>
-                      <span className="font-semibold">{formatMoney(totalPrefactura, currency)}</span>
-                    </div>
-                    <div className="flex justify-between text-primary">
-                      <span>50% para programación</span>
-                      <span className="font-semibold">{formatMoney(halfTotal, currency)}</span>
-                    </div>
-                  </div>
-                ) : null}
-                <Select
-                  label="Método de pago"
-                  selectedKeys={advanceMethod ? [advanceMethod] : []}
-                  variant="bordered"
-                  onSelectionChange={(keys) => {
-                    const first = String(Array.from(keys)[0] ?? "");
-
-                    setAdvanceMethod(
-                      first === "EFECTIVO" || first === "TRANSFERENCIA" ? first : "",
-                    );
-                  }}
-                >
-                  <SelectItem key="EFECTIVO">Efectivo</SelectItem>
-                  <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
-                </Select>
-
-                {mode === "edit" ? (
-                  <p className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-xs text-primary-700">
-                    El pago del anticipo se registra desde el listado de prefacturas en Acciones &gt; Realizar anticipo.
-                  </p>
-                ) : null}
-              </CardBody>
-            ) : (
-              <CardBody>
-                <p className="text-xs text-default-400">Prefactura sin anticipo obligatorio.</p>
-              </CardBody>
-            )}
-          </Card>
-
           <Card className="border border-default-200" radius="md" shadow="none">
             <CardHeader className="flex items-center justify-between">
               <div>
@@ -871,52 +1045,6 @@ export function PrefacturaForm({
             )}
           </Card>
 
-          <Card className="border border-default-200" radius="md" shadow="none">
-            <CardHeader className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Convenio comercial</p>
-                <p className="text-xs text-default-500">Aplica acuerdos especiales de pago o condiciones.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Chip color={hasConvenio ? "success" : "default"} size="sm" variant="flat">
-                  {hasConvenio ? "true" : "false"}
-                </Chip>
-                <Switch isSelected={hasConvenio} size="sm" onValueChange={setHasConvenio} />
-              </div>
-            </CardHeader>
-            <Divider />
-            {hasConvenio ? (
-              <CardBody className="space-y-3">
-                <Input
-                  label="Tipo de convenio"
-                  placeholder="Ej: Crédito 30 días"
-                  value={convenioType}
-                  variant="bordered"
-                  onValueChange={setConvenioType}
-                />
-                <Textarea
-                  label="Notas"
-                  minRows={2}
-                  placeholder="Condiciones, excepciones, acuerdos..."
-                  value={convenioNotes}
-                  variant="bordered"
-                  onValueChange={setConvenioNotes}
-                />
-                <FileUpload
-                  acceptedFileTypes="image/*"
-                  label="Imagen / documento del convenio"
-                  uploadFolder="prefacturas/convenios"
-                  value={convenioImageUrl}
-                  onChange={setConvenioImageUrl}
-                  onClear={() => setConvenioImageUrl("")}
-                />
-              </CardBody>
-            ) : (
-              <CardBody>
-                <p className="text-xs text-default-400">Sin convenio activo.</p>
-              </CardBody>
-            )}
-          </Card>
         </div>
 
         <Card className="border border-default-200 lg:col-span-1" radius="md" shadow="none">
@@ -936,6 +1064,109 @@ export function PrefacturaForm({
               <span className="font-medium">{hasAdvance ? formatMoney(requiredAdvanceValue, currency) : "N/A"}</span>
             </div>
 
+            <div className="space-y-2 border-t border-default-200 pt-3">
+              <p className="text-sm font-semibold">Retenciones</p>
+              <Input
+                label="Retención en la fuente (%)"
+                type="number"
+                value={String(withholdingTaxRate)}
+                variant="bordered"
+                onValueChange={(value) =>
+                  setWithholdingTaxRate(Math.max(0, Number(value || 0)))
+                }
+              />
+              <Input
+                label="Retención ICA (%)"
+                type="number"
+                value={String(withholdingIcaRate)}
+                variant="bordered"
+                onValueChange={(value) =>
+                  setWithholdingIcaRate(Math.max(0, Number(value || 0)))
+                }
+              />
+              <Input
+                label="Retención IVA (%)"
+                type="number"
+                value={String(withholdingIvaRate)}
+                variant="bordered"
+                onValueChange={(value) =>
+                  setWithholdingIvaRate(Math.max(0, Number(value || 0)))
+                }
+              />
+              <div className="flex justify-between text-xs">
+                <span className="text-default-500">Valor Retefuente</span>
+                <span>{formatMoney(withholdingTaxAmount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-default-500">Valor Retención ICA</span>
+                <span>{formatMoney(withholdingIcaAmount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-default-500">Valor Retención IVA</span>
+                <span>{formatMoney(withholdingIvaAmount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold">
+                <span>Total retenciones</span>
+                <span>{formatMoney(totalWithholdings, currency)}</span>
+              </div>
+            </div>
+
+            <div className="flex justify-between text-sm font-semibold text-primary">
+              <span>Total después de retenciones</span>
+              <span>{formatMoney(totalAfterWithholdings, currency)}</span>
+            </div>
+
+            <div className="space-y-2 border-t border-default-200 pt-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm">Anticipo</span>
+                  <p className="text-xs text-default-500">Define si la prefactura exige el 50% para programación.</p>
+                </div>
+                <Switch isSelected={hasAdvance} size="sm" onValueChange={setHasAdvance} />
+              </div>
+
+              {hasAdvance ? (
+                <>
+                  {totalPrefactura > 0 ? (
+                    <div className="space-y-1 rounded-lg bg-default-50 p-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-default-500">Total prefactura</span>
+                        <span className="font-semibold">{formatMoney(totalPrefactura, currency)}</span>
+                      </div>
+                      <div className="flex justify-between text-primary">
+                        <span>50% para programación</span>
+                        <span className="font-semibold">{formatMoney(halfTotal, currency)}</span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <Select
+                    label="Método de pago"
+                    selectedKeys={advanceMethod ? [advanceMethod] : []}
+                    variant="bordered"
+                    onSelectionChange={(keys) => {
+                      const first = String(Array.from(keys)[0] ?? "");
+
+                      setAdvanceMethod(
+                        first === "EFECTIVO" || first === "TRANSFERENCIA" ? first : "",
+                      );
+                    }}
+                  >
+                    <SelectItem key="EFECTIVO">Efectivo</SelectItem>
+                    <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
+                  </Select>
+
+                  {mode === "edit" ? (
+                    <p className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-xs text-primary-700">
+                      El pago del anticipo se registra desde el listado de prefacturas en Acciones &gt; Realizar anticipo.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-xs text-default-400">Prefactura sin anticipo obligatorio.</p>
+              )}
+            </div>
+
             <Divider />
 
             <div className="space-y-2 text-xs">
@@ -951,12 +1182,6 @@ export function PrefacturaForm({
                   {hasClientApproval ? "true" : "false"}
                 </Chip>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-default-500">Convenio</span>
-                <Chip color={hasConvenio ? "success" : "default"} size="sm" variant="flat">
-                  {hasConvenio ? "true" : "false"}
-                </Chip>
-              </div>
             </div>
           </CardBody>
         </Card>
@@ -965,7 +1190,7 @@ export function PrefacturaForm({
       <div className="flex justify-end gap-3 pt-2">
         <Button
           as={NextLink}
-          href="/erp/prefacturas"
+          href="/erp/pre-invoices"
           isDisabled={submitting}
           variant="flat"
         >

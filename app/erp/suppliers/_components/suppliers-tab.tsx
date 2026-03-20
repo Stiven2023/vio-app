@@ -130,9 +130,9 @@ export function SuppliersTab({
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (search.trim() !== "" || status !== "all") return "Sin resultados";
+    if (search.trim() !== "" || status !== "all") return "No results";
 
-    return "Sin proveedores";
+    return "No suppliers";
   }, [loading, search, status]);
 
   const remove = async () => {
@@ -147,7 +147,7 @@ export function SuppliersTab({
         method: "DELETE",
         body: JSON.stringify({ id: s.id }),
       });
-      toast.success("Proveedor eliminado");
+      toast.success("Supplier deleted");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -160,7 +160,7 @@ export function SuppliersTab({
 
   const createAsClient = async (supplier: Supplier) => {
     if (!supplier.email) {
-      toast.error("Para crear como cliente, el proveedor debe tener email.");
+      toast.error("To create as client, the supplier must have an email.");
       return;
     }
 
@@ -169,7 +169,6 @@ export function SuppliersTab({
         method: "POST",
         body: JSON.stringify({
           clientType: "NACIONAL",
-          priceClientType: "VIOMAR",
           name: supplier.name,
           identificationType: supplier.identificationType,
           identification: supplier.identification,
@@ -196,7 +195,7 @@ export function SuppliersTab({
         }),
       });
 
-      toast.success("Cliente creado desde proveedor");
+      toast.success("Client created from supplier");
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -204,7 +203,7 @@ export function SuppliersTab({
 
   const createAsEmployee = async (supplier: Supplier) => {
     if (!supplier.email) {
-      toast.error("Para crear como empleado, el proveedor debe tener email.");
+      toast.error("To create as employee, the supplier must have an email.");
       return;
     }
 
@@ -228,7 +227,7 @@ export function SuppliersTab({
         }),
       });
 
-      toast.success("Empleado creado desde proveedor");
+      toast.success("Employee created from supplier");
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -261,7 +260,7 @@ export function SuppliersTab({
         }),
       });
 
-      toast.success("Confeccionista creado desde proveedor");
+      toast.success("Confectionist created from supplier");
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -293,7 +292,7 @@ export function SuppliersTab({
         }),
       });
 
-      toast.success("Empaque creado desde proveedor");
+      toast.success("Packer created from supplier");
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -305,7 +304,7 @@ export function SuppliersTab({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <Input
           className="sm:w-72"
-          placeholder="Buscar por código, nombre, email o contacto…"
+          placeholder="Search by code, name, email or contact…"
           value={search}
           onValueChange={setSearch}
           isClearable
@@ -313,11 +312,11 @@ export function SuppliersTab({
         />
           <FilterSelect
             className="sm:w-56"
-            label="Estado"
+            label="Status"
             options={[
-              { value: "all", label: "Todos" },
-              { value: "active", label: "Activos" },
-              { value: "inactive", label: "Desactivados" },
+              { value: "all", label: "All" },
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
             ]}
             value={status}
             onChange={(v) => setStatus(v as StatusFilter)}
@@ -333,44 +332,44 @@ export function SuppliersTab({
                 setModalOpen(true);
               }}
             >
-              Crear proveedor
+              Create supplier
             </Button>
           ) : null}
           <Button variant="flat" onPress={refresh}>
-            Refrescar
+            Refresh
           </Button>
         </div>
       </div>
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Proveedores"
+          ariaLabel="Suppliers"
           headers={[
-            "Código",
-            "Nombre",
-            "Tipo ID",
+            "Code",
+            "Name",
+            "ID Type",
             "Email",
-            "Contacto",
-            "Móvil",
-            "Ciudad",
-            "Activo",
-            "Estado jurídico",
-            "Acciones",
+            "Contact",
+            "Mobile",
+            "City",
+            "Active",
+            "Legal status",
+            "Actions",
           ]}
         />
       ) : (
-        <Table aria-label="Proveedores">
+        <Table aria-label="Suppliers">
           <TableHeader>
-            <TableColumn>Código</TableColumn>
-            <TableColumn>Nombre</TableColumn>
-            <TableColumn>Tipo ID</TableColumn>
+            <TableColumn>Code</TableColumn>
+            <TableColumn>Name</TableColumn>
+            <TableColumn>ID Type</TableColumn>
             <TableColumn>Email</TableColumn>
-            <TableColumn>Contacto</TableColumn>
-            <TableColumn>Móvil</TableColumn>
-            <TableColumn>Ciudad</TableColumn>
-            <TableColumn>Activo</TableColumn>
-            <TableColumn>Estado jurídico</TableColumn>
-            <TableColumn>Acciones</TableColumn>
+            <TableColumn>Contact</TableColumn>
+            <TableColumn>Mobile</TableColumn>
+            <TableColumn>City</TableColumn>
+            <TableColumn>Active</TableColumn>
+            <TableColumn>Legal status</TableColumn>
+            <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(s) => (
@@ -390,7 +389,7 @@ export function SuppliersTab({
                 <TableCell className="text-default-500">
                   {s.city ?? "-"}
                 </TableCell>
-                <TableCell>{s.isActive ? "Sí" : "No"}</TableCell>
+                <TableCell>{s.isActive ? "Yes" : "No"}</TableCell>
                 <TableCell>
                   {s.legalStatus ? (
                     <Chip
@@ -405,14 +404,14 @@ export function SuppliersTab({
                       variant="flat"
                     >
                       {s.legalStatus === "VIGENTE"
-                        ? "Vigente"
+                        ? "Active"
                         : s.legalStatus === "EN_REVISION"
-                          ? "En Revisión"
-                          : "Bloqueado"}
+                          ? "Under Review"
+                          : "Blocked"}
                     </Chip>
                   ) : (
                     <Chip color="default" size="sm" variant="flat">
-                      Sin definir
+                      Undefined
                     </Chip>
                   )}
                 </TableCell>
@@ -427,7 +426,7 @@ export function SuppliersTab({
                         <BsThreeDotsVertical />
                       </Button>
                     </DropdownTrigger>
-                    <DropdownMenu aria-label="Acciones">
+                    <DropdownMenu aria-label="Actions">
                       <DropdownItem
                         key="view"
                         startContent={<BsEyeFill />}
@@ -436,7 +435,7 @@ export function SuppliersTab({
                           setDetailsOpen(true);
                         }}
                       >
-                        Ver información completa
+                        View full info
                       </DropdownItem>
                       {canChangeLegalStatus ? (
                         <DropdownItem
@@ -447,7 +446,7 @@ export function SuppliersTab({
                             setLegalStatusModalOpen(true);
                           }}
                         >
-                          Ver estado jurídico
+                          View legal status
                         </DropdownItem>
                       ) : null}
                       <DropdownItem
@@ -458,7 +457,7 @@ export function SuppliersTab({
                           setDocumentsOpen(true);
                         }}
                       >
-                        Ver documentos
+                        View documents
                       </DropdownItem>
                       {canEdit ? (
                         <DropdownItem
@@ -469,7 +468,7 @@ export function SuppliersTab({
                             setModalOpen(true);
                           }}
                         >
-                          Editar
+                          Edit
                         </DropdownItem>
                       ) : null}
 
@@ -483,7 +482,7 @@ export function SuppliersTab({
                             setConfirmOpen(true);
                           }}
                         >
-                          Eliminar
+                          Delete
                         </DropdownItem>
                       ) : null}
                     </DropdownMenu>
@@ -534,23 +533,23 @@ export function SuppliersTab({
       />
 
       <ThirdPartyDocumentsModal
-        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        title={`Documents of ${viewingDocuments?.name ?? ""}`}
         subtitle={
           viewingDocuments
             ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
             : undefined
         }
-        emptyMessage="Este proveedor no tiene documentos cargados."
+        emptyMessage="This supplier has no uploaded documents."
         documents={
           viewingDocuments
             ? [
-                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
+                { label: "Identity document", url: viewingDocuments.identityDocumentUrl },
                 { label: "RUT", url: viewingDocuments.rutDocumentUrl },
-                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
-                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
-                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
-                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
-                { label: "Comprobante bancario", url: viewingDocuments.bankCertificateUrl },
+                { label: "Chamber of commerce", url: viewingDocuments.commerceChamberDocumentUrl },
+                { label: "Passport", url: viewingDocuments.passportDocumentUrl },
+                { label: "Tax certificate", url: viewingDocuments.taxCertificateDocumentUrl },
+                { label: "Company document", url: viewingDocuments.companyIdDocumentUrl },
+                { label: "Bank certificate", url: viewingDocuments.bankCertificateUrl },
               ]
             : []
         }
@@ -562,14 +561,14 @@ export function SuppliersTab({
       />
 
       <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Eliminar"
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
         description={
-          pendingDelete ? `¿Eliminar el proveedor ${pendingDelete.name}?` : undefined
+          pendingDelete ? `Delete supplier ${pendingDelete.name}?` : undefined
         }
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
-        title="Confirmar eliminación"
+        title="Confirm deletion"
         onConfirm={remove}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);

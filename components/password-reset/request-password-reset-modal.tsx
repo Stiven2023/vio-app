@@ -32,7 +32,7 @@ export function RequestPasswordResetModal({
 
   const submit = async () => {
     if (!email.trim()) {
-      setToast({ message: "El correo es obligatorio.", type: "error" });
+      setToast({ message: "Email is required.", type: "error" });
 
       return;
     }
@@ -49,7 +49,7 @@ export function RequestPasswordResetModal({
         const text = await res.text();
 
         setToast({
-          message: text || "No se pudo enviar el correo de recuperación.",
+          message: text || "Could not send the recovery email.",
           type: "error",
         });
 
@@ -57,7 +57,7 @@ export function RequestPasswordResetModal({
       }
 
       setToast({
-        message: "Te enviamos un token para recuperar tu contraseña.",
+        message: "We sent you a token to recover your password.",
         type: "success",
       });
 
@@ -66,7 +66,7 @@ export function RequestPasswordResetModal({
       onSent(nextEmail);
     } catch {
       setToast({
-        message: "No se pudo enviar el correo de recuperación.",
+        message: "Could not send the recovery email.",
         type: "error",
       });
     } finally {
@@ -86,14 +86,14 @@ export function RequestPasswordResetModal({
       }}
     >
       <ModalContent>
-        <ModalHeader>Recuperar contraseña</ModalHeader>
+        <ModalHeader>Recover password</ModalHeader>
         <ModalBody>
           {toast ? (
             <AlertToast message={toast.message} type={toast.type} />
           ) : null}
           <Input
             isDisabled={loading}
-            label="Correo electrónico"
+            label="Email address"
             startContent={
               <BsEnvelopeFill className="text-xl text-default-500" />
             }
@@ -102,7 +102,7 @@ export function RequestPasswordResetModal({
             onValueChange={setEmail}
           />
           <p className="text-sm text-default-500">
-            Enviaremos un token de recuperación a tu correo.
+            We will send a recovery token to your email.
           </p>
         </ModalBody>
         <ModalFooter>
@@ -111,10 +111,10 @@ export function RequestPasswordResetModal({
             variant="flat"
             onPress={() => onOpenChange(false)}
           >
-            Cancelar
+            Cancel
           </Button>
           <Button color="primary" isDisabled={loading} onPress={submit}>
-            Enviar
+            Send
           </Button>
         </ModalFooter>
       </ModalContent>

@@ -1,5 +1,5 @@
-import { QuotationEditor } from "@/app/erp/quotations/_components/QuotationEditor";
+import { redirect } from "next/navigation";
 
 export default function NewPrefacturaPage() {
-  return <QuotationEditor mode="prefactura" />;
+  redirect("/erp/pre-invoices/new");
 }

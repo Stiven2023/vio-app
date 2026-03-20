@@ -178,7 +178,6 @@ export function EmployeesTab({
         method: "POST",
         body: JSON.stringify({
           clientType: "EMPLEADO",
-          priceClientType: "VIOMAR",
           name: employee.name,
           identificationType: employee.identificationType,
           identification: employee.identification,
@@ -469,7 +468,6 @@ export function EmployeesTab({
                           onPress={() => {
                             onRequestCreateClient?.({
                               clientType: "EMPLEADO",
-                              priceClientType: "VIOMAR",
                               name: e.name,
                               identificationType: e.identificationType,
                               identification: e.identification,

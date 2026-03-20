@@ -76,14 +76,14 @@ export function SupplierIdentificationSection({
 }: IdentificationProps) {
   const identificationHint =
     form.identificationType === "CC"
-      ? "CC: solo números, entre 6 y 10 dígitos"
+      ? "CC: numbers only, 6-10 digits"
       : form.identificationType === "NIT"
-        ? "NIT: solo números, entre 8 y 12 dígitos"
+        ? "NIT: numbers only, 8-12 digits"
         : form.identificationType === "CE"
-          ? "CE: alfanumérico, entre 5 y 15 caracteres"
+          ? "CE: alphanumeric, 5-15 characters"
           : form.identificationType === "PAS"
-            ? "Pasaporte: alfanumérico, entre 5 y 20 caracteres"
-            : "Empresa exterior: mínimo 3 caracteres";
+            ? "Passport: alphanumeric, 5-20 characters"
+            : "Foreign company: at least 3 characters";
 
   const identificationInputMode =
     form.identificationType === "CC" || form.identificationType === "NIT"
@@ -93,12 +93,12 @@ export function SupplierIdentificationSection({
   return (
     <div className="space-y-4 py-4">
       <Input
-        description="Campo crítico requerido"
+        description="Required critical field"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.name}
         isInvalid={Boolean(errors.name)}
         isRequired
-        label="Nombre tercero"
+        label="Third-party name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.name}
         onValueChange={(value) => onStringFieldChange("name", value)}
@@ -109,7 +109,7 @@ export function SupplierIdentificationSection({
           errorMessage={errors.identificationType}
           isInvalid={Boolean(errors.identificationType)}
           isRequired
-          label="Tipo de identificación"
+          label="ID type"
           selectedKeys={form.identificationType ? [form.identificationType] : []}
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0];
@@ -127,20 +127,20 @@ export function SupplierIdentificationSection({
           isInvalid={Boolean(errors.identification)}
           isRequired
           inputMode={identificationInputMode}
-          label="Identificación"
+          label="Identification"
           value={form.identification}
           onValueChange={onIdentificationInputChange}
         />
 
         <Input
-          label="Dígito verificación"
+          label="Check digit (DV)"
           maxLength={1}
           value={form.dv}
           onValueChange={(value) => onStringFieldChange("dv", value)}
         />
 
         <Input
-          label="Sucursal"
+          label="Branch"
           value={form.branch}
           onValueChange={(value) => onStringFieldChange("branch", value)}
         />
@@ -161,7 +161,7 @@ export function SupplierContactSection({
         errorMessage={errors.taxRegime}
         isInvalid={Boolean(errors.taxRegime)}
         isRequired
-        label="Régimen fiscal (IVA)"
+        label="Tax regime (VAT)"
         selectedKeys={form.taxRegime ? [form.taxRegime] : []}
         onSelectionChange={(keys) => {
           const selected = Array.from(keys)[0];
@@ -174,19 +174,19 @@ export function SupplierContactSection({
       </Select>
 
       <Input
-        description="Persona de contacto en la empresa"
+        description="Contact person at the company"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.contactName}
         isInvalid={Boolean(errors.contactName)}
         isRequired
-        label="Nombre de Contacto"
+        label="Contact name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.contactName}
         onValueChange={(value) => onStringFieldChange("contactName", value)}
       />
 
       <Input
-        description="Campo crítico para facturación"
+        description="Required for billing"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.email}
         isInvalid={Boolean(errors.email)}
@@ -215,7 +215,7 @@ export function SupplierLocationSection({
         errorMessage={errors.address}
         isInvalid={Boolean(errors.address)}
         isRequired
-        label="Dirección"
+        label="Address"
         startContent={<BsGeoAltFill className="text-xl text-default-500" />}
         value={form.address}
         onValueChange={(value) => onStringFieldChange("address", value)}
@@ -223,25 +223,25 @@ export function SupplierLocationSection({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Input
-          label="Código postal"
+          label="Postal code"
           value={form.postalCode}
           onValueChange={(value) => onStringFieldChange("postalCode", value)}
         />
 
         <Input
-          label="País"
+          label="Country"
           value={form.country}
           onValueChange={(value) => onStringFieldChange("country", value)}
         />
 
         <Input
-          label="Departamento"
+          label="Department/State"
           value={form.department}
           onValueChange={(value) => onStringFieldChange("department", value)}
         />
 
         <Input
-          label="Ciudad"
+          label="City"
           value={form.city}
           onValueChange={(value) => onStringFieldChange("city", value)}
         />
@@ -257,10 +257,10 @@ export function SupplierPhonesSection({
 }: CommonProps) {
   return (
     <div className="space-y-4 py-4">
-      <p className="text-sm text-default-600">Móvil (requerido)</p>
+      <p className="text-sm text-default-600">Mobile (required)</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Input
-          label="Código internacional"
+          label="International code"
           placeholder="57"
           value={form.intlDialCode}
           onValueChange={(value) => onStringFieldChange("intlDialCode", value)}
@@ -272,7 +272,7 @@ export function SupplierPhonesSection({
             errorMessage={errors.mobile}
             isInvalid={Boolean(errors.mobile)}
             isRequired
-            label="Móvil"
+            label="Mobile"
             startContent={<BsTelephoneFill className="text-xl text-default-500" />}
             value={form.mobile}
             onValueChange={(value) => onStringFieldChange("mobile", value)}
@@ -282,10 +282,10 @@ export function SupplierPhonesSection({
 
       <Divider className="my-4" />
 
-      <p className="text-sm text-default-600">Teléfono fijo (opcional)</p>
+      <p className="text-sm text-default-600">Landline (optional)</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <Input
-          label="Código local"
+          label="Local code"
           placeholder="4"
           value={form.localDialCode}
           onValueChange={(value) => onStringFieldChange("localDialCode", value)}
@@ -293,14 +293,14 @@ export function SupplierPhonesSection({
 
         <div className="md:col-span-2">
           <Input
-            label="Fijo"
+            label="Landline"
             value={form.landline}
             onValueChange={(value) => onStringFieldChange("landline", value)}
           />
         </div>
 
         <Input
-          label="Extensión"
+          label="Extension"
           value={form.extension}
           onValueChange={(value) => onStringFieldChange("extension", value)}
         />
@@ -324,7 +324,7 @@ export function SupplierCreditSection({
   return (
     <div className="space-y-4 py-4">
       <div className="flex items-center justify-between rounded-lg border border-default-200 p-4">
-        <span className="text-sm">Proveedor activo (interno)</span>
+        <span className="text-sm">Active supplier (internal)</span>
         <Switch
           isSelected={form.isActive}
           onValueChange={(value) => onBooleanFieldChange("isActive", value)}
@@ -337,10 +337,10 @@ export function SupplierCreditSection({
             <BsInfoCircle className="mt-0.5 text-lg text-info-600" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-info-900">
-                ℹ️ Proveedor inactivo por defecto
+                  ℹ️ Inactive by default
               </p>
               <p className="mt-1 text-xs text-info-800">
-                Proveedores nuevos comienzan inactivos hasta aprobación de estado jurídico.
+                  New suppliers start inactive until legal status is approved.
               </p>
             </div>
           </div>
@@ -352,7 +352,7 @@ export function SupplierCreditSection({
       <div className="flex items-center justify-between rounded-lg border border-default-200 p-4">
         <div className="flex items-center gap-2">
           <BsCreditCardFill className="text-xl text-default-500" />
-          <span className="text-sm">¿Tiene crédito aprobado?</span>
+          <span className="text-sm">Has approved credit?</span>
         </div>
         <Switch
           isSelected={form.hasCredit}
@@ -363,7 +363,7 @@ export function SupplierCreditSection({
       {form.hasCredit && (
         <div className="space-y-4">
           <Input
-            label="Número pagaré"
+            label="Promissory note #"
             value={form.promissoryNoteNumber}
             onValueChange={(value) =>
               onStringFieldChange("promissoryNoteNumber", value)
@@ -371,7 +371,7 @@ export function SupplierCreditSection({
           />
 
           <Input
-            label="Fecha firma pagaré"
+            label="Promissory note signing date"
             type="date"
             value={form.promissoryNoteDate}
             onValueChange={(value) =>

@@ -22,8 +22,8 @@ import {
   notifications,
   orderPayments,
   orders,
-  orderStatusEnum,
 } from "@/src/db/schema";
+import { orderStatusValues } from "@/src/db/enums";
 import { AdminCharts } from "@/app/erp/dashboard/_components/admin-charts";
 import { ExchangeRateWidget } from "@/app/erp/dashboard/_components/exchange-rate-widget";
 
@@ -135,7 +135,7 @@ export default async function AdminDashboardPage() {
   const previousExchangeRate = latestExchangeRates[1] ?? null;
 
   const statusTotals = new Map<string, number>();
-  for (const status of orderStatusEnum.enumValues) {
+  for (const status of orderStatusValues) {
     statusTotals.set(status, 0);
   }
   for (const row of ordersByStatus) {

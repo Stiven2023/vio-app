@@ -87,11 +87,19 @@ export type Client = {
   landline: string | null;
   extension: string | null;
   fullLandline: string | null;
+  municipalityFiscal: string | null;
+  taxZone: "CONTINENTAL" | "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+  paymentType: "CASH" | "CREDIT";
+  creditBackingType:
+    | "PROMISSORY_NOTE"
+    | "PURCHASE_ORDER"
+    | "VERBAL_AGREEMENT"
+    | null;
   // --- ESTADO Y CRÉDITO ---
   status: string | null;
-  priceClientType: string;
   isActive: boolean | null;
   hasCredit: boolean | null;
+  creditLimit: string | null;
   promissoryNoteNumber: string | null;
   promissoryNoteDate: string | null;
   createdAt: string | null;
@@ -114,7 +122,12 @@ export type ClientLegalStatusRecord = {
 export type LegalStatusRecord = {
   id: string;
   thirdPartyId: string;
-  thirdPartyType: "CLIENTE" | "EMPLEADO" | "PROVEEDOR" | "CONFECCIONISTA" | "EMPACADOR";
+  thirdPartyType:
+    | "CLIENTE"
+    | "EMPLEADO"
+    | "PROVEEDOR"
+    | "CONFECCIONISTA"
+    | "EMPACADOR";
   thirdPartyName: string;
   status: "VIGENTE" | "EN_REVISION" | "BLOQUEADO";
   notes: string | null;

@@ -1,0 +1,292 @@
+ÔÇëWARNÔÇë Unsupported engine: wanted: {"node":"22.x"} (current: {"node":"v24.14.0","pnpm":"9.3.0"})
+
+> vio-app@0.0.2 build D:\Programaci├│n\Vio\Viomar NEXT JS project\vio-app
+> next build
+
+   Ôû▓ Next.js 15.5.9
+   - Environments: .env
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully in 2.1min
+   Skipping linting
+   Checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/200) ...
+   Generating static pages (50/200) 
+   Generating static pages (100/200) 
+   Generating static pages (150/200) 
+ Ô£ô Generating static pages (200/200)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                              Size  First Load JS
+Ôöî Ôùï /                                                   208 B         275 kB
+Ôö£ Ôùï /_not-found                                         578 B         103 kB
+Ôö£ ÔùÅ /[locale]                                         1.33 kB         276 kB
+Ôö£   Ôö£ /es
+Ôö£   Ôöö /en
+Ôö£ ãÆ /api/account/options                                578 B         103 kB
+Ôö£ ãÆ /api/account/options/password                       578 B         103 kB
+Ôö£ ãÆ /api/additions                                      578 B         103 kB
+Ôö£ ãÆ /api/additions/[id]                                 578 B         103 kB
+Ôö£ ãÆ /api/admin/users                                    578 B         103 kB
+Ôö£ ãÆ /api/admin/users/[id]/detail                        578 B         103 kB
+Ôö£ ãÆ /api/admin/users/verify-email                       578 B         103 kB
+Ôö£ ãÆ /api/auth/logout                                    578 B         103 kB
+Ôö£ ãÆ /api/auth/me                                        578 B         103 kB
+Ôö£ ãÆ /api/auth/permissions                               578 B         103 kB
+Ôö£ ãÆ /api/auth/role-override                             578 B         103 kB
+Ôö£ ãÆ /api/banks                                          578 B         103 kB
+Ôö£ ãÆ /api/banks/[id]/history                             578 B         103 kB
+Ôö£ ãÆ /api/categories                                     578 B         103 kB
+Ôö£ ãÆ /api/clients                                        578 B         103 kB
+Ôö£ ãÆ /api/clients/[id]/legal-status                      578 B         103 kB
+Ôö£ ãÆ /api/clients/[id]/legal-status-history              578 B         103 kB
+Ôö£ ãÆ /api/clients/[id]/legal-status/check                578 B         103 kB
+Ôö£ ãÆ /api/confectionists                                 578 B         103 kB
+Ôö£ ãÆ /api/confectionists/[id]/legal-status               578 B         103 kB
+Ôö£ ãÆ /api/confectionists/[id]/legal-status-history       578 B         103 kB
+Ôö£ ãÆ /api/confectionists/[id]/legal-status/check         578 B         103 kB
+Ôö£ ãÆ /api/contabilidad/consignaciones                    578 B         103 kB
+Ôö£ ãÆ /api/contabilidad/consignaciones/[id]/status        578 B         103 kB
+Ôö£ ãÆ /api/dashboard/confectionist-load                   578 B         103 kB
+Ôö£ ãÆ /api/dashboard/operario-items                       578 B         103 kB
+Ôö£ ãÆ /api/dashboard/operative-logs                       578 B         103 kB
+Ôö£ ãÆ /api/dashboard/operative-logs/[id]                  578 B         103 kB
+Ôö£ ãÆ /api/documents/download                             578 B         103 kB
+Ôö£ ãÆ /api/documents/upload                               578 B         103 kB
+Ôö£ ãÆ /api/employees                                      578 B         103 kB
+Ôö£ ãÆ /api/employees/[id]/detail                          578 B         103 kB
+Ôö£ ãÆ /api/employees/[id]/legal-status                    578 B         103 kB
+Ôö£ ãÆ /api/employees/[id]/legal-status-history            578 B         103 kB
+Ôö£ ãÆ /api/employees/[id]/legal-status/check              578 B         103 kB
+Ôö£ ãÆ /api/exchange-rate/current                          578 B         103 kB
+Ôö£ ãÆ /api/exchange-rate/update                           578 B         103 kB
+Ôö£ ãÆ /api/exports/orders/[id]/excel                      578 B         103 kB
+Ôö£ ãÆ /api/exports/orders/[id]/prefactura-excel           578 B         103 kB
+Ôö£ ãÆ /api/exports/orders/[id]/prefactura-pdf             578 B         103 kB
+Ôö£ ãÆ /api/exports/purchase-orders/[id]/pdf               578 B         103 kB
+Ôö£ ãÆ /api/exports/quotations/[id]/excel                  578 B         103 kB
+Ôö£ ãÆ /api/exports/quotations/[id]/pdf                    578 B         103 kB
+Ôö£ ãÆ /api/exports/reports/inventory                      578 B         103 kB
+Ôö£ ãÆ /api/exports/reports/orders-month                   578 B         103 kB
+Ôö£ ãÆ /api/exports/reports/sales-month                    578 B         103 kB
+Ôö£ ãÆ /api/external-auth/logout                           578 B         103 kB
+Ôö£ ãÆ /api/external-auth/me                               578 B         103 kB
+Ôö£ ãÆ /api/external-auth/request-token                    578 B         103 kB
+Ôö£ ãÆ /api/external-auth/verify-token                     578 B         103 kB
+Ôö£ ãÆ /api/external/orders                                578 B         103 kB
+Ôö£ ãÆ /api/external/orders/[orderCode]                    578 B         103 kB
+Ôö£ ãÆ /api/inventory-entries                              578 B         103 kB
+Ôö£ ãÆ /api/inventory-item-variants                        578 B         103 kB
+Ôö£ ãÆ /api/inventory-items                                578 B         103 kB
+Ôö£ ãÆ /api/inventory-outputs                              578 B         103 kB
+Ôö£ ãÆ /api/inventory-outputs/order-items-options          578 B         103 kB
+Ôö£ ãÆ /api/inventory-stock                                578 B         103 kB
+Ôö£ ãÆ /api/notifications                                  578 B         103 kB
+Ôö£ ãÆ /api/notifications/[id]                             578 B         103 kB
+Ôö£ ãÆ /api/order-items/options                            578 B         103 kB
+Ôö£ ãÆ /api/orders                                         578 B         103 kB
+Ôö£ ãÆ /api/orders/[id]                                    578 B         103 kB
+Ôö£ ãÆ /api/orders/[id]/aval                               578 B         103 kB
+Ôö£ ãÆ /api/orders/[id]/payments                           578 B         103 kB
+Ôö£ ãÆ /api/orders/[id]/payments/[paymentId]               578 B         103 kB
+Ôö£ ãÆ /api/orders/[id]/prefactura                         578 B         103 kB
+Ôö£ ãÆ /api/orders/items                                   578 B         103 kB
+Ôö£ ãÆ /api/orders/items/[id]                              578 B         103 kB
+Ôö£ ãÆ /api/orders/items/[id]/confection                   578 B         103 kB
+Ôö£ ãÆ /api/orders/items/[id]/issues                       578 B         103 kB
+Ôö£ ãÆ /api/orders/options                                 578 B         103 kB
+Ôö£ ãÆ /api/packers                                        578 B         103 kB
+Ôö£ ãÆ /api/packers/[id]/legal-status                      578 B         103 kB
+Ôö£ ãÆ /api/packers/[id]/legal-status-history              578 B         103 kB
+Ôö£ ãÆ /api/packers/[id]/legal-status/check                578 B         103 kB
+Ôö£ ãÆ /api/pagos/client-orders                            578 B         103 kB
+Ôö£ ãÆ /api/pagos/clients                                  578 B         103 kB
+Ôö£ ãÆ /api/pagos/orders                                   578 B         103 kB
+Ôö£ ãÆ /api/payments/distributed                           578 B         103 kB
+Ôö£ ãÆ /api/permissions                                    578 B         103 kB
+Ôö£ ãÆ /api/prefacturas                                    578 B         103 kB
+Ôö£ ãÆ /api/prefacturas/[id]                               578 B         103 kB
+Ôö£ ãÆ /api/product-prices                                 578 B         103 kB
+Ôö£ ãÆ /api/products                                       578 B         103 kB
+Ôö£ ãÆ /api/products/[id]                                  578 B         103 kB
+Ôö£ ãÆ /api/products/[id]/valid-prices                     578 B         103 kB
+Ôö£ ãÆ /api/products/import                                578 B         103 kB
+Ôö£ ãÆ /api/products/import/template                       578 B         103 kB
+Ôö£ ãÆ /api/programacion/items                             578 B         103 kB
+Ôö£ ãÆ /api/purchase-orders                                578 B         103 kB
+Ôö£ ãÆ /api/purchase-orders/[id]                           578 B         103 kB
+Ôö£ ãÆ /api/purchase-orders/[id]/edit                      578 B         103 kB
+Ôö£ ãÆ /api/purchase-orders/[id]/history                   578 B         103 kB
+Ôö£ ãÆ /api/purchase-orders/[id]/routes                    578 B         103 kB
+Ôö£ ãÆ /api/purchase-orders/options                        578 B         103 kB
+Ôö£ ãÆ /api/quotations                                     578 B         103 kB
+Ôö£ ãÆ /api/quotations/[id]                                578 B         103 kB
+Ôö£ ãÆ /api/quotations/[id]/prefactura                     578 B         103 kB
+Ôö£ ãÆ /api/quotations/options                             578 B         103 kB
+Ôö£ ãÆ /api/quotations/references                          578 B         103 kB
+Ôö£ ãÆ /api/registry/identification-check                  578 B         103 kB
+Ôö£ ãÆ /api/reports/charts/admin                           578 B         103 kB
+Ôö£ ãÆ /api/reports/charts/advisor                         578 B         103 kB
+Ôö£ ãÆ /api/role-permissions                               578 B         103 kB
+Ôö£ ãÆ /api/roles                                          578 B         103 kB
+Ôö£ ãÆ /api/shipments                                      578 B         103 kB
+Ôö£ ãÆ /api/shipments/recipients                           578 B         103 kB
+Ôö£ ãÆ /api/status-history/order-items                     578 B         103 kB
+Ôö£ ãÆ /api/status-history/orders                          578 B         103 kB
+Ôö£ ãÆ /api/suppliers                                      578 B         103 kB
+Ôö£ ãÆ /api/suppliers/[id]/legal-status                    578 B         103 kB
+Ôö£ ãÆ /api/suppliers/[id]/legal-status-history            578 B         103 kB
+Ôö£ ãÆ /api/suppliers/[id]/legal-status/check              578 B         103 kB
+Ôö£ ãÆ /api/third-party-accounts                           578 B         103 kB
+Ôö£ ãÆ /api/uploads/cloudinary-signature                   578 B         103 kB
+Ôö£ ãÆ /api/users                                          578 B         103 kB
+Ôö£ ãÆ /api/users/verify-email                             578 B         103 kB
+Ôö£ ãÆ /api/warehouse-transfers                            578 B         103 kB
+Ôö£ ãÆ /api/warehouses                                     578 B         103 kB
+Ôö£ ãÆ /api/warehouses/[id]/details                        578 B         103 kB
+Ôö£ Ôùï /crm                                                578 B         103 kB
+Ôö£ ãÆ /erp                                                578 B         103 kB
+Ôö£ Ôùï /erp/abonos                                         578 B         103 kB
+Ôö£ ãÆ /erp/admin                                        7.54 kB         415 kB
+Ôö£ ãÆ /erp/aprobacion-inicial                             173 B         321 kB
+Ôö£ ãÆ /erp/aprobacion-inicial/actualizacion               174 B         321 kB
+Ôö£ ãÆ /erp/aprobacion-inicial/actualizacion/bodega        174 B         321 kB
+Ôö£ ãÆ /erp/aprobacion-inicial/actualizacion/compras       174 B         321 kB
+Ôö£ ãÆ /erp/aprobacion-inicial/bodega                      173 B         321 kB
+Ôö£ ãÆ /erp/aprobacion-inicial/compras                     173 B         321 kB
+Ôö£ ãÆ /erp/catalog                                      11.8 kB         381 kB
+Ôö£ ãÆ /erp/clients                                        237 B         391 kB
+Ôö£ Ôùï /erp/comercial                                      578 B         103 kB
+Ôö£ Ôùï /erp/comercial/catalogo                             578 B         103 kB
+Ôö£ Ôùï /erp/comercial/garantias/externa                    578 B         103 kB
+Ôö£ Ôùï /erp/comercial/garantias/interna                    578 B         103 kB
+Ôö£ Ôùï /erp/comercial/historial-produccion                 578 B         103 kB
+Ôö£ Ôùï /erp/comercial/pagos                                578 B         103 kB
+Ôö£ Ôùï /erp/comercial/pedidos                              578 B         103 kB
+Ôö£ Ôùï /erp/comercial/prefacturas                          578 B         103 kB
+Ôö£ Ôùï /erp/comercial/visualizar                           578 B         103 kB
+Ôö£ Ôùï /erp/compras                                        578 B         103 kB
+Ôö£ ãÆ /erp/compras/bodega                                 14 kB         378 kB
+Ôö£ ãÆ /erp/compras/bodega/[id]                           7.4 kB         315 kB
+Ôö£ Ôùï /erp/compras/conductor                              578 B         103 kB
+Ôö£ Ôùï /erp/compras/despacho                               578 B         103 kB
+Ôö£ Ôùï /erp/compras/empaque                                578 B         103 kB
+Ôö£ Ôùï /erp/compras/envios                                 578 B         103 kB
+Ôö£ Ôùï /erp/compras/historial                              578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/aseo                        578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/conductor                   578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/confecciones                578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/despacho                    578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/empaque                     578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/insumos                     578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/mensajeros                  578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/papeleria                   578 B         103 kB
+Ôö£ Ôùï /erp/compras/inventario/repuestos                   578 B         103 kB
+Ôö£ Ôùï /erp/compras/mensajeros                             578 B         103 kB
+Ôö£ ãÆ /erp/confectionists                                 762 B         389 kB
+Ôö£ Ôùï /erp/contabilidad                                   578 B         103 kB
+Ôö£ Ôùï /erp/contabilidad-modulo                            578 B         103 kB
+Ôö£ ãÆ /erp/contabilidad-modulo/bancos-salidas-entregas  4.69 kB         306 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/caja-menor                 578 B         103 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/cartera                    578 B         103 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/consignaciones             578 B         103 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/estado-resultados          578 B         103 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/facturas                   578 B         103 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/prefacturas                578 B         103 kB
+Ôö£ ãÆ /erp/contabilidad-modulo/recibo-caja              7.11 kB         322 kB
+Ôö£ Ôùï /erp/contabilidad-modulo/remisiones                 578 B         103 kB
+Ôö£ Ôùï /erp/costs                                          578 B         103 kB
+Ôö£ Ôùï /erp/costs/presupuestos                             578 B         103 kB
+Ôö£ ãÆ /erp/dashboard                                    3.36 kB         289 kB
+Ôö£ ãÆ /erp/dashboard/admin                              9.85 kB         382 kB
+Ôö£ Ôùï /erp/dashboard/comisiones                           578 B         103 kB
+Ôö£ Ôùï /erp/dashboard/estados-resultados                   578 B         103 kB
+Ôö£ ãÆ /erp/dashboard/role/[role]                        5.08 kB         460 kB
+Ôö£ Ôùï /erp/dashboard/sla                                  578 B         103 kB
+Ôö£ ãÆ /erp/depositos                                    7.76 kB         329 kB
+Ôö£ ãÆ /erp/employee-register                              757 B         298 kB
+Ôö£ ãÆ /erp/en-construccion                                578 B         103 kB
+Ôö£ Ôùï /erp/envios                                       4.87 kB         335 kB
+Ôö£ Ôùï /erp/hr                                             578 B         103 kB
+Ôö£ Ôùï /erp/hr/bonos                                       578 B         103 kB
+Ôö£ Ôùï /erp/hr/comisiones                                  578 B         103 kB
+Ôö£ Ôùï /erp/hr/incumplimiento                              578 B         103 kB
+Ôö£ Ôùï /erp/hr/liquidacion                                 578 B         103 kB
+Ôö£ Ôùï /erp/hr/trabajo-extra                               578 B         103 kB
+Ôö£ Ôùï /erp/hr/vacaciones                                  578 B         103 kB
+Ôö£ Ôùï /erp/hr/viaticos                                    578 B         103 kB
+Ôö£ Ôùï /erp/inventory                                      578 B         103 kB
+Ôö£ ãÆ /erp/legal                                          824 B         427 kB
+Ôö£ Ôùï /erp/legal/documentos-clientes                      578 B         103 kB
+Ôö£ Ôùï /erp/legal/documentos-empleados                     578 B         103 kB
+Ôö£ Ôùï /erp/legal/documentos-terceros                      578 B         103 kB
+Ôö£ Ôùï /erp/login                                          578 B         103 kB
+Ôö£ Ôùï /erp/maestros                                       578 B         103 kB
+Ôö£ Ôùï /erp/maestros/bancos                                578 B         103 kB
+Ôö£ Ôùï /erp/maestros/clientes                              578 B         103 kB
+Ôö£ Ôùï /erp/maestros/productos                             578 B         103 kB
+Ôö£ Ôùï /erp/maestros/proveedores                           578 B         103 kB
+Ôö£ ãÆ /erp/notifications                                4.91 kB         265 kB
+Ôö£ ãÆ /erp/options                                      8.72 kB         274 kB
+Ôö£ ãÆ /erp/orders                                       8.27 kB         345 kB
+Ôö£ ãÆ /erp/orders/[id]/detail                            5.8 kB         237 kB
+Ôö£ ãÆ /erp/orders/[id]/items                               8 kB         319 kB
+Ôö£ ãÆ /erp/orders/[id]/items/[itemId]                   7.86 kB         245 kB
+Ôö£ ãÆ /erp/orders/[id]/items/[itemId]/edit               3.5 kB         392 kB
+Ôö£ ãÆ /erp/orders/[id]/items/new                        3.41 kB         392 kB
+Ôö£ ãÆ /erp/orders/[id]/payments                           578 B         103 kB
+Ôö£ ãÆ /erp/orders/[id]/prefactura                       8.16 kB         317 kB
+Ôö£ ãÆ /erp/packers                                      2.04 kB         388 kB
+Ôö£ ãÆ /erp/pagos                                        1.44 kB         104 kB
+Ôö£ Ôùï /erp/patterns                                       578 B         103 kB
+Ôö£ Ôùï /erp/patterns/tablero                               578 B         103 kB
+Ôö£ Ôùï /erp/patterns/trazos-moldes                         578 B         103 kB
+Ôö£ Ôùï /erp/permissions                                    578 B         103 kB
+Ôö£ ãÆ /erp/prefacturas                                  9.29 kB         331 kB
+Ôö£ ãÆ /erp/prefacturas/[id]/edit                          13 kB         338 kB
+Ôö£ Ôùï /erp/prefacturas/new                                176 B         308 kB
+Ôö£ Ôùï /erp/pricing                                        578 B         103 kB
+Ôö£ Ôùï /erp/produccion                                     578 B         103 kB
+Ôö£ Ôùï /erp/produccion/aprobacion-inicial                  578 B         103 kB
+Ôö£ Ôùï /erp/produccion/bloquear                            578 B         103 kB
+Ôö£ Ôùï /erp/produccion/garantias                           578 B         103 kB
+Ôö£ Ôùï /erp/produccion/historial                           578 B         103 kB
+Ôö£ Ôùï /erp/produccion/modificar                           578 B         103 kB
+Ôö£ Ôùï /erp/produccion/programacion                        578 B         103 kB
+Ôö£ ãÆ /erp/programacion                                   173 B         321 kB
+Ôö£ ãÆ /erp/programacion/actualizacion                     174 B         321 kB
+Ôö£ ãÆ /erp/programacion/actualizacion/bodega              174 B         321 kB
+Ôö£ ãÆ /erp/programacion/actualizacion/compras             173 B         321 kB
+Ôö£ ãÆ /erp/programacion/bodega                            173 B         321 kB
+Ôö£ ãÆ /erp/programacion/compras                           173 B         321 kB
+Ôö£ ãÆ /erp/purchase-orders                              6.19 kB         340 kB
+Ôö£ ãÆ /erp/purchase-orders/[id]/edit                      164 B         294 kB
+Ôö£ ãÆ /erp/purchase-orders/coordination                 4.09 kB         303 kB
+Ôö£ ãÆ /erp/purchase-orders/new                            164 B         294 kB
+Ôö£ Ôùï /erp/quotations                                   4.63 kB         323 kB
+Ôö£ ãÆ /erp/quotations/[id]                                174 B         308 kB
+Ôö£ Ôùï /erp/quotations/new                                 174 B         308 kB
+Ôö£ ãÆ /erp/register                                     4.54 kB         308 kB
+Ôö£ Ôùï /erp/role-permissions                               578 B         103 kB
+Ôö£ Ôùï /erp/roles                                          578 B         103 kB
+Ôö£ ãÆ /erp/status-history                               4.35 kB         256 kB
+Ôö£ ãÆ /erp/suppliers                                    2.04 kB         389 kB
+Ôö£ Ôùï /erp/unauthorized                                 2.28 kB         172 kB
+Ôö£ ãÆ /erp/under-construction                             166 B         106 kB
+Ôö£ ãÆ /login                                              13 kB         282 kB
+Ôö£ Ôùï /mes                                              57.3 kB         391 kB
+Ôöö Ôùï /portal/pedidos                                   7.14 kB         248 kB
++ First Load JS shared by all                          102 kB
+  Ôö£ chunks/1255-c3eac4a11d392a0d.js                   45.6 kB
+  Ôö£ chunks/4bd1b696-100b9d70ed4e49c1.js               54.2 kB
+  Ôöö other shared chunks (total)                       2.52 kB
+
+
+ãÆ Middleware                                          46.2 kB
+
+Ôùï  (Static)   prerendered as static content
+ÔùÅ  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ãÆ  (Dynamic)  server-rendered on demand
+

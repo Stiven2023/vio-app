@@ -35,6 +35,44 @@ import { isOperarioRole } from "@/src/utils/role-status";
 const permissionsStorageKey = "viomar.permissions.v1";
 
 type AppModule = "erp" | "mes" | "crm";
+type SupportedLocale = "en" | "es";
+
+const localeCookieName = "NEXT_LOCALE";
+const localePathRegex = /^\/(es|en)(?=\/|$)/;
+const defaultAppLocale: SupportedLocale = "en";
+
+const localeLabel: Record<SupportedLocale, string> = {
+  en: "ENG",
+  es: "ESP",
+};
+
+const readLocaleFromPath = (pathname: string): SupportedLocale | null => {
+  const match = pathname.match(localePathRegex);
+
+  if (!match) return null;
+
+  return match[1] === "es" ? "es" : "en";
+};
+
+const stripLocalePrefix = (pathname: string) => {
+  const withoutPrefix = pathname.replace(localePathRegex, "");
+
+  return withoutPrefix || "/";
+};
+
+const withLocalePrefix = (pathname: string, locale: SupportedLocale) => {
+  const normalizedPath = stripLocalePrefix(pathname);
+
+  if (locale === defaultAppLocale) {
+    return normalizedPath;
+  }
+
+  return normalizedPath === "/" ? `/${locale}` : `/${locale}${normalizedPath}`;
+};
+
+const resolveLocaleFromPath = (pathname: string): SupportedLocale => {
+  return readLocaleFromPath(pathname) ?? defaultAppLocale;
+};
 
 const getModuleFromPath = (pathname: string): AppModule => {
   if (pathname === "/mes" || pathname.startsWith("/mes/")) return "mes";
@@ -46,6 +84,7 @@ const getModuleFromPath = (pathname: string): AppModule => {
 export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(() => resolveLocaleFromPath(pathname));
   const currentModule = getModuleFromPath(pathname);
   const moduleRoot = currentModule === "erp" ? "/erp" : `/${currentModule}`;
   const moduleTitle = currentModule.toUpperCase();
@@ -180,6 +219,25 @@ export const Navbar = () => {
     };
   }, [currentModule, isAuthenticated]);
 
+  useEffect(() => {
+    setCurrentLocale(resolveLocaleFromPath(pathname));
+  }, [pathname]);
+
+  const handleLocaleChange = (nextLocale: SupportedLocale) => {
+    if (typeof document !== "undefined") {
+      document.cookie = `${localeCookieName}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+      document.documentElement.lang = nextLocale;
+    }
+
+    const localizedPath = pathname === "/" || localePathRegex.test(pathname);
+
+    if (localizedPath) {
+      router.push(withLocalePrefix(pathname, nextLocale));
+    } else {
+      router.refresh();
+    }
+  };
+
   const toErpHref = (href: string) => {
     if (!href.startsWith("/")) return href;
     if (href === "/" || href.startsWith("/erp") || href.startsWith("/mes") || href.startsWith("/crm")) {
@@ -299,7 +357,12 @@ export const Navbar = () => {
               </Button>
             </NavbarItem>
             <NavbarItem>
-              <Button as={NextLink} href="/erp/envios" size="sm" variant={isActive("/envios") ? "solid" : "light"}>
+              <Button
+                as={NextLink}
+                href="/erp/shipments"
+                size="sm"
+                variant={isActive("/shipments") || isActive("/envios") ? "solid" : "light"}
+              >
                 Shipments
               </Button>
             </NavbarItem>
@@ -388,6 +451,23 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent className="hidden xl:flex basis-1/4 pr-2 lg:pr-4" justify="end">
+        <NavbarItem className="hidden xl:flex items-center">
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Button className="min-w-16" size="sm" variant="light">
+                {localeLabel[currentLocale]}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Language selector"
+              onAction={(key) => handleLocaleChange(String(key) as SupportedLocale)}
+            >
+              <DropdownItem key="en">English (ENG)</DropdownItem>
+              <DropdownItem key="es">Spanish (ESP)</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        </NavbarItem>
+
         <NavbarItem className="hidden xl:flex gap-2 items-center">
           <ThemeSwitch />
         </NavbarItem>
@@ -431,6 +511,20 @@ export const Navbar = () => {
             <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? "User"}</div>
           </div>
         ) : null}
+        <Dropdown placement="bottom-end">
+          <DropdownTrigger>
+            <Button className="min-w-14" size="sm" variant="light">
+              {localeLabel[currentLocale]}
+            </Button>
+          </DropdownTrigger>
+          <DropdownMenu
+            aria-label="Mobile language selector"
+            onAction={(key) => handleLocaleChange(String(key) as SupportedLocale)}
+          >
+            <DropdownItem key="en">English (ENG)</DropdownItem>
+            <DropdownItem key="es">Espanol (ESP)</DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
         <ThemeSwitch />
         <NavbarMenuToggle />
       </NavbarContent>
@@ -453,7 +547,7 @@ export const Navbar = () => {
                 </Link>
               </NavbarMenuItem>
               <NavbarMenuItem>
-                <Link color="foreground" href="/erp/envios" size="lg">
+                <Link color="foreground" href="/erp/shipments" size="lg">
                   Shipments
                 </Link>
               </NavbarMenuItem>

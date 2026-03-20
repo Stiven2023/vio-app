@@ -5,12 +5,13 @@ import type {
   ClientPriceType,
   QuoteForm,
   QuoteItem,
+  TaxZone,
 } from "../_lib/types";
 import type { QuoteCalculations } from "./useQuoteCalculations";
 
 export function useSaveQuotation(
   quoteId?: string,
-  initialQuoteCode = "Se asigna al guardar",
+  initialQuoteCode = "Assigned on save",
 ) {
   const [quoteCode, setQuoteCode] = useState<string>(initialQuoteCode);
   const [submitting, setSubmitting] = useState(false);
@@ -25,16 +26,27 @@ export function useSaveQuotation(
       shippingFee: number,
       insuranceEnabled: boolean,
       insuranceFee: number,
+      withholdings: {
+        municipalityFiscalSnapshot: string;
+        taxZoneSnapshot: TaxZone;
+        withholdingTaxRate: number;
+        withholdingIcaRate: number;
+        withholdingIvaRate: number;
+        withholdingTaxAmount: number;
+        withholdingIcaAmount: number;
+        withholdingIvaAmount: number;
+        totalAfterWithholdings: number;
+      },
     ): Promise<{ ok: boolean; id?: string; quoteCode?: string }> => {
       if (submitting) return { ok: false };
 
       if (!form.clientId) {
-        toast.error("Selecciona un cliente activo");
+        toast.error("Select an active client");
         return { ok: false };
       }
 
       if (!form.sellerId) {
-        toast.error("No se encontró el vendedor de la sesión. Recarga la página.");
+        toast.error("Seller from session not found. Reload the page.");
         return { ok: false };
       }
 
@@ -43,7 +55,7 @@ export function useSaveQuotation(
       );
 
       if (validItems.length === 0) {
-        toast.error("Agrega al menos un item válido");
+        toast.error("Add at least one valid item");
         return { ok: false };
       }
 
@@ -69,6 +81,15 @@ export function useSaveQuotation(
           iva: computed.iva,
           total: computed.total,
           advancePayment: computed.advancePayment,
+          municipalityFiscalSnapshot: withholdings.municipalityFiscalSnapshot,
+          taxZoneSnapshot: withholdings.taxZoneSnapshot,
+          withholdingTaxRate: withholdings.withholdingTaxRate,
+          withholdingIcaRate: withholdings.withholdingIcaRate,
+          withholdingIvaRate: withholdings.withholdingIvaRate,
+          withholdingTaxAmount: withholdings.withholdingTaxAmount,
+          withholdingIcaAmount: withholdings.withholdingIcaAmount,
+          withholdingIvaAmount: withholdings.withholdingIvaAmount,
+          totalAfterWithholdings: withholdings.totalAfterWithholdings,
           // Quote items - only essential data
           items: validItems.map((item) => ({
             productId: item.productId,

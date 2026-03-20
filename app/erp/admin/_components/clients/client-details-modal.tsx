@@ -79,18 +79,6 @@ export function ClientDetailsModal({
                       : "Empleado"
                 }
               />
-                <DetailField
-                  label="Tipo de cliente para precios (COP)"
-                  value={
-                    client.priceClientType === "AUTORIZADO"
-                      ? "Cliente autorizado"
-                      : client.priceClientType === "MAYORISTA"
-                        ? "Cliente mayorista"
-                        : client.priceClientType === "COLANTA"
-                          ? "Cliente Colanta"
-                          : "Cliente Viomar"
-                  }
-                />
             </div>
           </div>
 
@@ -195,6 +183,10 @@ export function ClientDetailsModal({
               <DetailField
                 label="Tiene crédito"
                 value={client.hasCredit ? "Sí" : "No"}
+              />
+              <DetailField
+                label="Monto tope de crédito"
+                value={client.creditLimit}
               />
               <DetailField
                 label="Número pagaré"

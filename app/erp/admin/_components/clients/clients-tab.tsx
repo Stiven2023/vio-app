@@ -114,7 +114,6 @@ export function ClientsTab({
       const mobile = c.mobile ?? "";
       const contactName = c.contactName ?? "";
       const clientCode = c.clientCode ?? "";
-      const priceClientType = c.priceClientType ?? "";
 
       return (
         c.name.toLowerCase().includes(q) ||
@@ -122,8 +121,7 @@ export function ClientsTab({
         email.toLowerCase().includes(q) ||
         mobile.toLowerCase().includes(q) ||
         contactName.toLowerCase().includes(q) ||
-        clientCode.toLowerCase().includes(q) ||
-        priceClientType.toLowerCase().includes(q)
+        clientCode.toLowerCase().includes(q)
       );
     });
   }, [data, search, status]);
@@ -350,10 +348,10 @@ export function ClientsTab({
             "Código",
             "Nombre",
             "Tipo ID",
-            "Tipo precio COP",
             "Email",
             "Móvil",
             "Estado",
+            "Estado jurídico",
             "Acciones",
           ]}
         />
@@ -363,7 +361,6 @@ export function ClientsTab({
             <TableColumn>CÓDIGO</TableColumn>
             <TableColumn>NOMBRE</TableColumn>
             <TableColumn>TIPO ID</TableColumn>
-            <TableColumn>TIPO PRECIO COP</TableColumn>
             <TableColumn>EMAIL</TableColumn>
             <TableColumn>MÓVIL</TableColumn>
             <TableColumn>ESTADO</TableColumn>
@@ -399,17 +396,6 @@ export function ClientsTab({
                 <TableCell>
                   <Chip size="sm" variant="flat">
                     {c.identificationType}
-                  </Chip>
-                </TableCell>
-                <TableCell>
-                  <Chip size="sm" variant="flat">
-                    {c.priceClientType === "AUTORIZADO"
-                      ? "Autorizado"
-                      : c.priceClientType === "MAYORISTA"
-                        ? "Mayorista"
-                        : c.priceClientType === "COLANTA"
-                          ? "Colanta"
-                          : "Viomar"}
                   </Chip>
                 </TableCell>
                 <TableCell className="text-sm text-default-500">

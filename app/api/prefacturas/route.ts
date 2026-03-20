@@ -24,6 +24,8 @@ import { parsePagination } from "@/src/utils/pagination";
 import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 import { rateLimit } from "@/src/utils/rate-limit";
 
+const CLIENT_PRICE_TYPES = new Set(["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"]);
+
 async function resolveAdvisorFilter(request: Request) {
   const role = getRoleFromRequest(request);
 
@@ -55,6 +57,20 @@ function toNumericString(value: unknown) {
   if (Number.isNaN(n)) return "0.00";
 
   return n.toFixed(2);
+}
+
+function normalizeTaxZone(value: unknown) {
+  const normalized = String(value ?? "CONTINENTAL").trim().toUpperCase();
+
+  if (
+    normalized === "FREE_ZONE" ||
+    normalized === "SAN_ANDRES" ||
+    normalized === "SPECIAL_REGIME"
+  ) {
+    return normalized as "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+  }
+
+  return "CONTINENTAL" as const;
 }
 
 function isUniqueViolation(error: unknown) {
@@ -403,6 +419,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+
+    const hasClientApproval = Boolean(body?.hasClientApproval);
+    const clientApprovalImageUrl = String(
+      body?.clientApprovalImageUrl ?? "",
+    ).trim();
+
+    if (hasClientApproval && !clientApprovalImageUrl) {
+      return new Response(
+        "Debes adjuntar la captura/evidencia del aval del cliente.",
+        { status: 400 },
+      );
+    }
     const quotationIdRaw = String(body?.quotationId ?? "").trim();
     const quotationCodeRaw = String(body?.quotationCode ?? "").trim();
     const orderName = String(body?.orderName ?? "").trim();
@@ -422,12 +450,19 @@ export async function POST(request: Request) {
 
     if (!quotationId) {
       const clientId = String(body?.clientId ?? "").trim();
+      const clientPriceType = String(body?.clientPriceType ?? "")
+        .trim()
+        .toUpperCase();
       const currency =
         String(body?.currency ?? "COP").trim().toUpperCase() === "USD" ? "USD" : "COP";
       const items = Array.isArray(body?.items) ? body.items : [];
 
       if (!clientId) {
         return new Response("clientId required", { status: 400 });
+      }
+
+      if (clientPriceType && !CLIENT_PRICE_TYPES.has(clientPriceType)) {
+        return new Response("Tipo de cliente (COP) inválido", { status: 400 });
       }
 
       // items are optional for standalone prefacturas (sin cotización)
@@ -437,6 +472,10 @@ export async function POST(request: Request) {
       const computedTotalProducts = calculateTotalProductsFromItems(items);
       const subtotal = toNumericString(body?.subtotal);
       const total = toNumericString(body?.total);
+      const municipalityFiscalSnapshot = String(
+        body?.municipalityFiscalSnapshot ?? "",
+      ).trim();
+      const taxZoneSnapshot = normalizeTaxZone(body?.taxZoneSnapshot);
       const shippingEnabled = Boolean(body?.shippingEnabled);
       const shippingFee = shippingEnabled ? toNumericString(body?.shippingFee) : "0.00";
 
@@ -767,6 +806,17 @@ export async function POST(request: Request) {
                 clientApprovalDate: body?.clientApprovalDate ? String(body.clientApprovalDate) : null,
                 clientApprovalBy: body?.clientApprovalBy ? String(body.clientApprovalBy).slice(0, 150) : null,
                 clientApprovalNotes: body?.clientApprovalNotes ? String(body.clientApprovalNotes) : null,
+                clientApprovalImageUrl: clientApprovalImageUrl || null,
+                clientPriceType: clientPriceType || "VIOMAR",
+                municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
+                taxZoneSnapshot,
+                withholdingTaxRate: toNumericString(body?.withholdingTaxRate),
+                withholdingIcaRate: toNumericString(body?.withholdingIcaRate),
+                withholdingIvaRate: toNumericString(body?.withholdingIvaRate),
+                withholdingTaxAmount: toNumericString(body?.withholdingTaxAmount),
+                withholdingIcaAmount: toNumericString(body?.withholdingIcaAmount),
+                withholdingIvaAmount: toNumericString(body?.withholdingIvaAmount),
+                totalAfterWithholdings: toNumericString(body?.totalAfterWithholdings),
               })
               .returning({
                 id: prefacturas.id,
@@ -816,6 +866,15 @@ export async function POST(request: Request) {
           orderType === "VI" || orderType === "VT" || orderType === "VW"
             ? orderType
             : "VN",
+        municipalityFiscalSnapshot: body?.municipalityFiscalSnapshot,
+        taxZoneSnapshot: body?.taxZoneSnapshot,
+        withholdingTaxRate: body?.withholdingTaxRate,
+        withholdingIcaRate: body?.withholdingIcaRate,
+        withholdingIvaRate: body?.withholdingIvaRate,
+        withholdingTaxAmount: body?.withholdingTaxAmount,
+        withholdingIcaAmount: body?.withholdingIcaAmount,
+        withholdingIvaAmount: body?.withholdingIvaAmount,
+        totalAfterWithholdings: body?.totalAfterWithholdings,
       }),
       cache: "no-store",
     });

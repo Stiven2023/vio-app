@@ -1,94 +1,160 @@
-// Enum de estados de órdenes de compra
-export const purchaseOrderStatusEnum = pgEnum("purchase_order_status", [
-  "PENDIENTE",
-  "APROBADA",
-  "RECHAZADA",
-  "EN_PROCESO",
-  "FINALIZADA",
-  "VENCIDA",
-  "CANCELADA",
-]);
+// Re-export all enums from centralized enum file
+export {
+  PurchaseOrderStatus,
+  PurchaseOrderStatusEnum,
+  PurchaseOrderRouteType,
+  PurchaseOrderRouteTypeEnum,
+  PurchaseOrderPartyType,
+  PurchaseOrderPartyTypeEnum,
+  PurchaseOrderRouteStatus,
+  PurchaseOrderRouteStatusEnum,
+  ClientType,
+  ClientTypeEnum,
+  IdentificationType,
+  IdentificationTypeEnum,
+  TaxRegime,
+  TaxRegimeEnum,
+  ClientStatus,
+  ClientStatusEnum,
+  ClientPriceType,
+  ClientPriceTypeEnum,
+  ThirdPartyType,
+  ThirdPartyTypeEnum,
+  LegalStatus,
+  LegalStatusEnum,
+  DocumentType,
+  DocumentTypeEnum,
+  TaxZone,
+  TaxZoneEnum,
+  PaymentType,
+  PaymentTypeEnum,
+  CreditBackingType,
+  CreditBackingTypeEnum,
+  CashReceiptStatus,
+  CashReceiptStatusEnum,
+  ReconciliationItemType,
+  ReconciliationItemTypeEnum,
+  FactoringStatus,
+  FactoringStatusEnum,
+  ContractType,
+  ContractTypeEnum,
+  LeaveType,
+  LeaveTypeEnum,
+  Role,
+  RoleEnum,
+  Permission,
+  PermissionEnum,
+  OrderType,
+  OrderTypeEnum,
+  OrderKind,
+  OrderKindEnum,
+  OrderStatus,
+  OrderStatusEnum,
+  OrderItemStatus,
+  OrderItemStatusEnum,
+  PaymentMethod,
+  PaymentMethodEnum,
+  PaymentStatus,
+  PaymentStatusEnum,
+  InventoryLocation,
+  InventoryLocationEnum,
+  InventoryCategoryType,
+  InventoryCategoryTypeEnum,
+  StockMovementType,
+  StockMovementTypeEnum,
+  StockMovementReason,
+  StockMovementReasonEnum,
+  StockMovementReferenceType,
+  StockMovementReferenceTypeEnum,
+  ShipmentMode,
+  ShipmentModeEnum,
+  ShipmentPaymentStatus,
+  ShipmentPaymentStatusEnum,
+  ShipmentDocumentType,
+  ShipmentDocumentTypeEnum,
+  ShipmentDocumentRef,
+  ShipmentDocumentRefEnum,
+  ShipmentEmailMode,
+  ShipmentEmailModeEnum,
+  // Export value arrays
+  purchaseOrderStatusValues,
+  purchaseOrderRouteTypeValues,
+  purchaseOrderPartyTypeValues,
+  purchaseOrderRouteStatusValues,
+  clientTypeValues,
+  identificationTypeValues,
+  taxRegimeValues,
+  clientStatusValues,
+  clientPriceTypeValues,
+  thirdPartyTypeValues,
+  legalStatusValues,
+  documentTypeValues,
+  taxZoneValues,
+  paymentTypeValues,
+  creditBackingTypeValues,
+  cashReceiptStatusValues,
+  reconciliationItemTypeValues,
+  factoringStatusValues,
+  contractTypeValues,
+  leaveTypeValues,
+  roleValues,
+  permissionValues,
+  orderTypeValues,
+  orderKindValues,
+  orderStatusValues,
+  orderItemStatusValues,
+  paymentMethodValues,
+  paymentStatusValues,
+  inventoryLocationValues,
+  inventoryCategoryTypeValues,
+  stockMovementTypeValues,
+  stockMovementReasonValues,
+  stockMovementReferenceTypeValues,
+  shipmentModeValues,
+  shipmentPaymentStatusValues,
+  shipmentDocumentTypeValues,
+  shipmentDocumentRefValues,
+  shipmentEmailModeValues,
+} from "./enums";
 
-export const purchaseOrderRouteTypeEnum = pgEnum("purchase_order_route_type", [
-  "COMPRA_APROBADA",
-  "DESPACHO_CLIENTE",
-  "LLEVADA_CONFECCION",
-  "RETORNO_CONFECCION",
-]);
-
-export const purchaseOrderPartyTypeEnum = pgEnum("purchase_order_party_type", [
-  "PROVEEDOR",
-  "CONFECCIONISTA",
-  "EMPAQUE",
-  "MENSAJERO",
-  "CONDUCTOR",
-  "DESPACHO",
-]);
-
-export const purchaseOrderRouteStatusEnum = pgEnum(
-  "purchase_order_route_status",
-  ["PENDIENTE", "EN_RUTA", "COMPLETADA", "CANCELADA"],
-);
-
-// Enum de tipo de cliente
-export const clientTypeEnum = pgEnum("client_type", [
-  "NACIONAL",
-  "EXTRANJERO",
-  "EMPLEADO",
-]);
-
-// Enum de tipo de identificación
-export const identificationTypeEnum = pgEnum("identification_type", [
-  "CC",
-  "NIT",
-  "CE",
-  "PAS",
-  "EMPRESA_EXTERIOR",
-]);
-
-// Enum de régimen fiscal
-export const taxRegimeEnum = pgEnum("tax_regime", [
-  "REGIMEN_COMUN",
-  "REGIMEN_SIMPLIFICADO",
-  "NO_RESPONSABLE",
-]);
-
-// Enum de estado de cliente
-export const clientStatusEnum = pgEnum("client_status", [
-  "ACTIVO",
-  "INACTIVO",
-  "SUSPENDIDO",
-]);
-
-// Enum de tipo de cliente para precios COP
-export const clientPriceTypeEnum = pgEnum("client_price_type", [
-  "AUTORIZADO",
-  "MAYORISTA",
-  "VIOMAR",
-  "COLANTA",
-]);
-
-// Enum de tipo de tercero (para módulo jurídico)
-export const thirdPartyTypeEnum = pgEnum("third_party_type", [
-  "EMPLEADO",
-  "CLIENTE",
-  "CONFECCIONISTA",
-  "PROVEEDOR",
-  "EMPAQUE",
-]);
-
-// Enum de estado jurídico
-export const legalStatusEnum = pgEnum("legal_status_status", [
-  "VIGENTE", // Sin problemas, puede operar
-  "EN_REVISION", // Bajo revisión, operación pendiente
-  "BLOQUEADO", // Bloqueado, no puede operar
-]);
-
-// Enum de tipo documento (Factura / Razón social)
-export const documentTypeEnum = pgEnum("document_type", [
-  "F", // Factura - lleva IVA
-  "R", // Razón social - sin IVA
-]);
+import {
+  purchaseOrderStatusValues,
+  purchaseOrderRouteTypeValues,
+  purchaseOrderPartyTypeValues,
+  purchaseOrderRouteStatusValues,
+  clientTypeValues,
+  identificationTypeValues,
+  taxRegimeValues,
+  clientStatusValues,
+  clientPriceTypeValues,
+  thirdPartyTypeValues,
+  legalStatusValues,
+  documentTypeValues,
+  taxZoneValues,
+  paymentTypeValues,
+  creditBackingTypeValues,
+  cashReceiptStatusValues,
+  reconciliationItemTypeValues,
+  factoringStatusValues,
+  contractTypeValues,
+  leaveTypeValues,
+  orderTypeValues,
+  orderKindValues,
+  orderStatusValues,
+  orderItemStatusValues,
+  paymentMethodValues,
+  paymentStatusValues,
+  inventoryLocationValues,
+  inventoryCategoryTypeValues,
+  stockMovementTypeValues,
+  stockMovementReasonValues,
+  stockMovementReferenceTypeValues,
+  shipmentModeValues,
+  shipmentPaymentStatusValues,
+  shipmentDocumentTypeValues,
+  shipmentDocumentRefValues,
+  shipmentEmailModeValues,
+} from "./enums";
 
 import {
   boolean,
@@ -105,241 +171,151 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-// Enum de roles
-export const roleEnum = pgEnum("role", [
-  "ADMINISTRADOR",
-  "LIDER_JURIDICA",
-  "RH",
-  "AUXILIAR_RH",
-  "LIDER_FINANCIERA",
-  "AUXILIAR_CONTABLE",
-  "TESORERIA_Y_CARTERA",
-  "LIDER_COMERCIAL",
-  "ASESOR",
-  "LIDER_SUMINISTROS",
-  "COMPRA_NACIONAL",
-  "COMPRA_INTERNACIONAL",
-  "LIDER_DISEÑO",
-  "DISEÑADOR",
-  "LIDER_OPERACIONAL",
-  "PROGRAMACION",
-  "OPERARIO_DESPACHO",
-  "OPERARIO_BODEGA",
-  "OPERARIO_FLOTER",
-  "OPERARIO_SUBLIMACION",
-  "OPERARIO_CORTE_MANUAL",
-  "OPERARIO_CORTE_LASER",
-  "OPERARIO_INTEGRACION_CALIDAD",
-  "OPERARIO_MONTAJE",
-  "MENSAJERO",
-  "CONFECCIONISTA",
-  "EMPAQUE",
-]);
+/* ========================= */
+/* Create pgEnum from values */
+/* ========================= */
 
-// Enum de permisos
-export const permissionEnum = pgEnum("permission", [
-  // Pedidos
-  "CREAR_PEDIDO",
-  "EDITAR_PEDIDO",
-  "ELIMINAR_PEDIDO",
-  "VER_PEDIDO",
-  "CAMBIAR_ESTADO_PEDIDO",
-  // Diseños
-  "CREAR_DISEÑO",
-  "EDITAR_DISEÑO",
-  "ELIMINAR_DISEÑO",
-  "VER_DISEÑO",
-  "EDITAR_IMAGEN",
-  "ASIGNAR_DISEÑO",
-  "CAMBIAR_ESTADO_DISEÑO",
-  // Pagos
-  "CREAR_PAGO",
-  "EDITAR_PAGO",
-  "APROBAR_PAGO",
-  "VER_PAGO",
-  // Inventario
-  "CREAR_ITEM_INVENTARIO",
-  "EDITAR_ITEM_INVENTARIO",
-  "ELIMINAR_ITEM_INVENTARIO",
-  "VER_ITEM_INVENTARIO",
-  "REGISTRAR_ENTRADA",
-  "REGISTRAR_SALIDA",
-  "VER_INVENTARIO",
-  // Empaque
-  "CREAR_EMPAQUE",
-  "EDITAR_EMPAQUE",
-  "ELIMINAR_EMPAQUE",
-  "MARCAR_EMPAQUE",
-  "VER_EMPAQUE",
-  // Compras
-  "CREAR_ORDEN_COMPRA",
-  "ASOCIAR_PROVEEDOR",
-  // Proveedores
-  "CREAR_PROVEEDOR",
-  "EDITAR_PROVEEDOR",
-  "ELIMINAR_PROVEEDOR",
-  "VER_PROVEEDOR",
-  // Clientes
-  "CREAR_CLIENTE",
-  "EDITAR_CLIENTE",
-  "ELIMINAR_CLIENTE",
-  "VER_CLIENTE",
-  "VER_ESTADO_JURIDICO_CLIENTE",
-  "CAMBIAR_ESTADO_JURIDICO_CLIENTE",
-  "VER_ESTADO_JURIDICO_EMPLEADO",
-  "CAMBIAR_ESTADO_JURIDICO_EMPLEADO",
-  "VER_ESTADO_JURIDICO_PROVEEDOR",
-  "CAMBIAR_ESTADO_JURIDICO_PROVEEDOR",
-  "VER_ESTADO_JURIDICO_CONFECCIONISTA",
-  "CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA",
-  "VER_ESTADO_JURIDICO_EMPAQUE",
-  "CAMBIAR_ESTADO_JURIDICO_EMPAQUE",
-  "VER_HISTORIAL_ESTADO_JURIDICO",
-  // Confeccionistas
-  "CREAR_CONFECCIONISTA",
-  "EDITAR_CONFECCIONISTA",
-  "ELIMINAR_CONFECCIONISTA",
-  "VER_CONFECCIONISTA",
-  "ASIGNAR_CONFECCIONISTA",
-  // Cotizaciones
-  "CREAR_COTIZACION",
-  "EDITAR_COTIZACION",
-  "ELIMINAR_COTIZACION",
-  "VER_COTIZACION",
-  "DESCARGAR_COTIZACION",
-  // Notificaciones
-  "VER_NOTIFICACION",
-  "ELIMINAR_NOTIFICACION",
-  // Historial
-  "VER_HISTORIAL_ESTADO",
-]);
-
-/* =========================
-   ENUMS (POSTGRES)
-========================= */
-export const orderTypeEnum = pgEnum("order_type", ["VN", "VI", "VT", "VW"]);
-
-export const orderKindEnum = pgEnum("order_kind", [
-  "NUEVO",
-  "COMPLETACION",
-  "REFERENTE",
-]);
-
-export const orderStatusEnum = pgEnum("order_status", [
-  "PENDIENTE",
-  "APROBACION",
-  "PROGRAMACION",
-  "PRODUCCION",
-  "ATRASADO",
-  "FINALIZADO",
-  "ENTREGADO",
-  "CANCELADO",
-]);
-
-export const orderItemStatusEnum = pgEnum("order_item_status", [
-  "PENDIENTE",
-  "APROBACION",
-  "APROBACION_ACTUALIZACION",
-  "APROBADO_CAMBIO",
-  "RECHAZADO_CAMBIO",
-  "PENDIENTE_PRODUCCION",
-  "PENDIENTE_PRODUCCION_ACTUALIZACION",
-  "MONTAJE",
-  "IMPRESION",
-  "SUBLIMACION",
-  "CORTE_MANUAL",
-  "CORTE_LASER",
-  "PENDIENTE_CONFECCION",
-  "CONFECCION",
-  "EN_BODEGA",
-  "EMPAQUE",
-  "ENVIADO",
-  "COMPLETADO",
-  "CANCELADO",
-]);
-
-export const paymentMethodEnum = pgEnum("payment_method", [
-  "EFECTIVO",
-  "TRANSFERENCIA",
-  "CREDITO",
-]);
-
-export const paymentStatusEnum = pgEnum("payment_status", [
-  "PENDIENTE",
-  "PARCIAL",
-  "PAGADO",
-  "ANULADO",
-  "CONFIRMADO_CAJA",
-]);
-
-export const inventoryLocationEnum = pgEnum("inventory_location", [
-  "BODEGA_PRINCIPAL",
-  "TIENDA",
-]);
-
-export const inventoryCategoryTypeEnum = pgEnum("inventory_category_type", [
-  "INSUMOS_PRODUCCION",
-  "PAPELERIA",
-  "ASEO",
-  "REPUESTOS",
-  "REVENTA",
-]);
-
-export const stockMovementTypeEnum = pgEnum("stock_movement_type", [
-  "ENTRADA",
-  "SALIDA",
-  "TRASLADO",
-  "AJUSTE_POSITIVO",
-  "AJUSTE_NEGATIVO",
-  "DEVOLUCION",
-]);
-
-export const stockMovementReasonEnum = pgEnum("stock_movement_reason", [
-  "PRODUCCION",
-  "VENTA",
-  "DESPACHO_CONFECCIONISTA",
-  "COMPRA_PROVEEDOR",
-  "AJUSTE_INVENTARIO",
-  "DEVOLUCION_PROVEEDOR",
-  "DEVOLUCION_CLIENTE",
-  "TRASLADO_INTERNO",
-  "MUESTRA",
-  "BAJA",
-  "OTRO",
-]);
-
-export const stockMovementReferenceTypeEnum = pgEnum(
+export const purchaseOrderStatusPgEnum = pgEnum(
+  "purchase_order_status",
+  purchaseOrderStatusValues
+);
+export const purchaseOrderRouteTypePgEnum = pgEnum(
+  "purchase_order_route_type",
+  purchaseOrderRouteTypeValues
+);
+export const purchaseOrderPartyTypePgEnum = pgEnum(
+  "purchase_order_party_type",
+  purchaseOrderPartyTypeValues
+);
+export const purchaseOrderRouteStatusPgEnum = pgEnum(
+  "purchase_order_route_status",
+  purchaseOrderRouteStatusValues
+);
+export const clientTypePgEnum = pgEnum("client_type", clientTypeValues);
+export const identificationTypePgEnum = pgEnum(
+  "identification_type",
+  identificationTypeValues
+);
+export const taxRegimePgEnum = pgEnum("tax_regime", taxRegimeValues);
+export const clientStatusPgEnum = pgEnum("client_status", clientStatusValues);
+export const clientPriceTypePgEnum = pgEnum(
+  "client_price_type",
+  clientPriceTypeValues
+);
+export const thirdPartyTypePgEnum = pgEnum(
+  "third_party_type",
+  thirdPartyTypeValues
+);
+export const legalStatusPgEnum = pgEnum(
+  "legal_status_status",
+  legalStatusValues
+);
+export const documentTypePgEnum = pgEnum("document_type", documentTypeValues);
+export const taxZonePgEnum = pgEnum("tax_zone", taxZoneValues);
+export const paymentTypePgEnum = pgEnum("payment_type", paymentTypeValues);
+export const creditBackingTypePgEnum = pgEnum(
+  "credit_backing_type",
+  creditBackingTypeValues
+);
+export const cashReceiptStatusPgEnum = pgEnum(
+  "cash_receipt_status",
+  cashReceiptStatusValues
+);
+export const reconciliationItemTypePgEnum = pgEnum(
+  "reconciliation_item_type",
+  reconciliationItemTypeValues
+);
+export const factoringStatusPgEnum = pgEnum(
+  "factoring_status",
+  factoringStatusValues
+);
+export const contractTypePgEnum = pgEnum("contract_type", contractTypeValues);
+export const leaveTypePgEnum = pgEnum("leave_type", leaveTypeValues);
+export const orderTypePgEnum = pgEnum("order_type", orderTypeValues);
+export const orderKindPgEnum = pgEnum("order_kind", orderKindValues);
+export const orderStatusPgEnum = pgEnum("order_status", orderStatusValues);
+export const orderItemStatusPgEnum = pgEnum(
+  "order_item_status",
+  orderItemStatusValues
+);
+export const paymentMethodPgEnum = pgEnum("payment_method", paymentMethodValues);
+export const paymentStatusPgEnum = pgEnum("payment_status", paymentStatusValues);
+export const inventoryLocationPgEnum = pgEnum(
+  "inventory_location",
+  inventoryLocationValues
+);
+export const inventoryCategoryTypePgEnum = pgEnum(
+  "inventory_category_type",
+  inventoryCategoryTypeValues
+);
+export const stockMovementTypePgEnum = pgEnum(
+  "stock_movement_type",
+  stockMovementTypeValues
+);
+export const stockMovementReasonPgEnum = pgEnum(
+  "stock_movement_reason",
+  stockMovementReasonValues
+);
+export const stockMovementReferenceTypePgEnum = pgEnum(
   "stock_movement_reference_type",
-  ["ORDER_ITEM", "PURCHASE_ORDER", "CONFECTIONIST", "MANUAL", "SHIPMENT"],
+  stockMovementReferenceTypeValues
+);
+export const shipmentModePgEnum = pgEnum("shipment_mode", shipmentModeValues);
+export const shipmentPaymentStatusPgEnum = pgEnum(
+  "shipment_payment_status",
+  shipmentPaymentStatusValues
+);
+export const shipmentDocumentTypePgEnum = pgEnum(
+  "shipment_document_type",
+  shipmentDocumentTypeValues
+);
+export const shipmentDocumentRefPgEnum = pgEnum(
+  "shipment_document_ref",
+  shipmentDocumentRefValues
+);
+export const shipmentEmailModePgEnum = pgEnum(
+  "shipment_email_mode",
+  shipmentEmailModeValues
 );
 
-export const shipmentModeEnum = pgEnum("shipment_mode", ["INTERNAL", "CLIENT"]);
+/* Backward compatibility aliases for schema column definitions */
+export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
+export const purchaseOrderRouteTypeEnum = purchaseOrderRouteTypePgEnum;
+export const purchaseOrderPartyTypeEnum = purchaseOrderPartyTypePgEnum;
+export const purchaseOrderRouteStatusEnum = purchaseOrderRouteStatusPgEnum;
+export const clientTypeEnum = clientTypePgEnum;
+export const identificationTypeEnum = identificationTypePgEnum;
+export const taxRegimeEnum = taxRegimePgEnum;
+export const clientStatusEnum = clientStatusPgEnum;
+export const clientPriceTypeEnum = clientPriceTypePgEnum;
+export const thirdPartyTypeEnum = thirdPartyTypePgEnum;
+export const legalStatusEnum = legalStatusPgEnum;
+export const documentTypeEnum = documentTypePgEnum;
+export const taxZoneEnum = taxZonePgEnum;
+export const paymentTypeEnum = paymentTypePgEnum;
+export const creditBackingTypeEnum = creditBackingTypePgEnum;
+export const cashReceiptStatusEnum = cashReceiptStatusPgEnum;
+export const reconciliationItemTypeEnum = reconciliationItemTypePgEnum;
+export const factoringStatusEnum = factoringStatusPgEnum;
+export const contractTypeEnum = contractTypePgEnum;
+export const leaveTypeEnum = leaveTypePgEnum;
+export const orderTypeEnum = orderTypePgEnum;
+export const orderKindEnum = orderKindPgEnum;
+export const orderStatusEnum = orderStatusPgEnum;
+export const orderItemStatusEnum = orderItemStatusPgEnum;
+export const paymentMethodEnum = paymentMethodPgEnum;
+export const paymentStatusEnum = paymentStatusPgEnum;
+export const inventoryLocationEnum = inventoryLocationPgEnum;
+export const inventoryCategoryTypeEnum = inventoryCategoryTypePgEnum;
+export const stockMovementTypeEnum = stockMovementTypePgEnum;
+export const stockMovementReasonEnum = stockMovementReasonPgEnum;
+export const stockMovementReferenceTypeEnum = stockMovementReferenceTypePgEnum;
+export const shipmentModeEnum = shipmentModePgEnum;
+export const shipmentPaymentStatusEnum = shipmentPaymentStatusPgEnum;
+export const shipmentDocumentTypeEnum = shipmentDocumentTypePgEnum;
+export const shipmentDocumentRefEnum = shipmentDocumentRefPgEnum;
+export const shipmentEmailModeEnum = shipmentEmailModePgEnum;
 
-export const shipmentPaymentStatusEnum = pgEnum("shipment_payment_status", [
-  "PAGADO",
-  "PENDIENTE",
-  "NA",
-]);
-
-export const shipmentDocumentTypeEnum = pgEnum("shipment_document_type", [
-  "F",
-  "R",
-]);
-
-export const shipmentDocumentRefEnum = pgEnum("shipment_document_ref", [
-  "RECIBO_CAJA",
-  "PREFACTURA",
-]);
-
-export const shipmentEmailModeEnum = pgEnum("shipment_email_mode", [
-  "REGISTRADO",
-  "NUEVO",
-  "AMBOS",
-]);
-
-/* =========================
-   USERS (AUTH)
-========================= */
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).unique().notNull(),
@@ -468,6 +444,7 @@ export const employees = pgTable("employees", {
 
   // --- ROL Y ESTADO ---
   roleId: uuid("role_id").references(() => roles.id),
+  contractType: contractTypeEnum("contract_type"),
   isActive: boolean("is_active").default(false),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -532,11 +509,13 @@ export const clients = pgTable("clients", {
 
   // --- ESTADO Y CRÉDITO ---
   status: clientStatusEnum("status").default("ACTIVO"), // ACTIVO, INACTIVO, SUSPENDIDO
-  priceClientType: clientPriceTypeEnum("price_client_type")
-    .default("VIOMAR")
-    .notNull(), // AUTORIZADO, MAYORISTA, VIOMAR, COLANTA (solo precios COP)
-  isActive: boolean("is_active").default(true), // "Estado" (mantener por compatibilidad)
+    creditLimit: numeric("credit_limit", { precision: 14, scale: 2 }), // Monto tope de crédito (solo si hasCredit)
+    isActive: boolean("is_active").default(true), // "Estado" (mantener por compatibilidad)
   hasCredit: boolean("has_credit").default(false), // "CREDITO"
+  municipalityFiscal: varchar("municipality_fiscal", { length: 100 }),
+  taxZone: taxZoneEnum("tax_zone").default("CONTINENTAL"),
+  paymentType: paymentTypeEnum("payment_type").default("CASH"),
+  creditBackingType: creditBackingTypeEnum("credit_backing_type"),
   promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
   promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
 
@@ -659,6 +638,38 @@ export const quotations = pgTable("quotations", {
     precision: 14,
     scale: 2,
   }).default("0"),
+  municipalityFiscalSnapshot: varchar("municipality_fiscal_snapshot", {
+    length: 100,
+  }),
+  taxZoneSnapshot: taxZoneEnum("tax_zone_snapshot"),
+  withholdingTaxRate: numeric("withholding_tax_rate", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
+  withholdingIcaRate: numeric("withholding_ica_rate", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
+  withholdingIvaRate: numeric("withholding_iva_rate", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
+  withholdingTaxAmount: numeric("withholding_tax_amount", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  withholdingIcaAmount: numeric("withholding_ica_amount", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  withholdingIvaAmount: numeric("withholding_iva_amount", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  totalAfterWithholdings: numeric("total_after_withholdings", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
   prefacturaApproved: boolean("prefactura_approved").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -719,6 +730,13 @@ export const orders = pgTable("orders", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   // Provisional code (set by asesor at creation; official orderCode assigned at aval)
   provisionalCode: varchar("provisional_code", { length: 60 }),
+  dispatchBlockedByLegal: boolean("dispatch_blocked_by_legal").default(false),
+  dispatchBlockOverridden: boolean("dispatch_block_overridden").default(false),
+  dispatchBlockOverrideReason: text("dispatch_block_override_reason"),
+  progressPercentage: numeric("progress_percentage", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
   // Operational approval (aval)
   operationalApprovedAt: timestamp("operational_approved_at", {
     withTimezone: true,
@@ -777,6 +795,44 @@ export const prefacturas = pgTable("prefacturas", {
   clientApprovalImageUrl: text("client_approval_image_url"),
   // Convenio image
   convenioImageUrl: text("convenio_image_url"),
+  municipalityFiscalSnapshot: varchar("municipality_fiscal_snapshot", {
+    length: 100,
+  }),
+  taxZoneSnapshot: taxZoneEnum("tax_zone_snapshot"),
+  clientPriceType: varchar("client_price_type", { length: 20 }),
+  clientId: uuid("client_id").references(() => clients.id),
+  paymentType: paymentTypeEnum("payment_type").default("CASH"),
+  dueDate: date("due_date"),
+  ivaRate: numeric("iva_rate", { precision: 5, scale: 2 }).default("19"),
+  ivaAmount: numeric("iva_amount", { precision: 14, scale: 2 }).default("0"),
+  withholdingTaxRate: numeric("withholding_tax_rate", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
+  withholdingIcaRate: numeric("withholding_ica_rate", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
+  withholdingIvaRate: numeric("withholding_iva_rate", {
+    precision: 5,
+    scale: 2,
+  }).default("0"),
+  withholdingTaxAmount: numeric("withholding_tax_amount", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  withholdingIcaAmount: numeric("withholding_ica_amount", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  withholdingIvaAmount: numeric("withholding_iva_amount", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
+  totalAfterWithholdings: numeric("total_after_withholdings", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
 });
 
 /* =========================
@@ -1367,6 +1423,150 @@ export const orderPayments = pgTable("order_payments", {
   transferCurrency: varchar("transfer_currency", { length: 5 }),
   status: paymentStatusEnum("status").default("PENDIENTE"),
   proofImageUrl: text("proof_image_url"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const cashReceipts = pgTable("cash_receipts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  receiptCode: varchar("receipt_code", { length: 20 }).unique().notNull(),
+  clientId: uuid("client_id").notNull().references(() => clients.id),
+  prefacturaId: uuid("prefactura_id").references(() => prefacturas.id),
+  orderId: uuid("order_id").references(() => orders.id),
+  receiptDate: date("receipt_date").notNull(),
+  amountReceived: numeric("amount_received", { precision: 14, scale: 2 }).notNull(),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  includesIva: boolean("includes_iva").default(false),
+  originBank: varchar("origin_bank", { length: 120 }),
+  referenceNumber: varchar("reference_number", { length: 120 }),
+  creditBalance: numeric("credit_balance", { precision: 14, scale: 2 }).default("0"),
+  status: cashReceiptStatusEnum("status").default("PENDING"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const cashReceiptApplications = pgTable("cash_receipt_applications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  cashReceiptId: uuid("cash_receipt_id")
+    .notNull()
+    .references(() => cashReceipts.id, { onDelete: "cascade" }),
+  prefacturaId: uuid("prefactura_id").references(() => prefacturas.id),
+  appliedAmount: numeric("applied_amount", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const factoringRecords = pgTable("factoring_records", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  factoringCode: varchar("factoring_code", { length: 20 }).unique().notNull(),
+  prefacturaId: uuid("prefactura_id")
+    .notNull()
+    .references(() => prefacturas.id),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id),
+  factoringEntity: varchar("factoring_entity", { length: 150 }).notNull(),
+  assignmentDate: date("assignment_date").notNull(),
+  discountRate: numeric("discount_rate", { precision: 5, scale: 2 }).notNull(),
+  invoiceValue: numeric("invoice_value", { precision: 14, scale: 2 }).notNull(),
+  netAmountReceived: numeric("net_amount_received", { precision: 14, scale: 2 }).notNull(),
+  status: factoringStatusEnum("status").default("ACTIVE"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const bankReconciliations = pgTable("bank_reconciliations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bankId: uuid("bank_id").notNull().references(() => banks.id),
+  period: varchar("period", { length: 7 }).notNull(),
+  balancePerBank: numeric("balance_per_bank", { precision: 14, scale: 2 }).notNull(),
+  balancePerBooks: numeric("balance_per_books", { precision: 14, scale: 2 }).notNull(),
+  difference: numeric("difference", { precision: 14, scale: 2 }).notNull(),
+  isClosed: boolean("is_closed").default(false),
+  closedBy: uuid("closed_by").references(() => employees.id),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const bankReconciliationItems = pgTable("bank_reconciliation_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  reconciliationId: uuid("reconciliation_id")
+    .notNull()
+    .references(() => bankReconciliations.id, { onDelete: "cascade" }),
+  itemDate: date("item_date").notNull(),
+  description: text("description").notNull(),
+  booksAmount: numeric("books_amount", { precision: 14, scale: 2 }),
+  bankAmount: numeric("bank_amount", { precision: 14, scale: 2 }),
+  difference: numeric("difference", { precision: 14, scale: 2 }),
+  itemType: reconciliationItemTypeEnum("item_type").notNull(),
+  cashReceiptId: uuid("cash_receipt_id").references(() => cashReceipts.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const taxZoneRates = pgTable("tax_zone_rates", {
+  taxZone: taxZoneEnum("tax_zone").primaryKey(),
+  withholdingTaxRate: numeric("withholding_tax_rate", {
+    precision: 7,
+    scale: 4,
+  })
+    .notNull()
+    .default("0"),
+  withholdingIcaRate: numeric("withholding_ica_rate", {
+    precision: 7,
+    scale: 4,
+  })
+    .notNull()
+    .default("0"),
+  withholdingIvaRate: numeric("withholding_iva_rate", {
+    precision: 7,
+    scale: 4,
+  })
+    .notNull()
+    .default("0"),
+  updatedBy: uuid("updated_by").references(() => employees.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const payrollProvisions = pgTable("payroll_provisions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  employeeId: uuid("employee_id")
+    .notNull()
+    .references(() => employees.id),
+  period: varchar("period", { length: 7 }).notNull(),
+  baseSalary: numeric("base_salary", { precision: 14, scale: 2 }).notNull(),
+  transportAllowance: numeric("transport_allowance", { precision: 14, scale: 2 }).default("0"),
+  severancePay: numeric("severance_pay", { precision: 14, scale: 2 }).notNull(),
+  severanceInterests: numeric("severance_interests", { precision: 14, scale: 2 }).notNull(),
+  serviceBonus: numeric("service_bonus", { precision: 14, scale: 2 }).notNull(),
+  vacationProvision: numeric("vacation_provision", { precision: 14, scale: 2 }).notNull(),
+  healthContribution: numeric("health_contribution", { precision: 14, scale: 2 }).notNull(),
+  pensionContribution: numeric("pension_contribution", { precision: 14, scale: 2 }).notNull(),
+  arlContribution: numeric("arl_contribution", { precision: 14, scale: 2 }).notNull(),
+  compensationBoxContribution: numeric("compensation_box_contribution", { precision: 14, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const pilaGenerations = pgTable("pila_generations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  period: varchar("period", { length: 7 }).notNull(),
+  generatedBy: uuid("generated_by").references(() => employees.id),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const employeeLeaves = pgTable("employee_leaves", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  employeeId: uuid("employee_id")
+    .notNull()
+    .references(() => employees.id),
+  leaveType: leaveTypeEnum("leave_type").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  hoursAbsent: numeric("hours_absent", { precision: 5, scale: 2 }),
+  payrollDeduction: boolean("payroll_deduction").default(false),
+  notes: text("notes"),
+  approvedBy: uuid("approved_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 

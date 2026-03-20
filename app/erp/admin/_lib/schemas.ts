@@ -24,13 +24,7 @@ export const createEmployeeSchema = z
   .object({
     userId: z.string().uuid("Usuario inválido").optional(),
     name: z.string().trim().min(1, "Nombre requerido"),
-    identificationType: z.enum([
-      "CC",
-      "NIT",
-      "CE",
-      "PAS",
-      "EMPRESA_EXTERIOR",
-    ]),
+    identificationType: z.enum(["CC", "NIT", "CE", "PAS", "EMPRESA_EXTERIOR"]),
     identification: z
       .string()
       .trim()
@@ -95,7 +89,10 @@ export const createEmployeeSchema = z
   .superRefine((data, ctx) => {
     const identification = data.identification.trim();
 
-    if (data.identificationType === "CC" && !/^\d{6,10}$/.test(identification)) {
+    if (
+      data.identificationType === "CC" &&
+      !/^\d{6,10}$/.test(identification)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
@@ -114,7 +111,10 @@ export const createEmployeeSchema = z
       });
     }
 
-    if (data.identificationType === "CE" && !/^[A-Za-z0-9]{5,15}$/.test(identification)) {
+    if (
+      data.identificationType === "CE" &&
+      !/^[A-Za-z0-9]{5,15}$/.test(identification)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
@@ -129,7 +129,8 @@ export const createEmployeeSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
-        message: "El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
+        message:
+          "El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
       });
     }
 
@@ -140,7 +141,8 @@ export const createEmployeeSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
-        message: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+        message:
+          "La identificación de empresa exterior debe tener al menos 3 caracteres",
       });
     }
 
@@ -165,68 +167,79 @@ export const createClientSchema = z
   .object({
     // --- TIPO DE CLIENTE (automático según selección) ---
     clientType: z.enum(["NACIONAL", "EXTRANJERO", "EMPLEADO"]),
-    
+
     // --- IDENTIFICACIÓN Y DOCUMENTOS (tipo de documento determina documentos requeridos) ---
     // Aceptar URLs HTTP(s) o rutas locales (/documents/...)
     identityDocumentUrl: z
       .string()
       .trim()
       .refine(
-        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
-        "Debe ser una URL válida o ruta local"
+        (val) =>
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
       )
       .optional(),
     rutDocumentUrl: z
       .string()
       .trim()
       .refine(
-        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
-        "Debe ser una URL válida o ruta local"
+        (val) =>
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
       )
       .optional(),
     commerceChamberDocumentUrl: z
       .string()
       .trim()
       .refine(
-        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
-        "Debe ser una URL válida o ruta local"
+        (val) =>
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
       )
       .optional(),
     passportDocumentUrl: z
       .string()
       .trim()
       .refine(
-        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
-        "Debe ser una URL válida o ruta local"
+        (val) =>
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
       )
       .optional(),
     taxCertificateDocumentUrl: z
       .string()
       .trim()
       .refine(
-        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
-        "Debe ser una URL válida o ruta local"
+        (val) =>
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
       )
       .optional(),
     companyIdDocumentUrl: z
       .string()
       .trim()
       .refine(
-        (val) => val.startsWith("http://") || val.startsWith("https://") || val.startsWith("/documents/"),
-        "Debe ser una URL válida o ruta local"
+        (val) =>
+          val.startsWith("http://") ||
+          val.startsWith("https://") ||
+          val.startsWith("/documents/"),
+        "Debe ser una URL válida o ruta local",
       )
       .optional(),
 
     // --- CAMPOS CRÍTICOS REQUERIDOS ---
     name: z.string().trim().min(1, "Nombre requerido"),
-    priceClientType: z.enum(["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"]),
-    identificationType: z.enum([
-      "CC",
-      "NIT",
-      "CE",
-      "PAS",
-      "EMPRESA_EXTERIOR",
-    ]),
+    identificationType: z.enum(["CC", "NIT", "CE", "PAS", "EMPRESA_EXTERIOR"]),
     identification: z
       .string()
       .trim()
@@ -247,9 +260,9 @@ export const createClientSchema = z
           .string()
           .refine(
             (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-            "Email inválido"
+            "Email inválido",
           )
-          .optional()
+          .optional(),
       ),
     address: z.string().trim().min(1, "Dirección requerida"),
 
@@ -280,8 +293,22 @@ export const createClientSchema = z
       .regex(/^\d{1,6}$/, "Extensión inválida")
       .optional(),
 
+    // --- INFORMACIÓN FISCAL Y CRÉDITO ---
+    municipalityFiscal: z.string().trim().optional(),
+    taxZone: z.enum([
+      "CONTINENTAL",
+      "FREE_ZONE",
+      "SAN_ANDRES",
+      "SPECIAL_REGIME",
+    ]),
+    paymentType: z.enum(["CASH", "CREDIT"]),
+
     // --- CRÉDITO ---
     hasCredit: z.boolean().optional(),
+    creditLimit: z.string().trim().optional(),
+    creditBackingType: z
+      .enum(["PROMISSORY_NOTE", "PURCHASE_ORDER", "VERBAL_AGREEMENT"])
+      .optional(),
     promissoryNoteNumber: z.string().trim().optional(),
     promissoryNoteDate: z.string().optional(),
 
@@ -291,7 +318,10 @@ export const createClientSchema = z
   .superRefine((data, ctx) => {
     const identification = data.identification.trim();
 
-    if (data.identificationType === "CC" && !/^\d{6,10}$/.test(identification)) {
+    if (
+      data.identificationType === "CC" &&
+      !/^\d{6,10}$/.test(identification)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
@@ -310,7 +340,10 @@ export const createClientSchema = z
       });
     }
 
-    if (data.identificationType === "CE" && !/^[A-Za-z0-9]{5,15}$/.test(identification)) {
+    if (
+      data.identificationType === "CE" &&
+      !/^[A-Za-z0-9]{5,15}$/.test(identification)
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
@@ -325,7 +358,8 @@ export const createClientSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
-        message: "El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
+        message:
+          "El pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
       });
     }
 
@@ -336,7 +370,8 @@ export const createClientSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["identification"],
-        message: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+        message:
+          "La identificación de empresa exterior debe tener al menos 3 caracteres",
       });
     }
 
@@ -360,20 +395,25 @@ export const createClientSchema = z
       }
     }
 
-    if (data.hasCredit) {
-      if (!data.promissoryNoteNumber?.trim()) {
+    if (data.paymentType === "CREDIT" && data.hasCredit) {
+      const creditLimitValue = Number(String(data.creditLimit ?? "").trim());
+      if (
+        !String(data.creditLimit ?? "").trim() ||
+        !Number.isFinite(creditLimitValue) ||
+        creditLimitValue <= 0
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["promissoryNoteNumber"],
-          message: "Número de pagaré requerido cuando hay crédito",
+          path: ["creditLimit"],
+          message: "Credit limit is required and must be greater than 0",
         });
       }
 
-      if (!data.promissoryNoteDate?.trim()) {
+      if (!data.creditBackingType) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ["promissoryNoteDate"],
-          message: "Fecha de pagaré requerida cuando hay crédito",
+          path: ["creditBackingType"],
+          message: "Credit backing type is required when credit is enabled",
         });
       }
     }

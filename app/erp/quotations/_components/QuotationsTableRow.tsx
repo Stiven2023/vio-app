@@ -87,12 +87,12 @@ export function QuotationsTableRow({
             }}
             classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
           >
-            <SelectItem key="NORMAL">Nuevo</SelectItem>
-            <SelectItem key="COMPLETACION">Completación</SelectItem>
-            <SelectItem key="REFERENTE">Referente</SelectItem>
-            <SelectItem key="REPOSICION">Reposición</SelectItem>
-            <SelectItem key="MUESTRA">Muestra</SelectItem>
-            <SelectItem key="OBSEQUIO">Obsequio</SelectItem>
+            <SelectItem key="NORMAL">New</SelectItem>
+            <SelectItem key="COMPLETACION">Completion</SelectItem>
+            <SelectItem key="REFERENTE">Referent</SelectItem>
+            <SelectItem key="REPOSICION">Reposition</SelectItem>
+            <SelectItem key="MUESTRA">Sample</SelectItem>
+            <SelectItem key="OBSEQUIO">Gift</SelectItem>
           </Select>
         </TableCell>
         {/* Proceso */}
@@ -107,9 +107,9 @@ export function QuotationsTableRow({
             }}
             classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
           >
-            <SelectItem key="PRODUCCION">Producción</SelectItem>
-            <SelectItem key="BODEGA">Bodega</SelectItem>
-            <SelectItem key="COMPRAS">Compras</SelectItem>
+            <SelectItem key="PRODUCCION">Production</SelectItem>
+            <SelectItem key="BODEGA">Warehouse</SelectItem>
+            <SelectItem key="COMPRAS">Purchases</SelectItem>
           </Select>
         </TableCell>
         {/* Producto */}
@@ -118,7 +118,7 @@ export function QuotationsTableRow({
             size="sm"
             variant="flat"
             isLoading={loadingProducts}
-            aria-label="Seleccionar producto"
+            aria-label="Select product"
             selectedKeys={row.productId ? [row.productId] : []}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
@@ -133,7 +133,7 @@ export function QuotationsTableRow({
             ))}
           </Select>
         </TableCell>
-        {/* Descripción */}
+        {/* Description */}
         <TableCell>
           <Input
             size="sm"
@@ -143,7 +143,7 @@ export function QuotationsTableRow({
             classNames={{ input: "text-xs" }}
           />
         </TableCell>
-        {/* Cantidad */}
+        {/* Quantity */}
         <TableCell>
           <Input
             size="sm"
@@ -181,7 +181,7 @@ export function QuotationsTableRow({
             }
           />
         </TableCell>
-        {/* Vr. Total */}
+        {/* Total Value */}
         <TableCell className="font-semibold">{asMoney(lineTotal)}</TableCell>
         {/* Acción */}
         <TableCell>
@@ -198,7 +198,7 @@ export function QuotationsTableRow({
                   onExpandedChange(expandedItemId === row.id ? null : row.id)
                 }
               >
-                {expandedItemId === row.id ? "− Ocultar Adiciones" : "+ Agregar Adiciones"}
+                {expandedItemId === row.id ? "− Hide Additions" : "+ Add Additions"}
               </DropdownItem>
               <DropdownItem
                 key="remove"
@@ -206,7 +206,7 @@ export function QuotationsTableRow({
                 color="danger"
                 onPress={() => onRemoveItem(row.id)}
               >
-                Quitar Producto
+                Remove Product
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>

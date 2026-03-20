@@ -83,10 +83,10 @@ const itemStatusColors: Record<string, "default" | "primary" | "success" | "warn
 function formatStatus(status: string | null | undefined) {
   if (!status) return "-";
   if (status === "APROBACION_ACTUALIZACION") {
-    return "APROBACION ACTUALIZACION";
+    return "APPROVAL UPDATE";
   }
   if (status === "PENDIENTE_PRODUCCION_ACTUALIZACION") {
-    return "PROGRAMACION ACTUALIZACION";
+    return "SCHEDULING UPDATE";
   }
   return status.replace(/_/g, " ");
 }
@@ -100,7 +100,7 @@ function formatRelative(value: string | null | undefined) {
   const diffMs = date.getTime() - Date.now();
   const diffSec = Math.round(diffMs / 1000);
   const abs = Math.abs(diffSec);
-  const rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
   if (abs < 60) return rtf.format(diffSec, "second");
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
@@ -177,34 +177,34 @@ export function StatusHistoryClient() {
   const columns: ColumnDef[] = useMemo(() => {
     if (tab === "orders") {
       return [
-        { key: "order", name: "Pedido" },
-        { key: "status", name: "Estado" },
-        { key: "user", name: "Usuario" },
-        { key: "date", name: "Fecha" },
+        { key: "order", name: "Order" },
+        { key: "status", name: "Status" },
+        { key: "user", name: "User" },
+        { key: "date", name: "Date" },
       ];
     }
 
     return [
-      { key: "order", name: "Pedido" },
-      { key: "item", name: "Diseño" },
-      { key: "status", name: "Estado" },
-      { key: "user", name: "Usuario" },
-      { key: "date", name: "Fecha" },
+      { key: "order", name: "Order" },
+      { key: "item", name: "Design" },
+      { key: "status", name: "Status" },
+      { key: "user", name: "User" },
+      { key: "date", name: "Date" },
     ];
   }, [tab]);
 
   return (
     <div className="space-y-3">
       <Tabs
-        aria-label="Historial de estados"
+        aria-label="Status history"
         selectedKey={tab}
         onSelectionChange={(k) => {
           setTab(k as TabKey);
           setPage(1);
         }}
       >
-        <Tab key="orders" title="Pedidos" />
-        <Tab key="items" title="Diseños" />
+        <Tab key="orders" title="Orders" />
+        <Tab key="items" title="Designs" />
       </Tabs>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -212,14 +212,14 @@ export function StatusHistoryClient() {
           {tab === "orders" ? (
             <Input
               className="sm:w-96"
-              label="Order ID (opcional)"
+              label="Order ID (optional)"
               value={orderId}
               onValueChange={setOrderId}
             />
           ) : (
             <Input
               className="sm:w-96"
-              label="Order Item ID (opcional)"
+              label="Order Item ID (optional)"
               value={orderItemId}
               onValueChange={setOrderItemId}
             />
@@ -232,17 +232,17 @@ export function StatusHistoryClient() {
             variant="flat"
             onPress={() => setReloadKey((v) => v + 1)}
           >
-            Refrescar
+            Refresh
           </Button>
         </div>
       </div>
 
-      <Table removeWrapper aria-label="Historial">
+      <Table removeWrapper aria-label="History">
         <TableHeader columns={columns}>
           {(column) => <TableColumn key={column.key}>{column.name}</TableColumn>}
         </TableHeader>
         <TableBody
-          emptyContent={loading ? "" : "Sin historial"}
+          emptyContent={loading ? "" : "No history"}
           items={data?.items ?? []}
         >
           {(row: any) => (
@@ -275,7 +275,7 @@ export function StatusHistoryClient() {
                 }
 
                 if (columnKey === "user") {
-                  return <TableCell>{row.changedByName ?? "Sistema"}</TableCell>;
+                  return <TableCell>{row.changedByName ?? "System"}</TableCell>;
                 }
 
                 if (columnKey === "date") {
@@ -300,7 +300,7 @@ export function StatusHistoryClient() {
 
       <div className="mt-3 flex items-center justify-between text-sm text-default-500">
         <div>
-          Página {data?.page ?? page} / {maxPage}
+          Page {data?.page ?? page} / {maxPage}
         </div>
         <div className="flex gap-2">
           <Button
@@ -309,7 +309,7 @@ export function StatusHistoryClient() {
             variant="flat"
             onPress={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Anterior
+            Previous
           </Button>
           <Button
             isDisabled={!data?.hasNextPage || loading}
@@ -317,7 +317,7 @@ export function StatusHistoryClient() {
             variant="flat"
             onPress={() => setPage((p) => p + 1)}
           >
-            Siguiente
+            Next
           </Button>
         </div>
       </div>

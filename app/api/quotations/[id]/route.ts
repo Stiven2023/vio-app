@@ -28,6 +28,19 @@ function toNumericString(value: unknown) {
   return n.toFixed(2);
 }
 
+function normalizeTaxZone(value: unknown) {
+  const normalized = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  if (
+    normalized === "FREE_ZONE" ||
+    normalized === "SAN_ANDRES" ||
+    normalized === "SPECIAL_REGIME"
+  ) {
+    return normalized as "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+  }
+
+  return "CONTINENTAL" as const;
+}
+
 function calculateTotalProductsFromItems(items: any[]) {
   const totalProducts = items.reduce((acc, rawItem) => {
     const quantity = Number(rawItem?.quantity ?? 0);
@@ -171,6 +184,8 @@ export async function PUT(
   const totalProducts = calculateTotalProductsFromItems(items);
   const paymentTerms = String(body?.paymentTerms ?? "").toUpperCase();
   const autoExpiryDate = buildExpiryDateFromDelivery(toDateOnlyLocal(new Date()), 30);
+  const municipalityFiscalSnapshot = String(body?.municipalityFiscalSnapshot ?? "").trim();
+  const taxZoneSnapshot = normalizeTaxZone(body?.taxZoneSnapshot);
 
   if (items.length === 0) {
     return new Response("items required", { status: 400 });
@@ -243,6 +258,15 @@ export async function PUT(
           insuranceFee: toNumericString(body?.insuranceFee),
           total: toNumericString(body?.total),
           advancePayment: toNumericString(body?.advancePayment),
+          municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
+          taxZoneSnapshot,
+          withholdingTaxRate: toNumericString(body?.withholdingTaxRate),
+          withholdingIcaRate: toNumericString(body?.withholdingIcaRate),
+          withholdingIvaRate: toNumericString(body?.withholdingIvaRate),
+          withholdingTaxAmount: toNumericString(body?.withholdingTaxAmount),
+          withholdingIcaAmount: toNumericString(body?.withholdingIcaAmount),
+          withholdingIvaAmount: toNumericString(body?.withholdingIvaAmount),
+          totalAfterWithholdings: toNumericString(body?.totalAfterWithholdings),
           updatedAt: new Date(),
         })
         .where(eq(quotations.id, quotationId))

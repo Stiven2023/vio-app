@@ -45,7 +45,7 @@ export function LoginAccessTabs({
 }) {
   return (
     <Tabs
-      aria-label="Tipos de acceso"
+      aria-label="Access types"
       classNames={{
         tabList: "rounded-none border-b border-default-200/30 bg-transparent p-0 gap-0 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
         tab: "rounded-none px-2 sm:px-3 min-w-max data-[selected=true]:text-[var(--viomar-primary)] data-[selected=true]:border-b-2 data-[selected=true]:border-[var(--viomar-primary)] text-[#8A93A3]",
@@ -56,14 +56,14 @@ export function LoginAccessTabs({
       variant="underlined"
       onSelectionChange={(key) => setSelected(String(key))}
     >
-      <Tab key="viomar" title="Soy Viomar">
+      <Tab key="viomar" title="Viomar staff">
         <form className="space-y-4 pt-2" onSubmit={(e) => void onSubmitViomar(e)}>
           <div className="space-y-3">
             <Input
               required
               autoComplete="email"
               classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
-              label="Correo electrónico"
+              label="Email address"
               name="email"
               startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
               type="email"
@@ -76,7 +76,7 @@ export function LoginAccessTabs({
               classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
               endContent={
                 <Button
-                  aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                   className="min-w-10 px-0"
                   size="sm"
                   type="button"
@@ -86,7 +86,7 @@ export function LoginAccessTabs({
                   {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
                 </Button>
               }
-              label="Contraseña"
+              label="Password"
               name="password"
               type={showPassword ? "text" : "password"}
               value={form.password}
@@ -102,7 +102,7 @@ export function LoginAccessTabs({
               isLoading={loading}
               type="submit"
             >
-              Entrar
+              Sign in
             </Button>
 
             <Button
@@ -111,13 +111,13 @@ export function LoginAccessTabs({
               variant="light"
               onPress={onOpenResetRequest}
             >
-              ¿Olvidaste tu contraseña?
+              Forgot your password?
             </Button>
           </div>
         </form>
       </Tab>
 
-      <Tab key="cliente" title="Soy cliente">
+      <Tab key="cliente" title="I'm a client">
         <div className="pt-2">
           <ExternalAccessTab
             audience="CLIENTE"
@@ -128,14 +128,14 @@ export function LoginAccessTabs({
         </div>
       </Tab>
 
-      <Tab key="tercero" title="Soy tercero/mensajero">
+      <Tab key="tercero" title="Third-party / courier">
         <form className="space-y-4 pt-2" onSubmit={(e) => void onSubmitThirdParty(e)}>
           <Input
             required
             autoComplete="username"
             classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
-            label="Usuario"
-            placeholder="Ej: mensajero1, confeccionista2"
+            label="Username"
+            placeholder="e.g. courier1, sewer2"
             name="email"
             value={form.email}
             onChange={onFormChange}
@@ -144,12 +144,12 @@ export function LoginAccessTabs({
             required
             autoComplete="current-password"
             classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
-            label="Contraseña"
+            label="Password"
             name="password"
             type={showPassword ? "text" : "password"}
             endContent={
               <Button
-                aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                aria-label={showPassword ? "Hide password" : "Show password"}
                 className="min-w-10 px-0"
                 size="sm"
                 type="button"
@@ -163,7 +163,7 @@ export function LoginAccessTabs({
             onChange={onFormChange}
           />
           <Button className="w-full" color="primary" isDisabled={loading} isLoading={loading} type="submit">
-            Entrar como tercero
+            Sign in as third-party
           </Button>
         </form>
       </Tab>

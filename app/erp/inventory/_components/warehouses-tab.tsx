@@ -61,9 +61,9 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (search.trim()) return "Sin resultados";
+    if (search.trim()) return "No results";
 
-    return "Sin bodegas";
+    return "No warehouses";
   }, [loading, search]);
 
   const remove = async () => {
@@ -78,7 +78,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
         body: JSON.stringify({ id: warehouse.id }),
       });
 
-      toast.success("Bodega eliminada");
+      toast.success("Warehouse deleted");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -94,7 +94,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <FilterSearch
           className="sm:w-72"
-          placeholder="Buscar bodega..."
+          placeholder="Search warehouse..."
           value={search}
           onValueChange={setSearch}
         />
@@ -108,26 +108,26 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                 setModalOpen(true);
               }}
             >
-              Crear bodega
+              Create warehouse
             </Button>
           ) : null}
           <Button variant="flat" onPress={refresh}>
-            Refrescar
+            Refresh
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <TableSkeleton ariaLabel="Bodegas" headers={["Codigo", "Nombre", "Ciudad", "Tipo", "Estado", "Acciones"]} />
+        <TableSkeleton ariaLabel="Warehouses" headers={["Code", "Name", "City", "Type", "Status", "Actions"]} />
       ) : (
-        <Table aria-label="Bodegas">
+        <Table aria-label="Warehouses">
           <TableHeader>
-            <TableColumn>Codigo</TableColumn>
-            <TableColumn>Nombre</TableColumn>
-            <TableColumn>Ciudad</TableColumn>
-            <TableColumn>Tipo</TableColumn>
-            <TableColumn>Estado</TableColumn>
-            <TableColumn>Acciones</TableColumn>
+            <TableColumn>Code</TableColumn>
+            <TableColumn>Name</TableColumn>
+            <TableColumn>City</TableColumn>
+            <TableColumn>Type</TableColumn>
+            <TableColumn>Status</TableColumn>
+            <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(warehouse) => (
@@ -139,10 +139,10 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                   {warehouse.isVirtual
                     ? "Virtual"
                     : warehouse.isExternal
-                      ? "Externa"
-                      : "Fisica"}
+                      ? "External"
+                      : "Physical"}
                 </TableCell>
-                <TableCell>{warehouse.isActive ? "Activa" : "Inactiva"}</TableCell>
+                <TableCell>{warehouse.isActive ? "Active" : "Inactive"}</TableCell>
                 <TableCell>
                   {canManage ? (
                     <Dropdown>
@@ -151,7 +151,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                           <BsThreeDotsVertical />
                         </Button>
                       </DropdownTrigger>
-                      <DropdownMenu aria-label="Acciones bodega">
+                      <DropdownMenu aria-label="Warehouse actions">
                         <DropdownItem
                           key="view"
                           startContent={<BsEye />}
@@ -159,7 +159,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                             router.push(`/erp/compras/bodega/${warehouse.id}`);
                           }}
                         >
-                          Ver detalle
+                          View details
                         </DropdownItem>
                         <DropdownItem
                           key="edit"
@@ -169,7 +169,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                             setModalOpen(true);
                           }}
                         >
-                          Editar
+                          Edit
                         </DropdownItem>
                         <DropdownItem
                           key="delete"
@@ -180,7 +180,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                             setConfirmOpen(true);
                           }}
                         >
-                          Eliminar
+                          Delete
                         </DropdownItem>
                       </DropdownMenu>
                     </Dropdown>
@@ -193,7 +193,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                         router.push(`/erp/compras/bodega/${warehouse.id}`);
                       }}
                     >
-                      Ir a detalle
+                      Go to details
                     </Button>
                   )}
                 </TableCell>
@@ -213,12 +213,12 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
       />
 
       <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Eliminar"
-        description={pendingDelete ? `¿Eliminar la bodega ${pendingDelete.name}?` : undefined}
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        description={pendingDelete ? `Delete warehouse ${pendingDelete.name}?` : undefined}
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
-        title="Confirmar eliminación"
+        title="Confirm deletion"
         onConfirm={remove}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);

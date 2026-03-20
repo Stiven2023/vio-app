@@ -1,0 +1,1012 @@
+import { z } from "zod";
+
+/* ========================= */
+/*   PURCHASE ORDER ENUMS    */
+/* ========================= */
+
+export const PurchaseOrderStatus = {
+  PENDIENTE: "PENDIENTE",
+  APROBADA: "APROBADA",
+  RECHAZADA: "RECHAZADA",
+  EN_PROCESO: "EN_PROCESO",
+  FINALIZADA: "FINALIZADA",
+  VENCIDA: "VENCIDA",
+  CANCELADA: "CANCELADA",
+} as const;
+
+export const purchaseOrderStatusValues = [
+  "PENDIENTE",
+  "APROBADA",
+  "RECHAZADA",
+  "EN_PROCESO",
+  "FINALIZADA",
+  "VENCIDA",
+  "CANCELADA",
+] as const;
+
+export const PurchaseOrderStatusEnum = z.enum(purchaseOrderStatusValues);
+Object.defineProperty(PurchaseOrderStatusEnum, "enumValues", {
+  value: purchaseOrderStatusValues,
+});
+
+export const PurchaseOrderRouteType = {
+  COMPRA_APROBADA: "COMPRA_APROBADA",
+  DESPACHO_CLIENTE: "DESPACHO_CLIENTE",
+  LLEVADA_CONFECCION: "LLEVADA_CONFECCION",
+  RETORNO_CONFECCION: "RETORNO_CONFECCION",
+} as const;
+
+export const purchaseOrderRouteTypeValues = [
+  "COMPRA_APROBADA",
+  "DESPACHO_CLIENTE",
+  "LLEVADA_CONFECCION",
+  "RETORNO_CONFECCION",
+] as const;
+
+export const PurchaseOrderRouteTypeEnum = z.enum(purchaseOrderRouteTypeValues);
+Object.defineProperty(PurchaseOrderRouteTypeEnum, "enumValues", {
+  value: purchaseOrderRouteTypeValues,
+});
+
+export const PurchaseOrderPartyType = {
+  PROVEEDOR: "PROVEEDOR",
+  CONFECCIONISTA: "CONFECCIONISTA",
+  EMPAQUE: "EMPAQUE",
+  MENSAJERO: "MENSAJERO",
+  CONDUCTOR: "CONDUCTOR",
+  DESPACHO: "DESPACHO",
+} as const;
+
+export const purchaseOrderPartyTypeValues = [
+  "PROVEEDOR",
+  "CONFECCIONISTA",
+  "EMPAQUE",
+  "MENSAJERO",
+  "CONDUCTOR",
+  "DESPACHO",
+] as const;
+
+export const PurchaseOrderPartyTypeEnum = z.enum(purchaseOrderPartyTypeValues);
+Object.defineProperty(PurchaseOrderPartyTypeEnum, "enumValues", {
+  value: purchaseOrderPartyTypeValues,
+});
+
+export const PurchaseOrderRouteStatus = {
+  PENDIENTE: "PENDIENTE",
+  EN_RUTA: "EN_RUTA",
+  COMPLETADA: "COMPLETADA",
+  CANCELADA: "CANCELADA",
+} as const;
+
+export const purchaseOrderRouteStatusValues = [
+  "PENDIENTE",
+  "EN_RUTA",
+  "COMPLETADA",
+  "CANCELADA",
+] as const;
+
+export const PurchaseOrderRouteStatusEnum = z.enum(
+  purchaseOrderRouteStatusValues
+);
+Object.defineProperty(PurchaseOrderRouteStatusEnum, "enumValues", {
+  value: purchaseOrderRouteStatusValues,
+});
+
+/* ========================= */
+/*      CLIENT ENUMS         */
+/* ========================= */
+
+export const ClientType = {
+  NACIONAL: "NACIONAL",
+  EXTRANJERO: "EXTRANJERO",
+  EMPLEADO: "EMPLEADO",
+} as const;
+
+export const clientTypeValues = [
+  "NACIONAL",
+  "EXTRANJERO",
+  "EMPLEADO",
+] as const;
+
+export const ClientTypeEnum = z.enum(clientTypeValues);
+Object.defineProperty(ClientTypeEnum, "enumValues", {
+  value: clientTypeValues,
+});
+
+export const IdentificationType = {
+  CC: "CC",
+  NIT: "NIT",
+  CE: "CE",
+  PAS: "PAS",
+  EMPRESA_EXTERIOR: "EMPRESA_EXTERIOR",
+} as const;
+
+export const identificationTypeValues = [
+  "CC",
+  "NIT",
+  "CE",
+  "PAS",
+  "EMPRESA_EXTERIOR",
+] as const;
+
+export const IdentificationTypeEnum = z.enum(identificationTypeValues);
+Object.defineProperty(IdentificationTypeEnum, "enumValues", {
+  value: identificationTypeValues,
+});
+
+export const TaxRegime = {
+  REGIMEN_COMUN: "REGIMEN_COMUN",
+  REGIMEN_SIMPLIFICADO: "REGIMEN_SIMPLIFICADO",
+  NO_RESPONSABLE: "NO_RESPONSABLE",
+} as const;
+
+export const taxRegimeValues = [
+  "REGIMEN_COMUN",
+  "REGIMEN_SIMPLIFICADO",
+  "NO_RESPONSABLE",
+] as const;
+
+export const TaxRegimeEnum = z.enum(taxRegimeValues);
+Object.defineProperty(TaxRegimeEnum, "enumValues", {
+  value: taxRegimeValues,
+});
+
+export const ClientStatus = {
+  ACTIVO: "ACTIVO",
+  INACTIVO: "INACTIVO",
+  SUSPENDIDO: "SUSPENDIDO",
+} as const;
+
+export const clientStatusValues = [
+  "ACTIVO",
+  "INACTIVO",
+  "SUSPENDIDO",
+] as const;
+
+export const ClientStatusEnum = z.enum(clientStatusValues);
+Object.defineProperty(ClientStatusEnum, "enumValues", {
+  value: clientStatusValues,
+});
+
+export const ClientPriceType = {
+  AUTORIZADO: "AUTORIZADO",
+  MAYORISTA: "MAYORISTA",
+  VIOMAR: "VIOMAR",
+  COLANTA: "COLANTA",
+} as const;
+
+export const clientPriceTypeValues = [
+  "AUTORIZADO",
+  "MAYORISTA",
+  "VIOMAR",
+  "COLANTA",
+] as const;
+
+export const ClientPriceTypeEnum = z.enum(clientPriceTypeValues);
+Object.defineProperty(ClientPriceTypeEnum, "enumValues", {
+  value: clientPriceTypeValues,
+});
+
+export const ThirdPartyType = {
+  EMPLEADO: "EMPLEADO",
+  CLIENTE: "CLIENTE",
+  CONFECCIONISTA: "CONFECCIONISTA",
+  PROVEEDOR: "PROVEEDOR",
+  EMPAQUE: "EMPAQUE",
+} as const;
+
+export const thirdPartyTypeValues = [
+  "EMPLEADO",
+  "CLIENTE",
+  "CONFECCIONISTA",
+  "PROVEEDOR",
+  "EMPAQUE",
+] as const;
+
+export const ThirdPartyTypeEnum = z.enum(thirdPartyTypeValues);
+Object.defineProperty(ThirdPartyTypeEnum, "enumValues", {
+  value: thirdPartyTypeValues,
+});
+
+export const LegalStatus = {
+  VIGENTE: "VIGENTE",
+  EN_REVISION: "EN_REVISION",
+  BLOQUEADO: "BLOQUEADO",
+} as const;
+
+export const legalStatusValues = [
+  "VIGENTE",
+  "EN_REVISION",
+  "BLOQUEADO",
+] as const;
+
+export const LegalStatusEnum = z.enum(legalStatusValues);
+Object.defineProperty(LegalStatusEnum, "enumValues", {
+  value: legalStatusValues,
+});
+
+/* ========================= */
+/*     DOCUMENT ENUMS        */
+/* ========================= */
+
+export const DocumentType = {
+  F: "F",
+  R: "R",
+} as const;
+
+export const documentTypeValues = ["F", "R"] as const;
+
+export const DocumentTypeEnum = z.enum(documentTypeValues);
+Object.defineProperty(DocumentTypeEnum, "enumValues", {
+  value: documentTypeValues,
+});
+
+/* ========================= */
+/*     TAX & PAYMENT ENUMS   */
+/* ========================= */
+
+export const TaxZone = {
+  CONTINENTAL: "CONTINENTAL",
+  FREE_ZONE: "FREE_ZONE",
+  SAN_ANDRES: "SAN_ANDRES",
+  SPECIAL_REGIME: "SPECIAL_REGIME",
+} as const;
+
+export const taxZoneValues = [
+  "CONTINENTAL",
+  "FREE_ZONE",
+  "SAN_ANDRES",
+  "SPECIAL_REGIME",
+] as const;
+
+export const TaxZoneEnum = z.enum(taxZoneValues);
+Object.defineProperty(TaxZoneEnum, "enumValues", {
+  value: taxZoneValues,
+});
+
+export const PaymentType = {
+  CASH: "CASH",
+  CREDIT: "CREDIT",
+} as const;
+
+export const paymentTypeValues = ["CASH", "CREDIT"] as const;
+
+export const PaymentTypeEnum = z.enum(paymentTypeValues);
+Object.defineProperty(PaymentTypeEnum, "enumValues", {
+  value: paymentTypeValues,
+});
+
+export const CreditBackingType = {
+  PROMISSORY_NOTE: "PROMISSORY_NOTE",
+  PURCHASE_ORDER: "PURCHASE_ORDER",
+  VERBAL_AGREEMENT: "VERBAL_AGREEMENT",
+} as const;
+
+export const creditBackingTypeValues = [
+  "PROMISSORY_NOTE",
+  "PURCHASE_ORDER",
+  "VERBAL_AGREEMENT",
+] as const;
+
+export const CreditBackingTypeEnum = z.enum(creditBackingTypeValues);
+Object.defineProperty(CreditBackingTypeEnum, "enumValues", {
+  value: creditBackingTypeValues,
+});
+
+export const CashReceiptStatus = {
+  PENDING: "PENDING",
+  CONFIRMED: "CONFIRMED",
+  VOIDED: "VOIDED",
+} as const;
+
+export const cashReceiptStatusValues = [
+  "PENDING",
+  "CONFIRMED",
+  "VOIDED",
+] as const;
+
+export const CashReceiptStatusEnum = z.enum(cashReceiptStatusValues);
+Object.defineProperty(CashReceiptStatusEnum, "enumValues", {
+  value: cashReceiptStatusValues,
+});
+
+export const ReconciliationItemType = {
+  DEPOSIT_IN_TRANSIT: "DEPOSIT_IN_TRANSIT",
+  OUTSTANDING_CHECK: "OUTSTANDING_CHECK",
+  BANK_DEBIT_NOTE: "BANK_DEBIT_NOTE",
+  BANK_CREDIT_NOTE: "BANK_CREDIT_NOTE",
+  ACCOUNTING_ERROR: "ACCOUNTING_ERROR",
+  BANK_ERROR: "BANK_ERROR",
+} as const;
+
+export const reconciliationItemTypeValues = [
+  "DEPOSIT_IN_TRANSIT",
+  "OUTSTANDING_CHECK",
+  "BANK_DEBIT_NOTE",
+  "BANK_CREDIT_NOTE",
+  "ACCOUNTING_ERROR",
+  "BANK_ERROR",
+] as const;
+
+export const ReconciliationItemTypeEnum = z.enum(
+  reconciliationItemTypeValues
+);
+Object.defineProperty(ReconciliationItemTypeEnum, "enumValues", {
+  value: reconciliationItemTypeValues,
+});
+
+export const FactoringStatus = {
+  ACTIVE: "ACTIVE",
+  COLLECTED: "COLLECTED",
+  VOIDED: "VOIDED",
+} as const;
+
+export const factoringStatusValues = [
+  "ACTIVE",
+  "COLLECTED",
+  "VOIDED",
+] as const;
+
+export const FactoringStatusEnum = z.enum(factoringStatusValues);
+Object.defineProperty(FactoringStatusEnum, "enumValues", {
+  value: factoringStatusValues,
+});
+
+/* ========================= */
+/*     HR ENUMS             */
+/* ========================= */
+
+export const ContractType = {
+  FIXED_TERM: "FIXED_TERM",
+  INDEFINITE_TERM: "INDEFINITE_TERM",
+  WORK_CONTRACT: "WORK_CONTRACT",
+  SERVICE_CONTRACT: "SERVICE_CONTRACT",
+} as const;
+
+export const contractTypeValues = [
+  "FIXED_TERM",
+  "INDEFINITE_TERM",
+  "WORK_CONTRACT",
+  "SERVICE_CONTRACT",
+] as const;
+
+export const ContractTypeEnum = z.enum(contractTypeValues);
+Object.defineProperty(ContractTypeEnum, "enumValues", {
+  value: contractTypeValues,
+});
+
+export const LeaveType = {
+  PAID: "PAID",
+  UNPAID: "UNPAID",
+} as const;
+
+export const leaveTypeValues = ["PAID", "UNPAID"] as const;
+
+export const LeaveTypeEnum = z.enum(leaveTypeValues);
+Object.defineProperty(LeaveTypeEnum, "enumValues", {
+  value: leaveTypeValues,
+});
+
+/* ========================= */
+/*     ROLE ENUMS           */
+/* ========================= */
+
+export const Role = {
+  ADMINISTRADOR: "ADMINISTRADOR",
+  LIDER_JURIDICA: "LIDER_JURIDICA",
+  RH: "RH",
+  AUXILIAR_RH: "AUXILIAR_RH",
+  LIDER_FINANCIERA: "LIDER_FINANCIERA",
+  AUXILIAR_CONTABLE: "AUXILIAR_CONTABLE",
+  TESORERIA_Y_CARTERA: "TESORERIA_Y_CARTERA",
+  LIDER_COMERCIAL: "LIDER_COMERCIAL",
+  ASESOR: "ASESOR",
+  LIDER_SUMINISTROS: "LIDER_SUMINISTROS",
+  COMPRA_NACIONAL: "COMPRA_NACIONAL",
+  COMPRA_INTERNACIONAL: "COMPRA_INTERNACIONAL",
+  LIDER_DISEÑO: "LIDER_DISEÑO",
+  DISEÑADOR: "DISEÑADOR",
+  LIDER_OPERACIONAL: "LIDER_OPERACIONAL",
+  PROGRAMACION: "PROGRAMACION",
+  OPERARIO_DESPACHO: "OPERARIO_DESPACHO",
+  OPERARIO_BODEGA: "OPERARIO_BODEGA",
+  OPERARIO_FLOTER: "OPERARIO_FLOTER",
+  OPERARIO_SUBLIMACION: "OPERARIO_SUBLIMACION",
+  OPERARIO_CORTE_MANUAL: "OPERARIO_CORTE_MANUAL",
+  OPERARIO_CORTE_LASER: "OPERARIO_CORTE_LASER",
+  OPERARIO_INTEGRACION_CALIDAD: "OPERARIO_INTEGRACION_CALIDAD",
+  OPERARIO_MONTAJE: "OPERARIO_MONTAJE",
+  MENSAJERO: "MENSAJERO",
+  CONFECCIONISTA: "CONFECCIONISTA",
+  EMPAQUE: "EMPAQUE",
+} as const;
+
+export const roleValues = [
+  "ADMINISTRADOR",
+  "LIDER_JURIDICA",
+  "RH",
+  "AUXILIAR_RH",
+  "LIDER_FINANCIERA",
+  "AUXILIAR_CONTABLE",
+  "TESORERIA_Y_CARTERA",
+  "LIDER_COMERCIAL",
+  "ASESOR",
+  "LIDER_SUMINISTROS",
+  "COMPRA_NACIONAL",
+  "COMPRA_INTERNACIONAL",
+  "LIDER_DISEÑO",
+  "DISEÑADOR",
+  "LIDER_OPERACIONAL",
+  "PROGRAMACION",
+  "OPERARIO_DESPACHO",
+  "OPERARIO_BODEGA",
+  "OPERARIO_FLOTER",
+  "OPERARIO_SUBLIMACION",
+  "OPERARIO_CORTE_MANUAL",
+  "OPERARIO_CORTE_LASER",
+  "OPERARIO_INTEGRACION_CALIDAD",
+  "OPERARIO_MONTAJE",
+  "MENSAJERO",
+  "CONFECCIONISTA",
+  "EMPAQUE",
+] as const;
+
+export const RoleEnum = z.enum(roleValues);
+Object.defineProperty(RoleEnum, "enumValues", {
+  value: roleValues,
+});
+
+/* ========================= */
+/*     PERMISSION ENUMS     */
+/* ========================= */
+
+export const Permission = {
+  // Pedidos
+  CREAR_PEDIDO: "CREAR_PEDIDO",
+  EDITAR_PEDIDO: "EDITAR_PEDIDO",
+  ELIMINAR_PEDIDO: "ELIMINAR_PEDIDO",
+  VER_PEDIDO: "VER_PEDIDO",
+  CAMBIAR_ESTADO_PEDIDO: "CAMBIAR_ESTADO_PEDIDO",
+  // Diseños
+  CREAR_DISEÑO: "CREAR_DISEÑO",
+  EDITAR_DISEÑO: "EDITAR_DISEÑO",
+  ELIMINAR_DISEÑO: "ELIMINAR_DISEÑO",
+  VER_DISEÑO: "VER_DISEÑO",
+  EDITAR_IMAGEN: "EDITAR_IMAGEN",
+  ASIGNAR_DISEÑO: "ASIGNAR_DISEÑO",
+  CAMBIAR_ESTADO_DISEÑO: "CAMBIAR_ESTADO_DISEÑO",
+  // Pagos
+  CREAR_PAGO: "CREAR_PAGO",
+  EDITAR_PAGO: "EDITAR_PAGO",
+  APROBAR_PAGO: "APROBAR_PAGO",
+  VER_PAGO: "VER_PAGO",
+  // Inventario
+  CREAR_ITEM_INVENTARIO: "CREAR_ITEM_INVENTARIO",
+  EDITAR_ITEM_INVENTARIO: "EDITAR_ITEM_INVENTARIO",
+  ELIMINAR_ITEM_INVENTARIO: "ELIMINAR_ITEM_INVENTARIO",
+  VER_ITEM_INVENTARIO: "VER_ITEM_INVENTARIO",
+  REGISTRAR_ENTRADA: "REGISTRAR_ENTRADA",
+  REGISTRAR_SALIDA: "REGISTRAR_SALIDA",
+  VER_INVENTARIO: "VER_INVENTARIO",
+  // Empaque
+  CREAR_EMPAQUE: "CREAR_EMPAQUE",
+  EDITAR_EMPAQUE: "EDITAR_EMPAQUE",
+  ELIMINAR_EMPAQUE: "ELIMINAR_EMPAQUE",
+  MARCAR_EMPAQUE: "MARCAR_EMPAQUE",
+  VER_EMPAQUE: "VER_EMPAQUE",
+  // Compras
+  CREAR_ORDEN_COMPRA: "CREAR_ORDEN_COMPRA",
+  ASOCIAR_PROVEEDOR: "ASOCIAR_PROVEEDOR",
+  // Proveedores
+  CREAR_PROVEEDOR: "CREAR_PROVEEDOR",
+  EDITAR_PROVEEDOR: "EDITAR_PROVEEDOR",
+  ELIMINAR_PROVEEDOR: "ELIMINAR_PROVEEDOR",
+  VER_PROVEEDOR: "VER_PROVEEDOR",
+  // Clientes
+  CREAR_CLIENTE: "CREAR_CLIENTE",
+  EDITAR_CLIENTE: "EDITAR_CLIENTE",
+  ELIMINAR_CLIENTE: "ELIMINAR_CLIENTE",
+  VER_CLIENTE: "VER_CLIENTE",
+  VER_ESTADO_JURIDICO_CLIENTE: "VER_ESTADO_JURIDICO_CLIENTE",
+  CAMBIAR_ESTADO_JURIDICO_CLIENTE: "CAMBIAR_ESTADO_JURIDICO_CLIENTE",
+  VER_ESTADO_JURIDICO_EMPLEADO: "VER_ESTADO_JURIDICO_EMPLEADO",
+  CAMBIAR_ESTADO_JURIDICO_EMPLEADO: "CAMBIAR_ESTADO_JURIDICO_EMPLEADO",
+  VER_ESTADO_JURIDICO_PROVEEDOR: "VER_ESTADO_JURIDICO_PROVEEDOR",
+  CAMBIAR_ESTADO_JURIDICO_PROVEEDOR: "CAMBIAR_ESTADO_JURIDICO_PROVEEDOR",
+  VER_ESTADO_JURIDICO_CONFECCIONISTA: "VER_ESTADO_JURIDICO_CONFECCIONISTA",
+  CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA:
+    "CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA",
+  VER_ESTADO_JURIDICO_EMPAQUE: "VER_ESTADO_JURIDICO_EMPAQUE",
+  CAMBIAR_ESTADO_JURIDICO_EMPAQUE: "CAMBIAR_ESTADO_JURIDICO_EMPAQUE",
+  VER_HISTORIAL_ESTADO_JURIDICO: "VER_HISTORIAL_ESTADO_JURIDICO",
+  // Confeccionistas
+  CREAR_CONFECCIONISTA: "CREAR_CONFECCIONISTA",
+  EDITAR_CONFECCIONISTA: "EDITAR_CONFECCIONISTA",
+  ELIMINAR_CONFECCIONISTA: "ELIMINAR_CONFECCIONISTA",
+  VER_CONFECCIONISTA: "VER_CONFECCIONISTA",
+  ASIGNAR_CONFECCIONISTA: "ASIGNAR_CONFECCIONISTA",
+  // Cotizaciones
+  CREAR_COTIZACION: "CREAR_COTIZACION",
+  EDITAR_COTIZACION: "EDITAR_COTIZACION",
+  ELIMINAR_COTIZACION: "ELIMINAR_COTIZACION",
+  VER_COTIZACION: "VER_COTIZACION",
+  DESCARGAR_COTIZACION: "DESCARGAR_COTIZACION",
+  // Notificaciones
+  VER_NOTIFICACION: "VER_NOTIFICACION",
+  ELIMINAR_NOTIFICACION: "ELIMINAR_NOTIFICACION",
+  // Accounting - new modules
+  VER_CONCILIACION_BANCARIA: "VER_CONCILIACION_BANCARIA",
+  CREAR_CONCILIACION_BANCARIA: "CREAR_CONCILIACION_BANCARIA",
+  CERRAR_CONCILIACION_BANCARIA: "CERRAR_CONCILIACION_BANCARIA",
+  VER_FACTORING: "VER_FACTORING",
+  CREAR_FACTORING: "CREAR_FACTORING",
+  VER_RETENCIONES: "VER_RETENCIONES",
+  GESTIONAR_RETENCIONES: "GESTIONAR_RETENCIONES",
+  VER_RECIBO_CAJA: "VER_RECIBO_CAJA",
+  CREAR_RECIBO_CAJA: "CREAR_RECIBO_CAJA",
+  ANULAR_RECIBO_CAJA: "ANULAR_RECIBO_CAJA",
+  VER_CARTERA: "VER_CARTERA",
+  EXPORTAR_CARTERA: "EXPORTAR_CARTERA",
+  // RH - new modules
+  VER_PROVISIONES_NOMINA: "VER_PROVISIONES_NOMINA",
+  CREAR_PROVISIONES_NOMINA: "CREAR_PROVISIONES_NOMINA",
+  VER_PERMISOS_EMPLEADO: "VER_PERMISOS_EMPLEADO",
+  APROBAR_PERMISO_EMPLEADO: "APROBAR_PERMISO_EMPLEADO",
+  VER_PILA: "VER_PILA",
+  GENERAR_PILA: "GENERAR_PILA",
+  // Historial
+  VER_HISTORIAL_ESTADO: "VER_HISTORIAL_ESTADO",
+} as const;
+
+export const permissionValues = [
+  // Pedidos
+  "CREAR_PEDIDO",
+  "EDITAR_PEDIDO",
+  "ELIMINAR_PEDIDO",
+  "VER_PEDIDO",
+  "CAMBIAR_ESTADO_PEDIDO",
+  // Diseños
+  "CREAR_DISEÑO",
+  "EDITAR_DISEÑO",
+  "ELIMINAR_DISEÑO",
+  "VER_DISEÑO",
+  "EDITAR_IMAGEN",
+  "ASIGNAR_DISEÑO",
+  "CAMBIAR_ESTADO_DISEÑO",
+  // Pagos
+  "CREAR_PAGO",
+  "EDITAR_PAGO",
+  "APROBAR_PAGO",
+  "VER_PAGO",
+  // Inventario
+  "CREAR_ITEM_INVENTARIO",
+  "EDITAR_ITEM_INVENTARIO",
+  "ELIMINAR_ITEM_INVENTARIO",
+  "VER_ITEM_INVENTARIO",
+  "REGISTRAR_ENTRADA",
+  "REGISTRAR_SALIDA",
+  "VER_INVENTARIO",
+  // Empaque
+  "CREAR_EMPAQUE",
+  "EDITAR_EMPAQUE",
+  "ELIMINAR_EMPAQUE",
+  "MARCAR_EMPAQUE",
+  "VER_EMPAQUE",
+  // Compras
+  "CREAR_ORDEN_COMPRA",
+  "ASOCIAR_PROVEEDOR",
+  // Proveedores
+  "CREAR_PROVEEDOR",
+  "EDITAR_PROVEEDOR",
+  "ELIMINAR_PROVEEDOR",
+  "VER_PROVEEDOR",
+  // Clientes
+  "CREAR_CLIENTE",
+  "EDITAR_CLIENTE",
+  "ELIMINAR_CLIENTE",
+  "VER_CLIENTE",
+  "VER_ESTADO_JURIDICO_CLIENTE",
+  "CAMBIAR_ESTADO_JURIDICO_CLIENTE",
+  "VER_ESTADO_JURIDICO_EMPLEADO",
+  "CAMBIAR_ESTADO_JURIDICO_EMPLEADO",
+  "VER_ESTADO_JURIDICO_PROVEEDOR",
+  "CAMBIAR_ESTADO_JURIDICO_PROVEEDOR",
+  "VER_ESTADO_JURIDICO_CONFECCIONISTA",
+  "CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA",
+  "VER_ESTADO_JURIDICO_EMPAQUE",
+  "CAMBIAR_ESTADO_JURIDICO_EMPAQUE",
+  "VER_HISTORIAL_ESTADO_JURIDICO",
+  // Confeccionistas
+  "CREAR_CONFECCIONISTA",
+  "EDITAR_CONFECCIONISTA",
+  "ELIMINAR_CONFECCIONISTA",
+  "VER_CONFECCIONISTA",
+  "ASIGNAR_CONFECCIONISTA",
+  // Cotizaciones
+  "CREAR_COTIZACION",
+  "EDITAR_COTIZACION",
+  "ELIMINAR_COTIZACION",
+  "VER_COTIZACION",
+  "DESCARGAR_COTIZACION",
+  // Notificaciones
+  "VER_NOTIFICACION",
+  "ELIMINAR_NOTIFICACION",
+  // Accounting - new modules
+  "VER_CONCILIACION_BANCARIA",
+  "CREAR_CONCILIACION_BANCARIA",
+  "CERRAR_CONCILIACION_BANCARIA",
+  "VER_FACTORING",
+  "CREAR_FACTORING",
+  "VER_RETENCIONES",
+  "GESTIONAR_RETENCIONES",
+  "VER_RECIBO_CAJA",
+  "CREAR_RECIBO_CAJA",
+  "ANULAR_RECIBO_CAJA",
+  "VER_CARTERA",
+  "EXPORTAR_CARTERA",
+  // RH - new modules
+  "VER_PROVISIONES_NOMINA",
+  "CREAR_PROVISIONES_NOMINA",
+  "VER_PERMISOS_EMPLEADO",
+  "APROBAR_PERMISO_EMPLEADO",
+  "VER_PILA",
+  "GENERAR_PILA",
+  // Historial
+  "VER_HISTORIAL_ESTADO",
+] as const;
+
+export const PermissionEnum = z.enum(permissionValues);
+Object.defineProperty(PermissionEnum, "enumValues", {
+  value: permissionValues,
+});
+
+/* ========================= */
+/*     ORDER ENUMS          */
+/* ========================= */
+
+export const OrderType = {
+  VN: "VN",
+  VI: "VI",
+  VT: "VT",
+  VW: "VW",
+} as const;
+
+export const orderTypeValues = ["VN", "VI", "VT", "VW"] as const;
+
+export const OrderTypeEnum = z.enum(orderTypeValues);
+Object.defineProperty(OrderTypeEnum, "enumValues", {
+  value: orderTypeValues,
+});
+
+export const OrderKind = {
+  NUEVO: "NUEVO",
+  COMPLETACION: "COMPLETACION",
+  REFERENTE: "REFERENTE",
+} as const;
+
+export const orderKindValues = [
+  "NUEVO",
+  "COMPLETACION",
+  "REFERENTE",
+] as const;
+
+export const OrderKindEnum = z.enum(orderKindValues);
+Object.defineProperty(OrderKindEnum, "enumValues", {
+  value: orderKindValues,
+});
+
+export const OrderStatus = {
+  PENDIENTE: "PENDIENTE",
+  APROBACION: "APROBACION",
+  PROGRAMACION: "PROGRAMACION",
+  PRODUCCION: "PRODUCCION",
+  ATRASADO: "ATRASADO",
+  FINALIZADO: "FINALIZADO",
+  ENTREGADO: "ENTREGADO",
+  CANCELADO: "CANCELADO",
+} as const;
+
+export const orderStatusValues = [
+  "PENDIENTE",
+  "APROBACION",
+  "PROGRAMACION",
+  "PRODUCCION",
+  "ATRASADO",
+  "FINALIZADO",
+  "ENTREGADO",
+  "CANCELADO",
+] as const;
+
+export const OrderStatusEnum = z.enum(orderStatusValues);
+Object.defineProperty(OrderStatusEnum, "enumValues", {
+  value: orderStatusValues,
+});
+
+export const OrderItemStatus = {
+  PENDIENTE: "PENDIENTE",
+  APROBACION: "APROBACION",
+  APROBACION_ACTUALIZACION: "APROBACION_ACTUALIZACION",
+  APROBADO_CAMBIO: "APROBADO_CAMBIO",
+  RECHAZADO_CAMBIO: "RECHAZADO_CAMBIO",
+  PENDIENTE_PRODUCCION: "PENDIENTE_PRODUCCION",
+  PENDIENTE_PRODUCCION_ACTUALIZACION: "PENDIENTE_PRODUCCION_ACTUALIZACION",
+  MONTAJE: "MONTAJE",
+  IMPRESION: "IMPRESION",
+  SUBLIMACION: "SUBLIMACION",
+  CORTE_MANUAL: "CORTE_MANUAL",
+  CORTE_LASER: "CORTE_LASER",
+  PENDIENTE_CONFECCION: "PENDIENTE_CONFECCION",
+  CONFECCION: "CONFECCION",
+  EN_BODEGA: "EN_BODEGA",
+  EMPAQUE: "EMPAQUE",
+  ENVIADO: "ENVIADO",
+  COMPLETADO: "COMPLETADO",
+  CANCELADO: "CANCELADO",
+} as const;
+
+export const orderItemStatusValues = [
+  "PENDIENTE",
+  "APROBACION",
+  "APROBACION_ACTUALIZACION",
+  "APROBADO_CAMBIO",
+  "RECHAZADO_CAMBIO",
+  "PENDIENTE_PRODUCCION",
+  "PENDIENTE_PRODUCCION_ACTUALIZACION",
+  "MONTAJE",
+  "IMPRESION",
+  "SUBLIMACION",
+  "CORTE_MANUAL",
+  "CORTE_LASER",
+  "PENDIENTE_CONFECCION",
+  "CONFECCION",
+  "EN_BODEGA",
+  "EMPAQUE",
+  "ENVIADO",
+  "COMPLETADO",
+  "CANCELADO",
+] as const;
+
+export const OrderItemStatusEnum = z.enum(orderItemStatusValues);
+Object.defineProperty(OrderItemStatusEnum, "enumValues", {
+  value: orderItemStatusValues,
+});
+
+/* ========================= */
+/*     PAYMENT ENUMS        */
+/* ========================= */
+
+export const PaymentMethod = {
+  EFECTIVO: "EFECTIVO",
+  TRANSFERENCIA: "TRANSFERENCIA",
+  CREDITO: "CREDITO",
+} as const;
+
+export const paymentMethodValues = [
+  "EFECTIVO",
+  "TRANSFERENCIA",
+  "CREDITO",
+] as const;
+
+export const PaymentMethodEnum = z.enum(paymentMethodValues);
+Object.defineProperty(PaymentMethodEnum, "enumValues", {
+  value: paymentMethodValues,
+});
+
+export const PaymentStatus = {
+  PENDIENTE: "PENDIENTE",
+  PARCIAL: "PARCIAL",
+  PAGADO: "PAGADO",
+  ANULADO: "ANULADO",
+  CONFIRMADO_CAJA: "CONFIRMADO_CAJA",
+} as const;
+
+export const paymentStatusValues = [
+  "PENDIENTE",
+  "PARCIAL",
+  "PAGADO",
+  "ANULADO",
+  "CONFIRMADO_CAJA",
+] as const;
+
+export const PaymentStatusEnum = z.enum(paymentStatusValues);
+Object.defineProperty(PaymentStatusEnum, "enumValues", {
+  value: paymentStatusValues,
+});
+
+/* ========================= */
+/*     INVENTORY ENUMS      */
+/* ========================= */
+
+export const InventoryLocation = {
+  BODEGA_PRINCIPAL: "BODEGA_PRINCIPAL",
+  TIENDA: "TIENDA",
+} as const;
+
+export const inventoryLocationValues = [
+  "BODEGA_PRINCIPAL",
+  "TIENDA",
+] as const;
+
+export const InventoryLocationEnum = z.enum(inventoryLocationValues);
+Object.defineProperty(InventoryLocationEnum, "enumValues", {
+  value: inventoryLocationValues,
+});
+
+export const InventoryCategoryType = {
+  INSUMOS_PRODUCCION: "INSUMOS_PRODUCCION",
+  PAPELERIA: "PAPELERIA",
+  ASEO: "ASEO",
+  REPUESTOS: "REPUESTOS",
+  REVENTA: "REVENTA",
+} as const;
+
+export const inventoryCategoryTypeValues = [
+  "INSUMOS_PRODUCCION",
+  "PAPELERIA",
+  "ASEO",
+  "REPUESTOS",
+  "REVENTA",
+] as const;
+
+export const InventoryCategoryTypeEnum = z.enum(
+  inventoryCategoryTypeValues
+);
+Object.defineProperty(InventoryCategoryTypeEnum, "enumValues", {
+  value: inventoryCategoryTypeValues,
+});
+
+export const StockMovementType = {
+  ENTRADA: "ENTRADA",
+  SALIDA: "SALIDA",
+  TRASLADO: "TRASLADO",
+  AJUSTE_POSITIVO: "AJUSTE_POSITIVO",
+  AJUSTE_NEGATIVO: "AJUSTE_NEGATIVO",
+  DEVOLUCION: "DEVOLUCION",
+} as const;
+
+export const stockMovementTypeValues = [
+  "ENTRADA",
+  "SALIDA",
+  "TRASLADO",
+  "AJUSTE_POSITIVO",
+  "AJUSTE_NEGATIVO",
+  "DEVOLUCION",
+] as const;
+
+export const StockMovementTypeEnum = z.enum(stockMovementTypeValues);
+Object.defineProperty(StockMovementTypeEnum, "enumValues", {
+  value: stockMovementTypeValues,
+});
+
+export const StockMovementReason = {
+  PRODUCCION: "PRODUCCION",
+  VENTA: "VENTA",
+  DESPACHO_CONFECCIONISTA: "DESPACHO_CONFECCIONISTA",
+  COMPRA_PROVEEDOR: "COMPRA_PROVEEDOR",
+  AJUSTE_INVENTARIO: "AJUSTE_INVENTARIO",
+  DEVOLUCION_PROVEEDOR: "DEVOLUCION_PROVEEDOR",
+  DEVOLUCION_CLIENTE: "DEVOLUCION_CLIENTE",
+  TRASLADO_INTERNO: "TRASLADO_INTERNO",
+  MUESTRA: "MUESTRA",
+  BAJA: "BAJA",
+  OTRO: "OTRO",
+} as const;
+
+export const stockMovementReasonValues = [
+  "PRODUCCION",
+  "VENTA",
+  "DESPACHO_CONFECCIONISTA",
+  "COMPRA_PROVEEDOR",
+  "AJUSTE_INVENTARIO",
+  "DEVOLUCION_PROVEEDOR",
+  "DEVOLUCION_CLIENTE",
+  "TRASLADO_INTERNO",
+  "MUESTRA",
+  "BAJA",
+  "OTRO",
+] as const;
+
+export const StockMovementReasonEnum = z.enum(stockMovementReasonValues);
+Object.defineProperty(StockMovementReasonEnum, "enumValues", {
+  value: stockMovementReasonValues,
+});
+
+export const StockMovementReferenceType = {
+  ORDER_ITEM: "ORDER_ITEM",
+  PURCHASE_ORDER: "PURCHASE_ORDER",
+  CONFECTIONIST: "CONFECTIONIST",
+  MANUAL: "MANUAL",
+  SHIPMENT: "SHIPMENT",
+} as const;
+
+export const stockMovementReferenceTypeValues = [
+  "ORDER_ITEM",
+  "PURCHASE_ORDER",
+  "CONFECTIONIST",
+  "MANUAL",
+  "SHIPMENT",
+] as const;
+
+export const StockMovementReferenceTypeEnum = z.enum(
+  stockMovementReferenceTypeValues
+);
+Object.defineProperty(StockMovementReferenceTypeEnum, "enumValues", {
+  value: stockMovementReferenceTypeValues,
+});
+
+/* ========================= */
+/*     SHIPMENT ENUMS       */
+/* ========================= */
+
+export const ShipmentMode = {
+  INTERNAL: "INTERNAL",
+  CLIENT: "CLIENT",
+} as const;
+
+export const shipmentModeValues = ["INTERNAL", "CLIENT"] as const;
+
+export const ShipmentModeEnum = z.enum(shipmentModeValues);
+Object.defineProperty(ShipmentModeEnum, "enumValues", {
+  value: shipmentModeValues,
+});
+
+export const ShipmentPaymentStatus = {
+  PAGADO: "PAGADO",
+  PENDIENTE: "PENDIENTE",
+  NA: "NA",
+} as const;
+
+export const shipmentPaymentStatusValues = [
+  "PAGADO",
+  "PENDIENTE",
+  "NA",
+] as const;
+
+export const ShipmentPaymentStatusEnum = z.enum(shipmentPaymentStatusValues);
+Object.defineProperty(ShipmentPaymentStatusEnum, "enumValues", {
+  value: shipmentPaymentStatusValues,
+});
+
+export const ShipmentDocumentType = {
+  F: "F",
+  R: "R",
+} as const;
+
+export const shipmentDocumentTypeValues = ["F", "R"] as const;
+
+export const ShipmentDocumentTypeEnum = z.enum(shipmentDocumentTypeValues);
+Object.defineProperty(ShipmentDocumentTypeEnum, "enumValues", {
+  value: shipmentDocumentTypeValues,
+});
+
+export const ShipmentDocumentRef = {
+  RECIBO_CAJA: "RECIBO_CAJA",
+  PREFACTURA: "PREFACTURA",
+} as const;
+
+export const shipmentDocumentRefValues = [
+  "RECIBO_CAJA",
+  "PREFACTURA",
+] as const;
+
+export const ShipmentDocumentRefEnum = z.enum(shipmentDocumentRefValues);
+Object.defineProperty(ShipmentDocumentRefEnum, "enumValues", {
+  value: shipmentDocumentRefValues,
+});
+
+export const ShipmentEmailMode = {
+  REGISTRADO: "REGISTRADO",
+  NUEVO: "NUEVO",
+  AMBOS: "AMBOS",
+} as const;
+
+export const shipmentEmailModeValues = [
+  "REGISTRADO",
+  "NUEVO",
+  "AMBOS",
+] as const;
+
+export const ShipmentEmailModeEnum = z.enum(shipmentEmailModeValues);
+Object.defineProperty(ShipmentEmailModeEnum, "enumValues", {
+  value: shipmentEmailModeValues,
+});

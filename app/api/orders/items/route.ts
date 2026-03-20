@@ -11,7 +11,9 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
+  prefacturas,
   products,
+  quotations,
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
@@ -396,10 +398,12 @@ export async function POST(request: Request) {
       .select({
         kind: orders.kind,
         currency: orders.currency,
-        clientPriceType: clients.priceClientType,
+        clientPriceType:
+          sql<string>`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
       })
       .from(orders)
-      .leftJoin(clients, eq(orders.clientId, clients.id))
+      .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
+      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
       .where(eq(orders.id, orderId))
       .limit(1);
 

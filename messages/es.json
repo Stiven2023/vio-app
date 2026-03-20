@@ -3,6 +3,7 @@
     "title": "Centro de modulos",
     "description": "Selecciona el modulo con el que quieres trabajar en esta sesion.",
     "localeLabel": "Idioma actual",
-    "localeValue": "Espanol"
+    "localeValue": "Espanol",
+    "switchLabel": "Cambiar idioma"
   }
 }

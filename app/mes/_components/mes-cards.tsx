@@ -35,7 +35,7 @@ function TicketBadge({ ticket, proceso }: { ticket: string; proceso: string }) {
   const bg = colors[prefix] ?? "bg-gray-600";
 
   return (
-    <Tooltip content={`Ticket de ${proceso}`} placement="left">
+    <Tooltip content={`${proceso} ticket`} placement="left">
       <div
         className={`absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full shadow-lg text-white text-[10px] font-bold tracking-wide ${bg}`}
       >
@@ -58,7 +58,7 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
       <CardHeader className="pb-1 pt-3 px-4 flex flex-col items-start gap-0">
         <div className="flex items-center gap-2 w-full">
           <span className="text-xs font-semibold uppercase tracking-widest text-default-400">
-            Diseno {diseno.diseno}
+            Design {diseno.diseno}
           </span>
           <Chip
             className="ml-auto text-[10px]"
@@ -66,19 +66,19 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
             size="sm"
             variant="flat"
           >
-            {pct}% completado
+            {pct}% completed
           </Chip>
         </div>
         <p className="text-sm font-bold text-foreground mt-0.5">{diseno.detalle}</p>
         <div className="flex gap-3 mt-1">
           <span className="text-xs text-default-400">
-            Tela: <span className="text-foreground font-medium">{diseno.tela}</span>
+            Fabric: <span className="text-foreground font-medium">{diseno.tela}</span>
           </span>
           <span className="text-xs text-default-400">
-            Genero: <span className="text-foreground font-medium">{diseno.genero}</span>
+            Gender: <span className="text-foreground font-medium">{diseno.genero}</span>
           </span>
           <span className="text-xs text-default-400">
-            Total: <span className="text-foreground font-bold">{total} uds</span>
+            Total: <span className="text-foreground font-bold">{total} units</span>
           </span>
         </div>
         <div className="w-full h-1 bg-default-100 rounded-full mt-2 overflow-hidden">
@@ -89,7 +89,7 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
           <Chip className="text-[10px] h-5 font-bold" color="secondary" size="sm" variant="flat">
-            Montaje: {diseno.ticketMontaje}
+            Assembly: {diseno.ticketMontaje}
           </Chip>
         </div>
       </CardHeader>
@@ -99,20 +99,20 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
       <CardBody className="px-2 py-2">
         <Table
           removeWrapper
-          aria-label={`Tallas diseno ${diseno.diseno}`}
+          aria-label={`Design sizes ${diseno.diseno}`}
           classNames={{
             th: "bg-default-50 dark:bg-default-100 text-default-500 text-[11px] h-7 uppercase tracking-wide",
             td: "py-1.5 text-xs",
           }}
         >
           <TableHeader>
-            <TableColumn>Talla</TableColumn>
-            <TableColumn>Cantidad</TableColumn>
-            <TableColumn>Estado</TableColumn>
-            <TableColumn>Responsable</TableColumn>
-            <TableColumn>Fecha inicio</TableColumn>
-            <TableColumn>Fecha fin</TableColumn>
-            <TableColumn>Observacion</TableColumn>
+            <TableColumn>Size</TableColumn>
+            <TableColumn>Quantity</TableColumn>
+            <TableColumn>Status</TableColumn>
+            <TableColumn>Responsible</TableColumn>
+            <TableColumn>Start date</TableColumn>
+            <TableColumn>End date</TableColumn>
+            <TableColumn>Observation</TableColumn>
           </TableHeader>
           <TableBody>
             {diseno.tallas.map((talla, ti) => {
@@ -165,10 +165,10 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
         </Table>
 
         <div className="flex justify-end mt-2 pr-2">
-          <span className="text-[10px] text-default-400">Ticket unico de montaje por diseno</span>
+          <span className="text-[10px] text-default-400">Single assembly ticket per design</span>
         </div>
       </CardBody>
-      <TicketBadge ticket={diseno.ticketMontaje} proceso="Montaje" />
+      <TicketBadge ticket={diseno.ticketMontaje} proceso="Assembly" />
     </Card>
   );
 }
@@ -202,25 +202,25 @@ export function PedidoSection({
 
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <span className="text-xs text-default-400">
-            Vendedor: <span className="text-foreground font-medium">{pedido.vendedor}</span>
+            Seller: <span className="text-foreground font-medium">{pedido.vendedor}</span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Plazo: <span className="text-foreground font-medium">{pedido.plazo}d</span>
+            Lead time: <span className="text-foreground font-medium">{pedido.plazo}d</span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Entrega: <span className="text-foreground font-medium">{pedido.fechaEntrega}</span>
+            Delivery: <span className="text-foreground font-medium">{pedido.fechaEntrega}</span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Total: <span className="text-foreground font-bold">{totalUds} uds</span>
+            Total: <span className="text-foreground font-bold">{totalUds} units</span>
           </span>
           <Chip className="text-[10px]" color={cfg.color} size="sm" variant="flat">
             {pedido.estado}
           </Chip>
           <Chip className="text-[10px] font-mono" color="default" size="sm" variant="bordered">
-            {pedido.disenos.length} diseno{pedido.disenos.length !== 1 ? "s" : ""}
+            {pedido.disenos.length} design{pedido.disenos.length !== 1 ? "s" : ""}
           </Chip>
         </div>
       </CardHeader>
@@ -258,29 +258,29 @@ export function MontajeAssignmentHeader({
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {isTakenByMe ? (
           <Chip color="success" size="sm" variant="flat">
-            Tomado por mi
+            Taken by me
           </Chip>
         ) : null}
         {isTakenByOther ? (
           <Chip color="warning" size="sm" variant="flat">
-            Tomado por otro operario
+            Taken by another operator
           </Chip>
         ) : null}
         {!assignment ? (
           <Chip color="default" size="sm" variant="flat">
-            Sin tomar
+            Not taken
           </Chip>
         ) : null}
       </div>
       {activeProceso === "montaje" ? (
         <div className="text-xs text-default-500">
-          Tomado por {assignment?.userLabel ?? "-"}
+          Taken by {assignment?.userLabel ?? "-"}
           {assignment?.takenAt ? ` · ${formatDate(assignment.takenAt)}` : ""}
         </div>
       ) : null}
       {activeProceso === "montaje" && isTakenByOther ? (
         <div className="mt-2 rounded-medium border border-warning-300 bg-warning-50 px-3 py-2 text-xs text-warning-800">
-          Este pedido esta tomado por otro operario. No puedes registrar produccion hasta que sea liberado.
+          This order is taken by another operator. You cannot register production until it is released.
         </div>
       ) : null}
     </>

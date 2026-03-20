@@ -3,10 +3,16 @@ import { eq, sql, desc } from "drizzle-orm";
 import { db } from "@/src/db";
 import { clients, employees, clientLegalStatusHistory } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { checkPermissions, requirePermission } from "@/src/utils/permission-middleware";
+import {
+  checkPermissions,
+  requirePermission,
+} from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
-import { detectCriticalFieldChanges, registerAutoRevisionOnClientChange } from "@/app/erp/admin/_lib/sync-client-legal-status";
+import {
+  detectCriticalFieldChanges,
+  registerAutoRevisionOnClientChange,
+} from "@/app/erp/admin/_lib/sync-client-legal-status";
 
 /**
  * Formatea un número de teléfono móvil con código internacional
@@ -80,7 +86,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const permissions = await checkPermissions(request, ["VER_CLIENTE", "VER_PEDIDO"]);
+    const permissions = await checkPermissions(request, [
+      "VER_CLIENTE",
+      "VER_PEDIDO",
+    ]);
     const canViewClients = Boolean(permissions.VER_CLIENTE);
     const canViewOrders = Boolean(permissions.VER_PEDIDO);
 
@@ -91,10 +100,14 @@ export async function GET(request: Request) {
     const { page, pageSize, offset } = parsePagination(searchParams);
     const q = String(searchParams.get("q") ?? "").trim();
     const forAutocomplete = ["1", "true", "yes"].includes(
-      String(searchParams.get("forAutocomplete") ?? "").trim().toLowerCase(),
+      String(searchParams.get("forAutocomplete") ?? "")
+        .trim()
+        .toLowerCase(),
     );
     const onlyVigente = ["1", "true", "yes"].includes(
-      String(searchParams.get("onlyVigente") ?? "").trim().toLowerCase(),
+      String(searchParams.get("onlyVigente") ?? "")
+        .trim()
+        .toLowerCase(),
     );
 
     if (!canViewClients && !q) {
@@ -102,7 +115,7 @@ export async function GET(request: Request) {
     }
 
     const qLike = `%${q}%`;
-    const whereClause = q
+    const textFilter = q
       ? sql`(
           ${clients.name} ilike ${qLike}
           or ${clients.clientCode} ilike ${qLike}
@@ -111,6 +124,11 @@ export async function GET(request: Request) {
           or ${clients.contactName} ilike ${qLike}
         )`
       : undefined;
+    const whereClause = forAutocomplete
+      ? textFilter
+        ? sql`${textFilter} and ${clients.isActive} = true`
+        : sql`${clients.isActive} = true`
+      : textFilter;
 
     const totalQuery = db
       .select({ total: sql<number>`count(*)::int` })
@@ -141,19 +159,12 @@ export async function GET(request: Request) {
           columns: { status: true },
         });
 
-        const isActiveByLegalStatus =
-          latestStatus?.status === "VIGENTE"
-            ? true
-            : latestStatus?.status
-              ? false
-              : client.isActive;
-
         return {
           ...client,
-          isActive: isActiveByLegalStatus,
+          isActive: client.isActive,
           legalStatus: latestStatus?.status || null,
         };
-      })
+      }),
     );
 
     const filteredByLegalStatus = onlyVigente
@@ -167,7 +178,9 @@ export async function GET(request: Request) {
     const pagedItems = forAutocomplete
       ? filteredByLegalStatus.slice(offset, offset + pageSize)
       : filteredByLegalStatus;
-    const effectiveTotal = forAutocomplete ? filteredByLegalStatus.length : total;
+    const effectiveTotal = forAutocomplete
+      ? filteredByLegalStatus.length
+      : total;
     const hasNextPage = offset + pagedItems.length < effectiveTotal;
 
     return Response.json({
@@ -201,26 +214,25 @@ export async function POST(request: Request) {
 
   // TIPO DE CLIENTE (para generar código)
   const clientType = String(payload.clientType ?? "NACIONAL").trim();
-  const priceClientType = String(payload.priceClientType ?? "VIOMAR").trim();
-  
+
   // Documentos requeridos según identificationType
-  const identityDocumentUrl = payload.identityDocumentUrl 
-    ? String(payload.identityDocumentUrl).trim() 
+  const identityDocumentUrl = payload.identityDocumentUrl
+    ? String(payload.identityDocumentUrl).trim()
     : null;
-  const rutDocumentUrl = payload.rutDocumentUrl 
-    ? String(payload.rutDocumentUrl).trim() 
+  const rutDocumentUrl = payload.rutDocumentUrl
+    ? String(payload.rutDocumentUrl).trim()
     : null;
-  const commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl 
-    ? String(payload.commerceChamberDocumentUrl).trim() 
+  const commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl
+    ? String(payload.commerceChamberDocumentUrl).trim()
     : null;
-  const passportDocumentUrl = payload.passportDocumentUrl 
-    ? String(payload.passportDocumentUrl).trim() 
+  const passportDocumentUrl = payload.passportDocumentUrl
+    ? String(payload.passportDocumentUrl).trim()
     : null;
-  const taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl 
-    ? String(payload.taxCertificateDocumentUrl).trim() 
+  const taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl
+    ? String(payload.taxCertificateDocumentUrl).trim()
     : null;
-  const companyIdDocumentUrl = payload.companyIdDocumentUrl 
-    ? String(payload.companyIdDocumentUrl).trim() 
+  const companyIdDocumentUrl = payload.companyIdDocumentUrl
+    ? String(payload.companyIdDocumentUrl).trim()
     : null;
 
   // Campos críticos requeridos
@@ -235,7 +247,6 @@ export async function POST(request: Request) {
 
   if (
     !clientType ||
-    !priceClientType ||
     !name ||
     !identificationType ||
     !identification ||
@@ -246,16 +257,6 @@ export async function POST(request: Request) {
     !mobile
   ) {
     return new Response("Campos críticos requeridos faltantes", {
-      status: 400,
-    });
-  }
-
-  if (
-    !["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"].includes(
-      priceClientType,
-    )
-  ) {
-    return new Response("Tipo de cliente para precios COP inválido", {
       status: 400,
     });
   }
@@ -313,12 +314,74 @@ export async function POST(request: Request) {
   }
 
   const hasCredit = Boolean(payload.hasCredit);
-  const promissoryNoteNumber = String(payload.promissoryNoteNumber ?? "").trim();
+  const municipalityFiscal = payload.municipalityFiscal
+    ? String(payload.municipalityFiscal).trim()
+    : null;
+  const taxZone = String(payload.taxZone ?? "CONTINENTAL")
+    .trim()
+    .toUpperCase();
+  const paymentType = String(payload.paymentType ?? "CASH")
+    .trim()
+    .toUpperCase();
+  const creditBackingType = payload.creditBackingType
+    ? String(payload.creditBackingType).trim().toUpperCase()
+    : null;
+  const promissoryNoteNumber = String(
+    payload.promissoryNoteNumber ?? "",
+  ).trim();
   const promissoryNoteDate = String(payload.promissoryNoteDate ?? "").trim();
+  const creditLimitRaw = payload.creditLimit;
+  const creditLimitNumber =
+    creditLimitRaw === null ||
+    creditLimitRaw === undefined ||
+    String(creditLimitRaw).trim() === ""
+      ? null
+      : Number(creditLimitRaw);
 
-  if (hasCredit && (!promissoryNoteNumber || !promissoryNoteDate)) {
+  if (
+    creditLimitNumber !== null &&
+    (!Number.isFinite(creditLimitNumber) || creditLimitNumber < 0)
+  ) {
+    return new Response("El monto tope de crédito es inválido", {
+      status: 400,
+    });
+  }
+
+  if (
+    taxZone !== "CONTINENTAL" &&
+    taxZone !== "FREE_ZONE" &&
+    taxZone !== "SAN_ANDRES" &&
+    taxZone !== "SPECIAL_REGIME"
+  ) {
+    return new Response("Tax zone inválida", {
+      status: 400,
+    });
+  }
+
+  if (paymentType !== "CASH" && paymentType !== "CREDIT") {
+    return new Response("Payment type inválido", {
+      status: 400,
+    });
+  }
+
+  if (
+    creditBackingType !== null &&
+    creditBackingType !== "PROMISSORY_NOTE" &&
+    creditBackingType !== "PURCHASE_ORDER" &&
+    creditBackingType !== "VERBAL_AGREEMENT"
+  ) {
+    return new Response("Credit backing type inválido", {
+      status: 400,
+    });
+  }
+
+  if (
+    paymentType === "CREDIT" &&
+    hasCredit &&
+    (creditLimitNumber === null || creditLimitNumber <= 0 || !creditBackingType)
+  ) {
     return new Response(
-      "Cuando hay crédito, número y fecha de pagaré son obligatorios",
+      "Si paymentType es CREDIT y hasCredit es true, creditLimit debe ser mayor a 0 y creditBackingType es obligatorio",
       {
         status: 400,
       },
@@ -437,9 +500,7 @@ export async function POST(request: Request) {
         postalCode: payload.postalCode
           ? String(payload.postalCode).trim()
           : null,
-        country: payload.country
-          ? String(payload.country).trim()
-          : "COLOMBIA",
+        country: payload.country ? String(payload.country).trim() : "COLOMBIA",
         department: payload.department
           ? String(payload.department).trim()
           : "ANTIOQUIA",
@@ -452,20 +513,29 @@ export async function POST(request: Request) {
         landline,
         extension,
         fullLandline,
+        municipalityFiscal,
+        taxZone: taxZone as
+          | "CONTINENTAL"
+          | "FREE_ZONE"
+          | "SAN_ANDRES"
+          | "SPECIAL_REGIME",
+        paymentType: paymentType as "CASH" | "CREDIT",
         // CRÉDITO Y ESTADO
-        priceClientType: priceClientType as
-          | "AUTORIZADO"
-          | "MAYORISTA"
-          | "VIOMAR"
-          | "COLANTA",
-        status: "INACTIVO",
+        status: "ACTIVO",
         hasCredit: payload.hasCredit ?? false,
+        creditLimit:
+          creditLimitNumber === null ? null : String(creditLimitNumber),
+        creditBackingType: creditBackingType as
+          | "PROMISSORY_NOTE"
+          | "PURCHASE_ORDER"
+          | "VERBAL_AGREEMENT"
+          | null,
         promissoryNoteNumber: payload.promissoryNoteNumber
           ? String(payload.promissoryNoteNumber).trim()
           : null,
         promissoryNoteDate: payload.promissoryNoteDate || null,
-        // Clientes nuevos inician inactivos hasta revisión jurídica
-        isActive: false,
+        // Clientes nuevos inician activos pero en revisión jurídica
+        isActive: true,
       })
       .returning();
 
@@ -478,7 +548,9 @@ export async function POST(request: Request) {
       createdAt: new Date(),
     });
 
-    console.log(`📋 Cliente ${newClient.clientCode} creado en estado EN_REVISION`);
+    console.log(
+      `📋 Cliente ${newClient.clientCode} creado en estado EN_REVISION`,
+    );
 
     return Response.json(newClient, { status: 201 });
   } catch (e: unknown) {
@@ -532,28 +604,10 @@ export async function PUT(request: Request) {
     return new Response("Error al obtener datos del cliente", { status: 500 });
   }
 
-  if (
-    payload.priceClientType !== undefined &&
-    !["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"].includes(
-      String(payload.priceClientType).trim(),
-    )
-  ) {
-    return new Response("Tipo de cliente para precios COP inválido", {
-      status: 400,
-    });
-  }
-
   const patch: Partial<typeof clients.$inferInsert> = {};
 
   // IDENTIFICACIÓN
-  if (payload.name !== undefined)
-    patch.name = String(payload.name).trim();
-  if (payload.priceClientType !== undefined)
-    patch.priceClientType = String(payload.priceClientType).trim() as
-      | "AUTORIZADO"
-      | "MAYORISTA"
-      | "VIOMAR"
-      | "COLANTA";
+  if (payload.name !== undefined) patch.name = String(payload.name).trim();
   if (payload.identificationType !== undefined)
     patch.identificationType = String(payload.identificationType).trim() as
       | "CC"
@@ -567,31 +621,31 @@ export async function PUT(request: Request) {
     patch.dv = payload.dv ? String(payload.dv).trim() : null;
   if (payload.branch !== undefined)
     patch.branch = payload.branch ? String(payload.branch).trim() : null;
-  
+
   // DOCUMENTOS (determinados por identificationType)
   if (payload.identityDocumentUrl !== undefined)
-    patch.identityDocumentUrl = payload.identityDocumentUrl 
-      ? String(payload.identityDocumentUrl).trim() 
+    patch.identityDocumentUrl = payload.identityDocumentUrl
+      ? String(payload.identityDocumentUrl).trim()
       : null;
   if (payload.rutDocumentUrl !== undefined)
-    patch.rutDocumentUrl = payload.rutDocumentUrl 
-      ? String(payload.rutDocumentUrl).trim() 
+    patch.rutDocumentUrl = payload.rutDocumentUrl
+      ? String(payload.rutDocumentUrl).trim()
       : null;
   if (payload.commerceChamberDocumentUrl !== undefined)
-    patch.commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl 
-      ? String(payload.commerceChamberDocumentUrl).trim() 
+    patch.commerceChamberDocumentUrl = payload.commerceChamberDocumentUrl
+      ? String(payload.commerceChamberDocumentUrl).trim()
       : null;
   if (payload.passportDocumentUrl !== undefined)
-    patch.passportDocumentUrl = payload.passportDocumentUrl 
-      ? String(payload.passportDocumentUrl).trim() 
+    patch.passportDocumentUrl = payload.passportDocumentUrl
+      ? String(payload.passportDocumentUrl).trim()
       : null;
   if (payload.taxCertificateDocumentUrl !== undefined)
-    patch.taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl 
-      ? String(payload.taxCertificateDocumentUrl).trim() 
+    patch.taxCertificateDocumentUrl = payload.taxCertificateDocumentUrl
+      ? String(payload.taxCertificateDocumentUrl).trim()
       : null;
   if (payload.companyIdDocumentUrl !== undefined)
-    patch.companyIdDocumentUrl = payload.companyIdDocumentUrl 
-      ? String(payload.companyIdDocumentUrl).trim() 
+    patch.companyIdDocumentUrl = payload.companyIdDocumentUrl
+      ? String(payload.companyIdDocumentUrl).trim()
       : null;
 
   // FISCAL Y CONTACTO
@@ -649,6 +703,45 @@ export async function PUT(request: Request) {
       ? String(payload.extension).trim()
       : null;
 
+  if (payload.municipalityFiscal !== undefined)
+    patch.municipalityFiscal = payload.municipalityFiscal
+      ? String(payload.municipalityFiscal).trim()
+      : null;
+
+  if (payload.taxZone !== undefined) {
+    const normalizedTaxZone = String(payload.taxZone).trim().toUpperCase();
+
+    if (
+      normalizedTaxZone !== "CONTINENTAL" &&
+      normalizedTaxZone !== "FREE_ZONE" &&
+      normalizedTaxZone !== "SAN_ANDRES" &&
+      normalizedTaxZone !== "SPECIAL_REGIME"
+    ) {
+      return new Response("Tax zone inválida", { status: 400 });
+    }
+
+    patch.taxZone = normalizedTaxZone as
+      | "CONTINENTAL"
+      | "FREE_ZONE"
+      | "SAN_ANDRES"
+      | "SPECIAL_REGIME";
+  }
+
+  if (payload.paymentType !== undefined) {
+    const normalizedPaymentType = String(payload.paymentType)
+      .trim()
+      .toUpperCase();
+
+    if (
+      normalizedPaymentType !== "CASH" &&
+      normalizedPaymentType !== "CREDIT"
+    ) {
+      return new Response("Payment type inválido", { status: 400 });
+    }
+
+    patch.paymentType = normalizedPaymentType as "CASH" | "CREDIT";
+  }
+
   // Recalcular fullLandline si cambian componentes
   if (
     payload.localDialCode !== undefined ||
@@ -675,18 +768,92 @@ export async function PUT(request: Request) {
   if (payload.status !== undefined)
     patch.status = payload.status as "ACTIVO" | "INACTIVO" | "SUSPENDIDO";
   if (payload.hasCredit !== undefined) patch.hasCredit = payload.hasCredit;
+  if (payload.creditLimit !== undefined) {
+    if (
+      payload.creditLimit === null ||
+      String(payload.creditLimit).trim() === ""
+    ) {
+      patch.creditLimit = null;
+    } else {
+      const parsedCreditLimit = Number(payload.creditLimit);
+      if (!Number.isFinite(parsedCreditLimit) || parsedCreditLimit < 0) {
+        return new Response("El monto tope de crédito es inválido", {
+          status: 400,
+        });
+      }
+      patch.creditLimit = String(parsedCreditLimit);
+    }
+  }
   if (payload.promissoryNoteNumber !== undefined)
     patch.promissoryNoteNumber = payload.promissoryNoteNumber
       ? String(payload.promissoryNoteNumber).trim()
       : null;
+  if (payload.creditBackingType !== undefined) {
+    if (
+      payload.creditBackingType === null ||
+      String(payload.creditBackingType).trim() === ""
+    ) {
+      patch.creditBackingType = null;
+    } else {
+      const normalizedCreditBackingType = String(payload.creditBackingType)
+        .trim()
+        .toUpperCase();
+
+      if (
+        normalizedCreditBackingType !== "PROMISSORY_NOTE" &&
+        normalizedCreditBackingType !== "PURCHASE_ORDER" &&
+        normalizedCreditBackingType !== "VERBAL_AGREEMENT"
+      ) {
+        return new Response("Credit backing type inválido", { status: 400 });
+      }
+
+      patch.creditBackingType = normalizedCreditBackingType as
+        | "PROMISSORY_NOTE"
+        | "PURCHASE_ORDER"
+        | "VERBAL_AGREEMENT";
+    }
+  }
   if (payload.promissoryNoteDate !== undefined)
     patch.promissoryNoteDate = payload.promissoryNoteDate || null;
 
   if (payload.isActive !== undefined) patch.isActive = payload.isActive;
 
   try {
-    patch.isActive = false;
-    patch.status = "INACTIVO";
+    const effectiveHasCredit =
+      patch.hasCredit !== undefined
+        ? Boolean(patch.hasCredit)
+        : Boolean(currentClient.hasCredit);
+    const effectivePaymentType =
+      patch.paymentType !== undefined
+        ? patch.paymentType
+        : currentClient.paymentType;
+    const effectiveCreditLimit =
+      patch.creditLimit !== undefined
+        ? patch.creditLimit
+        : currentClient.creditLimit;
+    const effectiveCreditBackingType =
+      patch.creditBackingType !== undefined
+        ? patch.creditBackingType
+        : currentClient.creditBackingType;
+
+    const effectiveCreditLimitNumber =
+      effectiveCreditLimit === null ||
+      String(effectiveCreditLimit).trim() === ""
+        ? null
+        : Number(effectiveCreditLimit);
+
+    if (
+      effectivePaymentType === "CREDIT" &&
+      effectiveHasCredit &&
+      (!Number.isFinite(effectiveCreditLimitNumber) ||
+        (effectiveCreditLimitNumber ?? 0) <= 0 ||
+        !effectiveCreditBackingType)
+    ) {
+      return new Response(
+        "Si paymentType es CREDIT y hasCredit es true, creditLimit debe ser mayor a 0 y creditBackingType es obligatorio",
+        { status: 400 },
+      );
+    }
 
     if (patch.identification) {
       const duplicatedClient = await db
@@ -728,26 +895,20 @@ export async function PUT(request: Request) {
 
       if (changedFields.length > 0) {
         try {
-          // Registrar automáticamente EN_REVISION y establecer isActive = false, status = INACTIVO
+          // Registrar automáticamente EN_REVISION
           await registerAutoRevisionOnClientChange(
             String(id),
             updated[0].name,
-            changedFields
+            changedFields,
           );
 
-          // Actualizar isActive a false y status a INACTIVO por el cambio automático
-          await db
-            .update(clients)
-            .set({ isActive: false, status: "INACTIVO" })
-            .where(eq(clients.id, String(id)));
-
           console.log(
-            `⚠️ Cliente ${id} enviado a revisión automáticamente. Campos modificados: ${changedFields.join(", ")}`
+            `⚠️ Cliente ${id} enviado a revisión automáticamente. Campos modificados: ${changedFields.join(", ")}`,
           );
         } catch (revisionError) {
           console.error(
             "Advertencia: No se pudo registrar revisión automática:",
-            revisionError
+            revisionError,
           );
           // No lanzar error, solo registrar la advertencia
         }

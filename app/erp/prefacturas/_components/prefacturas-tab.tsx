@@ -30,6 +30,7 @@ import { Select, SelectItem } from "@heroui/select";
 import NextLink from "next/link";
 import {
   BsEye,
+  BsCheck2Circle,
   BsPiggyBank,
   BsPencilSquare,
   BsPlusCircle,
@@ -89,27 +90,47 @@ type PrefacturaAdvanceDetail = {
   advancePaymentImageUrl?: string | null;
 };
 
+type OrderDispatchPreview = {
+  id: string;
+  orderCode: string;
+  status: string;
+  total: string | null;
+  shippingFee?: string | null;
+};
+
+type ReadyDispatchPreview = {
+  prefacturaCode: string;
+  orderId: string;
+  orderCode: string;
+  currentStatus: string;
+  targetStatus: "APROBACION" | "PROGRAMACION" | null;
+  reason: string;
+  paidPercent: number;
+  paidTotal: number;
+  orderTotal: number;
+};
+
 const documentTypeOptions = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "All" },
   { value: "F", label: "F" },
   { value: "R", label: "R" },
 ];
 
 const statusOptions = [
-  { value: "all", label: "Todos" },
-  { value: "PENDIENTE_CONTABILIDAD", label: "Pendiente contabilidad" },
-  { value: "APROBACION", label: "Aprobación" },
-  { value: "PROGRAMACION", label: "Programación" },
-  { value: "PENDIENTE", label: "Pendiente" },
-  { value: "APROBADA", label: "Aprobada" },
-  { value: "CANCELADA", label: "Cancelada" },
-  { value: "ANULADA", label: "Anulada" },
+  { value: "all", label: "All" },
+  { value: "PENDIENTE_CONTABILIDAD", label: "Pending accounting" },
+  { value: "APROBACION", label: "Approval" },
+  { value: "PROGRAMACION", label: "Scheduling" },
+  { value: "PENDIENTE", label: "Pending" },
+  { value: "APROBADA", label: "Approved" },
+  { value: "CANCELADA", label: "Cancelled" },
+  { value: "ANULADA", label: "Voided" },
 ];
 
 const typeOptions = [
-  { value: "all", label: "Todos" },
-  { value: "VN", label: "Nacional" },
-  { value: "VI", label: "Internacional" },
+  { value: "all", label: "All" },
+  { value: "VN", label: "National" },
+  { value: "VI", label: "International" },
   { value: "VT", label: "VT" },
   { value: "VW", label: "VW" },
 ];
@@ -190,6 +211,7 @@ function formatDate(value: string | null | undefined) {
 }
 
 export function PrefacturasTab({
+  canChangeStatus,
   canCreate,
   canEdit,
   canDelete,
@@ -197,6 +219,7 @@ export function PrefacturasTab({
   lockStatusFilter = false,
   initialOrderStatus = "all",
 }: {
+  canChangeStatus: boolean;
   canCreate: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -253,6 +276,69 @@ export function PrefacturasTab({
   const [advanceDate, setAdvanceDate] = useState("");
   const [advanceProofImageUrl, setAdvanceProofImageUrl] = useState("");
 
+  const [readyModalOpen, setReadyModalOpen] = useState(false);
+  const [readyLoading, setReadyLoading] = useState(false);
+  const [readySubmitting, setReadySubmitting] = useState(false);
+  const [readyPreview, setReadyPreview] = useState<ReadyDispatchPreview | null>(
+    null,
+  );
+
+  const resolveTargetStatus = (
+    currentStatusRaw: string,
+    paidPercent: number,
+  ): { targetStatus: "APROBACION" | "PROGRAMACION" | null; reason: string } => {
+    const currentStatus = String(currentStatusRaw ?? "")
+      .trim()
+      .toUpperCase();
+    const isPaidAtLeast50 = paidPercent >= 50;
+
+    if (
+      [
+        "PROGRAMACION",
+        "PRODUCCION",
+        "ATRASADO",
+        "FINALIZADO",
+        "ENTREGADO",
+        "CANCELADO",
+      ].includes(currentStatus)
+    ) {
+      return {
+        targetStatus: null,
+        reason: `The order is already in ${currentStatus} and does not require this manual shipment.`,
+      };
+    }
+
+    if (isPaidAtLeast50) {
+      if (currentStatus === "APROBACION") {
+        return {
+          targetStatus: "PROGRAMACION",
+          reason:
+            "The confirmed advance is 50% or more, it will be sent to Scheduling.",
+        };
+      }
+
+      return {
+        targetStatus: "APROBACION",
+        reason:
+          "Although the advance is 50% or more, the workflow requires passing through Approval before Scheduling.",
+      };
+    }
+
+    if (currentStatus === "APROBACION") {
+      return {
+        targetStatus: null,
+        reason:
+          "The order is already in Approval. When it meets the rules, you can send it to Scheduling.",
+      };
+    }
+
+    return {
+      targetStatus: "APROBACION",
+      reason:
+        "With confirmed advance less than 50%, the order should be sent to Approval.",
+    };
+  };
+
   useEffect(() => {
     apiJson<{ items: BankOption[] }>("/api/banks?page=1&pageSize=200")
       .then((res) =>
@@ -262,16 +348,16 @@ export function PrefacturasTab({
   }, []);
 
   const emptyContent = useMemo(() => {
-    if (loading) return "";
+    if (data) return "";
     if (
       q.trim() ||
       status !== "all" ||
       type !== "all" ||
       documentType !== "all"
     )
-      return "Sin resultados";
+      return "No results";
 
-    return "Sin prefacturas";
+    return "No prefactures";
   }, [documentType, loading, q, status, type]);
 
   const removePrefactura = async () => {
@@ -283,7 +369,7 @@ export function PrefacturasTab({
         method: "DELETE",
       });
 
-      toast.success("Prefactura eliminada");
+      toast.success("Prefacture deleted");
       setPendingDelete(null);
       refresh();
     } catch (error) {
@@ -334,25 +420,25 @@ export function PrefacturasTab({
     const amount = Number(advanceAmount || 0);
 
     if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Ingresa un monto abonado válido");
+      toast.error("Enter a valid paid amount");
 
       return;
     }
 
     if (advanceMethod === "TRANSFERENCIA" && !advanceBankId.trim()) {
-      toast.error("Selecciona el banco para la transferencia");
+      toast.error("Select the bank for the transfer");
 
       return;
     }
 
     if (advanceMethod === "TRANSFERENCIA" && !advanceReferenceNumber.trim()) {
-      toast.error("Ingresa el número de referencia de la transferencia");
+      toast.error("Enter the transfer reference number");
 
       return;
     }
 
     if (advanceMethod === "TRANSFERENCIA" && !advanceProofImageUrl.trim()) {
-      toast.error("Adjunta el comprobante para registrar la transferencia");
+      toast.error("Attach the proof to register the transfer");
 
       return;
     }
@@ -382,10 +468,10 @@ export function PrefacturasTab({
       });
 
       if (advanceMethod === "EFECTIVO") {
-        toast.success("Efectivo registrado — el pago fue confirmado en caja");
+        toast.success("Cash registered — payment confirmed at cashier");
       } else {
         toast.success(
-          "Transferencia registrada como NO CONSIGNADO — pendiente de verificación en contabilidad",
+          "Transfer registered as NOT DEPOSITED — pending accounting verification",
         );
       }
       setAdvanceModalOpen(false);
@@ -399,34 +485,113 @@ export function PrefacturasTab({
     }
   };
 
+  const openReadyDispatchModal = async (row: PrefacturaRow) => {
+    if (!row.orderId) {
+      toast.error("This prefacture has no associated order");
+
+      return;
+    }
+
+    setReadyModalOpen(true);
+    setReadyLoading(true);
+    setReadyPreview(null);
+
+    try {
+      const [orderInfo, paymentSummary] = await Promise.all([
+        apiJson<OrderDispatchPreview>(`/api/orders/${row.orderId}`),
+        apiJson<{ orderTotal?: string | null; paidTotal?: string | null }>(
+          `/api/orders/${row.orderId}/payments?page=1&pageSize=1`,
+        ),
+      ]);
+
+      const orderTotal = Math.max(
+        0,
+        Number(orderInfo.total ?? 0) + Number(orderInfo.shippingFee ?? 0),
+      );
+      const paidTotal = Math.max(0, Number(paymentSummary.paidTotal ?? 0));
+      const paidPercent =
+        orderTotal > 0 ? Math.max(0, (paidTotal / orderTotal) * 100) : 0;
+      const target = resolveTargetStatus(
+        String(orderInfo.status ?? ""),
+        paidPercent,
+      );
+
+      setReadyPreview({
+        prefacturaCode: row.prefacturaCode,
+        orderId: row.orderId,
+        orderCode: row.orderCode ?? orderInfo.orderCode,
+        currentStatus: String(orderInfo.status ?? "PENDIENTE"),
+        targetStatus: target.targetStatus,
+        reason: target.reason,
+        paidPercent,
+        paidTotal,
+        orderTotal,
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+      setReadyModalOpen(false);
+    } finally {
+      setReadyLoading(false);
+    }
+  };
+
+  const confirmReadyDispatch = async () => {
+    if (!readyPreview || !readyPreview.targetStatus || readySubmitting) return;
+
+    try {
+      setReadySubmitting(true);
+      await apiJson("/api/orders", {
+        method: "PUT",
+        body: JSON.stringify({
+          id: readyPreview.orderId,
+          status: readyPreview.targetStatus,
+        }),
+      });
+
+      toast.success(
+        readyPreview.targetStatus === "PROGRAMACION"
+          ? "Order sent to Scheduling"
+          : "Order sent to Approval",
+      );
+
+      setReadyModalOpen(false);
+      setReadyPreview(null);
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setReadySubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
-            placeholder="Código prefactura, cotización o pedido…"
+            placeholder="Prefacture code, quotation or order…"
             value={q}
             onValueChange={setQ}
           />
           <FilterSelect
             className="sm:w-48"
             isDisabled={lockStatusFilter}
-            label="Estado"
+            label="Status"
             options={statusOptions}
             value={status}
             onChange={setStatus}
           />
           <FilterSelect
             className="sm:w-48"
-            label="Tipo"
+            label="Type"
             options={typeOptions}
             value={type}
             onChange={setType}
           />
           <FilterSelect
             className="sm:w-40"
-            label="Documento"
+            label="Document"
             options={documentTypeOptions}
             value={documentType}
             onChange={setDocumentType}
@@ -437,44 +602,44 @@ export function PrefacturasTab({
           {canCreate ? (
             <Button
               color="primary"
-              onPress={() => router.push("/erp/prefacturas/new")}
+              onPress={() => router.push("/erp/pre-invoices/new")}
             >
-              <BsPlusCircle /> Nueva prefactura
+              <BsPlusCircle /> New prefacture
             </Button>
           ) : null}
           <Button variant="flat" onPress={refresh}>
-            Refrescar
+            Refresh
           </Button>
         </div>
       </div>
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Prefacturas"
+          ariaLabel="Prefactures"
           headers={[
-            "Código",
-            "Cotización",
-            "Pedido",
-            "Tipo",
-            "Cliente",
-            "Estado",
+            "Code",
+            "Quotation",
+            "Order",
+            "Type",
+            "Client",
+            "Status",
             "Total",
-            "Creada",
-            "Acciones",
+            "Created",
+            "Actions",
           ]}
         />
       ) : (
-        <Table aria-label="Prefacturas">
+        <Table aria-label="Prefactures">
           <TableHeader>
-            <TableColumn>Código</TableColumn>
-            <TableColumn>Cotización</TableColumn>
-            <TableColumn>Pedido</TableColumn>
-            <TableColumn>Tipo</TableColumn>
-            <TableColumn>Cliente</TableColumn>
-            <TableColumn>Estado</TableColumn>
+            <TableColumn>Code</TableColumn>
+            <TableColumn>Quotation</TableColumn>
+            <TableColumn>Order</TableColumn>
+            <TableColumn>Type</TableColumn>
+            <TableColumn>Client</TableColumn>
+            <TableColumn>Status</TableColumn>
             <TableColumn>Total</TableColumn>
-            <TableColumn>Creada</TableColumn>
-            <TableColumn>Acciones</TableColumn>
+            <TableColumn>Created</TableColumn>
+            <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(row) => (
@@ -503,7 +668,7 @@ export function PrefacturasTab({
                         <BsThreeDotsVertical />
                       </Button>
                     </DropdownTrigger>
-                    <DropdownMenu aria-label="Acciones prefactura">
+                    <DropdownMenu aria-label="Prefacture actions">
                       {row.orderId ? (
                         <DropdownItem
                           key="view"
@@ -511,7 +676,7 @@ export function PrefacturasTab({
                           href={`/erp/orders/${row.orderId}/detail`}
                           startContent={<BsEye />}
                         >
-                          Ver pedido
+                          View order
                         </DropdownItem>
                       ) : null}
                       {canEdit ? (
@@ -519,10 +684,10 @@ export function PrefacturasTab({
                           key="edit"
                           startContent={<BsPencilSquare />}
                           onPress={() =>
-                            router.push(`/erp/prefacturas/${row.id}/edit`)
+                            router.push(`/erp/pre-invoices/${row.id}/edit`)
                           }
                         >
-                          Editar
+                          Edit
                         </DropdownItem>
                       ) : null}
                       {canEdit ? (
@@ -531,7 +696,16 @@ export function PrefacturasTab({
                           startContent={<BsPiggyBank />}
                           onPress={() => openAdvanceModal(row)}
                         >
-                          Realizar anticipo
+                          Pay advance
+                        </DropdownItem>
+                      ) : null}
+                      {canChangeStatus && row.orderId ? (
+                        <DropdownItem
+                          key="ready-dispatch"
+                          startContent={<BsCheck2Circle />}
+                          onPress={() => openReadyDispatchModal(row)}
+                        >
+                          Order / designs ready
                         </DropdownItem>
                       ) : null}
                       {canDelete ? (
@@ -542,7 +716,7 @@ export function PrefacturasTab({
                           startContent={<BsTrash />}
                           onPress={() => setPendingDelete(row)}
                         >
-                          Eliminar
+                          Delete
                         </DropdownItem>
                       ) : null}
                     </DropdownMenu>
@@ -562,29 +736,29 @@ export function PrefacturasTab({
             variant="flat"
             onPress={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Anterior
+            Previous
           </Button>
           <Button
             isDisabled={!data?.hasNextPage || loading}
             variant="flat"
             onPress={() => setPage((p) => p + 1)}
           >
-            Siguiente
+            Next
           </Button>
         </div>
       </div>
 
       <ConfirmActionModal
-        cancelLabel="Cancelar"
-        confirmLabel="Eliminar"
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
         description={
           pendingDelete
-            ? `¿Eliminar la prefactura ${pendingDelete.prefacturaCode}?`
+            ? `Delete prefacture ${pendingDelete.prefacturaCode}?`
             : undefined
         }
         isLoading={deleting}
         isOpen={Boolean(pendingDelete)}
-        title="Confirmar eliminación"
+        title="Confirm deletion"
         onConfirm={removePrefactura}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
@@ -603,15 +777,15 @@ export function PrefacturasTab({
         }}
       >
         <ModalContent>
-          <ModalHeader>Registrar anticipo</ModalHeader>
+          <ModalHeader>Register advance</ModalHeader>
           <ModalBody>
             {advanceLoading ? (
-              <p className="text-sm text-default-500">Cargando prefactura...</p>
+              <p className="text-sm text-default-500">Loading prefacture...</p>
             ) : (
               <div className="space-y-3">
                 <div className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm">
                   <div>
-                    <span className="text-default-500">Prefactura:</span>{" "}
+                    <span className="text-default-500">Prefacture:</span>{" "}
                     <strong>
                       {advanceDetail?.prefacturaCode ??
                         advanceTarget?.prefacturaCode ??
@@ -619,7 +793,7 @@ export function PrefacturasTab({
                     </strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Meta 50%:</span>{" "}
+                    <span className="text-default-500">50% goal:</span>{" "}
                     <strong>
                       {formatMoneyByCurrency(
                         Number(
@@ -632,7 +806,7 @@ export function PrefacturasTab({
                 </div>
 
                 <Input
-                  label="Monto abonado"
+                  label="Paid amount"
                   placeholder="0"
                   value={advanceAmount}
                   variant="bordered"
@@ -642,7 +816,7 @@ export function PrefacturasTab({
                 />
 
                 <Select
-                  label="Método de pago"
+                  label="Payment method"
                   selectedKeys={[advanceMethod]}
                   variant="bordered"
                   onSelectionChange={(keys) => {
@@ -653,12 +827,12 @@ export function PrefacturasTab({
                     );
                   }}
                 >
-                  <SelectItem key="EFECTIVO">Efectivo</SelectItem>
-                  <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
+                  <SelectItem key="EFECTIVO">Cash</SelectItem>
+                  <SelectItem key="TRANSFERENCIA">Transfer</SelectItem>
                 </Select>
 
                 <Select
-                  label="Moneda"
+                  label="Currency"
                   selectedKeys={[advanceCurrency]}
                   variant="bordered"
                   onSelectionChange={(keys) => {
@@ -674,7 +848,7 @@ export function PrefacturasTab({
                 {advanceMethod === "TRANSFERENCIA" ? (
                   <>
                     <Select
-                      label="Banco"
+                      label="Bank"
                       selectedKeys={advanceBankId ? [advanceBankId] : []}
                       variant="bordered"
                       onSelectionChange={(keys) => {
@@ -689,8 +863,8 @@ export function PrefacturasTab({
                     </Select>
 
                     <Input
-                      label="Número de referencia"
-                      placeholder="Ej: 8457712201"
+                      label="Reference number"
+                      placeholder="E.g: 8457712201"
                       value={advanceReferenceNumber}
                       variant="bordered"
                       onValueChange={setAdvanceReferenceNumber}
@@ -699,7 +873,7 @@ export function PrefacturasTab({
                 ) : null}
 
                 <Input
-                  label="Fecha de pago"
+                  label="Payment date"
                   type="date"
                   value={advanceDate}
                   variant="bordered"
@@ -711,11 +885,11 @@ export function PrefacturasTab({
                   errorMessage={
                     advanceMethod === "TRANSFERENCIA" &&
                     !advanceProofImageUrl.trim()
-                      ? "El comprobante es obligatorio para transferencias"
+                      ? "The proof is required for transfers"
                       : undefined
                   }
                   isRequired={advanceMethod === "TRANSFERENCIA"}
-                  label="Comprobante del anticipo"
+                  label="Advance proof"
                   uploadFolder="prefacturas/anticipos"
                   value={advanceProofImageUrl}
                   onChange={setAdvanceProofImageUrl}
@@ -726,7 +900,7 @@ export function PrefacturasTab({
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setAdvanceModalOpen(false)}>
-              Cancelar
+              Cancel
             </Button>
             <Button
               color="primary"
@@ -734,7 +908,82 @@ export function PrefacturasTab({
               isLoading={advanceSubmitting}
               onPress={saveAdvancePayment}
             >
-              Guardar anticipo
+              Save advance
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={readyModalOpen}
+        onOpenChange={(open) => {
+          setReadyModalOpen(open);
+          if (!open) setReadyPreview(null);
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>Confirm order shipment</ModalHeader>
+          <ModalBody>
+            {readyLoading ? (
+              <p className="text-sm text-default-500">Loading preview...</p>
+            ) : !readyPreview ? (
+              <p className="text-sm text-default-500">
+                Could not load preview.
+              </p>
+            ) : (
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-default-500">Prefacture:</span>{" "}
+                  <strong>{readyPreview.prefacturaCode}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Order:</span>{" "}
+                  <strong>{readyPreview.orderCode || "-"}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Current status:</span>{" "}
+                  <strong>{readyPreview.currentStatus}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Order total:</span>{" "}
+                  <strong>{formatMoney(readyPreview.orderTotal)}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Confirmed paid:</span>{" "}
+                  <strong>{formatMoney(readyPreview.paidTotal)}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Paid percentage:</span>{" "}
+                  <strong>{readyPreview.paidPercent.toFixed(0)}%</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Destination:</span>{" "}
+                  <strong>
+                    {readyPreview.targetStatus ?? "Not applicable"}
+                  </strong>
+                </div>
+                <div className="rounded-medium border border-default-200 bg-default-50 p-2 text-default-700">
+                  {readyPreview.reason}
+                </div>
+              </div>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setReadyModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={
+                readyLoading ||
+                readySubmitting ||
+                !readyPreview ||
+                !readyPreview.targetStatus
+              }
+              isLoading={readySubmitting}
+              onPress={confirmReadyDispatch}
+            >
+              Confirm shipment
             </Button>
           </ModalFooter>
         </ModalContent>

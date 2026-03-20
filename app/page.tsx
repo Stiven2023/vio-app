@@ -1,5 +1,5 @@
-import { HomeModuleSelector } from "@/app/_components/home-module-selector";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return <HomeModuleSelector />;
+  redirect("/home");
 }
