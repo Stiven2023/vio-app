@@ -30,9 +30,9 @@ export default async function ClientsPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Clientes</h1>
+      <h1 className="text-2xl font-bold">Clients</h1>
       <p className="text-default-600 mt-1">
-        Consulta y gestiona la información de clientes.
+        View and manage client information.
       </p>
       <div className="mt-6">
         <ClientsTab

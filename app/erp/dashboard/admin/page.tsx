@@ -167,19 +167,19 @@ export default async function AdminDashboardPage() {
     <div className="container mx-auto max-w-7xl px-6 pt-16 pb-10">
       <div className="rounded-large border border-default-200 bg-content1 p-5 shadow-sm">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold">Dashboard Administrativo</h1>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
           <p className="text-default-600">
-            Vista ejecutiva de operación, ventas y rendimiento diario.
+            Executive view of operations, sales and daily performance.
           </p>
         </div>
       </div>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Métricas clave</h2>
+        <h2 className="text-lg font-semibold">Key metrics</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-2">
-              <div className="text-sm text-default-500">Pedidos totales</div>
+              <div className="text-sm text-default-500">Total orders</div>
               <div className="text-2xl font-semibold">{totalOrders}</div>
               <div className="flex flex-wrap gap-2 text-xs text-default-500">
                 {Array.from(statusTotals.entries()).map(([status, value]) => (
@@ -193,22 +193,22 @@ export default async function AdminDashboardPage() {
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-2">
               <div className="text-sm text-default-500">
-                Notificaciones sin leer
+                Unread notifications
               </div>
               <div className="text-2xl font-semibold">{unreadCount}</div>
               <div className="text-xs text-default-400">
-                Incluye todas las áreas.
+                Includes all areas.
               </div>
             </CardBody>
           </Card>
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-2">
-              <div className="text-sm text-default-500">Ventas del mes</div>
+              <div className="text-sm text-default-500">Monthly sales</div>
               <div className="text-2xl font-semibold">
                 {salesFormatter.format(monthSalesValue)}
               </div>
               <div className="text-xs text-default-400">
-                Pagos confirmados del mes actual.
+                Confirmed payments for the current month.
               </div>
             </CardBody>
           </Card>
@@ -234,7 +234,7 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section className="mt-6">
-        <h2 className="text-lg font-semibold">Accesos rápidos</h2>
+        <h2 className="text-lg font-semibold">Quick access</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {quickActions.map((action) => (
             <Card key={action.href} className="border border-default-200 transition-transform hover:-translate-y-0.5">
@@ -253,7 +253,7 @@ export default async function AdminDashboardPage() {
                   </div>
                 </div>
                 <Button as={NextLink} href={action.href} size="sm" variant="flat">
-                  Ir ahora
+                  Go now
                 </Button>
               </CardBody>
             </Card>
@@ -262,21 +262,21 @@ export default async function AdminDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Analítica visual</h2>
+        <h2 className="text-lg font-semibold">Visual analytics</h2>
         <div className="mt-4">
           <AdminCharts />
         </div>
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Reportes</h2>
+        <h2 className="text-lg font-semibold">Reports</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-3">
               <div>
-                <div className="text-sm font-semibold">Inventario actual</div>
+                <div className="text-sm font-semibold">Current inventory</div>
                 <div className="text-xs text-default-500">
-                  Snapshot del stock disponible.
+                  Snapshot of available stock.
                 </div>
               </div>
               <Button
@@ -285,14 +285,14 @@ export default async function AdminDashboardPage() {
                 size="sm"
                 variant="flat"
               >
-                Descargar Excel
+                Download Excel
               </Button>
             </CardBody>
           </Card>
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-3">
               <div>
-                <div className="text-sm font-semibold">Ventas del mes</div>
+                <div className="text-sm font-semibold">Monthly sales</div>
                 <div className="text-xs text-default-500">
                   {reportYear}-{reportMonthLabel}
                 </div>
@@ -303,16 +303,16 @@ export default async function AdminDashboardPage() {
                 size="sm"
                 variant="flat"
               >
-                Descargar Excel
+                Download Excel
               </Button>
             </CardBody>
           </Card>
           <Card className="border border-default-200">
             <CardBody className="flex flex-col gap-3">
               <div>
-                <div className="text-sm font-semibold">Pedidos del mes</div>
+                <div className="text-sm font-semibold">Monthly orders</div>
                 <div className="text-xs text-default-500">
-                  Incluye top asesor y recaudo.
+                  Includes top advisor and collections.
                 </div>
               </div>
               <Button
@@ -321,7 +321,7 @@ export default async function AdminDashboardPage() {
                 size="sm"
                 variant="flat"
               >
-                Descargar Excel
+                Download Excel
               </Button>
             </CardBody>
           </Card>

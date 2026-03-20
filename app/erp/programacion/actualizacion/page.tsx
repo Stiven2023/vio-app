@@ -18,8 +18,8 @@ export default async function ProgramacionActualizacionPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Programación - Actualización</h1>
-      <p className="text-default-600 mt-1">Pedidos agrupados por pedido con cambios luego de entrar a producción.</p>
+      <h1 className="text-2xl font-bold">Scheduling - Update</h1>
+      <p className="text-default-600 mt-1">Orders grouped by order with changes after entering production.</p>
       <div className="mt-6">
         <ProgramacionItemsTable
           process="PRODUCCION"
@@ -29,9 +29,9 @@ export default async function ProgramacionActualizacionPage() {
           actualizacionQueue="PROGRAMACION"
           groupByOrder={false}
           labels={{
-            principal: "Programación principal",
-            bodega: "Programación bodega",
-            compras: "Programación compras",
+            principal: "Main Scheduling",
+            bodega: "Warehouse Scheduling",
+            compras: "Purchasing Scheduling",
           }}
         />
       </div>

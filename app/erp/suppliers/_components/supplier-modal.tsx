@@ -37,29 +37,29 @@ import {
 } from "./supplier-modal-sections";
 
 const identificationTypes = [
-  { value: "CC", label: "C├®dula de Ciudadan├¡a" },
+  { value: "CC", label: "National ID" },
   { value: "NIT", label: "NIT" },
-  { value: "CE", label: "C├®dula de Extranjer├¡a" },
-  { value: "PAS", label: "Pasaporte" },
-  { value: "EMPRESA_EXTERIOR", label: "Empresa Exterior" },
+  { value: "CE", label: "Foreign ID" },
+  { value: "PAS", label: "Passport" },
+  { value: "EMPRESA_EXTERIOR", label: "Foreign Company" },
 ];
 
 const taxRegimes = [
-  { value: "REGIMEN_COMUN", label: "R├®gimen Com├║n" },
-  { value: "REGIMEN_SIMPLIFICADO", label: "R├®gimen Simplificado" },
-  { value: "NO_RESPONSABLE", label: "No Responsable" },
+  { value: "REGIMEN_COMUN", label: "Common Regime" },
+  { value: "REGIMEN_SIMPLIFICADO", label: "Simplified Regime" },
+  { value: "NO_RESPONSABLE", label: "Non-liable" },
 ];
 
 const supplierSchema = z.object({
-  name: z.string().trim().min(1, "Nombre requerido"),
-  identificationType: z.string().min(1, "Tipo de identificaci├│n requerido"),
-  identification: z.string().trim().min(1, "Identificaci├│n requerida"),
+  name: z.string().trim().min(1, "Name required"),
+  identificationType: z.string().min(1, "ID type required"),
+  identification: z.string().trim().min(1, "ID required"),
   dv: z.string().optional(),
   branch: z.string(),
-  taxRegime: z.string().min(1, "R├®gimen fiscal requerido"),
-  contactName: z.string().trim().min(1, "Nombre de contacto requerido"),
-  email: z.string().trim().email("Email inv├ílido"),
-  address: z.string().trim().min(1, "Direcci├│n requerida"),
+  taxRegime: z.string().min(1, "Tax regime required"),
+  contactName: z.string().trim().min(1, "Contact name required"),
+  email: z.string().trim().email("Invalid email"),
+  address: z.string().trim().min(1, "Address required"),
   postalCode: z.string().optional(),
   country: z.string(),
   department: z.string(),

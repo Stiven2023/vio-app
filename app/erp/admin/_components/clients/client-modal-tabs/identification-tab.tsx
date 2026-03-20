@@ -28,14 +28,14 @@ export function IdentificationTab({
 }: Props) {
   const identificationHint =
     form.identificationType === "CC"
-      ? "CC: solo números, entre 6 y 10 dígitos"
+      ? "National ID: numbers only, 6 to 10 digits"
       : form.identificationType === "NIT"
-        ? "NIT: solo números, entre 8 y 12 dígitos"
+        ? "NIT: numbers only, 8 to 12 digits"
         : form.identificationType === "CE"
-          ? "CE: alfanumérico, entre 5 y 15 caracteres"
+          ? "Foreign ID: alphanumeric, 5 to 15 characters"
           : form.identificationType === "PAS"
-            ? "Pasaporte: alfanumérico, entre 5 y 20 caracteres"
-            : "Empresa exterior: mínimo 3 caracteres";
+            ? "Passport: alphanumeric, 5 to 20 characters"
+            : "Foreign company: minimum 3 characters";
 
   const identificationInputMode =
     form.identificationType === "CC" || form.identificationType === "NIT"
@@ -47,13 +47,13 @@ export function IdentificationTab({
   return (
     <div className="space-y-4 py-4">
       <Select
-        description="Define el código: CN (Nacional), CE (Extranjero), EM (Empleado)"
+        description="Defines the code: CN (National), CE (Foreign), EM (Employee)"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.clientType}
         isDisabled={isEditing}
         isInvalid={Boolean(errors.clientType)}
         isRequired
-        label="Tipo de cliente"
+        label="Client type"
         selectedKeys={[form.clientType]}
         onChange={(e) => setForm((s) => ({ ...s, clientType: e.target.value }))}
       >
@@ -63,12 +63,12 @@ export function IdentificationTab({
       </Select>
 
       <Input
-        description="Campo crítico requerido"
+        description="Critical required field"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.name}
         isInvalid={Boolean(errors.name)}
         isRequired
-        label="Nombre tercero"
+        label="Third party name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.name}
         onValueChange={(v) => setForm((s) => ({ ...s, name: v }))}
@@ -79,7 +79,7 @@ export function IdentificationTab({
           errorMessage={errors.identificationType}
           isInvalid={Boolean(errors.identificationType)}
           isRequired
-          label="Tipo de identificación"
+          label="ID type"
           selectedKeys={[form.identificationType]}
           onChange={(e) =>
             setForm((s) => ({
@@ -99,21 +99,21 @@ export function IdentificationTab({
           isInvalid={Boolean(errors.identification)}
           isRequired
           inputMode={identificationInputMode}
-          label="Identificación"
+          label="Identification"
           value={form.identification}
           onBlur={onIdentificationBlur}
           onValueChange={(v) => setForm((s) => ({ ...s, identification: v }))}
         />
 
         <Input
-          label="Dígito verificación"
+          label="Verification digit"
           maxLength={1}
           value={form.dv}
           onValueChange={(v) => setForm((s) => ({ ...s, dv: v }))}
         />
 
         <Input
-          label="Sucursal"
+          label="Branch"
           value={form.branch}
           onValueChange={(v) => setForm((s) => ({ ...s, branch: v }))}
         />
@@ -122,7 +122,7 @@ export function IdentificationTab({
       {showDocuments && (
         <div className="space-y-4 border-t border-default-200 pt-4">
           <h3 className="text-sm font-semibold text-foreground">
-            Documentos requeridos
+            Required documents
           </h3>
           <IdentificationDocumentsSection
             autoUpload={false}

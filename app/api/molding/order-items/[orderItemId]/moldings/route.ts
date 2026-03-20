@@ -1,0 +1,180 @@
+import { and, eq, sql } from "drizzle-orm";
+
+import { db } from "@/src/db";
+import {
+  moldingTemplates,
+  orderItemMoldings,
+  orderItems,
+} from "@/src/db/schema";
+import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import { dbErrorResponse } from "@/src/utils/db-errors";
+import { requirePermission } from "@/src/utils/permission-middleware";
+import { rateLimit } from "@/src/utils/rate-limit";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ orderItemId: string }> },
+) {
+  const limited = rateLimit(request, {
+    key: "order-item-moldings:get",
+    limit: 150,
+    windowMs: 60_000,
+  });
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "VER_MOLDERIA");
+  if (forbidden) return forbidden;
+
+  const { orderItemId } = await params;
+
+  try {
+    const moldings = await db
+      .select()
+      .from(orderItemMoldings)
+      .where(eq(orderItemMoldings.orderItemId, orderItemId))
+      .orderBy(orderItemMoldings.combinationOrder);
+
+    return Response.json({ items: moldings });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("Could not retrieve order item moldings", { status: 500 });
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ orderItemId: string }> },
+) {
+  const limited = rateLimit(request, {
+    key: "order-item-moldings:post",
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "EDITAR_MOLDERIA");
+  if (forbidden) return forbidden;
+
+  const { orderItemId } = await params;
+  const employeeId = await getEmployeeIdFromRequest(request);
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return new Response("Invalid JSON body", { status: 400 });
+  }
+
+  // Verify the order item exists
+  const [item] = await db
+    .select({ id: orderItems.id })
+    .from(orderItems)
+    .where(eq(orderItems.id, orderItemId))
+    .limit(1);
+
+  if (!item) {
+    return new Response("Order item not found", { status: 404 });
+  }
+
+  const moldingTemplateId =
+    typeof body.moldingTemplateId === "string" && body.moldingTemplateId.trim()
+      ? body.moldingTemplateId.trim()
+      : null;
+
+  // Determine next combination order
+  const [{ maxOrder }] = await db
+    .select({
+      maxOrder: sql<number>`coalesce(max(${orderItemMoldings.combinationOrder}), 0)`,
+    })
+    .from(orderItemMoldings)
+    .where(eq(orderItemMoldings.orderItemId, orderItemId));
+
+  const combinationOrder = (maxOrder ?? 0) + 1;
+
+  // If a template is provided, snapshot its fields
+  let templateSnapshot: Record<string, unknown> = {};
+  if (moldingTemplateId) {
+    const [tmpl] = await db
+      .select()
+      .from(moldingTemplates)
+      .where(eq(moldingTemplates.id, moldingTemplateId))
+      .limit(1);
+
+    if (tmpl) {
+      templateSnapshot = {
+        moldingCode: tmpl.moldingCode,
+        version: tmpl.version,
+        garmentType: tmpl.garmentType,
+        garmentSubtype: tmpl.garmentSubtype,
+        designDetail: tmpl.designDetail,
+        fabric: tmpl.fabric,
+        color: tmpl.color,
+        gender: tmpl.gender,
+        imageUrl: tmpl.imageUrl,
+        clothingImageOneUrl: tmpl.clothingImageOneUrl,
+        clothingImageTwoUrl: tmpl.clothingImageTwoUrl,
+        logoImageUrl: tmpl.logoImageUrl,
+        process: tmpl.process,
+        estimatedLeadDays: tmpl.estimatedLeadDays,
+        manufacturingId: tmpl.manufacturingId,
+        screenPrint: tmpl.screenPrint,
+        embroidery: tmpl.embroidery,
+        buttonhole: tmpl.buttonhole,
+        snap: tmpl.snap,
+        tag: tmpl.tag,
+        flag: tmpl.flag,
+        neckType: tmpl.neckType,
+        sesgoType: tmpl.sesgoType,
+        sesgoColor: tmpl.sesgoColor,
+        hiladillaColor: tmpl.hiladillaColor,
+        sleeveType: tmpl.sleeveType,
+        cuffType: tmpl.cuffType,
+        cuffMaterial: tmpl.cuffMaterial,
+        zipperLocation: tmpl.zipperLocation,
+        zipperColor: tmpl.zipperColor,
+        zipperSizeCm: tmpl.zipperSizeCm,
+        cordColor: tmpl.cordColor,
+        hasElastic: tmpl.hasElastic,
+        liningType: tmpl.liningType,
+        liningColor: tmpl.liningColor,
+        hoodType: tmpl.hoodType,
+        hasInnerLining: tmpl.hasInnerLining,
+        hasPocket: tmpl.hasPocket,
+        pocketZipperColor: tmpl.pocketZipperColor,
+        hasLateralMesh: tmpl.hasLateralMesh,
+        lateralMeshColor: tmpl.lateralMeshColor,
+        hasFajon: tmpl.hasFajon,
+        hasTanca: tmpl.hasTanca,
+        hasProtection: tmpl.hasProtection,
+        buttonType: tmpl.buttonType,
+        buttonholeType: tmpl.buttonholeType,
+        perillaColor: tmpl.perillaColor,
+        collarType: tmpl.collarType,
+        fusioningNotes: tmpl.fusioningNotes,
+        hasEntretela: tmpl.hasEntretela,
+        invisibleZipperColor: tmpl.invisibleZipperColor,
+        observations: tmpl.observations,
+      };
+    }
+  }
+
+  try {
+    const [created] = await db
+      .insert(orderItemMoldings)
+      .values({
+        orderItemId,
+        moldingTemplateId,
+        combinationOrder,
+        assignedBy: employeeId ?? undefined,
+        ...templateSnapshot,
+      })
+      .returning();
+
+    return Response.json(created, { status: 201 });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+    return new Response("Could not assign molding to order item", { status: 500 });
+  }
+}

@@ -36,9 +36,9 @@ export default async function PagosPage({
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Pagos</h1>
+      <h1 className="text-2xl font-bold">Payments</h1>
       <p className="text-default-600 mt-1">
-        Gestión centralizada de pagos por pedido y abonos distribuidos.
+        Centralized payment management by order and distributed deposits.
       </p>
       <div className="mt-6">
         <PaymentsHubClient

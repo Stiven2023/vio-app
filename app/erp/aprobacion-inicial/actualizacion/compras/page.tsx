@@ -18,8 +18,8 @@ export default async function AprobacionInicialActualizacionComprasPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Aprobación Actualización — Compras</h1>
-      <p className="text-default-600 mt-1">Aprueba cambios de diseño en proceso COMPRAS y envíalos a Programación - Actualización.</p>
+      <h1 className="text-2xl font-bold">Approval Update — Purchases</h1>
+      <p className="text-default-600 mt-1">Approve design changes in PURCHASING process and send them to Scheduling - Update.</p>
       <div className="mt-6">
         <ProgramacionItemsTable
           process="COMPRAS"
@@ -31,9 +31,9 @@ export default async function AprobacionInicialActualizacionComprasPage() {
           enableDecisions
           groupByOrder={false}
           labels={{
-            principal: "Aprobación principal",
-            bodega: "Aprobación bodega",
-            compras: "Aprobación compras",
+            principal: "Main Approval",
+            bodega: "Warehouse Approval",
+            compras: "Purchasing Approval",
           }}
         />
       </div>

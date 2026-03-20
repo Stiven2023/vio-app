@@ -29,20 +29,20 @@ import {
 } from "./confectionist-modal-sections";
 
 const identificationTypes = [
-  { value: "CC", label: "Cédula de Ciudadanía" },
+  { value: "CC", label: "National ID" },
   { value: "NIT", label: "NIT" },
-  { value: "CE", label: "Cédula de Extranjería" },
-  { value: "PAS", label: "Pasaporte" },
-  { value: "EMPRESA_EXTERIOR", label: "Empresa Exterior" },
+  { value: "CE", label: "Foreign ID" },
+  { value: "PAS", label: "Passport" },
+  { value: "EMPRESA_EXTERIOR", label: "Foreign Company" },
 ];
 
 const confectionistSchema = z.object({
-  name: z.string().trim().min(1, "Nombre requerido"),
-  identificationType: z.string().trim().min(1, "Tipo de identificación requerido"),
-  identification: z.string().trim().min(1, "Identificación requerida"),
+  name: z.string().trim().min(1, "Name required"),
+  identificationType: z.string().trim().min(1, "ID type required"),
+  identification: z.string().trim().min(1, "ID required"),
   dv: z.string().trim().optional(),
-  taxRegime: z.string().trim().min(1, "Régimen fiscal requerido"),
-  address: z.string().trim().min(1, "Dirección requerida"),
+  taxRegime: z.string().trim().min(1, "Tax regime required"),
+  address: z.string().trim().min(1, "Address required"),
   type: z.string().trim().optional(),
   specialty: z.string().trim().optional(),
   dailyCapacity: z.string().optional(),
@@ -50,7 +50,7 @@ const confectionistSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Email inválido"),
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Invalid email"),
   intlDialCode: z.string().trim().optional(),
   mobile: z.string().trim().optional(),
   fullMobile: z.string().trim().optional(),
@@ -254,7 +254,7 @@ export function ConfectionistModal({
       if (result.sameModule) {
         setErrors((prev) => ({
           ...prev,
-          identification: result.sameModule?.message ?? "Identificación duplicada",
+          identification: result.sameModule?.message ?? "Duplicate identification",
         }));
         return;
       }
@@ -299,7 +299,7 @@ export function ConfectionistModal({
     setImportPromptOpen(false);
     setImportCandidate(null);
     setImportMessage("");
-    toast.success("Datos importados desde otro módulo");
+    toast.success("Data imported from another module");
   };
 
   const isIdentificationValidByType = (identificationType: string, identification: string) => {
@@ -329,13 +329,13 @@ export function ConfectionistModal({
     if (!isIdentificationValidByType(form.identificationType, form.identification)) {
       const typeLabel = identificationTypes.find((t) => t.value === form.identificationType)?.label || form.identificationType;
       const formatMessages: Record<string, string> = {
-        CC: "La Cédula debe tener entre 6 y 10 dígitos",
-        NIT: "El NIT debe tener entre 8 y 12 dígitos",
-        CE: "La Cédula de Extranjería debe tener entre 5 y 15 caracteres alfanuméricos",
-        PAS: "El Pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
-        EMPRESA_EXTERIOR: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+        CC: "National ID must be 6-10 digits",
+        NIT: "NIT must be 8-12 digits",
+        CE: "Foreign ID must be 5-15 alphanumeric characters",
+        PAS: "Passport must be 5-20 alphanumeric characters",
+        EMPRESA_EXTERIOR: "Foreign company ID must be at least 3 characters",
       };
-      const message = formatMessages[form.identificationType] || `Formato inválido para ${typeLabel}`;
+      const message = formatMessages[form.identificationType] || `Invalid format for ${typeLabel}`;
       setErrors((prev) => ({ ...prev, identification: message }));
       toast.error(message);
       return;
@@ -397,7 +397,7 @@ export function ConfectionistModal({
       });
 
       toast.success(
-        confectionist ? "Confeccionista actualizado" : "Confeccionista creado",
+        confectionist ? "Confectionist updated" : "Confectionist created",
       );
       onOpenChange(false);
       onSaved();
@@ -416,12 +416,12 @@ export function ConfectionistModal({
       onOpenChange={onOpenChange}
     >
       <ModalContent>
-        <ModalHeader>{confectionist ? "Editar confeccionista" : "Crear confeccionista"}</ModalHeader>
+        <ModalHeader>{confectionist ? "Edit confectionist" : "Create confectionist"}</ModalHeader>
         <ModalBody>
-          <Tabs aria-label="Formulario de confeccionista" variant="underlined">
+          <Tabs aria-label="Confectionist form" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identification" />}
             >
               <ConfectionistIdentificationSection
                 errors={errors}
@@ -435,7 +435,7 @@ export function ConfectionistModal({
 
             <Tab
               key="contacto"
-              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
+              title={<FormTabTitle icon={<ContactIcon />} label="Contact" />}
             >
               <ConfectionistContactSection
                 errors={errors}
@@ -449,7 +449,7 @@ export function ConfectionistModal({
 
             <Tab
               key="telefonos"
-              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+              title={<FormTabTitle icon={<PhoneIcon />} label="Phones" />}
             >
               <ConfectionistPhoneSection
                 errors={errors}
@@ -463,7 +463,7 @@ export function ConfectionistModal({
 
             <Tab
               key="ubicacion"
-              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+              title={<FormTabTitle icon={<LocationIcon />} label="Location" />}
             >
               <ConfectionistLocationSection
                 errors={errors}
@@ -477,7 +477,7 @@ export function ConfectionistModal({
 
             <Tab
               key="documentos"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Documentos" />}
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Documents" />}
             >
               <IdentificationDocumentsSection
                 disabled={!form.identificationType}
@@ -499,24 +499,24 @@ export function ConfectionistModal({
             variant="flat"
             onPress={() => onOpenChange(false)}
           >
-            Cancelar
+            Cancel
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>
-            {confectionist ? "Guardar" : "Crear"}
+            {confectionist ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>
 
       <ConfirmActionModal
-        cancelLabel="No importar"
+        cancelLabel="Do not import"
         confirmColor="primary"
-        confirmLabel="Importar datos"
+        confirmLabel="Import data"
         description={
           importMessage ||
-          "Esta identificación ya existe en otro módulo. ¿Deseas importar esos datos?"
+          "This identification already exists in another module. Import that data?"
         }
         isOpen={importPromptOpen}
-        title="Identificación encontrada"
+        title="Identification found"
         onConfirm={importFromOtherModule}
         onOpenChange={(open) => {
           if (!open) {

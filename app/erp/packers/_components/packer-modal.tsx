@@ -28,22 +28,22 @@ import {
 } from "./packer-modal-sections";
 
 const identificationTypes = [
-  { value: "CC", label: "Cédula de Ciudadanía" },
+  { value: "CC", label: "National ID" },
   { value: "NIT", label: "NIT" },
-  { value: "CE", label: "Cédula de Extranjería" },
-  { value: "PAS", label: "Pasaporte" },
-  { value: "EMPRESA_EXTERIOR", label: "Empresa Exterior" },
+  { value: "CE", label: "Foreign ID" },
+  { value: "PAS", label: "Passport" },
+  { value: "EMPRESA_EXTERIOR", label: "Foreign Company" },
 ];
 
 const packerSchema = z.object({
-  name: z.string().trim().min(1, "Nombre requerido"),
-  identificationType: z.string().trim().min(1, "Tipo de identificación requerido"),
-  identification: z.string().trim().min(1, "Identificación requerida"),
-  address: z.string().trim().min(1, "Dirección requerida"),
+  name: z.string().trim().min(1, "Name required"),
+  identificationType: z.string().trim().min(1, "ID type required"),
+  identification: z.string().trim().min(1, "ID required"),
+  address: z.string().trim().min(1, "Address required"),
   email: z
     .string()
     .trim()
-    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Email inválido"),
+    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Invalid email"),
   dailyCapacity: z.string().optional(),
 });
 
@@ -192,7 +192,7 @@ export function PackerModal({
       if (result.sameModule) {
         setErrors((prev) => ({
           ...prev,
-          identification: result.sameModule?.message ?? "Identificación duplicada",
+          identification: result.sameModule?.message ?? "Duplicate identification",
         }));
         return;
       }
@@ -236,7 +236,7 @@ export function PackerModal({
     setImportPromptOpen(false);
     setImportCandidate(null);
     setImportMessage("");
-    toast.success("Datos importados desde otro módulo");
+    toast.success("Data imported from another module");
   };
 
   const isIdentificationValidByType = (identificationType: string, identification: string) => {
@@ -266,13 +266,13 @@ export function PackerModal({
     if (!isIdentificationValidByType(form.identificationType, form.identification)) {
       const typeLabel = identificationTypes.find((t) => t.value === form.identificationType)?.label || form.identificationType;
       const formatMessages: Record<string, string> = {
-        CC: "La Cédula debe tener entre 6 y 10 dígitos",
-        NIT: "El NIT debe tener entre 8 y 12 dígitos",
-        CE: "La Cédula de Extranjería debe tener entre 5 y 15 caracteres alfanuméricos",
-        PAS: "El Pasaporte debe tener entre 5 y 20 caracteres alfanuméricos",
-        EMPRESA_EXTERIOR: "La identificación de empresa exterior debe tener al menos 3 caracteres",
+        CC: "National ID must be 6-10 digits",
+        NIT: "NIT must be 8-12 digits",
+        CE: "Foreign ID must be 5-15 alphanumeric characters",
+        PAS: "Passport must be 5-20 alphanumeric characters",
+        EMPRESA_EXTERIOR: "Foreign company ID must be at least 3 characters",
       };
-      const message = formatMessages[form.identificationType] || `Formato inválido para ${typeLabel}`;
+      const message = formatMessages[form.identificationType] || `Invalid format for ${typeLabel}`;
       setErrors((prev) => ({ ...prev, identification: message }));
       toast.error(message);
       return;
@@ -335,7 +335,7 @@ export function PackerModal({
         body: JSON.stringify(packer ? { id: packer.id, ...payload } : payload),
       });
 
-      toast.success(packer ? "Empacador actualizado" : "Empacador creado");
+      toast.success(packer ? "Packer updated" : "Packer created");
       onOpenChange(false);
       onSaved();
     } catch (e) {
@@ -353,12 +353,12 @@ export function PackerModal({
       scrollBehavior="inside"
     >
       <ModalContent>
-        <ModalHeader>{packer ? "Editar empaque" : "Crear empaque"}</ModalHeader>
+        <ModalHeader>{packer ? "Edit packer" : "Create packer"}</ModalHeader>
         <ModalBody>
-          <Tabs aria-label="Formulario de empaque" variant="underlined">
+          <Tabs aria-label="Packer form" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Identification" />}
             >
               <PackerIdentificationSection
                 errors={errors}
@@ -372,7 +372,7 @@ export function PackerModal({
 
             <Tab
               key="contacto"
-              title={<FormTabTitle icon={<ContactIcon />} label="Contacto" />}
+              title={<FormTabTitle icon={<ContactIcon />} label="Contact" />}
             >
               <PackerContactSection
                 errors={errors}
@@ -386,7 +386,7 @@ export function PackerModal({
 
             <Tab
               key="telefonos"
-              title={<FormTabTitle icon={<PhoneIcon />} label="Teléfonos" />}
+              title={<FormTabTitle icon={<PhoneIcon />} label="Phones" />}
             >
               <PackerPhoneSection
                 errors={errors}
@@ -400,7 +400,7 @@ export function PackerModal({
 
             <Tab
               key="ubicacion"
-              title={<FormTabTitle icon={<LocationIcon />} label="Ubicación" />}
+              title={<FormTabTitle icon={<LocationIcon />} label="Location" />}
             >
               <PackerLocationSection
                 errors={errors}
@@ -414,7 +414,7 @@ export function PackerModal({
 
             <Tab
               key="documentos"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Documentos" />}
+              title={<FormTabTitle icon={<IdentificationIcon />} label="Documents" />}
             >
               <IdentificationDocumentsSection
                 disabled={!form.identificationType}
@@ -432,24 +432,24 @@ export function PackerModal({
         </ModalBody>
         <ModalFooter>
           <Button isDisabled={submitting} variant="flat" onPress={() => onOpenChange(false)}>
-            Cancelar
+            Cancel
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>
-            {packer ? "Guardar" : "Crear"}
+            {packer ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>
 
       <ConfirmActionModal
-        cancelLabel="No importar"
+        cancelLabel="Do not import"
         confirmColor="primary"
-        confirmLabel="Importar datos"
+        confirmLabel="Import data"
         description={
           importMessage ||
-          "Esta identificación ya existe en otro módulo. ¿Deseas importar esos datos?"
+          "This identification already exists in another module. Import that data?"
         }
         isOpen={importPromptOpen}
-        title="Identificación encontrada"
+        title="Identification found"
         onConfirm={importFromOtherModule}
         onOpenChange={(open) => {
           if (!open) {

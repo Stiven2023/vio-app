@@ -19,10 +19,10 @@ export default async function AprobacionInicialActualizacionBodegaPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Aprobación Actualización — Bodega</h1>
+      <h1 className="text-2xl font-bold">Approval Update — Warehouse</h1>
       <p className="text-default-600 mt-1">
-        Aprueba cambios de diseño en proceso BODEGA y envíalos a Programación -
-        Actualización.
+        Approve design changes in WAREHOUSE process and send them to Scheduling -
+        Update.
       </p>
       <div className="mt-6">
         <ProgramacionItemsTable
@@ -32,9 +32,9 @@ export default async function AprobacionInicialActualizacionBodegaPage() {
           basePath="/aprobacion-inicial/actualizacion"
           groupByOrder={false}
           labels={{
-            principal: "Aprobación principal",
-            bodega: "Aprobación bodega",
-            compras: "Aprobación compras",
+            principal: "Main Approval",
+            bodega: "Warehouse Approval",
+            compras: "Purchasing Approval",
           }}
           orderStatus="APROBACION"
           process="BODEGA"

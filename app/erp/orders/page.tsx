@@ -42,8 +42,8 @@ export default async function OrdersPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Pedidos</h1>
-      <p className="text-default-600 mt-1">Consulta y gestiona pedidos.</p>
+      <h1 className="text-2xl font-bold">Orders</h1>
+      <p className="text-default-600 mt-1">View and manage orders.</p>
       <div className="mt-6">
         <OrdersTab
           canChangeStatus={canChangeStatus}

@@ -39,9 +39,9 @@ export default async function ComprasBodegaPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Bodega e inventarios</h1>
+      <h1 className="text-2xl font-bold">Warehouse &amp; inventory</h1>
       <p className="text-default-600 mt-1">
-        Gestiona bodegas, items, entradas y salidas desde un solo modulo.
+        Manage warehouses, items, entries and exits from a single module.
       </p>
       <div className="mt-6">
         <InventoryTabs

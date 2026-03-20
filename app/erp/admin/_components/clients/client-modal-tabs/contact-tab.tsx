@@ -18,7 +18,7 @@ export function ContactTab({ form, errors, setForm }: Props) {
         errorMessage={errors.taxRegime}
         isInvalid={Boolean(errors.taxRegime)}
         isRequired
-        label="Régimen fiscal (IVA)"
+        label="Tax regime (VAT)"
         selectedKeys={[form.taxRegime]}
         onChange={(e) => setForm((s) => ({ ...s, taxRegime: e.target.value }))}
       >
@@ -28,24 +28,24 @@ export function ContactTab({ form, errors, setForm }: Props) {
       </Select>
 
       <Input
-        description="Persona de contacto en la empresa"
+        description="Contact person at the company"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.contactName}
         isInvalid={Boolean(errors.contactName)}
         isRequired
-        label="Nombre de contacto"
+        label="Contact name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.contactName}
         onValueChange={(v) => setForm((s) => ({ ...s, contactName: v }))}
       />
 
       <Input
-        description="Campo crítico para facturación"
+        description="Critical field for invoicing"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.email}
         isInvalid={Boolean(errors.email)}
         isRequired
-        label="Correo electrónico"
+        label="Email address"
         startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
         type="text"
         inputMode="email"

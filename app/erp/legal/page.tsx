@@ -58,9 +58,9 @@ export default async function JuridicaPage({
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6 space-y-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Juridica</h1>
+        <h1 className="text-2xl font-bold">Legal</h1>
         <p className="text-default-600 mt-1">
-          Vista unica por secciones con tabs. Empezamos con clientes y su estado juridico.
+          Single view by sections with tabs. Starts with clients and their legal status.
         </p>
       </header>
 

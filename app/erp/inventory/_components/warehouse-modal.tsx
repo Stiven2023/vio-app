@@ -83,12 +83,12 @@ export function WarehouseModal({
     };
 
     if (!payload.code) {
-      toast.error("Codigo requerido");
+      toast.error("Code required");
       return;
     }
 
     if (!payload.name) {
-      toast.error("Nombre requerido");
+      toast.error("Name required");
       return;
     }
 
@@ -99,7 +99,7 @@ export function WarehouseModal({
         body: JSON.stringify(warehouse ? { id: warehouse.id, ...payload } : payload),
       });
 
-      toast.success(warehouse ? "Bodega actualizada" : "Bodega creada");
+      toast.success(warehouse ? "Warehouse updated" : "Warehouse created");
       onOpenChange(false);
       onSaved();
     } catch (error) {
@@ -112,53 +112,53 @@ export function WarehouseModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{warehouse ? "Editar bodega" : "Crear bodega"}</ModalHeader>
+        <ModalHeader>{warehouse ? "Edit warehouse" : "Create warehouse"}</ModalHeader>
         <ModalBody>
           <Input
-            label="Codigo"
+            label="Code"
             startContent={<BsHash className="text-default-400" />}
             value={code}
             onValueChange={setCode}
           />
           <Input
-            label="Nombre"
+            label="Name"
             startContent={<BsBuilding className="text-default-400" />}
             value={name}
             onValueChange={setName}
           />
           <Input
-            label="Descripcion"
+            label="Description"
             startContent={<BsInfoCircle className="text-default-400" />}
             value={description}
             onValueChange={setDescription}
           />
           <Input
-            label="Direccion"
+            label="Address"
             startContent={<BsGeoAlt className="text-default-400" />}
             value={address}
             onValueChange={setAddress}
           />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="Ciudad" value={city} onValueChange={setCity} />
-            <Input label="Departamento" value={department} onValueChange={setDepartment} />
+            <Input label="City" value={city} onValueChange={setCity} />
+            <Input label="Department" value={department} onValueChange={setDepartment} />
           </div>
 
           <Switch isSelected={isVirtual} onValueChange={setIsVirtual}>
-            Bodega virtual
+            Virtual warehouse
           </Switch>
           <Switch isSelected={isExternal} onValueChange={setIsExternal}>
-            Bodega externa
+            External warehouse
           </Switch>
           <Switch isSelected={isActive} onValueChange={setIsActive}>
-            Activa
+            Active
           </Switch>
         </ModalBody>
         <ModalFooter>
           <Button variant="flat" onPress={() => onOpenChange(false)}>
-            Cancelar
+            Cancel
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>
-            {warehouse ? "Guardar" : "Crear"}
+            {warehouse ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>
