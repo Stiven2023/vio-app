@@ -1045,3 +1045,77 @@ export const MoldingInsumoStatusEnum = z.enum(moldingInsumoStatusValues);
 Object.defineProperty(MoldingInsumoStatusEnum, "enumValues", {
   value: moldingInsumoStatusValues,
 });
+
+/* ========================= */
+/*      MES ENUMS            */
+/* ========================= */
+
+export const MesPriority = {
+  URGENTE: "URGENTE",
+  NORMAL: "NORMAL",
+  BAJA: "BAJA",
+} as const;
+
+export const mesPriorityValues = ["URGENTE", "NORMAL", "BAJA"] as const;
+
+export const MesPriorityEnum = z.enum(mesPriorityValues);
+Object.defineProperty(MesPriorityEnum, "enumValues", {
+  value: mesPriorityValues,
+});
+
+export const MesQueueStatus = {
+  EN_COLA: "EN_COLA",
+  EN_PROCESO: "EN_PROCESO",
+  COMPLETADO: "COMPLETADO",
+} as const;
+
+export const mesQueueStatusValues = ["EN_COLA", "EN_PROCESO", "COMPLETADO"] as const;
+
+export const MesQueueStatusEnum = z.enum(mesQueueStatusValues);
+Object.defineProperty(MesQueueStatusEnum, "enumValues", {
+  value: mesQueueStatusValues,
+});
+
+export const MesAssignmentStatus = {
+  ASIGNADO: "ASIGNADO",
+  EN_PROCESO: "EN_PROCESO",
+  COMPLETADO: "COMPLETADO",
+  PAUSADO: "PAUSADO",
+} as const;
+
+export const mesAssignmentStatusValues = [
+  "ASIGNADO",
+  "EN_PROCESO",
+  "COMPLETADO",
+  "PAUSADO",
+] as const;
+
+export const MesAssignmentStatusEnum = z.enum(mesAssignmentStatusValues);
+Object.defineProperty(MesAssignmentStatusEnum, "enumValues", {
+  value: mesAssignmentStatusValues,
+});
+
+export const MesRepoItemType = {
+  PIEZA: "PIEZA",
+  PRENDA: "PRENDA",
+} as const;
+
+export const mesRepoItemTypeValues = ["PIEZA", "PRENDA"] as const;
+
+export const MesRepoItemTypeEnum = z.enum(mesRepoItemTypeValues);
+Object.defineProperty(MesRepoItemTypeEnum, "enumValues", {
+  value: mesRepoItemTypeValues,
+});
+
+export const MesRepoReason = {
+  FALTANTE: "FALTANTE",
+  DAÑO: "DAÑO",
+  INCORRECTO: "INCORRECTO",
+} as const;
+
+export const mesRepoReasonValues = ["FALTANTE", "DAÑO", "INCORRECTO"] as const;
+
+export const MesRepoReasonEnum = z.enum(mesRepoReasonValues);
+Object.defineProperty(MesRepoReasonEnum, "enumValues", {
+  value: mesRepoReasonValues,
+});
