@@ -78,6 +78,16 @@ export {
   ShipmentEmailModeEnum,
   MoldingInsumoStatus,
   MoldingInsumoStatusEnum,
+  MesPriority,
+  MesPriorityEnum,
+  MesQueueStatus,
+  MesQueueStatusEnum,
+  MesAssignmentStatus,
+  MesAssignmentStatusEnum,
+  MesRepoItemType,
+  MesRepoItemTypeEnum,
+  MesRepoReason,
+  MesRepoReasonEnum,
   // Export value arrays
   purchaseOrderStatusValues,
   purchaseOrderRouteTypeValues,
@@ -118,6 +128,11 @@ export {
   shipmentDocumentRefValues,
   shipmentEmailModeValues,
   moldingInsumoStatusValues,
+  mesPriorityValues,
+  mesQueueStatusValues,
+  mesAssignmentStatusValues,
+  mesRepoItemTypeValues,
+  mesRepoReasonValues,
 } from "./enums";
 
 import {
@@ -158,6 +173,11 @@ import {
   shipmentDocumentRefValues,
   shipmentEmailModeValues,
   moldingInsumoStatusValues,
+  mesPriorityValues,
+  mesQueueStatusValues,
+  mesAssignmentStatusValues,
+  mesRepoItemTypeValues,
+  mesRepoReasonValues,
 } from "./enums";
 
 import {
@@ -285,6 +305,11 @@ export const moldingInsumoStatusPgEnum = pgEnum(
   "molding_insumo_status",
   moldingInsumoStatusValues
 );
+export const mesPriorityPgEnum = pgEnum("mes_priority", mesPriorityValues);
+export const mesQueueStatusPgEnum = pgEnum("mes_queue_status", mesQueueStatusValues);
+export const mesAssignmentStatusPgEnum = pgEnum("mes_assignment_status", mesAssignmentStatusValues);
+export const mesRepoItemTypePgEnum = pgEnum("mes_repo_item_type", mesRepoItemTypeValues);
+export const mesRepoReasonPgEnum = pgEnum("mes_repo_reason", mesRepoReasonValues);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -324,6 +349,11 @@ export const shipmentDocumentTypeEnum = shipmentDocumentTypePgEnum;
 export const shipmentDocumentRefEnum = shipmentDocumentRefPgEnum;
 export const shipmentEmailModeEnum = shipmentEmailModePgEnum;
 export const moldingInsumoStatusEnum = moldingInsumoStatusPgEnum;
+export const mesPriorityEnum = mesPriorityPgEnum;
+export const mesQueueStatusEnum = mesQueueStatusPgEnum;
+export const mesAssignmentStatusEnum = mesAssignmentStatusPgEnum;
+export const mesRepoItemTypeEnum = mesRepoItemTypePgEnum;
+export const mesRepoReasonEnum = mesRepoReasonPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1907,3 +1937,68 @@ export const orderItemMoldingInsumos = pgTable(
     ),
   ],
 );
+
+/* =========================
+   MES - COLA DE PRODUCCIÓN
+========================= */
+
+export const mesProductionQueue = pgTable("mes_production_queue", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: uuid("order_id")
+    .notNull()
+    .references(() => orders.id, { onDelete: "cascade" }),
+  orderItemId: uuid("order_item_id")
+    .notNull()
+    .references(() => orderItems.id, { onDelete: "cascade" }),
+  design: varchar("design", { length: 255 }).notNull(),
+  size: varchar("size", { length: 40 }),
+  quantityTotal: integer("quantity_total").notNull().default(0),
+  priority: mesPriorityEnum("priority").notNull().default("NORMAL"),
+  prioritySetBy: uuid("priority_set_by").references(() => employees.id),
+  prioritySetAt: timestamp("priority_set_at", { withTimezone: true }),
+  suggestedOrder: integer("suggested_order").notNull().default(0),
+  finalOrder: integer("final_order").notNull().default(0),
+  status: mesQueueStatusEnum("status").notNull().default("EN_COLA"),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  confirmedBy: uuid("confirmed_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   MES - ASIGNACIÓN DE TICKETS POR TURNO
+========================= */
+
+export const mesTicketAssignments = pgTable("mes_ticket_assignments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  ticketRef: varchar("ticket_ref", { length: 50 }).notNull(),
+  employeeId: uuid("employee_id").references(() => employees.id),
+  process: varchar("process", { length: 50 }).notNull(),
+  shiftLabel: varchar("shift_label", { length: 100 }),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  status: mesAssignmentStatusEnum("status").notNull().default("ASIGNADO"),
+  quantityReported: integer("quantity_reported").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   ESTADO JURÍDICO ACTUAL DE CLIENTES
+========================= */
+
+export const clientLegalStatus = pgTable("client_legal_status", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id")
+    .notNull()
+    .unique()
+    .references(() => clients.id, { onDelete: "cascade" }),
+  isLegallyEnabled: boolean("is_legally_enabled").notNull().default(true),
+  legalNotes: text("legal_notes"),
+  enabledAt: timestamp("enabled_at", { withTimezone: true }),
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
+  updatedBy: uuid("updated_by").references(() => employees.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});

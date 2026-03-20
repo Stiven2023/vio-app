@@ -52,6 +52,10 @@ import {
 } from "@/app/mes/_components/mes-data";
 import { buildProcessQueue } from "@/app/mes/_components/mes-utils";
 import { useSessionStore } from "@/store/session";
+import { MesProductionQueueTab } from "@/app/mes/_components/mes-production-queue-tab";
+import { MontajeExcelDownload } from "@/app/mes/_components/mes-montaje-excel";
+import { PlotterRepoWizard } from "@/app/mes/_components/mes-plotter-repo-wizard";
+import { DespachoLegalStatusAlert } from "@/app/mes/_components/mes-despacho-legal";
 
 export default function MesPageClient() {
   const [data, setData] = useState<PedidoGroup[]>([]);
@@ -65,13 +69,18 @@ export default function MesPageClient() {
     totalUnidades: number;
     ticketMontaje: string;
     tallas: TallaRow[];
+    clientId?: string | null;
   } | null>(null);
   const [montajeAssignments, setMontajeAssignments] = useState<
     Map<string, MontajeAssignment>
   >(new Map());
+  const [plotterRepoOpen, setPlotterRepoOpen] = useState(false);
+  const [plotterRepoQty, setPlotterRepoQty] = useState<{ expected: number; produced: number }>({ expected: 0, produced: 0 });
 
   const sessionUser = useSessionStore((state) => state.user);
   const currentUserId = String(sessionUser?.id ?? "").trim();
+  const currentUserRole = String(sessionUser?.role ?? "").trim();
+  const isLider = currentUserRole === "LIDER_OPERACIONAL" || currentUserRole === "ADMINISTRADOR";
   const activeProcessConfig =
     PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
 
@@ -276,6 +285,7 @@ export default function MesPageClient() {
           onSelectionChange={(k) => setActiveProceso(k as string)}
         >
           {[
+            ...(isLider ? [{ key: "pre-proceso", label: "Pre-proceso" }] : []),
             { key: "programacion", label: "Scheduling" },
             { key: "montaje", label: "Assembly" },
             { key: "plotter", label: "Plotter" },
@@ -290,7 +300,7 @@ export default function MesPageClient() {
               key={tab.key}
               title={
                 <span className="text-xs px-1">
-                  {tab.key !== "programacion" && (
+                  {tab.key !== "programacion" && tab.key !== "pre-proceso" && (
                     <span className="mr-1 text-[9px] font-mono text-default-400">
                       [
                       {PROCESO_PREFIX[tab.key] ??
@@ -308,7 +318,9 @@ export default function MesPageClient() {
 
       <Divider className="opacity-60" />
 
-      {activeProceso === "programacion" ? (
+      {activeProceso === "pre-proceso" ? (
+        <MesProductionQueueTab />
+      ) : activeProceso === "programacion" ? (
         <section className="rounded-medium border border-default-200 bg-content1 p-4">
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <Input
@@ -586,7 +598,7 @@ export default function MesPageClient() {
           {selectedMontajeTicket ? (
             <Card className="border border-divider" radius="sm" shadow="none">
               <CardHeader>
-                <div>
+                <div className="w-full">
                   <MontajeAssignmentHeader
                     activeProceso={activeProceso}
                     assignment={
@@ -595,16 +607,38 @@ export default function MesPageClient() {
                     }
                     currentUserId={currentUserId}
                   />
-                  <div className="text-lg font-semibold">
-                    Produccion - {activeProcessConfig.label}
-                  </div>
-                  <div className="text-sm text-default-500">
-                    Ticket {selectedMontajeTicket.ticketMontaje} · Order{" "}
-                    {selectedMontajeTicket.pedido}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-lg font-semibold">
+                        Produccion - {activeProcessConfig.label}
+                      </div>
+                      <div className="text-sm text-default-500">
+                        Ticket {selectedMontajeTicket.ticketMontaje} · Order{" "}
+                        {selectedMontajeTicket.pedido}
+                      </div>
+                    </div>
+                    {activeProceso === "montaje" && (
+                      <MontajeExcelDownload
+                        orderCode={selectedMontajeTicket.pedido}
+                        designName={selectedMontajeTicket.detalle}
+                        tallas={selectedMontajeTicket.tallas}
+                      />
+                    )}
                   </div>
                 </div>
               </CardHeader>
-              <CardBody>
+              <CardBody className="space-y-3">
+                {activeProceso === "despacho" && selectedMontajeTicket.clientId && (
+                  <DespachoLegalStatusAlert clientId={selectedMontajeTicket.clientId} />
+                )}
+                {activeProceso === "plotter" && (
+                  <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2">
+                    <p className="text-xs text-warning-700">
+                      Si la cantidad producida no coincide con lo esperado, usa el botón{" "}
+                      <strong>Alerta parcial / Reposición</strong> que aparece al guardar el registro.
+                    </p>
+                  </div>
+                )}
                 <OperarioWorklogTable
                   prefill={{
                     orderCode: selectedMontajeTicket.pedido,
@@ -623,6 +657,21 @@ export default function MesPageClient() {
               </CardBody>
             </Card>
           ) : null}
+
+          {/* Plotter reposition wizard - opens when quantity mismatch detected */}
+          <PlotterRepoWizard
+            isOpen={plotterRepoOpen}
+            orderCode={selectedMontajeTicket?.pedido ?? ""}
+            designName={selectedMontajeTicket?.detalle ?? ""}
+            size={null}
+            expectedQty={plotterRepoQty.expected}
+            producedQty={plotterRepoQty.produced}
+            onClose={() => setPlotterRepoOpen(false)}
+            onRepoGenerated={(ticketRef) => {
+              setPlotterRepoOpen(false);
+              toast.success(`Ticket de reposición ${ticketRef} generado para Plotter`);
+            }}
+          />
         </section>
       )}
     </div>
