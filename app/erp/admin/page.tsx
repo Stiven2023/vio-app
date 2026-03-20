@@ -17,10 +17,10 @@ export default async function AdminPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Administración</h1>
+      <h1 className="text-2xl font-bold">Administration</h1>
       <p className="text-default-600 mt-1">
-        Gestiona usuarios, empleados, clientes, roles, permisos y sus
-        relaciones.
+        Manage users, employees, clients, roles, permissions and their
+        relationships.
       </p>
       <div className="mt-6">
         <AdminClient />

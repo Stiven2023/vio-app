@@ -29,9 +29,9 @@ export default async function ConfectionistsPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Confeccionistas</h1>
+      <h1 className="text-2xl font-bold">Confectionists</h1>
       <p className="text-default-600 mt-1">
-        Consulta y gestiona la información de confeccionistas.
+        View and manage confectionist information.
       </p>
       <div className="mt-6">
         <ConfectionistsTab

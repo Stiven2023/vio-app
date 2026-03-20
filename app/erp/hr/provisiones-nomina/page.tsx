@@ -23,9 +23,9 @@ export default async function ProvisionsPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
-      <h1 className="text-2xl font-bold">Provisiones de Nómina</h1>
+      <h1 className="text-2xl font-bold">Payroll Provisions</h1>
       <p className="mt-1 text-default-600">
-        Gestión de provisiones laborales: cesantías, intereses, primas, vacaciones y seguridad social.
+        Management of labor provisions: severance, interest, bonuses, vacation and social security.
       </p>
       <div className="mt-6">
         <PayrollProvisionsTab

@@ -21,9 +21,9 @@ export default async function BanksPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
-      <h1 className="text-2xl font-bold">Bancos</h1>
+      <h1 className="text-2xl font-bold">Banks</h1>
       <p className="mt-1 text-default-600">
-        Consulta, crea, edita y revisa el historial de asociación de bancos a pagos.
+        View, create, edit and review the history of bank-to-payment associations.
       </p>
       <div className="mt-6">
         <BanksTab canManage={canManage} />

@@ -18,8 +18,8 @@ export default async function ProgramacionPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Programación</h1>
-      <p className="text-default-600 mt-1">Pedidos agrupados por pedido y filtrados por proceso para programación.</p>
+      <h1 className="text-2xl font-bold">Scheduling</h1>
+      <p className="text-default-600 mt-1">Orders grouped by order and filtered by process for scheduling.</p>
       <div className="mt-6">
         <ProgramacionItemsTable
           process="PRODUCCION"

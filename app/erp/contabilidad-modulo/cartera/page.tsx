@@ -23,9 +23,9 @@ export default async function CarteraPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
-      <h1 className="text-2xl font-bold">Cartera</h1>
+      <h1 className="text-2xl font-bold">Portfolio / Receivables</h1>
       <p className="mt-1 text-default-600">
-        Informe de cartera por tipo de pago con análisis de antigüedad para crédito.
+        Portfolio report by payment type with aging analysis for credit.
       </p>
       <div className="mt-6">
         <CarteraTab canExport={Boolean(perms.EXPORTAR_CARTERA)} />
