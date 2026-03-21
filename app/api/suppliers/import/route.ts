@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { suppliers } from "@/src/db/schema";
@@ -149,15 +149,14 @@ async function generateSupplierCode(): Promise<string> {
   const [last] = await db
     .select({ supplierCode: suppliers.supplierCode })
     .from(suppliers)
-    .orderBy(desc(suppliers.supplierCode))
+    .orderBy(sql`${suppliers.supplierCode} DESC`)
     .limit(1);
 
   if (!last) return "PROV1001";
 
-  const lastCode = last.supplierCode || "PROV1000";
-  const numberPart = parseInt(lastCode.replace("PROV", ""), 10);
-  const nextNumber = numberPart + 1;
-  return `PROV${String(nextNumber).padStart(4, "0")}`;
+  const numberPart = Number.parseInt(last.supplierCode.replace(/^PROV/i, ""), 10);
+  if (Number.isNaN(numberPart)) return "PROV1001";
+  return `PROV${String(numberPart + 1).padStart(4, "0")}`;
 }
 
 const VALID_ID_TYPES = ["CC", "NIT", "CE", "PAS", "EMPRESA_EXTERIOR"] as const;
