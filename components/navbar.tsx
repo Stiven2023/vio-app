@@ -33,6 +33,7 @@ import { useSessionStore } from "@/store/session";
 import { isOperarioRole } from "@/src/utils/role-status";
 
 const permissionsStorageKey = "viomar.permissions.v1";
+const localeStorageKey = "preferredLanguage";
 
 type AppModule = "erp" | "mes" | "crm";
 type SupportedLocale = "en" | "es";
@@ -44,6 +45,10 @@ const defaultAppLocale: SupportedLocale = "en";
 const localeLabel: Record<SupportedLocale, string> = {
   en: "ENG",
   es: "ESP",
+};
+
+const isSupportedLocale = (value: string | null | undefined): value is SupportedLocale => {
+  return value === "en" || value === "es";
 };
 
 const readLocaleFromPath = (pathname: string): SupportedLocale | null => {
@@ -74,6 +79,39 @@ const resolveLocaleFromPath = (pathname: string): SupportedLocale => {
   return readLocaleFromPath(pathname) ?? defaultAppLocale;
 };
 
+const readLocaleFromCookie = (): SupportedLocale | null => {
+  if (typeof document === "undefined") return null;
+
+  const cookieValue = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${localeCookieName}=`))
+    ?.split("=")[1];
+
+  return isSupportedLocale(cookieValue) ? cookieValue : null;
+};
+
+const readStoredLocale = (): SupportedLocale | null => {
+  if (typeof window === "undefined") return null;
+
+  const localValue = window.localStorage.getItem(localeStorageKey);
+
+  if (isSupportedLocale(localValue)) {
+    return localValue;
+  }
+
+  const sessionValue = window.sessionStorage.getItem(localeStorageKey);
+
+  if (isSupportedLocale(sessionValue)) {
+    return sessionValue;
+  }
+
+  return readLocaleFromCookie();
+};
+
+const resolvePreferredLocale = (pathname: string): SupportedLocale => {
+  return readLocaleFromPath(pathname) ?? readStoredLocale() ?? defaultAppLocale;
+};
+
 const getModuleFromPath = (pathname: string): AppModule => {
   if (pathname === "/mes" || pathname.startsWith("/mes/")) return "mes";
   if (pathname === "/crm" || pathname.startsWith("/crm/")) return "crm";
@@ -84,7 +122,7 @@ const getModuleFromPath = (pathname: string): AppModule => {
 export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(() => resolveLocaleFromPath(pathname));
+  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(() => resolvePreferredLocale(pathname));
   const currentModule = getModuleFromPath(pathname);
   const moduleRoot = currentModule === "erp" ? "/erp" : `/${currentModule}`;
   const moduleTitle = currentModule.toUpperCase();
@@ -121,6 +159,23 @@ export const Navbar = () => {
   const [canSeePayments, setCanSeePayments] = useState(false);
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+
+  const uiText = useMemo(
+    () => ({
+      dashboard: currentLocale === "es" ? "Panel" : "Dashboard",
+      shipments: currentLocale === "es" ? "Envíos" : "Shipments",
+      options: currentLocale === "es" ? "Opciones" : "Options",
+      more: currentLocale === "es" ? "Más" : "More",
+      english: "English (ENG)",
+      spanish: "Español (ESP)",
+      user: currentLocale === "es" ? "Usuario" : "User",
+      currentUser: currentLocale === "es" ? "Usuario actual" : "Current user",
+      notifications: currentLocale === "es" ? "Notificaciones" : "Notifications",
+      logOut: currentLocale === "es" ? "Cerrar sesión" : "Log out",
+      noRole: currentLocale === "es" ? "SIN_ROL" : "NO_ROLE",
+    }),
+    [currentLocale],
+  );
 
   const effectiveRole = role ?? null;
   const operarioOnly = isOperarioRole(effectiveRole);
@@ -220,21 +275,53 @@ export const Navbar = () => {
   }, [currentModule, isAuthenticated]);
 
   useEffect(() => {
-    setCurrentLocale(resolveLocaleFromPath(pathname));
+    setCurrentLocale(resolvePreferredLocale(pathname));
+  }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const syncLocale = () => {
+      setCurrentLocale(resolvePreferredLocale(window.location.pathname));
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === localeStorageKey || event.key === null) {
+        syncLocale();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("viomar:locale-change", syncLocale as EventListener);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("viomar:locale-change", syncLocale as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    setOpenGroup(null);
   }, [pathname]);
 
   const handleLocaleChange = (nextLocale: SupportedLocale) => {
+    setCurrentLocale(nextLocale);
+
     if (typeof document !== "undefined") {
       document.cookie = `${localeCookieName}=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
       document.documentElement.lang = nextLocale;
+    }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(localeStorageKey, nextLocale);
+      window.sessionStorage.setItem(localeStorageKey, nextLocale);
+      window.dispatchEvent(new CustomEvent("viomar:locale-change", { detail: nextLocale }));
     }
 
     const localizedPath = pathname === "/" || localePathRegex.test(pathname);
 
     if (localizedPath) {
       router.push(withLocalePrefix(pathname, nextLocale));
-    } else {
-      router.refresh();
     }
   };
 
@@ -264,6 +351,7 @@ export const Navbar = () => {
   const sections = useMemo(
     () =>
       buildNavbarSections({
+        locale: currentLocale,
         isAuthenticated,
         canSeeCatalog,
         canSeeClients,
@@ -274,6 +362,7 @@ export const Navbar = () => {
         canSeeSuppliers,
       }),
     [
+    currentLocale,
     canSeeCatalog,
     canSeeClients,
     canSeeOrders,
@@ -286,8 +375,8 @@ export const Navbar = () => {
   );
 
   const otherItems = useMemo(
-    () => buildNavbarOtherItems({ isAuthenticated, isAdmin }),
-    [isAdmin, isAuthenticated],
+    () => buildNavbarOtherItems({ locale: currentLocale, isAuthenticated, isAdmin }),
+    [currentLocale, isAdmin, isAuthenticated],
   );
 
   const visibleSections = sections.filter((section) => section.visible);
@@ -353,7 +442,7 @@ export const Navbar = () => {
           <ul className="flex gap-2 items-center">
             <NavbarItem>
               <Button as={NextLink} href="/erp/dashboard" size="sm" variant={isActive("/dashboard") ? "solid" : "light"}>
-                Dashboard
+                {uiText.dashboard}
               </Button>
             </NavbarItem>
             <NavbarItem>
@@ -363,7 +452,7 @@ export const Navbar = () => {
                 size="sm"
                 variant={isActive("/shipments") || isActive("/envios") ? "solid" : "light"}
               >
-                Shipments
+                {uiText.shipments}
               </Button>
             </NavbarItem>
           </ul>
@@ -434,10 +523,10 @@ export const Navbar = () => {
                     variant={otherItems.some((item) => isActive(item.href)) ? "solid" : "light"}
                     className={clsx(openGroup === "others" ? "bg-default-200" : "")}
                   >
-                    More
+                    {uiText.more}
                   </Button>
                 </DropdownTrigger>
-                <DropdownMenu aria-label="More">
+                <DropdownMenu aria-label={uiText.more}>
                   {otherItems.map((item) => (
                     <DropdownItem key={`others-${item.href}`} as={NextLink} href={toErpHref(item.href)}>
                       {item.name}
@@ -458,12 +547,12 @@ export const Navbar = () => {
                 {localeLabel[currentLocale]}
               </Button>
             </DropdownTrigger>
-            <DropdownMenu
+              <DropdownMenu
               aria-label="Language selector"
               onAction={(key) => handleLocaleChange(String(key) as SupportedLocale)}
             >
-              <DropdownItem key="en">English (ENG)</DropdownItem>
-              <DropdownItem key="es">Spanish (ESP)</DropdownItem>
+              <DropdownItem key="en">{uiText.english}</DropdownItem>
+              <DropdownItem key="es">{uiText.spanish}</DropdownItem>
             </DropdownMenu>
           </Dropdown>
         </NavbarItem>
@@ -484,19 +573,19 @@ export const Navbar = () => {
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label="User menu" onAction={(key) => void handleUserMenuAction(String(key))}>
-                <DropdownItem key="user-header" isReadOnly className="opacity-100 cursor-default" textValue="Current user">
+                <DropdownItem key="user-header" isReadOnly className="opacity-100 cursor-default" textValue={uiText.currentUser}>
                   <div className="flex items-center gap-3 py-1">
                     <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium leading-tight">{user?.name ?? "User"}</span>
-                      <span className="text-xs text-default-500 leading-tight">{role ?? "SIN_ROL"}</span>
+                      <span className="text-sm font-medium leading-tight">{user?.name ?? uiText.user}</span>
+                      <span className="text-xs text-default-500 leading-tight">{role ?? uiText.noRole}</span>
                     </div>
                   </div>
                 </DropdownItem>
-                {currentModule === "erp" ? <DropdownItem key="notifications">Notifications</DropdownItem> : null}
-                {currentModule === "erp" ? <DropdownItem key="options">Options</DropdownItem> : null}
+                {currentModule === "erp" ? <DropdownItem key="notifications">{uiText.notifications}</DropdownItem> : null}
+                {currentModule === "erp" ? <DropdownItem key="options">{uiText.options}</DropdownItem> : null}
                 <DropdownItem key="logout" className="text-danger" color="danger">
-                  Log out
+                  {uiText.logOut}
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
@@ -508,7 +597,7 @@ export const Navbar = () => {
         {isAuthenticated ? (
           <div className="flex items-center gap-2 min-w-0">
             <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
-            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? "User"}</div>
+            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? uiText.user}</div>
           </div>
         ) : null}
         <Dropdown placement="bottom-end">
@@ -521,8 +610,8 @@ export const Navbar = () => {
             aria-label="Mobile language selector"
             onAction={(key) => handleLocaleChange(String(key) as SupportedLocale)}
           >
-            <DropdownItem key="en">English (ENG)</DropdownItem>
-            <DropdownItem key="es">Espanol (ESP)</DropdownItem>
+            <DropdownItem key="en">{uiText.english}</DropdownItem>
+            <DropdownItem key="es">{uiText.spanish}</DropdownItem>
           </DropdownMenu>
         </Dropdown>
         <ThemeSwitch />
@@ -543,17 +632,17 @@ export const Navbar = () => {
             <>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/dashboard" size="lg">
-                  Dashboard
+                  {uiText.dashboard}
                 </Link>
               </NavbarMenuItem>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/shipments" size="lg">
-                  Shipments
+                  {uiText.shipments}
                 </Link>
               </NavbarMenuItem>
               <NavbarMenuItem>
                 <Link color="foreground" href="/erp/options" size="lg">
-                  Options
+                  {uiText.options}
                 </Link>
               </NavbarMenuItem>
             </>
@@ -585,7 +674,7 @@ export const Navbar = () => {
               <div className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2">
                 <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-default-500 flex items-center gap-2">
                   <OtherMenuIcon className="text-sm" />
-                  More
+                  {uiText.more}
                 </div>
                 <div className="flex flex-col">
                   {otherItems.map((item) => (
@@ -610,7 +699,7 @@ export const Navbar = () => {
               {currentModule === "erp" ? (
                 <NavbarMenuItem>
                   <Link color="foreground" href="/erp/notifications" size="md">
-                    Notifications
+                    {uiText.notifications}
                   </Link>
                 </NavbarMenuItem>
               ) : null}
@@ -624,7 +713,7 @@ export const Navbar = () => {
                     router.push("/login");
                   }}
                 >
-                  Log out
+                  {uiText.logOut}
                 </Button>
               </NavbarMenuItem>
             </>
