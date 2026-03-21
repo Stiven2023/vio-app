@@ -36,7 +36,7 @@ function normalizeHeader(value: string) {
 
 function decodeCsvTextFromBytes(bytes: Uint8Array) {
   const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
-  if (!utf8Text.includes("")) return utf8Text;
+  if (!utf8Text.includes("�")) return utf8Text;
   try {
     return new TextDecoder("windows-1252").decode(bytes);
   } catch {
