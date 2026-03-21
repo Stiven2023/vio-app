@@ -11,14 +11,6 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-type DbOrTx =
-  | typeof db
-  | PgTransaction<
-      NodePgQueryResultHKT,
-      typeof schema,
-      ExtractTablesWithRelations<typeof schema>
-    >;
-
 type ImportRow = {
   clientCode?: string;
   clientType?: string;
@@ -38,7 +30,11 @@ type ImportRow = {
   isActive?: string;
 };
 
-type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type DbTransaction = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 function normalizeHeader(value: string) {
   return String(value ?? "")
@@ -77,8 +73,10 @@ function parseCsvLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
   let current = "";
   let inQuotes = false;
+
   for (let i = 0; i < line.length; i += 1) {
     const char = line[i];
+
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
         current += '"';
@@ -96,11 +94,15 @@ function parseCsvLine(line: string, delimiter: string): string[] {
     current += char;
   }
   cells.push(current);
+
   return cells.map((c) => c.trim());
 }
 
 function parseIsActive(value: string | undefined): boolean | undefined {
-  const raw = String(value ?? "").trim().toLowerCase();
+  const raw = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
   if (!raw) return undefined;
   if (["1", "true", "si", "sí", "activo", "activa"].includes(raw)) return true;
   if (["0", "false", "no", "inactivo", "inactiva"].includes(raw)) return false;
@@ -126,6 +128,7 @@ function parseCsv(content: string): ImportRow[] {
   const getCell = (cells: string[], aliases: string[]) => {
     const aliasSet = aliases.map(normalizeHeader);
     const index = headers.findIndex((h) => aliasSet.includes(h));
+
     return index >= 0 ? String(cells[index] ?? "").trim() : "";
   };
 
@@ -143,10 +146,18 @@ function parseCsv(content: string): ImportRow[] {
         "tipoIdentificacion",
         "tipoDoc",
       ]),
-      identification: getCell(cells, ["identification", "identificacion", "documento"]),
+      identification: getCell(cells, [
+        "identification",
+        "identificacion",
+        "documento",
+      ]),
       dv: getCell(cells, ["dv", "digitoVerificacion"]),
       taxRegime: getCell(cells, ["taxRegime", "regimenFiscal", "regimen"]),
-      contactName: getCell(cells, ["contactName", "nombreContacto", "contacto"]),
+      contactName: getCell(cells, [
+        "contactName",
+        "nombreContacto",
+        "contacto",
+      ]),
       email: getCell(cells, ["email", "correo"]),
       address: getCell(cells, ["address", "direccion"]),
       postalCode: getCell(cells, ["postalCode", "codigoPostal"]),
@@ -165,11 +176,15 @@ function parseCsv(content: string): ImportRow[] {
 }
 
 async function generateClientCode(
-  tx: typeof db,
+  tx: DbTransaction,
   clientType: "NACIONAL" | "EXTRANJERO" | "EMPLEADO"
 ): Promise<string> {
   const prefix =
-    clientType === "NACIONAL" ? "CN" : clientType === "EXTRANJERO" ? "CE" : "EM";
+    clientType === "NACIONAL"
+      ? "CN"
+      : clientType === "EXTRANJERO"
+        ? "CE"
+        : "EM";
 
   const lastClient = await tx
     .select({ code: clients.clientCode })
@@ -179,8 +194,13 @@ async function generateClientCode(
     .limit(1);
 
   let nextNumber = 10001;
+
   if (lastClient.length > 0 && lastClient[0]?.code) {
-    const lastNumber = Number.parseInt(lastClient[0].code.slice(prefix.length), 10);
+    const lastNumber = Number.parseInt(
+      lastClient[0].code.slice(prefix.length),
+      10,
+    );
+
     if (!Number.isNaN(lastNumber)) nextNumber = lastNumber + 1;
   }
 
@@ -243,6 +263,7 @@ export async function POST(request: Request) {
           const identificationTypeRaw = String(
             row.identificationType ?? ""
           ).trim().toUpperCase() as (typeof VALID_ID_TYPES)[number];
+
           if (!VALID_ID_TYPES.includes(identificationTypeRaw)) {
             throw new Error(
               `identificationType inválido: ${identificationTypeRaw}. Usa: ${VALID_ID_TYPES.join(", ")}`
@@ -255,6 +276,7 @@ export async function POST(request: Request) {
           const taxRegimeRaw = String(
             row.taxRegime ?? ""
           ).trim().toUpperCase() as (typeof VALID_TAX_REGIMES)[number];
+
           if (!VALID_TAX_REGIMES.includes(taxRegimeRaw)) {
             throw new Error(
               `taxRegime inválido: ${taxRegimeRaw}. Usa: ${VALID_TAX_REGIMES.join(", ")}`
@@ -262,12 +284,15 @@ export async function POST(request: Request) {
           }
 
           const contactName = String(row.contactName ?? "").trim();
+
           if (!contactName) throw new Error("contactName requerido en creación");
 
           const email = String(row.email ?? "").trim();
+
           if (!email) throw new Error("email requerido en creación");
 
           const address = String(row.address ?? "").trim();
+
           if (!address) throw new Error("address requerido en creación");
 
           const clientTypeRaw = String(
