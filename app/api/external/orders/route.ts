@@ -10,10 +10,15 @@ export async function GET(request: Request) {
   if (error) return error;
 
   const { searchParams } = new URL(request.url);
-  const orderCode = String(searchParams.get("orderCode") ?? "").trim().toUpperCase();
+  const orderCode = String(searchParams.get("orderCode") ?? "")
+    .trim()
+    .toUpperCase();
 
   const where = orderCode
-    ? and(eq(orders.clientId, payload.clientId), ilike(orders.orderCode, `%${orderCode}%`))
+    ? and(
+        eq(orders.clientId, payload.clientId),
+        ilike(orders.orderCode, `%${orderCode}%`),
+      )
     : eq(orders.clientId, payload.clientId);
 
   const rows = await db

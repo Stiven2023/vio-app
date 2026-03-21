@@ -35,7 +35,9 @@ export async function PATCH(
 
   try {
     const { taxZone } = await context.params;
-    const normalizedTaxZone = String(taxZone ?? "").trim().toUpperCase();
+    const normalizedTaxZone = String(taxZone ?? "")
+      .trim()
+      .toUpperCase();
 
     if (!taxZoneValues.includes(normalizedTaxZone as any)) {
       return new Response("taxZone invalida", { status: 400 });
@@ -91,9 +93,7 @@ export async function PATCH(
         const [existing] = await db
           .select({ taxZone: taxZoneRates.taxZone })
           .from(taxZoneRates)
-          .where(
-            and(eq(taxZoneRates.taxZone, normalizedTaxZone as any)),
-          )
+          .where(and(eq(taxZoneRates.taxZone, normalizedTaxZone as any)))
           .limit(1);
 
         if (!existing?.taxZone) {

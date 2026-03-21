@@ -41,14 +41,24 @@ export function CategoryProductsModal({
     return `/api/products?categoryId=${encodeURIComponent(category.id)}&status=all`;
   }, [category?.id, isOpen]);
 
-  const { data, loading, page, setPage } = usePaginatedApi<Product>(endpoint, 10);
+  const { data, loading, page, setPage } = usePaginatedApi<Product>(
+    endpoint,
+    10,
+  );
   const items = data?.items ?? [];
 
   return (
-    <Modal isOpen={isOpen} scrollBehavior="inside" size="4xl" onOpenChange={onOpenChange}>
+    <Modal
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      size="4xl"
+      onOpenChange={onOpenChange}
+    >
       <ModalContent>
         <ModalHeader>
-          {category ? `Productos de ${category.name}` : "Productos de categoría"}
+          {category
+            ? `Productos de ${category.name}`
+            : "Productos de categoría"}
         </ModalHeader>
         <ModalBody>
           {loading ? (
@@ -68,7 +78,9 @@ export function CategoryProductsModal({
                   <TableRow key={product.id}>
                     <TableCell>{product.productCode ?? "-"}</TableCell>
                     <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.isActive ? "Activo" : "Inactivo"}</TableCell>
+                    <TableCell>
+                      {product.isActive ? "Activo" : "Inactivo"}
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>

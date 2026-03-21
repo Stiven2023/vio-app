@@ -14,7 +14,10 @@ import { Select, SelectItem } from "@heroui/select";
 
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 import { useSessionStore } from "@/store/session";
-import { ORDER_ITEM_STATUS, type OrderItemStatus } from "@/src/utils/order-status";
+import {
+  ORDER_ITEM_STATUS,
+  type OrderItemStatus,
+} from "@/src/utils/order-status";
 import { getAllowedNextStatuses } from "@/src/utils/role-status";
 
 const statusOptions: OrderItemStatus[] = [
@@ -22,7 +25,7 @@ const statusOptions: OrderItemStatus[] = [
   ORDER_ITEM_STATUS.APROBACION,
   ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION,
   ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
-    ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
+  ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION,
   ORDER_ITEM_STATUS.MONTAJE,
   ORDER_ITEM_STATUS.IMPRESION,
   ORDER_ITEM_STATUS.SUBLIMACION,
@@ -41,13 +44,15 @@ const statusOptions: OrderItemStatus[] = [
 
 function formatItemStatusLabel(status: string | null | undefined) {
   const value = String(status ?? "").trim();
+
   if (!value) return "-";
   if (value === ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION) {
     return "APROBACION ACTUALIZACION";
   }
-    if (value === ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION) {
-      return "PROGRAMACION ACTUALIZACION";
-    }
+  if (value === ORDER_ITEM_STATUS.PENDIENTE_PRODUCCION_ACTUALIZACION) {
+    return "PROGRAMACION ACTUALIZACION";
+  }
+
   return value.replace(/_/g, " ");
 }
 
@@ -95,6 +100,7 @@ export function OrderItemStatusModal({
 
     if (orderItem.status === status) {
       onOpenChange(false);
+
       return;
     }
 
@@ -121,13 +127,16 @@ export function OrderItemStatusModal({
         <ModalBody>
           <div className="text-sm text-default-600">
             <div>
-              <span className="font-medium">Diseño:</span> {orderItem?.name ?? "-"}
+              <span className="font-medium">Diseño:</span>{" "}
+              {orderItem?.name ?? "-"}
             </div>
             <div>
-              <span className="font-medium">Cantidad:</span> {orderItem?.quantity ?? "-"}
+              <span className="font-medium">Cantidad:</span>{" "}
+              {orderItem?.quantity ?? "-"}
             </div>
             <div>
-              <span className="font-medium">Estado actual:</span> {formatItemStatusLabel(orderItem?.status)}
+              <span className="font-medium">Estado actual:</span>{" "}
+              {formatItemStatusLabel(orderItem?.status)}
             </div>
           </div>
 
@@ -137,16 +146,15 @@ export function OrderItemStatusModal({
             selectedKeys={[status]}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0] as OrderItemStatus | undefined;
+
               setStatus(first ?? "PENDIENTE");
             }}
           >
             {statusOptions
               .filter((opt) => allowedNext.includes(opt))
               .map((opt) => (
-              <SelectItem key={opt}>
-                {formatItemStatusLabel(opt)}
-              </SelectItem>
-            ))}
+                <SelectItem key={opt}>{formatItemStatusLabel(opt)}</SelectItem>
+              ))}
           </Select>
         </ModalBody>
         <ModalFooter>

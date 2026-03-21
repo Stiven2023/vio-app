@@ -47,9 +47,11 @@ export function LoginAccessTabs({
     <Tabs
       aria-label="Access types"
       classNames={{
-        tabList: "rounded-none border-b border-default-200/30 bg-transparent p-0 gap-0 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
+        tabList:
+          "rounded-none border-b border-default-200/30 bg-transparent p-0 gap-0 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
         tab: "rounded-none px-2 sm:px-3 min-w-max data-[selected=true]:text-[var(--viomar-primary)] data-[selected=true]:border-b-2 data-[selected=true]:border-[var(--viomar-primary)] text-[#8A93A3]",
-        tabContent: "text-[10px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.15em] font-semibold",
+        tabContent:
+          "text-[10px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.15em] font-semibold",
         cursor: "hidden",
       }}
       selectedKey={selected}
@@ -57,15 +59,22 @@ export function LoginAccessTabs({
       onSelectionChange={(key) => setSelected(String(key))}
     >
       <Tab key="viomar" title="Viomar staff">
-        <form className="space-y-4 pt-2" onSubmit={(e) => void onSubmitViomar(e)}>
+        <form
+          className="space-y-4 pt-2"
+          onSubmit={(e) => void onSubmitViomar(e)}
+        >
           <div className="space-y-3">
             <Input
               required
               autoComplete="email"
-              classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+              classNames={{
+                inputWrapper: "bg-content1/70 border border-default-200/30",
+              }}
               label="Email address"
               name="email"
-              startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
+              startContent={
+                <BsEnvelopeFill className="text-xl text-default-500" />
+              }
               type="email"
               value={form.email}
               onChange={onFormChange}
@@ -73,7 +82,9 @@ export function LoginAccessTabs({
             <Input
               required
               autoComplete="current-password"
-              classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+              classNames={{
+                inputWrapper: "bg-content1/70 border border-default-200/30",
+              }}
               endContent={
                 <Button
                   aria-label={showPassword ? "Hide password" : "Show password"}
@@ -83,7 +94,11 @@ export function LoginAccessTabs({
                   variant="light"
                   onPress={toggleShowPassword}
                 >
-                  {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
+                  {showPassword ? (
+                    <BsEyeSlashFill className="text-lg" />
+                  ) : (
+                    <BsEyeFill className="text-lg" />
+                  )}
                 </Button>
               }
               label="Password"
@@ -129,24 +144,28 @@ export function LoginAccessTabs({
       </Tab>
 
       <Tab key="tercero" title="Third-party / courier">
-        <form className="space-y-4 pt-2" onSubmit={(e) => void onSubmitThirdParty(e)}>
+        <form
+          className="space-y-4 pt-2"
+          onSubmit={(e) => void onSubmitThirdParty(e)}
+        >
           <Input
             required
             autoComplete="username"
-            classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
+            classNames={{
+              inputWrapper: "bg-content1/70 border border-default-200/30",
+            }}
             label="Username"
-            placeholder="e.g. courier1, sewer2"
             name="email"
+            placeholder="e.g. courier1, sewer2"
             value={form.email}
             onChange={onFormChange}
           />
           <Input
             required
             autoComplete="current-password"
-            classNames={{ inputWrapper: "bg-content1/70 border border-default-200/30" }}
-            label="Password"
-            name="password"
-            type={showPassword ? "text" : "password"}
+            classNames={{
+              inputWrapper: "bg-content1/70 border border-default-200/30",
+            }}
             endContent={
               <Button
                 aria-label={showPassword ? "Hide password" : "Show password"}
@@ -156,13 +175,26 @@ export function LoginAccessTabs({
                 variant="light"
                 onPress={toggleShowPassword}
               >
-                {showPassword ? <BsEyeSlashFill className="text-lg" /> : <BsEyeFill className="text-lg" />}
+                {showPassword ? (
+                  <BsEyeSlashFill className="text-lg" />
+                ) : (
+                  <BsEyeFill className="text-lg" />
+                )}
               </Button>
             }
+            label="Password"
+            name="password"
+            type={showPassword ? "text" : "password"}
             value={form.password}
             onChange={onFormChange}
           />
-          <Button className="w-full" color="primary" isDisabled={loading} isLoading={loading} type="submit">
+          <Button
+            className="w-full"
+            color="primary"
+            isDisabled={loading}
+            isLoading={loading}
+            type="submit"
+          >
             Sign in as third-party
           </Button>
         </form>

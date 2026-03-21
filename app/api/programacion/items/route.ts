@@ -1,6 +1,6 @@
-import { ORDER_ITEM_STATUS, ORDER_STATUS } from "@/src/utils/order-status";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
+import { ORDER_ITEM_STATUS, ORDER_STATUS } from "@/src/utils/order-status";
 import { db } from "@/src/db";
 import {
   clients,
@@ -23,10 +23,21 @@ type DeliverySort = "DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA";
 type GroupByMode = "ITEM" | "ORDER";
 
 const VALID_PROCESSES: ProcessType[] = ["PRODUCCION", "BODEGA", "COMPRAS"];
-const VALID_ORDER_STATUS: OrderStatusFilter[] = ["PRODUCCION", "PROGRAMACION", ORDER_STATUS.APROBACION];
+const VALID_ORDER_STATUS: OrderStatusFilter[] = [
+  "PRODUCCION",
+  "PROGRAMACION",
+  ORDER_STATUS.APROBACION,
+];
 const VALID_VIEW: ProgramacionView[] = ["GENERAL", "ACTUALIZACION"];
-const VALID_ACTUALIZACION_QUEUE: ActualizacionQueue[] = ["APROBACION", "PROGRAMACION"];
-const VALID_DELIVERY_SORT: DeliverySort[] = ["DEFAULT", "MAS_PROXIMA", "MAS_LEJANA"];
+const VALID_ACTUALIZACION_QUEUE: ActualizacionQueue[] = [
+  "APROBACION",
+  "PROGRAMACION",
+];
+const VALID_DELIVERY_SORT: DeliverySort[] = [
+  "DEFAULT",
+  "MAS_PROXIMA",
+  "MAS_LEJANA",
+];
 const VALID_GROUP_BY: GroupByMode[] = ["ITEM", "ORDER"];
 const PROGRAMACION_CACHE_HEADERS = {
   "Cache-Control": "no-store",
@@ -49,6 +60,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_PEDIDO");
+
   if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
@@ -62,7 +74,9 @@ export async function GET(request: Request) {
   const viewRaw = String(searchParams.get("view") ?? "GENERAL")
     .trim()
     .toUpperCase();
-  const actualizacionQueueRaw = String(searchParams.get("actualizacionQueue") ?? "PROGRAMACION")
+  const actualizacionQueueRaw = String(
+    searchParams.get("actualizacionQueue") ?? "PROGRAMACION",
+  )
     .trim()
     .toUpperCase();
   const deliverySortRaw = String(searchParams.get("deliverySort") ?? "DEFAULT")
@@ -85,9 +99,12 @@ export async function GET(request: Request) {
   }
 
   if (!VALID_ORDER_STATUS.includes(orderStatusRaw as OrderStatusFilter)) {
-    return new Response("orderStatus inválido. Usa: PRODUCCION, PROGRAMACION o APROBACION", {
-      status: 400,
-    });
+    return new Response(
+      "orderStatus inválido. Usa: PRODUCCION, PROGRAMACION o APROBACION",
+      {
+        status: 400,
+      },
+    );
   }
 
   if (!VALID_VIEW.includes(viewRaw as ProgramacionView)) {
@@ -96,16 +113,26 @@ export async function GET(request: Request) {
     });
   }
 
-  if (!VALID_ACTUALIZACION_QUEUE.includes(actualizacionQueueRaw as ActualizacionQueue)) {
-    return new Response("actualizacionQueue inválido. Usa: APROBACION o PROGRAMACION", {
-      status: 400,
-    });
+  if (
+    !VALID_ACTUALIZACION_QUEUE.includes(
+      actualizacionQueueRaw as ActualizacionQueue,
+    )
+  ) {
+    return new Response(
+      "actualizacionQueue inválido. Usa: APROBACION o PROGRAMACION",
+      {
+        status: 400,
+      },
+    );
   }
 
   if (!VALID_DELIVERY_SORT.includes(deliverySortRaw as DeliverySort)) {
-    return new Response("deliverySort inválido. Usa: DEFAULT, MAS_PROXIMA o MAS_LEJANA", {
-      status: 400,
-    });
+    return new Response(
+      "deliverySort inválido. Usa: DEFAULT, MAS_PROXIMA o MAS_LEJANA",
+      {
+        status: 400,
+      },
+    );
   }
 
   if (!VALID_GROUP_BY.includes(groupByRaw as GroupByMode)) {
@@ -133,10 +160,7 @@ export async function GET(request: Request) {
       end
     ) = ${process}`;
 
-  const whereBase = and(
-    processFilter,
-    eq(orders.status, orderStatus as any),
-  );
+  const whereBase = and(processFilter, eq(orders.status, orderStatus as any));
 
   const searchFilter = search
     ? sql`(
@@ -154,7 +178,9 @@ export async function GET(request: Request) {
       )`
     : undefined;
 
-  const genderFilter = gender ? eq(orderItems.gender, gender as any) : undefined;
+  const genderFilter = gender
+    ? eq(orderItems.gender, gender as any)
+    : undefined;
   const dateStartFilter = startDateRaw
     ? sql`date(${orders.createdAt}) >= ${startDateRaw}::date`
     : undefined;
@@ -173,7 +199,13 @@ export async function GET(request: Request) {
           dateStartFilter,
           dateEndFilter,
         )
-      : and(whereBase, searchFilter, genderFilter, dateStartFilter, dateEndFilter);
+      : and(
+          whereBase,
+          searchFilter,
+          genderFilter,
+          dateStartFilter,
+          dateEndFilter,
+        );
 
   const baseItems = await db
     .select({
@@ -184,7 +216,9 @@ export async function GET(request: Request) {
       orderDate: orders.createdAt,
       clientName: clients.name,
       clientCode: clients.clientCode,
-      deliveryDate: sql<string | null>`coalesce((date(${orders.createdAt}) + ${orderItems.estimatedLeadDays})::text, ${quotations.deliveryDate}::text)`,
+      deliveryDate: sql<
+        string | null
+      >`coalesce((date(${orders.createdAt}) + ${orderItems.estimatedLeadDays})::text, ${quotations.deliveryDate}::text)`,
       sellerName: employees.name,
       sellerCode: employees.employeeCode,
       design: orderItems.name,
@@ -192,7 +226,9 @@ export async function GET(request: Request) {
       fabric: orderItems.fabric,
       gender: orderItems.gender,
       leadDays: orderItems.estimatedLeadDays,
-      leadHours: sql<number | null>`case when ${orderItems.estimatedLeadDays} is null then null else ${orderItems.estimatedLeadDays} * 24 end`,
+      leadHours: sql<
+        number | null
+      >`case when ${orderItems.estimatedLeadDays} is null then null else ${orderItems.estimatedLeadDays} * 24 end`,
       process: sql<string>`coalesce(nullif(${orderItems.process}, ''), 'PRODUCCION')`,
       ticketMontaje: orderItems.ticketMontaje,
       ticketPlotter: orderItems.ticketPlotter,
@@ -205,9 +241,7 @@ export async function GET(request: Request) {
     .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
     .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
     .where(where)
-    .orderBy(desc(orders.createdAt), desc(orderItems.createdAt))
-    ;
-
+    .orderBy(desc(orders.createdAt), desc(orderItems.createdAt));
   const baseItemIds = baseItems.map((item) => item.id);
 
   const packagingSizes = baseItemIds.length
@@ -233,9 +267,11 @@ export async function GET(request: Request) {
     const size = String(row.size ?? "").trim();
     const quantity = Number(row.quantity ?? 0);
 
-    if (!itemId || !size || !Number.isFinite(quantity) || quantity <= 0) continue;
+    if (!itemId || !size || !Number.isFinite(quantity) || quantity <= 0)
+      continue;
 
     const current = sizesByItem.get(itemId) ?? [];
+
     current.push({ size, quantity, rowOrder: String(row.rowOrder ?? "") });
     sizesByItem.set(itemId, current);
   }
@@ -266,7 +302,10 @@ export async function GET(request: Request) {
 
   const splitBySize = !(view === "ACTUALIZACION" && groupBy === "ITEM");
 
-  const itemIdsByOrder = new Map<string, Array<{ itemId: string; createdAt: Date | null }>>();
+  const itemIdsByOrder = new Map<
+    string,
+    Array<{ itemId: string; createdAt: Date | null }>
+  >();
 
   for (const item of baseItems) {
     const orderId = String(item.orderId ?? "");
@@ -275,6 +314,7 @@ export async function GET(request: Request) {
     if (!orderId || !itemId) continue;
 
     const current = itemIdsByOrder.get(orderId) ?? [];
+
     current.push({ itemId, createdAt: item.itemCreatedAt ?? null });
     itemIdsByOrder.set(orderId, current);
   }
@@ -293,6 +333,7 @@ export async function GET(request: Request) {
     const ordered = Array.from(uniqueByItemId.entries()).sort((a, b) => {
       const aTime = a[1] ? new Date(a[1]).getTime() : 0;
       const bTime = b[1] ? new Date(b[1]).getTime() : 0;
+
       return aTime - bTime;
     });
 
@@ -301,11 +342,15 @@ export async function GET(request: Request) {
     });
   }
 
-  const assignedTicketsByItemId = new Map<string, { ticketMontaje: string | null }>();
+  const assignedTicketsByItemId = new Map<
+    string,
+    { ticketMontaje: string | null }
+  >();
   const ticketUpdates: Array<Promise<unknown>> = [];
 
   for (const item of baseItems) {
     const itemId = String(item.id ?? "").trim();
+
     if (!itemId) continue;
 
     const designNumber = designNumberByItemId.get(itemId) ?? 1;
@@ -350,11 +395,13 @@ export async function GET(request: Request) {
     if (mapped[raw]) return mapped[raw];
 
     const numericRange = raw.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)$/);
+
     if (numericRange) {
       return Number(numericRange[2]);
     }
 
     const numeric = raw.match(/^(\d+(?:\.\d+)?)$/);
+
     if (numeric) {
       return Number(numeric[1]);
     }
@@ -423,6 +470,7 @@ export async function GET(request: Request) {
 
     sizeRows.sort((a, b) => {
       const weight = sizeWeight(b.size) - sizeWeight(a.size);
+
       if (weight !== 0) return weight;
 
       return b.rowOrder.localeCompare(a.rowOrder);
@@ -457,8 +505,12 @@ export async function GET(request: Request) {
 
   if (deliverySort !== "DEFAULT") {
     expandedItems.sort((a, b) => {
-      const aTime = a.deliveryDate ? new Date(a.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
-      const bTime = b.deliveryDate ? new Date(b.deliveryDate).getTime() : Number.POSITIVE_INFINITY;
+      const aTime = a.deliveryDate
+        ? new Date(a.deliveryDate).getTime()
+        : Number.POSITIVE_INFINITY;
+      const bTime = b.deliveryDate
+        ? new Date(b.deliveryDate).getTime()
+        : Number.POSITIVE_INFINITY;
 
       if (deliverySort === "MAS_PROXIMA") {
         return aTime - bTime;
@@ -523,14 +575,19 @@ export async function GET(request: Request) {
               current.orderItemIds.push(row.orderItemId);
             }
 
-            current.quantity = Number(current.quantity ?? 0) + Number(row.quantity ?? 0);
+            current.quantity =
+              Number(current.quantity ?? 0) + Number(row.quantity ?? 0);
 
             if (!current.deliveryDate) {
               current.deliveryDate = row.deliveryDate;
             } else if (row.deliveryDate) {
               const currentTs = new Date(current.deliveryDate).getTime();
               const nextTs = new Date(row.deliveryDate).getTime();
-              if (!Number.isNaN(nextTs) && (Number.isNaN(currentTs) || nextTs < currentTs)) {
+
+              if (
+                !Number.isNaN(nextTs) &&
+                (Number.isNaN(currentTs) || nextTs < currentTs)
+              ) {
                 current.deliveryDate = row.deliveryDate;
               }
             }

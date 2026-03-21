@@ -7,7 +7,6 @@ import {
   orderPayments,
   orders,
   prefacturas,
-  quotations,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

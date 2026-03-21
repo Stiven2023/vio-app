@@ -1,11 +1,11 @@
 "use client";
 
+import type { TallaRow } from "@/app/mes/_components/mes-types";
+
 import React from "react";
 import { Button } from "@heroui/react";
 import * as XLSX from "xlsx";
 import { MdDownload } from "react-icons/md";
-
-import type { TallaRow } from "@/app/mes/_components/mes-types";
 
 type MontajeExcelDownloadProps = {
   orderCode: string;
@@ -35,14 +35,10 @@ export function MontajeExcelDownload({
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
 
     // Column widths
-    worksheet["!cols"] = [
-      { wch: 8 },
-      { wch: 30 },
-      { wch: 10 },
-      { wch: 12 },
-    ];
+    worksheet["!cols"] = [{ wch: 8 }, { wch: 30 }, { wch: 10 }, { wch: 12 }];
 
     const workbook = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(workbook, worksheet, "Montaje");
 
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");

@@ -1,4 +1,5 @@
 import crypto from "crypto";
+
 import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
@@ -22,8 +23,12 @@ export async function POST(request: Request) {
     audience?: string;
   };
 
-  const clientCode = String(body.clientCode ?? "").trim().toUpperCase();
-  const audience = String(body.audience ?? "").trim().toUpperCase();
+  const clientCode = String(body.clientCode ?? "")
+    .trim()
+    .toUpperCase();
+  const audience = String(body.audience ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!clientCode) {
     return new Response("clientCode es obligatorio", { status: 400 });
@@ -68,7 +73,9 @@ export async function POST(request: Request) {
     .limit(1);
 
   const now = Date.now();
-  const resendAt = lastOtp?.resendAvailableAt ? new Date(lastOtp.resendAvailableAt).getTime() : 0;
+  const resendAt = lastOtp?.resendAvailableAt
+    ? new Date(lastOtp.resendAvailableAt).getTime()
+    : 0;
 
   if (resendAt > now) {
     return Response.json(

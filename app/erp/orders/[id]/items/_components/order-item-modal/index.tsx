@@ -10,9 +10,6 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 
-import { getErrorMessage } from "@/app/erp/orders/_lib/api";
-import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
-
 import { DesignSection } from "./design-section";
 import { MaterialsSection } from "./materials-section";
 import { PackagingSection } from "./packaging-section";
@@ -21,6 +18,9 @@ import {
   useOrderItemModalState,
   type OrderItemModalValue,
 } from "./use-order-item-modal-state";
+
+import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
+import { getErrorMessage } from "@/app/erp/orders/_lib/api";
 
 export type { OrderItemModalValue } from "./use-order-item-modal-state";
 
@@ -44,7 +44,8 @@ export function OrderItemModal(props: {
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
-  const [priceClientType, setPriceClientType] = React.useState<string>("VIOMAR");
+  const [priceClientType, setPriceClientType] =
+    React.useState<string>("VIOMAR");
   const [imageOneFile, setImageOneFile] = React.useState<File | null>(null);
   const [imageTwoFile, setImageTwoFile] = React.useState<File | null>(null);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
@@ -83,6 +84,7 @@ export function OrderItemModal(props: {
     (async () => {
       try {
         const data = await fetch(`/api/orders/${orderId}/prefactura`);
+
         if (!data.ok) return;
         const json = (await data.json()) as {
           order?: { clientPriceType?: string | null };
@@ -109,11 +111,10 @@ export function OrderItemModal(props: {
 
   const quantity = React.useMemo(
     () => Math.max(1, Math.floor(asNumber(item.quantity))),
-    [item.quantity]
+    [item.quantity],
   );
 
   const isCreateBlocked = mode === "create" && orderKind !== "NUEVO";
-
 
   async function onSubmit() {
     setError(null);
@@ -220,7 +221,8 @@ export function OrderItemModal(props: {
 
       const id = (props.initialValue?.item as any)?.id ?? item.id;
 
-      const url = mode === "create" ? `/api/orders/items` : `/api/orders/items/${id}`;
+      const url =
+        mode === "create" ? `/api/orders/items` : `/api/orders/items/${id}`;
       const method = mode === "create" ? "POST" : "PUT";
 
       const res = await fetch(url, {
@@ -254,15 +256,17 @@ export function OrderItemModal(props: {
                 </div>
               ) : null}
 
-              {error ? <div className="text-sm text-danger">{error}</div> : null}
+              {error ? (
+                <div className="text-sm text-danger">{error}</div>
+              ) : null}
 
               <DesignSection
                 canEditUnitPrice={canEditUnitPrice}
                 computedTotal={computedTotal}
                 imageOneFile={imageOneFile}
                 imageTwoFile={imageTwoFile}
-                logoFile={logoFile}
                 isCreateBlocked={isCreateBlocked}
+                logoFile={logoFile}
                 orderKind={orderKind}
                 value={item}
                 onChange={setItem}
@@ -273,26 +277,26 @@ export function OrderItemModal(props: {
 
               <PackagingSection
                 disabled={uiDisabled}
+                garmentType={String(item.garmentType ?? "JUGADOR")}
+                maxCurveQuantity={quantity}
                 mode={packagingMode}
                 packaging={packaging}
-                maxCurveQuantity={quantity}
-                garmentType={String(item.garmentType ?? "JUGADOR")}
+                onError={(m) => setError(m)}
                 onModeChange={setPackagingMode}
                 onPackagingChange={setPackaging}
-                onError={(m) => setError(m)}
               />
 
               {orderKind !== "COMPLETACION" && Boolean(item.requiresSocks) ? (
                 <SocksSection
                   disabled={uiDisabled}
                   garmentType={String(item.garmentType ?? "JUGADOR")}
-                  requiresSocks={Boolean(item.requiresSocks)}
-                  packaging={packaging}
                   orderId={orderId}
+                  packaging={packaging}
+                  requiresSocks={Boolean(item.requiresSocks)}
                   value={socks}
                   onChange={setSocks}
-                  onUploadingChange={setIsUploadingAssets}
                   onError={(m) => setError(m)}
+                  onUploadingChange={setIsUploadingAssets}
                 />
               ) : null}
 

@@ -2,7 +2,11 @@ import { and, eq, inArray } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { ORDER_ITEM_STATUS, ORDER_ITEM_STATUS_VALUES, ORDER_STATUS } from "@/src/utils/order-status";
+import {
+  ORDER_ITEM_STATUS,
+  ORDER_ITEM_STATUS_VALUES,
+  ORDER_STATUS,
+} from "@/src/utils/order-status";
 import {
   additions,
   employees,
@@ -75,7 +79,11 @@ async function recalcOrderTotal(tx: any, orderId: string) {
     .where(eq(orders.id, orderId));
 }
 
-async function syncOrderStatusFromItems(tx: any, orderId: string, changedBy: string | null) {
+async function syncOrderStatusFromItems(
+  tx: any,
+  orderId: string,
+  changedBy: string | null,
+) {
   const [resume] = await tx
     .select({
       total: sql<number>`count(*)::int`,
@@ -111,6 +119,7 @@ async function syncOrderStatusFromItems(tx: any, orderId: string, changedBy: str
       status: ORDER_STATUS.PROGRAMACION,
       changedBy,
     });
+
     return;
   }
 
@@ -217,7 +226,7 @@ export async function GET(
   const materials = materialsRows.map((m) => ({
     ...m,
     deliveredQty: m.inventoryItemId
-      ? deliveredByItem.get(String(m.inventoryItemId)) ?? "0"
+      ? (deliveredByItem.get(String(m.inventoryItemId)) ?? "0")
       : "0",
   }));
 
@@ -234,7 +243,13 @@ export async function GET(
     .leftJoin(additions, eq(orderItemAdditions.additionId, additions.id))
     .where(eq(orderItemAdditions.orderItemId, orderItemId));
 
-  return Response.json({ item, packaging, socks, materials, additions: additionsRows });
+  return Response.json({
+    item,
+    packaging,
+    socks,
+    materials,
+    additions: additionsRows,
+  });
 }
 
 function toNullableString(v: unknown) {
@@ -277,9 +292,13 @@ function sumGroupedPackagingQuantity(packagingInput: unknown) {
   if (!Array.isArray(packagingInput)) return 0;
 
   return packagingInput.reduce((acc, row: any) => {
-    const mode = String(row?.mode ?? "AGRUPADO").trim().toUpperCase();
+    const mode = String(row?.mode ?? "AGRUPADO")
+      .trim()
+      .toUpperCase();
+
     if (mode !== "AGRUPADO") return acc;
     const qty = toPositiveInt(row?.quantity);
+
     return acc + (qty ?? 0);
   }, 0);
 }
@@ -342,7 +361,11 @@ function resolveUnitPriceByRule(args: {
   if (currencyCode === "USD") {
     if (row.priceUSD) return row.priceUSD;
 
-    if (row.priceCopInternational && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
+    if (
+      row.priceCopInternational &&
+      usdCopEffectiveRate &&
+      usdCopEffectiveRate > 0
+    ) {
       return String(asNumber(row.priceCopInternational) / usdCopEffectiveRate);
     }
 
@@ -350,8 +373,10 @@ function resolveUnitPriceByRule(args: {
   }
 
   if (clientPriceType === "VIOMAR" && row.priceViomar) return row.priceViomar;
-  if (clientPriceType === "COLANTA" && row.priceColanta) return row.priceColanta;
-  if (clientPriceType === "MAYORISTA" && row.priceMayorista) return row.priceMayorista;
+  if (clientPriceType === "COLANTA" && row.priceColanta)
+    return row.priceColanta;
+  if (clientPriceType === "MAYORISTA" && row.priceMayorista)
+    return row.priceMayorista;
 
   const copByScale = pickCopScaleByQuantity(row, quantity);
 
@@ -473,8 +498,7 @@ export async function PUT(
     .select({
       kind: orders.kind,
       currency: orders.currency,
-      clientPriceType:
-        sql<string>`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
+      clientPriceType: sql<string>`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
       orderStatus: orders.status,
     })
     .from(orders)
@@ -493,26 +517,31 @@ export async function PUT(
     body.quantity !== undefined &&
     qty !== null &&
     Number(qty) !== Number(existing.quantity ?? 0);
-    const effectiveQuantity = qty ?? Number(existing.quantity ?? 0);
+  const effectiveQuantity = qty ?? Number(existing.quantity ?? 0);
 
-    // Bloquear modificación de cantidad una vez el pedido avanzó a programación o producción
-    const QUANTITY_LOCKED_STATUSES = new Set<string>([
-      ORDER_STATUS.PROGRAMACION,
-      ORDER_STATUS.PRODUCCION,
-      ORDER_STATUS.ATRASADO,
-      ORDER_STATUS.FINALIZADO,
-      ORDER_STATUS.ENTREGADO,
-      ORDER_STATUS.CANCELADO,
-    ]);
-    if (quantityWasChanged && QUANTITY_LOCKED_STATUSES.has(String(orderRow?.orderStatus ?? ""))) {
-      return new Response(
-        "La cantidad del diseño no puede modificarse una vez el pedido ha sido enviado a programación.",
-        { status: 422 },
-      );
-    }
+  // Bloquear modificación de cantidad una vez el pedido avanzó a programación o producción
+  const QUANTITY_LOCKED_STATUSES = new Set<string>([
+    ORDER_STATUS.PROGRAMACION,
+    ORDER_STATUS.PRODUCCION,
+    ORDER_STATUS.ATRASADO,
+    ORDER_STATUS.FINALIZADO,
+    ORDER_STATUS.ENTREGADO,
+    ORDER_STATUS.CANCELADO,
+  ]);
+
+  if (
+    quantityWasChanged &&
+    QUANTITY_LOCKED_STATUSES.has(String(orderRow?.orderStatus ?? ""))
+  ) {
+    return new Response(
+      "La cantidad del diseño no puede modificarse una vez el pedido ha sido enviado a programación.",
+      { status: 422 },
+    );
+  }
 
   if (Array.isArray(body.packaging)) {
     const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
+
     if (groupedPackagingTotal > effectiveQuantity) {
       return new Response(
         `La curva no puede superar la cantidad del diseño (${effectiveQuantity}).`,
@@ -530,6 +559,7 @@ export async function PUT(
     ORDER_STATUS.ENTREGADO,
   ]);
   const hasNonStatusBodyFields = Object.keys(body).some((k) => k !== "status");
+
   if (
     ORDER_MONTAJE_LOCKED_STATUSES.has(String(orderRow?.orderStatus ?? "")) &&
     hasNonStatusBodyFields
@@ -611,11 +641,15 @@ export async function PUT(
   }
   if (body.additionEvidence !== undefined) {
     const evidence = toNullableString(body.additionEvidence);
+
     patch.additionEvidence = evidence;
     if (evidence) patch.hasAdditions = true;
   }
 
-  const normalizedEffectiveQuantity = Math.max(1, Math.floor(asNumber(effectiveQuantity)));
+  const normalizedEffectiveQuantity = Math.max(
+    1,
+    Math.floor(asNumber(effectiveQuantity)),
+  );
   const effectiveProductId =
     body.productId !== undefined
       ? toNullableString(body.productId)
@@ -635,6 +669,7 @@ export async function PUT(
     }
 
     const manualNumber = Math.max(0, asNumber(manual));
+
     patch.unitPrice = String(manualNumber);
     patch.totalPrice = String(
       manualNumber * Math.max(1, Math.floor(asNumber(effectiveQuantity))),
@@ -670,10 +705,9 @@ export async function PUT(
     }
 
     const resolvedUnitNumber = Math.max(0, asNumber(resolvedUnitPrice));
+
     patch.unitPrice = String(resolvedUnitNumber);
-    patch.totalPrice = String(
-      resolvedUnitNumber * normalizedEffectiveQuantity,
-    );
+    patch.totalPrice = String(resolvedUnitNumber * normalizedEffectiveQuantity);
   }
   if (body.observations !== undefined)
     patch.observations = toNullableString(body.observations);
@@ -739,14 +773,18 @@ export async function PUT(
   });
 
   if (body.status !== undefined) {
-    const nextStatus = String(body.status ?? "").trim().toUpperCase();
+    const nextStatus = String(body.status ?? "")
+      .trim()
+      .toUpperCase();
 
     if (!orderItemStatuses.has(nextStatus)) {
       return new Response("invalid status", { status: 400 });
     }
 
     const role = getRoleFromRequest(request);
-    const currentStatus = String(existing.status ?? "").trim().toUpperCase();
+    const currentStatus = String(existing.status ?? "")
+      .trim()
+      .toUpperCase();
 
     if (!canRoleChangeStatus(role, currentStatus, nextStatus)) {
       return new Response("Forbidden", { status: 403 });
@@ -783,12 +821,14 @@ export async function PUT(
 
     const designChanged =
       hasDesignFieldChange ||
-      (body.name !== undefined && toNullableString(body.name) !== toNullableString(existing.name)) ||
+      (body.name !== undefined &&
+        toNullableString(body.name) !== toNullableString(existing.name)) ||
       body.clothingImageOneUrl !== undefined ||
       body.clothingImageTwoUrl !== undefined ||
       body.logoImageUrl !== undefined;
 
     let tallaChanged = false;
+
     if (Array.isArray(body.packaging)) {
       const currentPackaging = await db
         .select({
@@ -798,25 +838,37 @@ export async function PUT(
         .from(orderItemPackaging)
         .where(eq(orderItemPackaging.orderItemId, orderItemId));
 
-      const normalizeRows = (rows: Array<{ size: unknown; quantity: unknown }>) =>
+      const normalizeRows = (
+        rows: Array<{ size: unknown; quantity: unknown }>,
+      ) =>
         rows
           .map((row) => ({
-            size: String(row.size ?? "").trim().toUpperCase(),
+            size: String(row.size ?? "")
+              .trim()
+              .toUpperCase(),
             quantity: Number(row.quantity ?? 0),
           }))
           .filter((row) => row.size)
           .sort((a, b) => {
             if (a.size === b.size) return a.quantity - b.quantity;
+
             return a.size.localeCompare(b.size);
           });
 
-      const left = normalizeRows(currentPackaging as Array<{ size: unknown; quantity: unknown }>);
-      const right = normalizeRows(body.packaging as Array<{ size: unknown; quantity: unknown }>);
+      const left = normalizeRows(
+        currentPackaging as Array<{ size: unknown; quantity: unknown }>,
+      );
+      const right = normalizeRows(
+        body.packaging as Array<{ size: unknown; quantity: unknown }>,
+      );
 
       tallaChanged = JSON.stringify(left) !== JSON.stringify(right);
     }
 
-    const currentStatus = String(existing.status ?? "").trim().toUpperCase();
+    const currentStatus = String(existing.status ?? "")
+      .trim()
+      .toUpperCase();
+
     if (
       shouldRouteDesignUpdateToApproval({
         orderStatus: orderRow?.orderStatus,

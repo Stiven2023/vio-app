@@ -15,23 +15,28 @@ import {
 import { Button } from "@heroui/button";
 import { Spinner } from "@heroui/spinner";
 import { Chip } from "@heroui/chip";
-import {
-  BsPlusLg,
-  BsPencilFill,
-  BsTrashFill,
-  BsEyeFill,
-} from "react-icons/bs";
+import { BsPlusLg, BsPencilFill, BsTrashFill } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { FilterSearch } from "../ui/filter-search";
 import { FilterSelect } from "../ui/filter-select";
+
 import { AdditionModal } from "./addition-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
 
-function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+function formatCurrency(
+  value: string | null | undefined,
+  currency: "COP" | "USD",
+) {
   const amount = Number(value ?? 0);
-  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+
+  if (
+    !Number.isFinite(amount) ||
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return "-";
   }
 
@@ -55,7 +60,9 @@ export function AdditionsTab({
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
-  const [selectedAddition, setSelectedAddition] = useState<Addition | null>(null);
+  const [selectedAddition, setSelectedAddition] = useState<Addition | null>(
+    null,
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchCode, setSearchCode] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -125,7 +132,9 @@ export function AdditionsTab({
 
       if (!res.ok) {
         const msg = await res.text();
+
         toast.error(msg || "Error al eliminar");
+
         return;
       }
 
@@ -191,7 +200,11 @@ export function AdditionsTab({
         </div>
 
         <div className="flex gap-2">
-          <Button color="primary" onPress={handleNew} startContent={<BsPlusLg />}>
+          <Button
+            color="primary"
+            startContent={<BsPlusLg />}
+            onPress={handleNew}
+          >
             Nueva adición
           </Button>
           <Button variant="flat" onPress={loadAdditions}>
@@ -215,15 +228,14 @@ export function AdditionsTab({
       ) : (
         <Table
           aria-label="Adiciones"
-          className="w-full"
           bottomContent={
             total > pageSize ? (
               <div className="flex w-full justify-center gap-2">
                 <Button
                   isDisabled={page === 1}
-                  onPress={() => setPage((p) => Math.max(1, p - 1))}
                   size="sm"
                   variant="flat"
+                  onPress={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   Anterior
                 </Button>
@@ -232,20 +244,23 @@ export function AdditionsTab({
                 </span>
                 <Button
                   isDisabled={page >= Math.ceil(total / pageSize)}
-                  onPress={() => setPage((p) => p + 1)}
                   size="sm"
                   variant="flat"
+                  onPress={() => setPage((p) => p + 1)}
                 >
                   Siguiente
                 </Button>
               </div>
             ) : null
           }
+          className="w-full"
         >
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
-            <TableColumn>{activeCatalog === "INTERNACIONAL" ? "Precio USD" : "Precio Base"}</TableColumn>
+            <TableColumn>
+              {activeCatalog === "INTERNACIONAL" ? "Precio USD" : "Precio Base"}
+            </TableColumn>
             <TableColumn>Categoría</TableColumn>
             <TableColumn>Estado</TableColumn>
             <TableColumn className="w-32">Acciones</TableColumn>
@@ -271,8 +286,8 @@ export function AdditionsTab({
                 </TableCell>
                 <TableCell>
                   <Chip
-                    size="sm"
                     color={addition.isActive ? "success" : "danger"}
+                    size="sm"
                     variant="flat"
                   >
                     {addition.isActive ? "Activo" : "Inactivo"}
@@ -283,17 +298,17 @@ export function AdditionsTab({
                     <Button
                       isIconOnly
                       size="sm"
+                      startContent={<BsPencilFill className="h-4 w-4" />}
                       variant="light"
                       onPress={() => handleEdit(addition)}
-                      startContent={<BsPencilFill className="h-4 w-4" />}
                     />
                     <Button
                       isIconOnly
-                      size="sm"
-                      variant="light"
                       color="danger"
-                      onPress={() => handleDelete(addition.id)}
+                      size="sm"
                       startContent={<BsTrashFill className="h-4 w-4" />}
+                      variant="light"
+                      onPress={() => handleDelete(addition.id)}
                     />
                   </div>
                 </TableCell>

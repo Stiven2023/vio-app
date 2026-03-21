@@ -25,7 +25,8 @@ export default async function ProvisionsPage() {
     <div className="container mx-auto max-w-7xl px-6 pt-16">
       <h1 className="text-2xl font-bold">Payroll Provisions</h1>
       <p className="mt-1 text-default-600">
-        Management of labor provisions: severance, interest, bonuses, vacation and social security.
+        Management of labor provisions: severance, interest, bonuses, vacation
+        and social security.
       </p>
       <div className="mt-6">
         <PayrollProvisionsTab

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { OptionsPageClient } from "./_components/options-page-client";
+
 import { verifyAuthToken } from "@/src/utils/auth";
 
 export default async function OptionsPage() {

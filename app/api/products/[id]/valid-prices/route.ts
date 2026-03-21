@@ -58,7 +58,9 @@ export async function GET(
     return Response.json({ items: [item] });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar precios", { status: 500 });
   }
 }

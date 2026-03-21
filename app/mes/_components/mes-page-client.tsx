@@ -75,12 +75,17 @@ export default function MesPageClient() {
     Map<string, MontajeAssignment>
   >(new Map());
   const [plotterRepoOpen, setPlotterRepoOpen] = useState(false);
-  const [plotterRepoQty, setPlotterRepoQty] = useState<{ expected: number; produced: number }>({ expected: 0, produced: 0 });
+  const [plotterRepoQty, setPlotterRepoQty] = useState<{
+    expected: number;
+    produced: number;
+  }>({ expected: 0, produced: 0 });
 
   const sessionUser = useSessionStore((state) => state.user);
   const currentUserId = String(sessionUser?.id ?? "").trim();
   const currentUserRole = String(sessionUser?.role ?? "").trim();
-  const isLider = currentUserRole === "LIDER_OPERACIONAL" || currentUserRole === "ADMINISTRADOR";
+  const isLider =
+    currentUserRole === "LIDER_OPERACIONAL" ||
+    currentUserRole === "ADMINISTRADOR";
   const activeProcessConfig =
     PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
 
@@ -121,9 +126,7 @@ export default function MesPageClient() {
   const takeMontajeOrder = useCallback(
     async (row: ProcessQueueRow) => {
       if (!currentUserId) {
-        toast.error(
-          "Could not identify the active user to take the order.",
-        );
+        toast.error("Could not identify the active user to take the order.");
 
         return;
       }
@@ -424,8 +427,8 @@ export default function MesPageClient() {
               <CardBody className="py-3 px-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip color="secondary" size="sm" variant="flat">
-                    Next turn in {activeProcessConfig.label.toLowerCase()}
-                    : {nextProcessTurn.ticket}
+                    Next turn in {activeProcessConfig.label.toLowerCase()}:{" "}
+                    {nextProcessTurn.ticket}
                   </Chip>
                   <span className="text-xs text-default-400">Order:</span>
                   <span className="text-xs font-medium">
@@ -556,7 +559,8 @@ export default function MesPageClient() {
                               </Button>
                               {isTakenByOther ? (
                                 <Chip color="warning" size="sm" variant="flat">
-                                  Taken by {assignment?.userLabel ?? "another operator"}
+                                  Taken by{" "}
+                                  {assignment?.userLabel ?? "another operator"}
                                 </Chip>
                               ) : null}
                             </div>
@@ -619,8 +623,8 @@ export default function MesPageClient() {
                     </div>
                     {activeProceso === "montaje" && (
                       <MontajeExcelDownload
-                        orderCode={selectedMontajeTicket.pedido}
                         designName={selectedMontajeTicket.detalle}
+                        orderCode={selectedMontajeTicket.pedido}
                         tallas={selectedMontajeTicket.tallas}
                       />
                     )}
@@ -628,14 +632,18 @@ export default function MesPageClient() {
                 </div>
               </CardHeader>
               <CardBody className="space-y-3">
-                {activeProceso === "despacho" && selectedMontajeTicket.clientId && (
-                  <DespachoLegalStatusAlert clientId={selectedMontajeTicket.clientId} />
-                )}
+                {activeProceso === "despacho" &&
+                  selectedMontajeTicket.clientId && (
+                    <DespachoLegalStatusAlert
+                      clientId={selectedMontajeTicket.clientId}
+                    />
+                  )}
                 {activeProceso === "plotter" && (
                   <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2">
                     <p className="text-xs text-warning-700">
-                      Si la cantidad producida no coincide con lo esperado, usa el botón{" "}
-                      <strong>Alerta parcial / Reposición</strong> que aparece al guardar el registro.
+                      Si la cantidad producida no coincide con lo esperado, usa
+                      el botón <strong>Alerta parcial / Reposición</strong> que
+                      aparece al guardar el registro.
                     </p>
                   </div>
                 )}
@@ -660,16 +668,18 @@ export default function MesPageClient() {
 
           {/* Plotter reposition wizard - opens when quantity mismatch detected */}
           <PlotterRepoWizard
+            designName={selectedMontajeTicket?.detalle ?? ""}
+            expectedQty={plotterRepoQty.expected}
             isOpen={plotterRepoOpen}
             orderCode={selectedMontajeTicket?.pedido ?? ""}
-            designName={selectedMontajeTicket?.detalle ?? ""}
-            size={null}
-            expectedQty={plotterRepoQty.expected}
             producedQty={plotterRepoQty.produced}
+            size={null}
             onClose={() => setPlotterRepoOpen(false)}
             onRepoGenerated={(ticketRef) => {
               setPlotterRepoOpen(false);
-              toast.success(`Ticket de reposición ${ticketRef} generado para Plotter`);
+              toast.success(
+                `Ticket de reposición ${ticketRef} generado para Plotter`,
+              );
             }}
           />
         </section>

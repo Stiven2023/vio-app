@@ -35,7 +35,12 @@ export function ThirdPartyDocumentsModal({
   const hasDocuments = documents.some((doc) => Boolean(doc.url));
 
   return (
-    <Modal isOpen={isOpen} size="2xl" scrollBehavior="inside" onOpenChange={onOpenChange}>
+    <Modal
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      size="2xl"
+      onOpenChange={onOpenChange}
+    >
       <ModalContent>
         <ModalHeader className="flex flex-col gap-1">
           {title}
@@ -64,10 +69,16 @@ export function ThirdPartyDocumentsModal({
                   <CardBody className="flex flex-row items-center justify-between gap-3 p-4">
                     <div className="flex items-center gap-3">
                       <BsFileEarmarkPdf
-                        className={doc.url ? "text-success text-xl" : "text-danger text-xl"}
+                        className={
+                          doc.url
+                            ? "text-success text-xl"
+                            : "text-danger text-xl"
+                        }
                       />
                       <div className="flex flex-col gap-1">
-                        <p className="font-medium text-foreground">{doc.label}</p>
+                        <p className="font-medium text-foreground">
+                          {doc.label}
+                        </p>
                         <p className="text-xs text-default-500">
                           {doc.url ? (
                             <span className="text-success">Subido</span>
@@ -81,11 +92,17 @@ export function ThirdPartyDocumentsModal({
                     {doc.url ? (
                       <Button
                         isIconOnly
-                        size="sm"
-                        variant="flat"
                         color="success"
-                        onPress={() => window.open(String(doc.url), "_blank", "noopener,noreferrer")}
+                        size="sm"
                         title="Ver documento"
+                        variant="flat"
+                        onPress={() =>
+                          window.open(
+                            String(doc.url),
+                            "_blank",
+                            "noopener,noreferrer",
+                          )
+                        }
                       >
                         <BsEye />
                       </Button>

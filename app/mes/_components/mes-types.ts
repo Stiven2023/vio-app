@@ -1,4 +1,8 @@
-export type EstadoProceso = "pendiente" | "en_proceso" | "completado" | "reponer";
+export type EstadoProceso =
+  | "pendiente"
+  | "en_proceso"
+  | "completado"
+  | "reponer";
 
 export interface TallaRow {
   talla: string;

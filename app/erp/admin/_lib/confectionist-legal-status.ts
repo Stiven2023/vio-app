@@ -1,5 +1,6 @@
-import { apiJson } from "@/app/erp/admin/_lib/api";
 import { z } from "zod";
+
+import { apiJson } from "@/app/erp/admin/_lib/api";
 
 const legalStatusSchema = z.object({
   status: z.enum(["VIGENTE", "EN_REVISION", "BLOQUEADO"], {
@@ -13,10 +14,10 @@ export type LegalStatusUpdate = z.infer<typeof legalStatusSchema>;
 
 export async function updateConfectionistLegalStatus(
   confectionistId: string,
-  data: LegalStatusUpdate
+  data: LegalStatusUpdate,
 ) {
   const validated = legalStatusSchema.safeParse(data);
-  
+
   if (!validated.success) {
     throw new Error(validated.error.issues[0]?.message || "Datos inválidos");
   }
@@ -26,29 +27,37 @@ export async function updateConfectionistLegalStatus(
     {
       method: "POST",
       body: JSON.stringify(validated.data),
-    }
+    },
   );
 
   return response;
 }
 
-export async function getConfectionistLegalStatusHistory(confectionistId: string) {
+export async function getConfectionistLegalStatusHistory(
+  confectionistId: string,
+) {
   const response = await apiJson<any>(
-    `/api/confectionists/${confectionistId}/legal-status-history`
+    `/api/confectionists/${confectionistId}/legal-status-history`,
   );
+
   return response;
 }
 
 export async function checkConfectionistLegalStatus(
-  confectionistId: string
+  confectionistId: string,
 ): Promise<any> {
   try {
     const response = await apiJson<any>(
-      `/api/confectionists/${confectionistId}/legal-status/check`
+      `/api/confectionists/${confectionistId}/legal-status/check`,
     );
+
     return response;
   } catch (error) {
-    console.error("Error verificando estado jurídico del confeccionista:", error);
+    console.error(
+      "Error verificando estado jurídico del confeccionista:",
+      error,
+    );
+
     return {
       status: null,
       canOperate: false,

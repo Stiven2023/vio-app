@@ -148,6 +148,7 @@ export const createEmployeeSchema = z
 
     if (data.mobile?.trim()) {
       const mobileDigits = data.mobile.replace(/\D/g, "");
+
       if (mobileDigits.length < 7 || mobileDigits.length > 15) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -376,6 +377,7 @@ export const createClientSchema = z
     }
 
     const mobileDigits = data.mobile.replace(/\D/g, "");
+
     if (mobileDigits.length < 7 || mobileDigits.length > 15) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -386,6 +388,7 @@ export const createClientSchema = z
 
     if (data.landline) {
       const landlineDigits = data.landline.replace(/\D/g, "");
+
       if (landlineDigits.length < 6 || landlineDigits.length > 12) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -397,6 +400,7 @@ export const createClientSchema = z
 
     if (data.paymentType === "CREDIT" && data.hasCredit) {
       const creditLimitValue = Number(String(data.creditLimit ?? "").trim());
+
       if (
         !String(data.creditLimit ?? "").trim() ||
         !Number.isFinite(creditLimitValue) ||

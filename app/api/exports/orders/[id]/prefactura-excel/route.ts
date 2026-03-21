@@ -1,8 +1,10 @@
-import ExcelJS from "exceljs";
-import { eq, inArray, sql } from "drizzle-orm";
+import type { Buffer as NodeBuffer } from "node:buffer";
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Buffer as NodeBuffer } from "node:buffer";
+
+import ExcelJS from "exceljs";
+import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -13,7 +15,10 @@ import {
   orderPayments,
   orders,
 } from "@/src/db/schema";
-import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getEmployeeIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import {
@@ -70,6 +75,7 @@ type ImageExtension = "png" | "jpeg";
 
 function imageBase64(buffer: NodeBuffer, extension: ImageExtension) {
   const mime = extension === "png" ? "image/png" : "image/jpeg";
+
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
@@ -102,6 +108,7 @@ function styleSectionTitle(
 ) {
   worksheet.mergeCells(rowNumber, fromCol, rowNumber, toCol);
   const cell = worksheet.getCell(rowNumber, fromCol);
+
   cell.value = title;
   cell.font = { bold: true };
   cell.alignment = { vertical: "middle", horizontal: "left" };
@@ -115,9 +122,11 @@ function styleTableHeader(
   toCol: number,
 ) {
   const row = worksheet.getRow(rowNumber);
+
   row.font = { bold: true };
   for (let col = fromCol; col <= toCol; col += 1) {
     const cell = worksheet.getCell(rowNumber, col);
+
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -156,15 +165,18 @@ function setLabelValue(
   value: string,
 ) {
   const labelCell = worksheet.getCell(row, labelCol);
+
   labelCell.value = label;
   labelCell.font = { bold: true };
 
   const valueCell = worksheet.getCell(row, valueCol);
+
   valueCell.value = value;
 }
 
 function hasVisibleValue(value: unknown) {
   const text = String(value ?? "").trim();
+
   return text.length > 0 && text !== "-";
 }
 
@@ -191,11 +203,13 @@ function applyDocumentHeader(
   worksheet.mergeCells(2, 1, 2, 7);
 
   const titleCell = worksheet.getCell(1, 1);
+
   titleCell.value = info.companyName;
   titleCell.font = { size: 18, bold: true };
   titleCell.alignment = { vertical: "middle", horizontal: "left" };
 
   const subtitleCell = worksheet.getCell(2, 1);
+
   subtitleCell.value = info.subtitle;
   subtitleCell.font = { size: 11 };
   subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
@@ -207,6 +221,7 @@ function applyDocumentHeader(
   const infoPairs: Array<{ label: string; value: string }> = [];
   const pushPair = (label: string, value: unknown) => {
     const safe = String(value ?? "").trim();
+
     if (!hasVisibleValue(safe)) return;
     infoPairs.push({ label, value: safe });
   };
@@ -222,6 +237,7 @@ function applyDocumentHeader(
   pushPair("NIT Empresa", info.companyNit);
 
   let rowPointer = 4;
+
   for (let index = 0; index < infoPairs.length; index += 2) {
     const leftPair = infoPairs[index];
     const rightPair = infoPairs[index + 1] ?? null;
@@ -363,6 +379,7 @@ export async function GET(
   const rawSubtotal = lines.reduce((acc, l) => {
     const qty = Number(l.quantity ?? 0);
     const unit = asNumber(l.unitPrice);
+
     return acc + unit * qty;
   }, 0);
 
@@ -406,6 +423,7 @@ export async function GET(
   const orderDate = orderRow.createdAt ? formatDate(orderRow.createdAt) : "-";
 
   const workbook = new ExcelJS.Workbook();
+
   workbook.creator = companyName;
   workbook.created = new Date();
 
@@ -414,7 +432,9 @@ export async function GET(
     : null;
 
   const companyFallbackPath = path.join(process.cwd(), "public", "image.png");
-  const companyFallbackBuffer = await readFile(companyFallbackPath).catch(() => null);
+  const companyFallbackBuffer = await readFile(companyFallbackPath).catch(
+    () => null,
+  );
 
   const stickerPath = path.join(process.cwd(), "public", "STICKER VIOMAR.png");
   const stickerBuffer = await readFile(stickerPath).catch(() => null);
@@ -433,11 +453,11 @@ export async function GET(
           extension: "png",
         })
       : stickerBuffer
-    ? workbook.addImage({
-        base64: imageBase64(stickerBuffer as NodeBuffer, "png"),
-        extension: "png",
-      })
-    : undefined;
+        ? workbook.addImage({
+            base64: imageBase64(stickerBuffer as NodeBuffer, "png"),
+            extension: "png",
+          })
+        : undefined;
 
   const signatureImage = orderRow.sellerSignatureImageUrl
     ? await fetchImageBuffer(String(orderRow.sellerSignatureImageUrl))
@@ -483,7 +503,15 @@ export async function GET(
   styleSectionTitle(sheet, rowPointer, 1, 7, "DETALLE DE PRODUCTOS");
   rowPointer += 1;
 
-  sheet.addRow(["Diseño", "Tipo", "Cantidad", "Unitario", "Total", "Prenda 1", "Logo"]);
+  sheet.addRow([
+    "Diseño",
+    "Tipo",
+    "Cantidad",
+    "Unitario",
+    "Total",
+    "Prenda 1",
+    "Logo",
+  ]);
   styleTableHeader(sheet, rowPointer, 1, 7);
   rowPointer += 1;
 
@@ -497,13 +525,16 @@ export async function GET(
       "",
       "",
     ]);
+
     applyRowBorder(sheet, row.number, 1, 7);
     centerRowCells(sheet, row.number, 1, 7);
     rowPointer = row.number + 1;
 
     const imageOneSource = line.clothingImageOneUrl ?? line.imageUrl;
+
     if (imageOneSource) {
       const image = await fetchImageBuffer(imageOneSource);
+
       if (image) {
         const imageId = workbook.addImage({
           base64: imageBase64(
@@ -512,6 +543,7 @@ export async function GET(
           ),
           extension: image.extension,
         });
+
         addImageToCell(sheet, imageId, row.number, 6, 70);
       } else {
         setCenteredCellValue(row.getCell(6), "Imagen no disponible");
@@ -522,6 +554,7 @@ export async function GET(
 
     if (line.logoImageUrl) {
       const image = await fetchImageBuffer(line.logoImageUrl);
+
       if (image) {
         const imageId = workbook.addImage({
           base64: imageBase64(
@@ -530,6 +563,7 @@ export async function GET(
           ),
           extension: image.extension,
         });
+
         addImageToCell(sheet, imageId, row.number, 7, 70);
       } else {
         setCenteredCellValue(row.getCell(7), "Imagen no disponible");
@@ -539,7 +573,9 @@ export async function GET(
     }
   }
 
-  const lineNameById = new Map(lines.map((line) => [line.id, line.name ?? "-"]));
+  const lineNameById = new Map(
+    lines.map((line) => [line.id, line.name ?? "-"]),
+  );
   const packagingRows = packaging.filter((row) => {
     const name = String(row.personName ?? "").trim();
     const number = String(row.personNumber ?? "").trim();
@@ -559,6 +595,7 @@ export async function GET(
 
   if (packagingRows.length === 0) {
     const row = sheet.addRow(["-", "-", "-", "-", 0, "", ""]);
+
     applyRowBorder(sheet, row.number, 1, 7);
     centerRowCells(sheet, row.number, 1, 7);
     rowPointer = row.number + 1;
@@ -573,6 +610,7 @@ export async function GET(
         "",
         "",
       ]);
+
       applyRowBorder(sheet, row.number, 1, 7);
       centerRowCells(sheet, row.number, 1, 7);
       rowPointer = row.number + 1;
@@ -624,12 +662,14 @@ export async function GET(
       "",
       "",
     ]);
+
     applyRowBorder(sheet, row.number, 1, 7);
     centerRowCells(sheet, row.number, 1, 7);
     rowPointer = row.number + 1;
 
     if (payment.proofImageUrl) {
       const image = await fetchImageBuffer(payment.proofImageUrl);
+
       if (image) {
         const imageId = workbook.addImage({
           base64: imageBase64(
@@ -638,6 +678,7 @@ export async function GET(
           ),
           extension: image.extension,
         });
+
         addImageToCell(sheet, imageId, row.number, 5, 70);
       } else {
         setCenteredCellValue(row.getCell(5), "Imagen no disponible");
@@ -669,7 +710,10 @@ export async function GET(
   applyRowBorder(sheet, rowPointer, 1, 7);
 
   if (signatureImageId) {
-    sheet.getRow(rowPointer).height = Math.max(sheet.getRow(rowPointer).height ?? 15, 95);
+    sheet.getRow(rowPointer).height = Math.max(
+      sheet.getRow(rowPointer).height ?? 15,
+      95,
+    );
     sheet.addImage(signatureImageId, {
       tl: { col: 1.2, row: rowPointer - 1 + 0.05 },
       ext: { width: 400, height: 90 },

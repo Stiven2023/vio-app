@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import { desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -7,15 +7,17 @@ import {
   inventoryItems,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import {
-  ensureInventoryBaseData,
-} from "@/src/utils/inventory-sync";
+import { ensureInventoryBaseData } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 const CATEGORY_PREFIX: Record<string, string> = {
+  MATERIA_PRIMA: "MP",
+  TELAS: "TEL",
+  EMPAQUES: "EMP",
   INSUMOS_PRODUCCION: "INS",
+  INSUMOS_VARIOS: "INV",
   PAPELERIA: "PAP",
   ASEO: "ASE",
   REPUESTOS: "REP",
@@ -333,7 +335,9 @@ export async function POST(request: Request) {
               isActive:
                 row?.isActive !== undefined ? Boolean(row.isActive) : true,
             }))
-            .filter((row) => row.sku || row.color || row.size || row.description)
+            .filter(
+              (row) => row.sku || row.color || row.size || row.description,
+            )
         : [];
 
       if (normalizedInitialVariants.length === 0) {
@@ -373,12 +377,19 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const message = String((error as { message?: string })?.message ?? "");
-    if (message.includes("variante") || message.includes("categoria") || message.includes("codigo")) {
+
+    if (
+      message.includes("variante") ||
+      message.includes("categoria") ||
+      message.includes("codigo")
+    ) {
       return new Response(message, { status: 400 });
     }
 
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear item de inventario", { status: 500 });
   }
 }

@@ -24,9 +24,11 @@ export async function PATCH(
     limit: 120,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !canWrite(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -66,6 +68,7 @@ export async function PATCH(
       )
         ? (body.priority as (typeof PRIORITY_VALUES)[number])
         : existing.priority;
+
       updates.priority = priority;
       updates.prioritySetBy = employeeId;
       updates.prioritySetAt = new Date();
@@ -78,11 +81,13 @@ export async function PATCH(
 
     if (body.finalOrder !== undefined) {
       const finalOrder = Math.max(1, Math.floor(Number(body.finalOrder ?? 1)));
+
       updates.finalOrder = finalOrder;
     }
 
     if (body.status !== undefined) {
       const allowed = ["EN_COLA", "EN_PROCESO", "COMPLETADO"] as const;
+
       if (allowed.includes(body.status as (typeof allowed)[number])) {
         updates.status = body.status as (typeof allowed)[number];
       }
@@ -97,7 +102,11 @@ export async function PATCH(
     return Response.json(updated);
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al actualizar cola de producción", { status: 500 });
+
+    return new Response("Error al actualizar cola de producción", {
+      status: 500,
+    });
   }
 }

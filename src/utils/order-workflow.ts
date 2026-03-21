@@ -6,23 +6,47 @@ export type WorkflowOrderStatus = OrderStatus;
 
 const ORDER_STATUS_SET = new Set<string>(ORDER_STATUS_VALUES);
 
-const ORDER_STATUS_TRANSITIONS: Record<WorkflowOrderStatus, WorkflowOrderStatus[]> = {
+const ORDER_STATUS_TRANSITIONS: Record<
+  WorkflowOrderStatus,
+  WorkflowOrderStatus[]
+> = {
   PENDIENTE: [ORDER_STATUS.APROBACION, ORDER_STATUS.CANCELADO],
   APROBACION: [ORDER_STATUS.PROGRAMACION, ORDER_STATUS.CANCELADO],
-  PROGRAMACION: [ORDER_STATUS.PRODUCCION, ORDER_STATUS.APROBACION, ORDER_STATUS.ATRASADO, ORDER_STATUS.CANCELADO],
-  PRODUCCION: [ORDER_STATUS.ATRASADO, ORDER_STATUS.FINALIZADO, ORDER_STATUS.CANCELADO],
-  ATRASADO: [ORDER_STATUS.PRODUCCION, ORDER_STATUS.FINALIZADO, ORDER_STATUS.CANCELADO],
+  PROGRAMACION: [
+    ORDER_STATUS.PRODUCCION,
+    ORDER_STATUS.APROBACION,
+    ORDER_STATUS.ATRASADO,
+    ORDER_STATUS.CANCELADO,
+  ],
+  PRODUCCION: [
+    ORDER_STATUS.ATRASADO,
+    ORDER_STATUS.FINALIZADO,
+    ORDER_STATUS.CANCELADO,
+  ],
+  ATRASADO: [
+    ORDER_STATUS.PRODUCCION,
+    ORDER_STATUS.FINALIZADO,
+    ORDER_STATUS.CANCELADO,
+  ],
   FINALIZADO: [ORDER_STATUS.ENTREGADO],
   ENTREGADO: [],
   CANCELADO: [],
 };
 
 export function isOrderStatus(value: unknown): value is WorkflowOrderStatus {
-  return ORDER_STATUS_SET.has(String(value ?? "").trim().toUpperCase());
+  return ORDER_STATUS_SET.has(
+    String(value ?? "")
+      .trim()
+      .toUpperCase(),
+  );
 }
 
-export function getAllowedNextOrderStatuses(current: string | null | undefined) {
-  const normalized = String(current ?? "").trim().toUpperCase();
+export function getAllowedNextOrderStatuses(
+  current: string | null | undefined,
+) {
+  const normalized = String(current ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!isOrderStatus(normalized)) return [] as WorkflowOrderStatus[];
 
@@ -33,8 +57,12 @@ export function canTransitionOrderStatus(
   current: string | null | undefined,
   next: string | null | undefined,
 ) {
-  const currentNormalized = String(current ?? "").trim().toUpperCase();
-  const nextNormalized = String(next ?? "").trim().toUpperCase();
+  const currentNormalized = String(current ?? "")
+    .trim()
+    .toUpperCase();
+  const nextNormalized = String(next ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!isOrderStatus(nextNormalized)) return false;
   if (!isOrderStatus(currentNormalized)) return false;

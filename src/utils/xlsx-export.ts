@@ -15,6 +15,10 @@ export function workbookToXlsxResponse(
   });
 }
 
-export function aoaSheet(rows: Array<Array<string | number | null | undefined>>) {
-  return XLSX.utils.aoa_to_sheet(rows.map((row) => row.map((cell) => cell ?? "")));
+export function aoaSheet(
+  rows: Array<Array<string | number | null | undefined>>,
+) {
+  return XLSX.utils.aoa_to_sheet(
+    rows.map((row) => row.map((cell) => cell ?? "")),
+  );
 }

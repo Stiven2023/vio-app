@@ -55,6 +55,7 @@ function detectDelimiter(headerLine: string) {
 
   for (const delimiter of delimiters) {
     const count = headerLine.split(delimiter).length;
+
     if (count > bestCount) {
       bestCount = count;
       selected = delimiter;
@@ -74,6 +75,7 @@ function parseCsvLine(line: string, delimiter: string) {
 
     if (char === '"') {
       const nextChar = line[i + 1];
+
       if (inQuotes && nextChar === '"') {
         current += '"';
         i += 1;
@@ -93,11 +95,15 @@ function parseCsvLine(line: string, delimiter: string) {
   }
 
   cells.push(current);
+
   return cells.map((cell) => cell.trim());
 }
 
 function parseCsv(content: string): ImportRow[] {
-  const normalized = content.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalized = content
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
   const lines = normalized
     .split("\n")
     .map((line) => line.trim())
@@ -112,6 +118,7 @@ function parseCsv(content: string): ImportRow[] {
   const getCell = (cells: string[], aliases: string[]) => {
     const aliasSet = aliases.map(normalizeHeader);
     const index = headers.findIndex((h) => aliasSet.includes(h));
+
     return index >= 0 ? String(cells[index] ?? "").trim() : "";
   };
 
@@ -122,17 +129,45 @@ function parseCsv(content: string): ImportRow[] {
 
     const row: ImportRow = {
       categoryId: getCell(cells, ["categoryId", "categoriaId", "idCategoria"]),
-      categoryName: getCell(cells, ["categoryName", "categoria", "nombreCategoria", "nombreDeCategoria"]),
+      categoryName: getCell(cells, [
+        "categoryName",
+        "categoria",
+        "nombreCategoria",
+        "nombreDeCategoria",
+      ]),
       productCode: getCell(cells, ["productCode", "codigoProducto"]),
       name: getCell(cells, ["name", "nombre", "nombreProducto", "producto"]),
       description: getCell(cells, ["description", "descripcion", "detalle"]),
-      priceCopBase: getCell(cells, ["priceCopBase", "precioBase", "preciocopbase"]),
-      priceCopR1: getCell(cells, ["priceCopR1", "precioR1", "precio1499", "precio1499cop", "precio1499cop"]),
-      priceCopR2: getCell(cells, ["priceCopR2", "precioR2", "precio5001000", "precio5001000cop"]),
-      priceCopR3: getCell(cells, ["priceCopR3", "precioR3", "precio1001", "precio1001cop"]),
+      priceCopBase: getCell(cells, [
+        "priceCopBase",
+        "precioBase",
+        "preciocopbase",
+      ]),
+      priceCopR1: getCell(cells, [
+        "priceCopR1",
+        "precioR1",
+        "precio1499",
+        "precio1499cop",
+        "precio1499cop",
+      ]),
+      priceCopR2: getCell(cells, [
+        "priceCopR2",
+        "precioR2",
+        "precio5001000",
+        "precio5001000cop",
+      ]),
+      priceCopR3: getCell(cells, [
+        "priceCopR3",
+        "precioR3",
+        "precio1001",
+        "precio1001cop",
+      ]),
       priceMayorista: getCell(cells, ["priceMayorista", "precioMayorista"]),
       priceColanta: getCell(cells, ["priceColanta", "precioColanta"]),
-      priceCopInternational: getCell(cells, ["priceCopInternational", "precioCopInternacional"]),
+      priceCopInternational: getCell(cells, [
+        "priceCopInternational",
+        "precioCopInternacional",
+      ]),
       priceUSD: getCell(cells, ["priceUSD", "precioUsd"]),
       trmUsed: getCell(cells, ["trmUsed", "trm"]),
       isActive: getCell(cells, ["isActive", "activo", "estado"]),
@@ -177,7 +212,9 @@ async function buildNextProductCodeTx(tx: any, categoryId: string) {
   const nextSuffix = (row?.maxSuffix ?? 0) + 1;
 
   if (nextSuffix > 99) {
-    throw new Error(`Se alcanzó el máximo de códigos para la categoría ${category.name}`);
+    throw new Error(
+      `Se alcanzó el máximo de códigos para la categoría ${category.name}`,
+    );
   }
 
   return `${prefix}${String(nextSuffix).padStart(2, "0")}`;
@@ -236,6 +273,7 @@ async function resolveCategoryIdFromRow(args: {
 
     const normalizedFromCategoryId = normalizeCategoryName(categoryIdRaw);
     const byName = categoryNameToId.get(normalizedFromCategoryId);
+
     if (byName) {
       return byName;
     }
@@ -244,6 +282,7 @@ async function resolveCategoryIdFromRow(args: {
   }
 
   const categoryNameRaw = String(row.categoryName ?? "").trim();
+
   if (categoryNameRaw) {
     const normalizedCategoryName = normalizeCategoryName(categoryNameRaw);
     const categoryId = categoryNameToId.get(normalizedCategoryName);
@@ -260,6 +299,7 @@ async function resolveCategoryIdFromRow(args: {
 
 function asNumber(value: unknown) {
   const raw = String(value ?? "").trim();
+
   if (!raw) return null;
   if (isEmptyToken(raw)) return null;
 
@@ -272,6 +312,7 @@ function asNumber(value: unknown) {
 
   if (!normalized) return null;
   const number = Number(normalized);
+
   return Number.isFinite(number) ? number : null;
 }
 
@@ -282,14 +323,19 @@ function hasValue(value: unknown) {
 function parseOptionalNumber(value: unknown, label: string) {
   if (!hasValue(value)) return undefined;
   const parsed = asNumber(value);
+
   if (parsed === null) {
     throw new Error(`${label} inválido`);
   }
+
   return parsed;
 }
 
 function parseIsActiveForEdit(value: string | undefined) {
-  const raw = String(value ?? "").trim().toLowerCase();
+  const raw = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
   if (!raw) return undefined;
   if (["1", "true", "si", "sí", "activo", "activa"].includes(raw)) return true;
   if (["0", "false", "no", "inactivo", "inactiva"].includes(raw)) return false;
@@ -299,6 +345,7 @@ function parseIsActiveForEdit(value: string | undefined) {
 function buildAutomaticValidityDates() {
   const now = new Date();
   const nextYearFebFirst = new Date(now.getFullYear() + 1, 1, 1, 0, 0, 0, 0);
+
   return {
     startDate: now,
     endDate: nextYearFebFirst,
@@ -342,8 +389,10 @@ export async function POST(request: Request) {
       .from(categories);
     const categoryIdSet = new Set(categoryRows.map((c) => String(c.id)));
     const categoryNameToId = new Map<string, string>();
+
     for (const category of categoryRows) {
       const normalizedName = normalizeCategoryName(String(category.name ?? ""));
+
       if (!normalizedName) continue;
       if (!categoryNameToId.has(normalizedName)) {
         categoryNameToId.set(normalizedName, String(category.id));
@@ -359,7 +408,9 @@ export async function POST(request: Request) {
       const rowNumber = index + 2;
 
       try {
-        const productCodeRaw = String(row.productCode ?? "").trim().toUpperCase();
+        const productCodeRaw = String(row.productCode ?? "")
+          .trim()
+          .toUpperCase();
         const isEdit = productCodeRaw.length > 0;
 
         if (!isEdit) {
@@ -373,13 +424,18 @@ export async function POST(request: Request) {
             categoryNameToId,
           });
 
-          const priceCopR1 = parseOptionalNumber(row.priceCopR1, "priceCopR1") ?? null;
-          const priceCopR2 = parseOptionalNumber(row.priceCopR2, "priceCopR2") ?? null;
-          const priceCopR3 = parseOptionalNumber(row.priceCopR3, "priceCopR3") ?? null;
+          const priceCopR1 =
+            parseOptionalNumber(row.priceCopR1, "priceCopR1") ?? null;
+          const priceCopR2 =
+            parseOptionalNumber(row.priceCopR2, "priceCopR2") ?? null;
+          const priceCopR3 =
+            parseOptionalNumber(row.priceCopR3, "priceCopR3") ?? null;
           const priceMayorista =
             parseOptionalNumber(row.priceMayorista, "priceMayorista") ?? null;
-          const priceColanta = parseOptionalNumber(row.priceColanta, "priceColanta") ?? null;
-          const priceCopBase = parseOptionalNumber(row.priceCopBase, "priceCopBase") ?? null;
+          const priceColanta =
+            parseOptionalNumber(row.priceColanta, "priceColanta") ?? null;
+          const priceCopBase =
+            parseOptionalNumber(row.priceCopBase, "priceCopBase") ?? null;
 
           const priceCopInternational =
             priceCopR1 !== null ? Number((priceCopR1 * 1.19).toFixed(2)) : null;
@@ -397,19 +453,23 @@ export async function POST(request: Request) {
               name,
               description: String(row.description ?? "").trim() || null,
               categoryId,
-              priceCopBase: priceCopBase !== null
-                ? String(priceCopBase)
-                : priceCopR1 !== null
-                  ? String(priceCopR1)
-                  : null,
+              priceCopBase:
+                priceCopBase !== null
+                  ? String(priceCopBase)
+                  : priceCopR1 !== null
+                    ? String(priceCopR1)
+                    : null,
               priceCopR1: priceCopR1 !== null ? String(priceCopR1) : null,
               priceCopR2: priceCopR2 !== null ? String(priceCopR2) : null,
               priceCopR3: priceCopR3 !== null ? String(priceCopR3) : null,
               priceViomar: null,
               priceColanta: priceColanta !== null ? String(priceColanta) : null,
-              priceMayorista: priceMayorista !== null ? String(priceMayorista) : null,
+              priceMayorista:
+                priceMayorista !== null ? String(priceMayorista) : null,
               priceCopInternational:
-                priceCopInternational !== null ? String(priceCopInternational) : null,
+                priceCopInternational !== null
+                  ? String(priceCopInternational)
+                  : null,
               priceUSD: priceUSD !== null ? String(priceUSD) : null,
               trmUsed: priceUSD !== null ? String(trm) : null,
               startDate: validity.startDate,
@@ -429,20 +489,39 @@ export async function POST(request: Request) {
           .limit(1);
 
         if (!existing) {
-          throw new Error(`productCode no existe para edición: ${productCodeRaw}`);
+          throw new Error(
+            `productCode no existe para edición: ${productCodeRaw}`,
+          );
         }
 
-        const categoryProvided = hasValue(row.categoryId) || hasValue(row.categoryName);
+        const categoryProvided =
+          hasValue(row.categoryId) || hasValue(row.categoryName);
         const categoryId = categoryProvided
-          ? await resolveCategoryIdFromRow({ row, categoryIdSet, categoryNameToId })
+          ? await resolveCategoryIdFromRow({
+              row,
+              categoryIdSet,
+              categoryNameToId,
+            })
           : String(existing.categoryId ?? "").trim() || null;
 
-        const nextPriceCopR1 = parseOptionalNumber(row.priceCopR1, "priceCopR1") ?? asNumber(existing.priceCopR1);
-        const nextPriceCopR2 = parseOptionalNumber(row.priceCopR2, "priceCopR2") ?? asNumber(existing.priceCopR2);
-        const nextPriceCopR3 = parseOptionalNumber(row.priceCopR3, "priceCopR3") ?? asNumber(existing.priceCopR3);
-        const nextPriceMayorista = parseOptionalNumber(row.priceMayorista, "priceMayorista") ?? asNumber(existing.priceMayorista);
-        const nextPriceColanta = parseOptionalNumber(row.priceColanta, "priceColanta") ?? asNumber(existing.priceColanta);
-        const nextPriceCopBase = parseOptionalNumber(row.priceCopBase, "priceCopBase") ?? asNumber(existing.priceCopBase);
+        const nextPriceCopR1 =
+          parseOptionalNumber(row.priceCopR1, "priceCopR1") ??
+          asNumber(existing.priceCopR1);
+        const nextPriceCopR2 =
+          parseOptionalNumber(row.priceCopR2, "priceCopR2") ??
+          asNumber(existing.priceCopR2);
+        const nextPriceCopR3 =
+          parseOptionalNumber(row.priceCopR3, "priceCopR3") ??
+          asNumber(existing.priceCopR3);
+        const nextPriceMayorista =
+          parseOptionalNumber(row.priceMayorista, "priceMayorista") ??
+          asNumber(existing.priceMayorista);
+        const nextPriceColanta =
+          parseOptionalNumber(row.priceColanta, "priceColanta") ??
+          asNumber(existing.priceColanta);
+        const nextPriceCopBase =
+          parseOptionalNumber(row.priceCopBase, "priceCopBase") ??
+          asNumber(existing.priceCopBase);
         const nextIsActive = parseIsActiveForEdit(row.isActive);
 
         const hasPriceInputs =
@@ -456,7 +535,8 @@ export async function POST(request: Request) {
         const patch: Partial<typeof products.$inferInsert> = {};
 
         if (hasValue(row.name)) patch.name = String(row.name ?? "").trim();
-        if (hasValue(row.description)) patch.description = String(row.description ?? "").trim();
+        if (hasValue(row.description))
+          patch.description = String(row.description ?? "").trim();
         if (categoryProvided) patch.categoryId = categoryId;
         if (nextIsActive !== undefined) patch.isActive = nextIsActive;
 
@@ -476,14 +556,20 @@ export async function POST(request: Request) {
               : nextPriceCopR1 !== null
                 ? String(nextPriceCopR1)
                 : null;
-          patch.priceCopR1 = nextPriceCopR1 !== null ? String(nextPriceCopR1) : null;
-          patch.priceCopR2 = nextPriceCopR2 !== null ? String(nextPriceCopR2) : null;
-          patch.priceCopR3 = nextPriceCopR3 !== null ? String(nextPriceCopR3) : null;
+          patch.priceCopR1 =
+            nextPriceCopR1 !== null ? String(nextPriceCopR1) : null;
+          patch.priceCopR2 =
+            nextPriceCopR2 !== null ? String(nextPriceCopR2) : null;
+          patch.priceCopR3 =
+            nextPriceCopR3 !== null ? String(nextPriceCopR3) : null;
           patch.priceMayorista =
             nextPriceMayorista !== null ? String(nextPriceMayorista) : null;
-          patch.priceColanta = nextPriceColanta !== null ? String(nextPriceColanta) : null;
+          patch.priceColanta =
+            nextPriceColanta !== null ? String(nextPriceColanta) : null;
           patch.priceCopInternational =
-            priceCopInternational !== null ? String(priceCopInternational) : null;
+            priceCopInternational !== null
+              ? String(priceCopInternational)
+              : null;
           patch.priceUSD = priceUSD !== null ? String(priceUSD) : null;
           patch.trmUsed = priceUSD !== null ? String(trm) : null;
         }
@@ -516,8 +602,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
 
-    return new Response("No se pudo importar productos desde CSV", { status: 500 });
+    return new Response("No se pudo importar productos desde CSV", {
+      status: 500,
+    });
   }
 }

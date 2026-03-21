@@ -32,11 +32,12 @@ export async function getTRMColombia(): Promise<number> {
         headers: {
           "User-Agent": "Viomar-App/1.0",
         },
-      }
+      },
     );
 
     if (!response.ok) {
       console.warn("TRM API falló, usando valor aproximado");
+
       return getApproximateTRM();
     }
 
@@ -57,9 +58,11 @@ export async function getTRMColombia(): Promise<number> {
     }
 
     console.warn("TRM API retornó datos inválidos, usando valor aproximado");
+
     return getApproximateTRM();
   } catch (error) {
     console.warn("Error al obtener TRM:", error, "usando valor aproximado");
+
     return getApproximateTRM();
   }
 }
@@ -77,7 +80,9 @@ export function getApproximateTRM(): number {
 /**
  * Convierte COP a USD usando TRM
  */
-export async function convertCOPtoUSD(copAmount: number | string): Promise<number> {
+export async function convertCOPtoUSD(
+  copAmount: number | string,
+): Promise<number> {
   const cop = typeof copAmount === "string" ? parseFloat(copAmount) : copAmount;
   const trm = await getTRMColombia();
 
@@ -91,7 +96,9 @@ export async function convertCOPtoUSD(copAmount: number | string): Promise<numbe
 /**
  * Convierte USD a COP usando TRM
  */
-export async function convertUSDtoCOP(usdAmount: number | string): Promise<number> {
+export async function convertUSDtoCOP(
+  usdAmount: number | string,
+): Promise<number> {
   const usd = typeof usdAmount === "string" ? parseFloat(usdAmount) : usdAmount;
   const trm = await getTRMColombia();
 
@@ -119,8 +126,11 @@ export async function applyTRMConversion(args: {
   const trm = await getTRMColombia();
 
   if (sourceCurrency === "COP" && priceCopBase) {
-    const cop = typeof priceCopBase === "string" ? parseFloat(priceCopBase) : priceCopBase;
-    
+    const cop =
+      typeof priceCopBase === "string"
+        ? parseFloat(priceCopBase)
+        : priceCopBase;
+
     if (Number.isFinite(cop)) {
       return {
         priceCopBase: cop,
@@ -130,7 +140,7 @@ export async function applyTRMConversion(args: {
     }
   } else if (sourceCurrency === "USD" && priceUSD) {
     const usd = typeof priceUSD === "string" ? parseFloat(priceUSD) : priceUSD;
-    
+
     if (Number.isFinite(usd)) {
       return {
         priceCopBase: Math.round(usd * trm * 100) / 100,

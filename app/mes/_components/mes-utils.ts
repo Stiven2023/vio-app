@@ -6,6 +6,7 @@ import type {
   ProcessQueueRow,
   ProgramacionApiRow,
 } from "./mes-types";
+
 import { PROCESO_PREFIX } from "./mes-config";
 
 export function generateTicket(proceso: string, index: number): string {
@@ -40,9 +41,15 @@ export function buildProcessTallaKey(
   designName: string,
   size: string,
 ): string {
-  const order = String(orderCode ?? "").trim().toUpperCase();
-  const design = String(designName ?? "").trim().toUpperCase();
-  const talla = String(size ?? "").trim().toUpperCase();
+  const order = String(orderCode ?? "")
+    .trim()
+    .toUpperCase();
+  const design = String(designName ?? "")
+    .trim()
+    .toUpperCase();
+  const talla = String(size ?? "")
+    .trim()
+    .toUpperCase();
 
   return `${order}::${design}::${talla}`;
 }
@@ -59,14 +66,19 @@ export function mergeEstado(
   };
 
   if (!prev) return next;
+
   return rank[next] >= rank[prev] ? next : prev;
 }
 
 export function extractTurnFromTicket(ticket: string): number {
-  const match = String(ticket ?? "").toUpperCase().match(/-(\d+)$/);
+  const match = String(ticket ?? "")
+    .toUpperCase()
+    .match(/-(\d+)$/);
+
   if (!match) return Number.POSITIVE_INFINITY;
 
   const turn = Number(match[1]);
+
   return Number.isFinite(turn) ? turn : Number.POSITIVE_INFINITY;
 }
 
@@ -74,12 +86,16 @@ export function formatDate(value: string | null | undefined): string {
   if (!value) return "-";
 
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return "-";
 
   return date.toLocaleDateString("es-CO");
 }
 
-export function calcPlazo(orderDate: string | null, deliveryDate: string | null): number {
+export function calcPlazo(
+  orderDate: string | null,
+  deliveryDate: string | null,
+): number {
   if (!orderDate || !deliveryDate) return 0;
 
   const start = new Date(orderDate).getTime();
@@ -90,7 +106,9 @@ export function calcPlazo(orderDate: string | null, deliveryDate: string | null)
   return Math.max(0, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
 }
 
-export function computeEstadoFromOperativeLog(row: OperativeLogRow): EstadoProceso {
+export function computeEstadoFromOperativeLog(
+  row: OperativeLogRow,
+): EstadoProceso {
   if (row.isComplete) return "completado";
   if (row.isPartial && row.repoCheck) return "reponer";
   if (Number(row.producedQuantity ?? 0) > 0 || Boolean(row.startAt)) {
@@ -114,6 +132,7 @@ export function buildPedidoGroups(
 
   for (const row of rows) {
     const orderCode = String(row.orderCode ?? "").trim();
+
     if (!orderCode) continue;
 
     const existing = byOrder.get(orderCode);
@@ -138,14 +157,18 @@ export function buildPedidoGroups(
     }
 
     const orderEntry = byOrder.get(orderCode);
+
     if (!orderEntry) continue;
 
     const itemId = String(row.orderItemId ?? row.id ?? "").trim();
+
     if (!itemId) continue;
 
     let diseno = orderEntry.disenosByItem.get(itemId);
+
     if (!diseno) {
       const idx = orderEntry.disenosByItem.size;
+
       diseno = {
         diseno: row.designNumber ?? idx + 1,
         detalle: row.design ?? "Sin detalle",
@@ -159,6 +182,7 @@ export function buildPedidoGroups(
     }
 
     const qty = Number(row.quantity ?? 0);
+
     if (!Number.isFinite(qty) || qty <= 0) continue;
 
     const talla = row.talla ?? "UNICA";
@@ -192,17 +216,26 @@ export function buildPedidoGroups(
     .sort((a, b) => b.pedido.localeCompare(a.pedido));
 }
 
-export function buildProcessQueue(data: PedidoGroup[], activeProceso: string): ProcessQueueRow[] {
+export function buildProcessQueue(
+  data: PedidoGroup[],
+  activeProceso: string,
+): ProcessQueueRow[] {
   const queue = data
     .flatMap((pedido) =>
       pedido.disenos.map((diseno, idx) => {
-        const tallasPendientes = diseno.tallas.filter((t) => t.estado !== "completado");
-        const totalUnidades = diseno.tallas.reduce((sum, t) => sum + t.cantidad, 0);
+        const tallasPendientes = diseno.tallas.filter(
+          (t) => t.estado !== "completado",
+        );
+        const totalUnidades = diseno.tallas.reduce(
+          (sum, t) => sum + t.cantidad,
+          0,
+        );
         const unidadesPendientes = tallasPendientes.reduce(
           (sum, t) => sum + t.cantidad,
           0,
         );
         const ticket = buildProcessTicket(activeProceso, diseno, idx);
+
         return {
           pedido: pedido.pedido,
           cliente: pedido.cliente,
@@ -217,8 +250,11 @@ export function buildProcessQueue(data: PedidoGroup[], activeProceso: string): P
         };
       }),
     )
-    .filter((row) => Number.isFinite(row.turno) && row.totalTallasPendientes > 0);
+    .filter(
+      (row) => Number.isFinite(row.turno) && row.totalTallasPendientes > 0,
+    );
 
   queue.sort((a, b) => a.turno - b.turno);
+
   return queue;
 }

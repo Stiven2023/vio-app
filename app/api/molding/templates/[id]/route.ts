@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -6,7 +6,6 @@ import {
   moldingTemplateInsumos,
   moldingTemplates,
 } from "@/src/db/schema";
-import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -20,9 +19,11 @@ export async function GET(
     limit: 150,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
@@ -107,7 +108,9 @@ export async function GET(
     return Response.json({ ...template, insumos });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not retrieve molding template", { status: 500 });
   }
 }
@@ -121,14 +124,17 @@ export async function PATCH(
     limit: 30,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "EDITAR_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
 
   let body: Record<string, unknown>;
+
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
@@ -148,72 +154,124 @@ export async function PATCH(
   function parseStr(v: unknown, maxLen = 255): string | null | undefined {
     if (v === undefined) return undefined;
     const s = String(v ?? "").trim();
+
     return s.length > 0 ? s.slice(0, maxLen) : null;
   }
 
   function parseBool(v: unknown): boolean | undefined {
     if (v === undefined) return undefined;
+
     return v === true || v === "true" || v === 1;
   }
 
   function parseIntField(v: unknown): number | null | undefined {
     if (v === undefined) return undefined;
     const n = Number(v);
+
     return Number.isInteger(n) && n > 0 ? n : null;
   }
 
   function parseDecimalField(v: unknown): string | null | undefined {
     if (v === undefined) return undefined;
     const n = Number(v);
+
     return Number.isFinite(n) && n > 0 ? String(n) : null;
   }
 
-  const updates: Partial<typeof moldingTemplates.$inferInsert> = { updatedAt: new Date() };
+  const updates: Partial<typeof moldingTemplates.$inferInsert> = {
+    updatedAt: new Date(),
+  };
 
   const strFields80 = [
-    "garmentType", "garmentSubtype", "sesgoType", "sesgoColor",
-    "hiladillaColor", "sleeveType", "cuffType", "cuffMaterial",
-    "zipperLocation", "zipperColor", "cordColor", "liningType",
-    "liningColor", "hoodType", "pocketZipperColor", "lateralMeshColor",
-    "buttonType", "buttonholeType", "perillaColor", "collarType",
+    "garmentType",
+    "garmentSubtype",
+    "sesgoType",
+    "sesgoColor",
+    "hiladillaColor",
+    "sleeveType",
+    "cuffType",
+    "cuffMaterial",
+    "zipperLocation",
+    "zipperColor",
+    "cordColor",
+    "liningType",
+    "liningColor",
+    "hoodType",
+    "pocketZipperColor",
+    "lateralMeshColor",
+    "buttonType",
+    "buttonholeType",
+    "perillaColor",
+    "collarType",
     "invisibleZipperColor",
   ] as const;
 
-  const strFields100 = ["fabric", "color", "process", "manufacturingId", "neckType"] as const;
+  const strFields100 = [
+    "fabric",
+    "color",
+    "process",
+    "manufacturingId",
+    "neckType",
+  ] as const;
   const strFieldsLong = [
-    "designDetail", "imageUrl", "clothingImageOneUrl", "clothingImageTwoUrl",
-    "logoImageUrl", "fusioningNotes", "observations",
+    "designDetail",
+    "imageUrl",
+    "clothingImageOneUrl",
+    "clothingImageTwoUrl",
+    "logoImageUrl",
+    "fusioningNotes",
+    "observations",
   ] as const;
   const boolFields = [
-    "screenPrint", "embroidery", "buttonhole", "snap", "tag", "flag",
-    "hasElastic", "hasInnerLining", "hasPocket", "hasLateralMesh",
-    "hasFajon", "hasTanca", "hasProtection", "hasEntretela", "isActive",
+    "screenPrint",
+    "embroidery",
+    "buttonhole",
+    "snap",
+    "tag",
+    "flag",
+    "hasElastic",
+    "hasInnerLining",
+    "hasPocket",
+    "hasLateralMesh",
+    "hasFajon",
+    "hasTanca",
+    "hasProtection",
+    "hasEntretela",
+    "isActive",
   ] as const;
 
   for (const f of strFields80) {
     const v = parseStr(body[f], 80);
+
     if (v !== undefined) updates[f] = v;
   }
   for (const f of strFields100) {
     const v = parseStr(body[f], 100);
+
     if (v !== undefined) updates[f] = v;
   }
   for (const f of strFieldsLong) {
     const v = parseStr(body[f], 2000);
+
     if (v !== undefined) updates[f] = v;
   }
   for (const f of boolFields) {
     const v = parseBool(body[f]);
+
     if (v !== undefined) updates[f] = v;
   }
 
   const gender = parseStr(body.gender, 50);
+
   if (gender !== undefined) updates.gender = gender;
 
   const estimatedLeadDays = parseIntField(body.estimatedLeadDays);
-  if (estimatedLeadDays !== undefined) updates.estimatedLeadDays = estimatedLeadDays;
+
+  if (estimatedLeadDays !== undefined)
+    updates.estimatedLeadDays = estimatedLeadDays;
 
   const zipperSizeCm = parseDecimalField(body.zipperSizeCm);
+
   if (zipperSizeCm !== undefined) updates.zipperSizeCm = zipperSizeCm;
 
   try {
@@ -226,7 +284,9 @@ export async function PATCH(
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not update molding template", { status: 500 });
   }
 }
@@ -240,9 +300,11 @@ export async function DELETE(
     limit: 15,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "ELIMINAR_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
@@ -261,7 +323,9 @@ export async function DELETE(
     return Response.json({ success: true });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not delete molding template", { status: 500 });
   }
 }

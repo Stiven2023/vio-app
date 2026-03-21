@@ -7,9 +7,7 @@ import {
   resolvePaymentBankById,
   validatePaymentBankCurrency,
 } from "@/src/utils/payment-banks";
-import {
-  canSetPaymentStatusOnApproval,
-} from "@/src/utils/payment-status";
+import { canSetPaymentStatusOnApproval } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function toNullableNumericString(v: unknown) {
@@ -55,6 +53,7 @@ export async function PUT(
 
   if (wantsStatusChange) {
     const forbiddenApprove = await requirePermission(request, "APROBAR_PAGO");
+
     if (forbiddenApprove) return forbiddenApprove;
   }
 
@@ -69,6 +68,7 @@ export async function PUT(
 
   if (wantsEditFields) {
     const forbiddenEdit = await requirePermission(request, "EDITAR_PAGO");
+
     if (forbiddenEdit) return forbiddenEdit;
   }
 
@@ -77,7 +77,8 @@ export async function PUT(
   if (body.amount !== undefined) {
     const amount = toPositiveNumericString(body.amount);
 
-    if (!amount) return new Response("Amount must be greater than 0", { status: 400 });
+    if (!amount)
+      return new Response("Amount must be greater than 0", { status: 400 });
 
     patch.amount = amount;
   }
@@ -126,7 +127,9 @@ export async function PUT(
     const depositAmount = toPositiveNumericString(body.depositAmount);
 
     if (!depositAmount) {
-      return new Response("Deposit amount must be greater than 0", { status: 400 });
+      return new Response("Deposit amount must be greater than 0", {
+        status: 400,
+      });
     }
 
     patch.depositAmount = depositAmount;
@@ -160,9 +163,7 @@ export async function PUT(
     patch.transferCurrency = currency;
   }
 
-  const methodAfterPatch = patch.method
-    ? String(patch.method)
-    : null;
+  const methodAfterPatch = patch.method ? String(patch.method) : null;
 
   if (
     methodAfterPatch === "TRANSFERENCIA" ||
@@ -198,6 +199,7 @@ export async function PUT(
         effectiveBank,
         effectiveCurrency ? String(effectiveCurrency) : null,
       );
+
       if (bankValidationError) {
         return new Response(bankValidationError, { status: 400 });
       }

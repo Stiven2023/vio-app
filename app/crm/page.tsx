@@ -12,12 +12,18 @@ export default function CrmModulePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--viomar-primary)]">
               Customer Relationship Management
             </p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-foreground">CRM</h1>
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-foreground">
+              CRM
+            </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-default-600">
-              Este modulo concentrara clientes, oportunidades, seguimiento comercial y coordinacion de servicio sobre una sola vista de relacion.
+              Este modulo concentrara clientes, oportunidades, seguimiento
+              comercial y coordinacion de servicio sobre una sola vista de
+              relacion.
             </p>
             <p className="mt-3 text-sm text-default-500">
-              Dejé el logo alineado con el selector principal y con la entrada de login para que el sistema se vea coherente en todos los accesos.
+              Dejé el logo alineado con el selector principal y con la entrada
+              de login para que el sistema se vea coherente en todos los
+              accesos.
             </p>
           </div>
         </div>

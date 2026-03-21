@@ -1,12 +1,15 @@
+import type {
+  FormErrors,
+  FormState,
+  SetFormState,
+} from "../client-modal.types";
+
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { BsPersonFill } from "react-icons/bs";
 
-import {
-  CLIENT_TYPES,
-  IDENTIFICATION_TYPES,
-} from "../client-modal.constants";
-import type { FormErrors, FormState, SetFormState } from "../client-modal.types";
+import { CLIENT_TYPES, IDENTIFICATION_TYPES } from "../client-modal.constants";
+
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 
 type Props = {
@@ -47,12 +50,12 @@ export function IdentificationTab({
   return (
     <div className="space-y-4 py-4">
       <Select
+        isRequired
         description="Defines the code: CN (National), CE (Foreign), EM (Employee)"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.clientType}
         isDisabled={isEditing}
         isInvalid={Boolean(errors.clientType)}
-        isRequired
         label="Client type"
         selectedKeys={[form.clientType]}
         onChange={(e) => setForm((s) => ({ ...s, clientType: e.target.value }))}
@@ -63,11 +66,11 @@ export function IdentificationTab({
       </Select>
 
       <Input
+        isRequired
         description="Critical required field"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.name}
         isInvalid={Boolean(errors.name)}
-        isRequired
         label="Third party name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.name}
@@ -76,9 +79,9 @@ export function IdentificationTab({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Select
+          isRequired
           errorMessage={errors.identificationType}
           isInvalid={Boolean(errors.identificationType)}
-          isRequired
           label="ID type"
           selectedKeys={[form.identificationType]}
           onChange={(e) =>
@@ -94,11 +97,11 @@ export function IdentificationTab({
         </Select>
 
         <Input
+          isRequired
           description={identificationHint}
           errorMessage={errors.identification}
-          isInvalid={Boolean(errors.identification)}
-          isRequired
           inputMode={identificationInputMode}
+          isInvalid={Boolean(errors.identification)}
           label="Identification"
           value={form.identification}
           onBlur={onIdentificationBlur}
@@ -130,9 +133,7 @@ export function IdentificationTab({
             identificationType={form.identificationType}
             uploadFolder="clients/documents"
             values={form}
-            onChange={(field, url) =>
-              setForm((s) => ({ ...s, [field]: url }))
-            }
+            onChange={(field, url) => setForm((s) => ({ ...s, [field]: url }))}
             onClear={(field) => setForm((s) => ({ ...s, [field]: "" }))}
             onFileSelect={(field, file) => onFileSelect?.(field, file)}
           />

@@ -36,7 +36,9 @@ function asNumber(v: unknown) {
 }
 
 function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
-  const location = String(v ?? "BODEGA_PRINCIPAL").trim().toUpperCase();
+  const location = String(v ?? "BODEGA_PRINCIPAL")
+    .trim()
+    .toUpperCase();
 
   return location === "BODEGA_PRINCIPAL" || location === "TIENDA"
     ? (location as "BODEGA_PRINCIPAL" | "TIENDA")
@@ -48,9 +50,11 @@ async function resolveSourceWarehouseId(payload: {
   location?: unknown;
 }) {
   const wId = String(payload.warehouseId ?? "").trim();
+
   if (wId) return wId;
 
   const loc = toLocation(payload.location);
+
   if (!loc) return null;
 
   return resolveWarehouseIdByLocation(db, loc);
@@ -63,7 +67,8 @@ function mapReasonToEnum(reason: string) {
   if (r.includes("VENTA")) return "VENTA" as const;
   if (r.includes("CONFECCION")) return "DESPACHO_CONFECCIONISTA" as const;
   if (r.includes("AJUSTE")) return "AJUSTE_INVENTARIO" as const;
-  if (r.includes("DEVOLUCION PROVEEDOR")) return "DEVOLUCION_PROVEEDOR" as const;
+  if (r.includes("DEVOLUCION PROVEEDOR"))
+    return "DEVOLUCION_PROVEEDOR" as const;
   if (r.includes("DEVOLUCION CLIENTE")) return "DEVOLUCION_CLIENTE" as const;
   if (r.includes("TRASLADO")) return "TRASLADO_INTERNO" as const;
   if (r.includes("MUESTRA")) return "MUESTRA" as const;
@@ -139,7 +144,10 @@ export async function GET(request: Request) {
       .leftJoin(orderItems, eq(stockMovements.referenceId, orderItems.id))
       .leftJoin(orders, eq(orderItems.orderId, orders.id))
       .leftJoin(employees, eq(orders.createdBy, employees.id))
-      .leftJoin(inventoryItemVariants, eq(stockMovements.variantId, inventoryItemVariants.id))
+      .leftJoin(
+        inventoryItemVariants,
+        eq(stockMovements.variantId, inventoryItemVariants.id),
+      )
       .leftJoin(warehouses, eq(stockMovements.fromWarehouseId, warehouses.id))
       .where(where)
       .orderBy(desc(stockMovements.createdAt))
@@ -151,7 +159,9 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar salidas", { status: 500 });
   }
 }
@@ -169,19 +179,36 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, variantId, orderItemId, warehouseId, location, quantity, reason } = await request.json();
+  const {
+    inventoryItemId,
+    variantId,
+    orderItemId,
+    warehouseId,
+    location,
+    quantity,
+    reason,
+  } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
   const vId = String(variantId ?? "").trim();
   const ordId = String(orderItemId ?? "").trim();
-  const sourceWarehouseId = await resolveSourceWarehouseId({ warehouseId, location });
+  const sourceWarehouseId = await resolveSourceWarehouseId({
+    warehouseId,
+    location,
+  });
   const qty = toPositiveNumber(quantity);
   const reasonText = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!vId) return new Response("variantId required", { status: 400 });
-  if (!ordId) return new Response("orderItemId required", { status: 400 });
-  if (!sourceWarehouseId) return new Response("warehouse invalid", { status: 400 });
+  // orderItemId is only required for VENTA reason
+  if (!ordId && mapReasonToEnum(reasonText) === "VENTA") {
+    return new Response("orderItemId requerido para salidas por venta", {
+      status: 400,
+    });
+  }
+  if (!sourceWarehouseId)
+    return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!reasonText) return new Response("reason required", { status: 400 });
 
@@ -191,7 +218,8 @@ export async function POST(request: Request) {
     .where(eq(inventoryItems.id, itemId))
     .limit(1);
 
-  if (!itemRow) return new Response("inventory item not found", { status: 404 });
+  if (!itemRow)
+    return new Response("inventory item not found", { status: 404 });
 
   const [warehouseRow] = await db
     .select({ id: warehouses.id })
@@ -199,7 +227,8 @@ export async function POST(request: Request) {
     .where(eq(warehouses.id, sourceWarehouseId))
     .limit(1);
 
-  if (!warehouseRow) return new Response("warehouse not found", { status: 404 });
+  if (!warehouseRow)
+    return new Response("warehouse not found", { status: 404 });
 
   if (vId) {
     const [variantRow] = await db
@@ -236,8 +265,8 @@ export async function POST(request: Request) {
         fromWarehouseId: sourceWarehouseId,
         toWarehouseId: null,
         quantity: String(qty),
-        referenceType: "ORDER_ITEM",
-        referenceId: ordId,
+        referenceType: ordId ? "ORDER_ITEM" : "MANUAL",
+        referenceId: ordId || null,
       })
       .returning();
 
@@ -269,22 +298,39 @@ export async function PUT(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const { id, inventoryItemId, variantId, orderItemId, warehouseId, location, quantity, reason } =
-    await request.json();
+  const {
+    id,
+    inventoryItemId,
+    variantId,
+    orderItemId,
+    warehouseId,
+    location,
+    quantity,
+    reason,
+  } = await request.json();
 
   if (!id) return new Response("Inventory output ID required", { status: 400 });
 
   const itemId = String(inventoryItemId ?? "").trim();
   const vId = String(variantId ?? "").trim();
   const ordId = String(orderItemId ?? "").trim();
-  const sourceWarehouseId = await resolveSourceWarehouseId({ warehouseId, location });
+  const sourceWarehouseId = await resolveSourceWarehouseId({
+    warehouseId,
+    location,
+  });
   const qty = toPositiveNumber(quantity);
   const reasonText = String(reason ?? "").trim();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!vId) return new Response("variantId required", { status: 400 });
-  if (!ordId) return new Response("orderItemId required", { status: 400 });
-  if (!sourceWarehouseId) return new Response("warehouse invalid", { status: 400 });
+  // orderItemId is only required for VENTA reason
+  if (!ordId && mapReasonToEnum(reasonText) === "VENTA") {
+    return new Response("orderItemId requerido para salidas por venta", {
+      status: 400,
+    });
+  }
+  if (!sourceWarehouseId)
+    return new Response("warehouse invalid", { status: 400 });
   if (!qty) return new Response("quantity must be positive", { status: 400 });
   if (!reasonText) return new Response("reason required", { status: 400 });
 
@@ -294,7 +340,8 @@ export async function PUT(request: Request) {
     .where(eq(inventoryItems.id, itemId))
     .limit(1);
 
-  if (!itemRow) return new Response("inventory item not found", { status: 404 });
+  if (!itemRow)
+    return new Response("inventory item not found", { status: 404 });
 
   const [warehouseRow] = await db
     .select({ id: warehouses.id })
@@ -302,7 +349,8 @@ export async function PUT(request: Request) {
     .where(eq(warehouses.id, sourceWarehouseId))
     .limit(1);
 
-  if (!warehouseRow) return new Response("warehouse not found", { status: 404 });
+  if (!warehouseRow)
+    return new Response("warehouse not found", { status: 404 });
 
   if (vId) {
     const [variantRow] = await db
@@ -351,66 +399,73 @@ export async function PUT(request: Request) {
     return new Response("Stock insuficiente", { status: 400 });
   }
 
-  const updated = await db.transaction(async (tx) => {
-    const [existingTx] = await tx
-      .select({
-        inventoryItemId: stockMovements.inventoryItemId,
-        variantId: stockMovements.variantId,
-        quantity: stockMovements.quantity,
-        fromWarehouseId: stockMovements.fromWarehouseId,
-        movementType: stockMovements.movementType,
-      })
-      .from(stockMovements)
-      .where(eq(stockMovements.id, String(id)))
-      .limit(1);
+  const updated = await db
+    .transaction(async (tx) => {
+      const [existingTx] = await tx
+        .select({
+          inventoryItemId: stockMovements.inventoryItemId,
+          variantId: stockMovements.variantId,
+          quantity: stockMovements.quantity,
+          fromWarehouseId: stockMovements.fromWarehouseId,
+          movementType: stockMovements.movementType,
+        })
+        .from(stockMovements)
+        .where(eq(stockMovements.id, String(id)))
+        .limit(1);
 
-    if (!existingTx || existingTx.movementType !== "SALIDA") return [];
+      if (!existingTx || existingTx.movementType !== "SALIDA") return [];
 
-    const stockNow = vId
-      ? await computeStockForVariantInWarehouse(tx, vId, sourceWarehouseId)
-      : await computeStockForItemInWarehouse(tx, itemId, sourceWarehouseId);
-    const availableNow =
-      stockNow +
-      (existingTx.inventoryItemId === itemId &&
-      existingTx.fromWarehouseId === sourceWarehouseId &&
-      (existingTx.variantId ?? "") === vId
-        ? asNumber(existingTx.quantity)
-        : 0);
+      const stockNow = vId
+        ? await computeStockForVariantInWarehouse(tx, vId, sourceWarehouseId)
+        : await computeStockForItemInWarehouse(tx, itemId, sourceWarehouseId);
+      const availableNow =
+        stockNow +
+        (existingTx.inventoryItemId === itemId &&
+        existingTx.fromWarehouseId === sourceWarehouseId &&
+        (existingTx.variantId ?? "") === vId
+          ? asNumber(existingTx.quantity)
+          : 0);
 
-    if (qty > availableNow) {
-      throw new Error("Stock insuficiente");
-    }
+      if (qty > availableNow) {
+        throw new Error("Stock insuficiente");
+      }
 
-    const rows = await tx
-      .update(stockMovements)
-      .set({
-        inventoryItemId: itemId,
-        fromWarehouseId: sourceWarehouseId,
-        toWarehouseId: null,
-        quantity: String(qty),
-        reason: mapReasonToEnum(reasonText),
-        notes: reasonText,
-        variantId: vId || null,
-        referenceType: "ORDER_ITEM",
-        referenceId: ordId,
-      })
-      .where(eq(stockMovements.id, String(id)))
-      .returning();
+      const rows = await tx
+        .update(stockMovements)
+        .set({
+          inventoryItemId: itemId,
+          fromWarehouseId: sourceWarehouseId,
+          toWarehouseId: null,
+          quantity: String(qty),
+          reason: mapReasonToEnum(reasonText),
+          notes: reasonText,
+          variantId: vId || null,
+          referenceType: ordId ? "ORDER_ITEM" : "MANUAL",
+          referenceId: ordId || null,
+        })
+        .where(eq(stockMovements.id, String(id)))
+        .returning();
 
-    await syncInventoryForItem(tx, existingTx.inventoryItemId ?? itemId);
-    if (existingTx.variantId) await syncInventoryForVariant(tx, existingTx.variantId);
-    if (vId && existingTx.variantId !== vId) await syncInventoryForVariant(tx, vId);
-    if (existingTx.inventoryItemId && existingTx.inventoryItemId !== itemId) {
-      await syncInventoryForItem(tx, itemId);
-    }
+      await syncInventoryForItem(tx, existingTx.inventoryItemId ?? itemId);
+      if (existingTx.variantId)
+        await syncInventoryForVariant(tx, existingTx.variantId);
+      if (vId && existingTx.variantId !== vId)
+        await syncInventoryForVariant(tx, vId);
+      if (existingTx.inventoryItemId && existingTx.inventoryItemId !== itemId) {
+        await syncInventoryForItem(tx, itemId);
+      }
 
-    return rows;
-  }).catch((e) => {
-    if (String((e as { message?: string })?.message ?? "") === "Stock insuficiente") {
-      return "__stock" as const;
-    }
-    throw e;
-  });
+      return rows;
+    })
+    .catch((e) => {
+      if (
+        String((e as { message?: string })?.message ?? "") ===
+        "Stock insuficiente"
+      ) {
+        return "__stock" as const;
+      }
+      throw e;
+    });
 
   if (updated === "__stock") {
     return new Response("Stock insuficiente", { status: 400 });

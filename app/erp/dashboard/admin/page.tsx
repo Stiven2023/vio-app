@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import NextLink from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
 import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import {
@@ -135,6 +134,7 @@ export default async function AdminDashboardPage() {
   const previousExchangeRate = latestExchangeRates[1] ?? null;
 
   const statusTotals = new Map<string, number>();
+
   for (const status of orderStatusValues) {
     statusTotals.set(status, 0);
   }
@@ -215,7 +215,9 @@ export default async function AdminDashboardPage() {
           <Card className="border border-default-200">
             <CardBody className="p-3">
               <ExchangeRateWidget
-                adjustmentApplied={effectiveUsdCop > 0 ? adjustmentApplied : null}
+                adjustmentApplied={
+                  effectiveUsdCop > 0 ? adjustmentApplied : null
+                }
                 baseLabel="USD"
                 currentRate={effectiveUsdCop > 0 ? effectiveUsdCop : null}
                 floorRate={floorUsdCop}
@@ -237,7 +239,10 @@ export default async function AdminDashboardPage() {
         <h2 className="text-lg font-semibold">Quick access</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {quickActions.map((action) => (
-            <Card key={action.href} className="border border-default-200 transition-transform hover:-translate-y-0.5">
+            <Card
+              key={action.href}
+              className="border border-default-200 transition-transform hover:-translate-y-0.5"
+            >
               <CardBody className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-medium bg-primary-50 text-primary">
@@ -252,7 +257,12 @@ export default async function AdminDashboardPage() {
                     </div>
                   </div>
                 </div>
-                <Button as={NextLink} href={action.href} size="sm" variant="flat">
+                <Button
+                  as={NextLink}
+                  href={action.href}
+                  size="sm"
+                  variant="flat"
+                >
                   Go now
                 </Button>
               </CardBody>

@@ -4,93 +4,101 @@ export const createCategorySchema = z.object({
   name: z.string().trim().min(1, "Nombre requerido").max(150, "Máximo 150"),
 });
 
-export const createProductSchema = z.object({
-  name: z.string().trim().min(1, "Nombre requerido"),
-  description: z.string().optional(),
-  categoryId: z.string().uuid("Selecciona una categoría"),
-  priceCopBase: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio base inválido"),
-  priceCopR1: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio 1-499 inválido"),
-  priceCopR2: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio 500-1000 inválido"),
-  priceCopR3: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio 1001+ inválido"),
-  priceCopInternational: z
-    .string()
-    .trim()
-    .optional()
-    .refine(
-      (v) => !v || !Number.isNaN(Number(v)),
-      "Precio COP internacional inválido",
-    ),
-  priceMayorista: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio mayorista inválido"),
-  priceColanta: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio Colanta inválido"),
-  priceUSD: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || !Number.isNaN(Number(v)), "Precio USD inválido"),
-  startDate: z.string().trim().optional(),
-  endDate: z.string().trim().optional(),
-  isActive: z.boolean().optional(),
-}).superRefine((data, ctx) => {
-  if (!data.priceCopR1?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["priceCopR1"],
-      message: "Precio 1-499 requerido",
-    });
-  }
-  if (!data.priceCopR2?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["priceCopR2"],
-      message: "Precio 500-1000 requerido",
-    });
-  }
-  if (!data.priceCopR3?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["priceCopR3"],
-      message: "Precio 1001+ requerido",
-    });
-  }
-  if (!data.priceMayorista?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["priceMayorista"],
-      message: "Precio mayorista requerido",
-    });
-  }
-  if (!data.priceColanta?.trim()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["priceColanta"],
-      message: "Precio Colanta requerido",
-    });
-  }
-});
+export const createProductSchema = z
+  .object({
+    name: z.string().trim().min(1, "Nombre requerido"),
+    description: z.string().optional(),
+    categoryId: z.string().uuid("Selecciona una categoría"),
+    priceCopBase: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || !Number.isNaN(Number(v)), "Precio base inválido"),
+    priceCopR1: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || !Number.isNaN(Number(v)), "Precio 1-499 inválido"),
+    priceCopR2: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (v) => !v || !Number.isNaN(Number(v)),
+        "Precio 500-1000 inválido",
+      ),
+    priceCopR3: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || !Number.isNaN(Number(v)), "Precio 1001+ inválido"),
+    priceCopInternational: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (v) => !v || !Number.isNaN(Number(v)),
+        "Precio COP internacional inválido",
+      ),
+    priceMayorista: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (v) => !v || !Number.isNaN(Number(v)),
+        "Precio mayorista inválido",
+      ),
+    priceColanta: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || !Number.isNaN(Number(v)), "Precio Colanta inválido"),
+    priceUSD: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || !Number.isNaN(Number(v)), "Precio USD inválido"),
+    startDate: z.string().trim().optional(),
+    endDate: z.string().trim().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.priceCopR1?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["priceCopR1"],
+        message: "Precio 1-499 requerido",
+      });
+    }
+    if (!data.priceCopR2?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["priceCopR2"],
+        message: "Precio 500-1000 requerido",
+      });
+    }
+    if (!data.priceCopR3?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["priceCopR3"],
+        message: "Precio 1001+ requerido",
+      });
+    }
+    if (!data.priceMayorista?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["priceMayorista"],
+        message: "Precio mayorista requerido",
+      });
+    }
+    if (!data.priceColanta?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["priceColanta"],
+        message: "Precio Colanta requerido",
+      });
+    }
+  });
 
 export const createProductPriceSchema = z.object({
   productId: z.string().uuid("Selecciona un producto"),

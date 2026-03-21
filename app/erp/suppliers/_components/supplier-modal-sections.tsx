@@ -55,7 +55,10 @@ type Option = {
 type CommonProps = {
   form: SupplierSectionsFormState;
   errors: Record<string, string>;
-  onStringFieldChange: (field: keyof SupplierSectionsFormState, value: string) => void;
+  onStringFieldChange: (
+    field: keyof SupplierSectionsFormState,
+    value: string,
+  ) => void;
 };
 
 type IdentificationProps = CommonProps & {
@@ -93,11 +96,11 @@ export function SupplierIdentificationSection({
   return (
     <div className="space-y-4 py-4">
       <Input
+        isRequired
         description="Required critical field"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.name}
         isInvalid={Boolean(errors.name)}
-        isRequired
         label="Third-party name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.name}
@@ -106,13 +109,16 @@ export function SupplierIdentificationSection({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Select
+          isRequired
           errorMessage={errors.identificationType}
           isInvalid={Boolean(errors.identificationType)}
-          isRequired
           label="ID type"
-          selectedKeys={form.identificationType ? [form.identificationType] : []}
+          selectedKeys={
+            form.identificationType ? [form.identificationType] : []
+          }
           onSelectionChange={(keys) => {
             const selected = Array.from(keys)[0];
+
             onStringFieldChange("identificationType", String(selected ?? ""));
           }}
         >
@@ -122,11 +128,11 @@ export function SupplierIdentificationSection({
         </Select>
 
         <Input
+          isRequired
           description={identificationHint}
           errorMessage={errors.identification}
-          isInvalid={Boolean(errors.identification)}
-          isRequired
           inputMode={identificationInputMode}
+          isInvalid={Boolean(errors.identification)}
           label="Identification"
           value={form.identification}
           onValueChange={onIdentificationInputChange}
@@ -158,13 +164,14 @@ export function SupplierContactSection({
   return (
     <div className="space-y-4 py-4">
       <Select
+        isRequired
         errorMessage={errors.taxRegime}
         isInvalid={Boolean(errors.taxRegime)}
-        isRequired
         label="Tax regime (VAT)"
         selectedKeys={form.taxRegime ? [form.taxRegime] : []}
         onSelectionChange={(keys) => {
           const selected = Array.from(keys)[0];
+
           onStringFieldChange("taxRegime", String(selected ?? ""));
         }}
       >
@@ -174,11 +181,11 @@ export function SupplierContactSection({
       </Select>
 
       <Input
+        isRequired
         description="Contact person at the company"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.contactName}
         isInvalid={Boolean(errors.contactName)}
-        isRequired
         label="Contact name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.contactName}
@@ -186,16 +193,16 @@ export function SupplierContactSection({
       />
 
       <Input
+        isRequired
+        autoComplete="email"
         description="Required for billing"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.email}
+        inputMode="email"
         isInvalid={Boolean(errors.email)}
-        isRequired
         label="Email"
         startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
         type="text"
-        inputMode="email"
-        autoComplete="email"
         value={form.email}
         onValueChange={(value) => onStringFieldChange("email", value)}
       />
@@ -211,10 +218,10 @@ export function SupplierLocationSection({
   return (
     <div className="space-y-4 py-4">
       <Input
+        isRequired
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.address}
         isInvalid={Boolean(errors.address)}
-        isRequired
         label="Address"
         startContent={<BsGeoAltFill className="text-xl text-default-500" />}
         value={form.address}
@@ -268,12 +275,14 @@ export function SupplierPhonesSection({
 
         <div className="md:col-span-2">
           <Input
+            isRequired
             endContent={<span className="text-danger">*</span>}
             errorMessage={errors.mobile}
             isInvalid={Boolean(errors.mobile)}
-            isRequired
             label="Mobile"
-            startContent={<BsTelephoneFill className="text-xl text-default-500" />}
+            startContent={
+              <BsTelephoneFill className="text-xl text-default-500" />
+            }
             value={form.mobile}
             onValueChange={(value) => onStringFieldChange("mobile", value)}
           />
@@ -337,10 +346,10 @@ export function SupplierCreditSection({
             <BsInfoCircle className="mt-0.5 text-lg text-info-600" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-info-900">
-                  ℹ️ Inactive by default
+                ℹ️ Inactive by default
               </p>
               <p className="mt-1 text-xs text-info-800">
-                  New suppliers start inactive until legal status is approved.
+                New suppliers start inactive until legal status is approved.
               </p>
             </div>
           </div>

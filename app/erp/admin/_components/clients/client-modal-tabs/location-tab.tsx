@@ -1,7 +1,11 @@
+import type {
+  FormErrors,
+  FormState,
+  SetFormState,
+} from "../client-modal.types";
+
 import { Input } from "@heroui/input";
 import { BsGeoAltFill } from "react-icons/bs";
-
-import type { FormErrors, FormState, SetFormState } from "../client-modal.types";
 
 type Props = {
   form: FormState;
@@ -16,10 +20,10 @@ export function LocationTab({ form, errors, setForm }: Props) {
   return (
     <div className="space-y-4 py-4">
       <Input
+        isRequired
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.address}
         isInvalid={Boolean(errors.address)}
-        isRequired
         label="Dirección"
         startContent={<BsGeoAltFill className="text-xl text-default-500" />}
         value={form.address}

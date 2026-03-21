@@ -21,7 +21,9 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const catalogType = String(searchParams.get("catalogType") ?? "NACIONAL").toUpperCase();
+    const catalogType = String(
+      searchParams.get("catalogType") ?? "NACIONAL",
+    ).toUpperCase();
 
     const clientItems = await db
       .select({
@@ -146,7 +148,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron cargar opciones de cotización", {
       status: 500,
     });

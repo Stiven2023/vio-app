@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import NextLink from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-
 import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
 import {
@@ -22,7 +21,12 @@ import { RoleCharts } from "@/app/erp/dashboard/role/_components/role-charts";
 type RoleConfig = {
   title: string;
   description: string;
-  quickActions: Array<{ title: string; description: string; href: string; icon: ReactNode }>;
+  quickActions: Array<{
+    title: string;
+    description: string;
+    href: string;
+    icon: ReactNode;
+  }>;
   metrics: Array<{ label: string; value: string; hint?: string }>;
 };
 
@@ -309,26 +313,24 @@ export default async function RoleDashboardPage({
     redirect("/unauthorized");
   }
 
-  const config =
-    roleConfigs[requestedRole] ??
-    {
-      title: `Dashboard ${requestedRole.replace(/_/g, " ")}`,
-      description: "Resumen operativo por rol.",
-      metrics: [
-        { label: "Pendientes", value: "0" },
-        { label: "En proceso", value: "0" },
-        { label: "Completados", value: "0" },
-        { label: "Novedades", value: "0" },
-      ],
-      quickActions: [
-        {
-          title: "Pedidos",
-          description: "Seguimiento de pedidos.",
-          href: "/orders",
-          icon: <BsClipboardData className="text-lg" />,
-        },
-      ],
-    };
+  const config = roleConfigs[requestedRole] ?? {
+    title: `Dashboard ${requestedRole.replace(/_/g, " ")}`,
+    description: "Resumen operativo por rol.",
+    metrics: [
+      { label: "Pendientes", value: "0" },
+      { label: "En proceso", value: "0" },
+      { label: "Completados", value: "0" },
+      { label: "Novedades", value: "0" },
+    ],
+    quickActions: [
+      {
+        title: "Pedidos",
+        description: "Seguimiento de pedidos.",
+        href: "/orders",
+        icon: <BsClipboardData className="text-lg" />,
+      },
+    ],
+  };
 
   const useOperarioDashboard = isOperarioRole(requestedRole);
 
@@ -345,7 +347,8 @@ export default async function RoleDashboardPage({
         </div>
       ) : (
         <>
-          {(requestedRole === "ASESOR" || requestedRole === "LIDER_OPERACIONAL") ? (
+          {requestedRole === "ASESOR" ||
+          requestedRole === "LIDER_OPERACIONAL" ? (
             <section className="mt-6">
               <h2 className="text-lg font-semibold">Reportes visuales</h2>
               <div className="mt-4">
@@ -362,9 +365,7 @@ export default async function RoleDashboardPage({
                     <div className="text-sm text-default-500">
                       {metric.label}
                     </div>
-                    <div className="text-2xl font-semibold">
-                      {metric.value}
-                    </div>
+                    <div className="text-2xl font-semibold">{metric.value}</div>
                     {metric.hint ? (
                       <div className="text-xs text-default-400">
                         {metric.hint}

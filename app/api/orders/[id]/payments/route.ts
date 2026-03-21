@@ -1,11 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import {
-  banks,
-  orderPayments,
-  orders,
-} from "@/src/db/schema";
+import { banks, orderPayments, orders } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -83,6 +79,7 @@ export async function GET(
     const paidTotal = paymentRows.reduce((acc, row) => {
       if (!isConfirmedPaymentStatus(row.status)) return acc;
       const amount = Number(row.amount ?? 0);
+
       return acc + (Number.isFinite(amount) ? amount : 0);
     }, 0);
 
@@ -124,7 +121,9 @@ export async function GET(
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Failed to fetch payments", { status: 500 });
   }
 }
@@ -154,7 +153,8 @@ export async function POST(
 
   const amount = toPositiveNumericString(body.amount);
 
-  if (!amount) return new Response("Amount must be greater than 0", { status: 400 });
+  if (!amount)
+    return new Response("Amount must be greater than 0", { status: 400 });
 
   const method = String(body.method ?? "")
     .trim()
@@ -176,8 +176,7 @@ export async function POST(
       ? null
       : String(body.referenceCode).trim() || null;
 
-  const depositAmount =
-    toPositiveNumericString(body.depositAmount) ?? amount;
+  const depositAmount = toPositiveNumericString(body.depositAmount) ?? amount;
 
   const bankId =
     body.bankId === undefined || body.bankId === null
@@ -197,6 +196,7 @@ export async function POST(
       bankRow,
       transferCurrency,
     );
+
     if (bankValidationError) {
       return new Response(bankValidationError, { status: 400 });
     }
@@ -219,7 +219,7 @@ export async function POST(
         depositAmount,
         referenceCode,
         method: method as any,
-        bankId: method === "TRANSFERENCIA" ? bankRow?.id ?? null : null,
+        bankId: method === "TRANSFERENCIA" ? (bankRow?.id ?? null) : null,
         transferBank: null,
         transferCurrency:
           method === "TRANSFERENCIA" && transferCurrency

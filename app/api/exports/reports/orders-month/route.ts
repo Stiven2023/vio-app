@@ -1,8 +1,10 @@
-import ExcelJS from "exceljs";
-import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
+import type { Buffer as NodeBuffer } from "node:buffer";
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Buffer as NodeBuffer } from "node:buffer";
+
+import ExcelJS from "exceljs";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { clients, employees, orderPayments, orders } from "@/src/db/schema";
@@ -14,6 +16,7 @@ type ImageExtension = "png" | "jpeg";
 
 function imageBase64(buffer: NodeBuffer, extension: ImageExtension) {
   const mime = extension === "png" ? "image/png" : "image/jpeg";
+
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
@@ -80,6 +83,7 @@ function styleSectionTitle(
 ) {
   worksheet.mergeCells(rowNumber, fromCol, rowNumber, toCol);
   const cell = worksheet.getCell(rowNumber, fromCol);
+
   cell.value = title;
   cell.font = { bold: true };
   cell.alignment = { vertical: "middle", horizontal: "left" };
@@ -93,9 +97,11 @@ function styleTableHeader(
   toCol: number,
 ) {
   const row = worksheet.getRow(rowNumber);
+
   row.font = { bold: true };
   for (let col = fromCol; col <= toCol; col += 1) {
     const cell = worksheet.getCell(rowNumber, col);
+
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -156,7 +162,9 @@ export async function GET(request: Request) {
     .from(orders)
     .leftJoin(clients, eq(orders.clientId, clients.id))
     .leftJoin(employees, eq(orders.createdBy, employees.id))
-    .where(and(gte(orders.createdAt, range.start), lte(orders.createdAt, range.end)))
+    .where(
+      and(gte(orders.createdAt, range.start), lte(orders.createdAt, range.end)),
+    )
     .orderBy(orders.createdAt);
 
   const orderIds = ordersRows.map((row) => row.id).filter(Boolean);
@@ -177,10 +185,13 @@ export async function GET(request: Request) {
     : [];
 
   const paidByOrder = new Map<string, number>();
+
   for (const pay of payments) {
     const id = pay.orderId ?? "";
+
     if (!id) continue;
     const current = paidByOrder.get(id) ?? 0;
+
     paidByOrder.set(id, current + Number(pay.amount ?? 0));
   }
 
@@ -210,6 +221,7 @@ export async function GET(request: Request) {
   const companyNit = process.env.NEXT_PUBLIC_COMPANY_NIT ?? "-";
 
   const workbook = new ExcelJS.Workbook();
+
   workbook.creator = companyName;
   workbook.created = new Date();
 
@@ -223,6 +235,7 @@ export async function GET(request: Request) {
     : undefined;
 
   const sheet = workbook.addWorksheet("Pedidos");
+
   sheet.pageSetup = {
     orientation: "portrait",
     fitToWidth: 1,
@@ -261,7 +274,8 @@ export async function GET(request: Request) {
   sheet.getCell(4, 2).value = companyNit;
   sheet.getCell(4, 4).value = "Mes";
   sheet.getCell(4, 4).font = { bold: true };
-  sheet.getCell(4, 5).value = `${range.year}/${String(range.month).padStart(2, "0")}`;
+  sheet.getCell(4, 5).value =
+    `${range.year}/${String(range.month).padStart(2, "0")}`;
 
   for (let col = 1; col <= 8; col += 1) {
     for (let row = 1; row <= 5; row += 1) {
@@ -277,10 +291,20 @@ export async function GET(request: Request) {
   }
 
   let rowPointer = 7;
+
   styleSectionTitle(sheet, rowPointer, 1, 8, "PEDIDOS DEL MES");
   rowPointer += 1;
 
-  sheet.addRow(["Codigo", "Cliente", "Estado", "Moneda", "Total", "Recaudo", "Asesor", "Fecha"]);
+  sheet.addRow([
+    "Codigo",
+    "Cliente",
+    "Estado",
+    "Moneda",
+    "Total",
+    "Recaudo",
+    "Asesor",
+    "Fecha",
+  ]);
   styleTableHeader(sheet, rowPointer, 1, 8);
   rowPointer += 1;
 
@@ -298,6 +322,7 @@ export async function GET(request: Request) {
       rowItem.advisorName ?? "Sin asesor",
       rowItem.createdAt ? formatDate(rowItem.createdAt) : "-",
     ]);
+
     applyRowBorder(sheet, row.number, 1, 8);
     centerRowCells(sheet, row.number, 1, 8);
     rowPointer = row.number + 1;
@@ -311,13 +336,16 @@ export async function GET(request: Request) {
   styleTableHeader(sheet, rowPointer, 1, 4);
   rowPointer += 1;
 
-  for (const row of Array.from(advisorStats.values()).sort((a, b) => b.count - a.count)) {
+  for (const row of Array.from(advisorStats.values()).sort(
+    (a, b) => b.count - a.count,
+  )) {
     const line = sheet.addRow([
       row.name,
       row.currency,
       row.count,
       formatMoney(row.paidTotal, row.currency),
     ]);
+
     applyRowBorder(sheet, line.number, 1, 4);
     centerRowCells(sheet, line.number, 1, 4);
   }

@@ -26,9 +26,9 @@ import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
+import { DetailModal } from "../ui/detail-modal";
 
 import { InventoryOutputModal } from "./inventory-output-modal";
-import { DetailModal } from "../ui/detail-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
@@ -44,7 +44,12 @@ function warehouseLabel(output: InventoryOutput) {
   return locationLabel(output.location);
 }
 
-type WarehouseRow = { id: string; code: string; name: string; isActive?: boolean | null };
+type WarehouseRow = {
+  id: string;
+  code: string;
+  name: string;
+  isActive?: boolean | null;
+};
 
 export function InventoryOutputsTab({
   canCreate,
@@ -65,7 +70,9 @@ export function InventoryOutputsTab({
     let active = true;
 
     setLoadingItems(true);
-    apiJson<{ items: InventoryItem[] }>(`/api/inventory-items?page=1&pageSize=600`)
+    apiJson<{ items: InventoryItem[] }>(
+      `/api/inventory-items?page=1&pageSize=600`,
+    )
       .then((res) => {
         if (!active) return;
         setItems(res.items ?? []);
@@ -100,13 +107,13 @@ export function InventoryOutputsTab({
   const endpoint = useMemo(() => {
     const q = search.trim();
 
-    return q ? `/api/inventory-outputs?q=${encodeURIComponent(q)}` : "/api/inventory-outputs";
+    return q
+      ? `/api/inventory-outputs?q=${encodeURIComponent(q)}`
+      : "/api/inventory-outputs";
   }, [search]);
 
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<InventoryOutput>(
-    endpoint,
-    10,
-  );
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<InventoryOutput>(endpoint, 10);
 
   useEffect(() => {
     setPage(1);
@@ -115,9 +122,13 @@ export function InventoryOutputsTab({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryOutput | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<InventoryOutput | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<InventoryOutput | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [detailOutput, setDetailOutput] = useState<InventoryOutput | null>(null);
+  const [detailOutput, setDetailOutput] = useState<InventoryOutput | null>(
+    null,
+  );
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
@@ -210,16 +221,22 @@ export function InventoryOutputsTab({
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(output) => (
               <TableRow key={output.id}>
-                <TableCell>{output.itemName ?? output.inventoryItemId ?? "-"}</TableCell>
+                <TableCell>
+                  {output.itemName ?? output.inventoryItemId ?? "-"}
+                </TableCell>
                 <TableCell>{output.variantSku ?? "-"}</TableCell>
                 <TableCell>{output.reason ?? "-"}</TableCell>
                 <TableCell>{warehouseLabel(output)}</TableCell>
                 <TableCell>{output.quantity ?? "-"}</TableCell>
                 <TableCell>{output.orderCode ?? "-"}</TableCell>
-                <TableCell>{output.orderItemName ?? output.orderItemId ?? "-"}</TableCell>
+                <TableCell>
+                  {output.orderItemName ?? output.orderItemId ?? "-"}
+                </TableCell>
                 <TableCell>{output.requesterEmployeeName ?? "-"}</TableCell>
                 <TableCell>
-                  {output.createdAt ? new Date(output.createdAt).toLocaleString() : "-"}
+                  {output.createdAt
+                    ? new Date(output.createdAt).toLocaleString()
+                    : "-"}
                 </TableCell>
                 <TableCell>
                   <Dropdown>
@@ -278,10 +295,10 @@ export function InventoryOutputsTab({
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
       <InventoryOutputModal
-        output={editing}
         isOpen={modalOpen}
         items={items}
         itemsLoading={loadingItems}
+        output={editing}
         warehouses={warehouses}
         warehousesLoading={loadingWarehouses}
         onOpenChange={setModalOpen}
@@ -308,34 +325,50 @@ export function InventoryOutputsTab({
 
       <DetailModal
         isOpen={Boolean(detailOutput)}
-        title="Detalle de salida"
-        onOpenChange={(open) => {
-          if (!open) setDetailOutput(null);
-        }}
         items={
           detailOutput
             ? [
-                { label: "Item", value: detailOutput.itemName ?? detailOutput.inventoryItemId ?? "-" },
+                {
+                  label: "Item",
+                  value:
+                    detailOutput.itemName ??
+                    detailOutput.inventoryItemId ??
+                    "-",
+                },
                 {
                   label: "Variante",
-                  value:
-                    detailOutput.variantSku
-                      ? `${detailOutput.variantSku}${detailOutput.variantColor ? ` - ${detailOutput.variantColor}` : ""}${detailOutput.variantSize ? ` - ${detailOutput.variantSize}` : ""}`
-                      : "-",
+                  value: detailOutput.variantSku
+                    ? `${detailOutput.variantSku}${detailOutput.variantColor ? ` - ${detailOutput.variantColor}` : ""}${detailOutput.variantSize ? ` - ${detailOutput.variantSize}` : ""}`
+                    : "-",
                 },
                 { label: "Bodega", value: warehouseLabel(detailOutput) },
                 { label: "Cantidad", value: detailOutput.quantity ?? "0" },
                 { label: "Motivo", value: detailOutput.reason ?? "-" },
                 { label: "Pedido", value: detailOutput.orderCode ?? "-" },
-                { label: "Diseno", value: detailOutput.orderItemName ?? detailOutput.orderItemId ?? "-" },
-                { label: "Solicitante", value: detailOutput.requesterEmployeeName ?? "-" },
+                {
+                  label: "Diseno",
+                  value:
+                    detailOutput.orderItemName ??
+                    detailOutput.orderItemId ??
+                    "-",
+                },
+                {
+                  label: "Solicitante",
+                  value: detailOutput.requesterEmployeeName ?? "-",
+                },
                 {
                   label: "Fecha",
-                  value: detailOutput.createdAt ? new Date(detailOutput.createdAt).toLocaleString() : "-",
+                  value: detailOutput.createdAt
+                    ? new Date(detailOutput.createdAt).toLocaleString()
+                    : "-",
                 },
               ]
             : []
         }
+        title="Detalle de salida"
+        onOpenChange={(open) => {
+          if (!open) setDetailOutput(null);
+        }}
       />
     </div>
   );

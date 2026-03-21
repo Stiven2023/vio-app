@@ -29,7 +29,10 @@ export default async function DepositsPage() {
       <h1 className="text-2xl font-bold">Depósitos - Efectivo y Transferencias</h1>
       <p className="text-default-600 mt-1">Registro unificado de depósitos en efectivo y consignaciones bancarias, con seguimiento de estado y aprobación de pagos.</p>
       <div className="mt-6">
-        <AccountingTabs canApprovePayments={canApprovePayments} canEdit={canEdit} />
+        <AccountingTabs
+          canApprovePayments={canApprovePayments}
+          canEdit={canEdit}
+        />
       </div>
     </div>
   );

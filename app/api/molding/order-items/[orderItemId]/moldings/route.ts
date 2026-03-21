@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -20,9 +20,11 @@ export async function GET(
     limit: 150,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { orderItemId } = await params;
@@ -37,8 +39,12 @@ export async function GET(
     return Response.json({ items: moldings });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("Could not retrieve order item moldings", { status: 500 });
+
+    return new Response("Could not retrieve order item moldings", {
+      status: 500,
+    });
   }
 }
 
@@ -51,15 +57,18 @@ export async function POST(
     limit: 30,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "EDITAR_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { orderItemId } = await params;
   const employeeId = await getEmployeeIdFromRequest(request);
 
   let body: Record<string, unknown>;
+
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
@@ -94,6 +103,7 @@ export async function POST(
 
   // If a template is provided, snapshot its fields
   let templateSnapshot: Record<string, unknown> = {};
+
   if (moldingTemplateId) {
     const [tmpl] = await db
       .select()
@@ -174,7 +184,11 @@ export async function POST(
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("Could not assign molding to order item", { status: 500 });
+
+    return new Response("Could not assign molding to order item", {
+      status: 500,
+    });
   }
 }

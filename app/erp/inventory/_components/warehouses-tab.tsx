@@ -26,6 +26,8 @@ import {
   BsTrash,
 } from "react-icons/bs";
 
+import { WarehouseModal, type WarehouseRow } from "./warehouse-modal";
+
 import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
@@ -33,7 +35,13 @@ import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
-import { WarehouseModal, type WarehouseRow } from "./warehouse-modal";
+const PURPOSE_LABELS: Record<string, string> = {
+  GENERAL: "General",
+  MATERIA_PRIMA: "Materia Prima",
+  PRODUCCION: "Producción",
+  PRODUCTO_TERMINADO: "Producto Terminado",
+  TRANSITO: "En Tránsito",
+};
 
 export function WarehousesTab({ canManage }: { canManage: boolean }) {
   const router = useRouter();
@@ -45,10 +53,8 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
     return q ? `/api/warehouses?q=${encodeURIComponent(q)}` : "/api/warehouses";
   }, [search]);
 
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<WarehouseRow>(
-    endpoint,
-    10,
-  );
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<WarehouseRow>(endpoint, 10);
 
   useEffect(() => {
     setPage(1);
@@ -61,9 +67,9 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (search.trim()) return "No results";
+    if (search.trim()) return "Sin resultados";
 
-    return "No warehouses";
+    return "Sin bodegas";
   }, [loading, search]);
 
   const remove = async () => {
@@ -78,7 +84,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
         body: JSON.stringify({ id: warehouse.id }),
       });
 
-      toast.success("Warehouse deleted");
+      toast.success("Bodega eliminada");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -94,7 +100,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <FilterSearch
           className="sm:w-72"
-          placeholder="Search warehouse..."
+          placeholder="Buscar bodega..."
           value={search}
           onValueChange={setSearch}
         />
@@ -108,50 +114,73 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                 setModalOpen(true);
               }}
             >
-              Create warehouse
+              Crear bodega
             </Button>
           ) : null}
           <Button variant="flat" onPress={refresh}>
-            Refresh
+            Actualizar
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <TableSkeleton ariaLabel="Warehouses" headers={["Code", "Name", "City", "Type", "Status", "Actions"]} />
+        <TableSkeleton
+          ariaLabel="Bodegas"
+          headers={[
+            "Código",
+            "Nombre",
+            "Propósito",
+            "Ciudad",
+            "Tipo",
+            "Estado",
+            "Acciones",
+          ]}
+        />
       ) : (
-        <Table aria-label="Warehouses">
+        <Table aria-label="Bodegas">
           <TableHeader>
-            <TableColumn>Code</TableColumn>
-            <TableColumn>Name</TableColumn>
-            <TableColumn>City</TableColumn>
-            <TableColumn>Type</TableColumn>
-            <TableColumn>Status</TableColumn>
-            <TableColumn>Actions</TableColumn>
+            <TableColumn>Código</TableColumn>
+            <TableColumn>Nombre</TableColumn>
+            <TableColumn>Propósito</TableColumn>
+            <TableColumn>Ciudad</TableColumn>
+            <TableColumn>Tipo</TableColumn>
+            <TableColumn>Estado</TableColumn>
+            <TableColumn>Acciones</TableColumn>
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(warehouse) => (
               <TableRow key={warehouse.id}>
                 <TableCell>{warehouse.code}</TableCell>
                 <TableCell>{warehouse.name}</TableCell>
+                <TableCell>
+                  {PURPOSE_LABELS[warehouse.purpose ?? "GENERAL"] ??
+                    warehouse.purpose ??
+                    "-"}
+                </TableCell>
                 <TableCell>{warehouse.city ?? "-"}</TableCell>
                 <TableCell>
                   {warehouse.isVirtual
                     ? "Virtual"
                     : warehouse.isExternal
-                      ? "External"
-                      : "Physical"}
+                      ? "Externa"
+                      : "Física"}
                 </TableCell>
-                <TableCell>{warehouse.isActive ? "Active" : "Inactive"}</TableCell>
+                <TableCell>
+                  {warehouse.isActive ? "Activa" : "Inactiva"}
+                </TableCell>
                 <TableCell>
                   {canManage ? (
                     <Dropdown>
                       <DropdownTrigger>
-                        <Button isDisabled={Boolean(deletingId)} size="sm" variant="flat">
+                        <Button
+                          isDisabled={Boolean(deletingId)}
+                          size="sm"
+                          variant="flat"
+                        >
                           <BsThreeDotsVertical />
                         </Button>
                       </DropdownTrigger>
-                      <DropdownMenu aria-label="Warehouse actions">
+                      <DropdownMenu aria-label="Acciones de bodega">
                         <DropdownItem
                           key="view"
                           startContent={<BsEye />}
@@ -159,7 +188,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                             router.push(`/erp/compras/bodega/${warehouse.id}`);
                           }}
                         >
-                          View details
+                          Ver detalle
                         </DropdownItem>
                         <DropdownItem
                           key="edit"
@@ -169,7 +198,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                             setModalOpen(true);
                           }}
                         >
-                          Edit
+                          Editar
                         </DropdownItem>
                         <DropdownItem
                           key="delete"
@@ -180,7 +209,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                             setConfirmOpen(true);
                           }}
                         >
-                          Delete
+                          Eliminar
                         </DropdownItem>
                       </DropdownMenu>
                     </Dropdown>
@@ -193,7 +222,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
                         router.push(`/erp/compras/bodega/${warehouse.id}`);
                       }}
                     >
-                      Go to details
+                      Ver detalle
                     </Button>
                   )}
                 </TableCell>
@@ -206,26 +235,27 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
       <WarehouseModal
-        warehouse={editing}
         isOpen={modalOpen}
+        warehouse={editing}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
 
       <ConfirmActionModal
-        cancelLabel="Cancel"
-        confirmLabel="Delete"
-        description={pendingDelete ? `Delete warehouse ${pendingDelete.name}?` : undefined}
+        cancelLabel="Cancelar"
+        confirmLabel="Eliminar"
+        description={
+          pendingDelete ? `¿Eliminar bodega ${pendingDelete.name}?` : undefined
+        }
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
-        title="Confirm deletion"
+        title="Confirmar eliminación"
         onConfirm={remove}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
           setConfirmOpen(open);
         }}
       />
-
     </div>
   );
 }

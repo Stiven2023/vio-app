@@ -1,7 +1,7 @@
+import type { EstadoProceso, ProcessRoleConfig } from "./mes-types";
+
 import React from "react";
 import { MdCheckCircle, MdSchedule, MdWarning } from "react-icons/md";
-
-import type { EstadoProceso, ProcessRoleConfig } from "./mes-types";
 
 export const PROCESO_PREFIX: Record<string, string> = {
   montaje: "MO",
@@ -15,18 +15,42 @@ export const PROCESO_PREFIX: Record<string, string> = {
 };
 
 export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {
-  montaje: { label: "Assembly", role: "OPERARIO_MONTAJE", operationType: "MONTAJE" },
-  plotter: { label: "Plotter", role: "OPERARIO_FLOTER", operationType: "PLOTTER" },
-  sublimacion: { label: "Sublimation", role: "OPERARIO_SUBLIMACION", operationType: "SUBLIMACION" },
-  corte: { label: "Cutting", role: "OPERARIO_CORTE_MANUAL", operationType: "CORTE_MANUAL" },
+  montaje: {
+    label: "Assembly",
+    role: "OPERARIO_MONTAJE",
+    operationType: "MONTAJE",
+  },
+  plotter: {
+    label: "Plotter",
+    role: "OPERARIO_FLOTER",
+    operationType: "PLOTTER",
+  },
+  sublimacion: {
+    label: "Sublimation",
+    role: "OPERARIO_SUBLIMACION",
+    operationType: "SUBLIMACION",
+  },
+  corte: {
+    label: "Cutting",
+    role: "OPERARIO_CORTE_MANUAL",
+    operationType: "CORTE_MANUAL",
+  },
   integracion: {
     label: "Integration",
     role: "OPERARIO_INTEGRACION_CALIDAD",
     operationType: "INTEGRACION",
   },
-  confeccion: { label: "Sewing", role: "CONFECCIONISTA", operationType: "CONFECCION" },
+  confeccion: {
+    label: "Sewing",
+    role: "CONFECCIONISTA",
+    operationType: "CONFECCION",
+  },
   empaque: { label: "Packing", role: "EMPAQUE", operationType: "EMPAQUE" },
-  despacho: { label: "Dispatch", role: "OPERARIO_DESPACHO", operationType: "DESPACHO" },
+  despacho: {
+    label: "Dispatch",
+    role: "OPERARIO_DESPACHO",
+    operationType: "DESPACHO",
+  },
 };
 
 export const ESTADO_CONFIG: Record<

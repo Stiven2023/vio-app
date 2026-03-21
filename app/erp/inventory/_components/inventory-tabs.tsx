@@ -29,13 +29,14 @@ export function InventoryTabs({
   canViewWarehouses: boolean;
   canManageWarehouses: boolean;
 }) {
-  const firstTab: InventoryTabKey = canManageWarehouses || canViewWarehouses
-    ? "warehouses"
-    : canViewInventoryItems
-      ? "inventory"
-      : canEntry
-        ? "entries"
-        : "outputs";
+  const firstTab: InventoryTabKey =
+    canManageWarehouses || canViewWarehouses
+      ? "warehouses"
+      : canViewInventoryItems
+        ? "inventory"
+        : canEntry
+          ? "entries"
+          : "outputs";
 
   const canSeeWarehouses = canViewWarehouses || canManageWarehouses;
   const [activeTab, setActiveTab] = useState<InventoryTabKey>(firstTab);
@@ -48,7 +49,9 @@ export function InventoryTabs({
         onSelectionChange={(key) => setActiveTab(key as InventoryTabKey)}
       >
         {canSeeWarehouses ? <Tab key="warehouses" title="Bodegas" /> : null}
-        {canViewInventoryItems ? <Tab key="inventory" title="Inventario" /> : null}
+        {canViewInventoryItems ? (
+          <Tab key="inventory" title="Inventario" />
+        ) : null}
         {canEntry ? <Tab key="entries" title="Entradas" /> : null}
         {canOutput ? <Tab key="outputs" title="Salidas" /> : null}
       </Tabs>

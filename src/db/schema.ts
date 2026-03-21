@@ -60,6 +60,10 @@ export {
   InventoryLocationEnum,
   InventoryCategoryType,
   InventoryCategoryTypeEnum,
+  WarehousePurpose,
+  WarehousePurposeEnum,
+  WarehouseTransferStatus,
+  WarehouseTransferStatusEnum,
   StockMovementType,
   StockMovementTypeEnum,
   StockMovementReason,
@@ -119,6 +123,8 @@ export {
   paymentStatusValues,
   inventoryLocationValues,
   inventoryCategoryTypeValues,
+  warehousePurposeValues,
+  warehouseTransferStatusValues,
   stockMovementTypeValues,
   stockMovementReasonValues,
   stockMovementReferenceTypeValues,
@@ -181,6 +187,8 @@ import {
   paymentStatusValues,
   inventoryLocationValues,
   inventoryCategoryTypeValues,
+  warehousePurposeValues,
+  warehouseTransferStatusValues,
   stockMovementTypeValues,
   stockMovementReasonValues,
   stockMovementReferenceTypeValues,
@@ -370,6 +378,8 @@ export const paymentMethodEnum = paymentMethodPgEnum;
 export const paymentStatusEnum = paymentStatusPgEnum;
 export const inventoryLocationEnum = inventoryLocationPgEnum;
 export const inventoryCategoryTypeEnum = inventoryCategoryTypePgEnum;
+export const warehousePurposeEnum = warehousePurposePgEnum;
+export const warehouseTransferStatusEnum = warehouseTransferStatusPgEnum;
 export const stockMovementTypeEnum = stockMovementTypePgEnum;
 export const stockMovementReasonEnum = stockMovementReasonPgEnum;
 export const stockMovementReferenceTypeEnum = stockMovementReferenceTypePgEnum;
@@ -1248,6 +1258,7 @@ export const warehouses = pgTable("warehouses", {
   code: varchar("code", { length: 30 }).unique().notNull(),
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
+  purpose: warehousePurposeEnum("purpose").default("GENERAL"),
   isVirtual: boolean("is_virtual").default(false),
   isExternal: boolean("is_external").default(false),
   mirroredWarehouseId: uuid("mirrored_warehouse_id"),
@@ -1284,6 +1295,8 @@ export const inventoryItemVariants = pgTable("inventory_item_variants", {
   color: varchar("color", { length: 80 }),
   size: varchar("size", { length: 50 }),
   description: varchar("description", { length: 255 }),
+  supplierId: uuid("supplier_id").references(() => suppliers.id),
+  unitPrice: numeric("unit_price", { precision: 14, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -1311,7 +1324,13 @@ export const warehouseStock = pgTable(
     lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  () => ({}),
+  (t) => ({
+    uniq: uniqueIndex("warehouse_stock_unique").on(
+      t.warehouseId,
+      t.inventoryItemId,
+      t.variantId,
+    ),
+  }),
 );
 
 /* =========================
@@ -1417,6 +1436,7 @@ export const stockMovements = pgTable("stock_movements", {
   unitCost: numeric("unit_cost", { precision: 14, scale: 2 }),
   referenceType: stockMovementReferenceTypeEnum("reference_type"),
   referenceId: uuid("reference_id"),
+  transferStatus: warehouseTransferStatusEnum("transfer_status"),
   requestedBy: uuid("requested_by").references(() => employees.id),
   requestedAt: timestamp("requested_at", { withTimezone: true }),
   createdBy: uuid("created_by").references(() => employees.id),

@@ -24,6 +24,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
+
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import {
   calculateOrderPaymentPercent,
@@ -231,167 +232,172 @@ export function OrderModal({
   return (
     <>
       <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
-      <ModalContent>
-        <ModalHeader>{order ? "Edit order" : "Create order"}</ModalHeader>
-        <ModalBody>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {order ? (
-              <Input isReadOnly label="Code" value={order.orderCode} />
-            ) : null}
+        <ModalContent>
+          <ModalHeader>{order ? "Edit order" : "Create order"}</ModalHeader>
+          <ModalBody>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {order ? (
+                <Input isReadOnly label="Code" value={order.orderCode} />
+              ) : null}
 
-            <Select
-              label="Client"
-              selectedKeys={form.clientId ? [form.clientId] : []}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
+              <Select
+                label="Client"
+                selectedKeys={form.clientId ? [form.clientId] : []}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
 
-                setForm((s) => ({ ...s, clientId: String(first ?? "") }));
-              }}
-            >
-              {options.clients.map((c) => (
-                <SelectItem key={c.id}>{c.name}</SelectItem>
-              ))}
-            </Select>
+                  setForm((s) => ({ ...s, clientId: String(first ?? "") }));
+                }}
+              >
+                {options.clients.map((c) => (
+                  <SelectItem key={c.id}>{c.name}</SelectItem>
+                ))}
+              </Select>
 
-            <Select
-              label="Type"
-              selectedKeys={[form.type]}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
+              <Select
+                label="Type"
+                selectedKeys={[form.type]}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
 
-                setForm((s) => ({ ...s, type: (first as OrderType) ?? "VN" }));
-              }}
-            >
-              {orderTypes.map((t) => (
-                <SelectItem key={t.value}>{t.label}</SelectItem>
-              ))}
-            </Select>
+                  setForm((s) => ({
+                    ...s,
+                    type: (first as OrderType) ?? "VN",
+                  }));
+                }}
+              >
+                {orderTypes.map((t) => (
+                  <SelectItem key={t.value}>{t.label}</SelectItem>
+                ))}
+              </Select>
 
-            <Select
-              label="Order type"
-              selectedKeys={[form.kind]}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0] as OrderKind | undefined;
-                const next = first ?? "NUEVO";
+              <Select
+                label="Order type"
+                selectedKeys={[form.kind]}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0] as OrderKind | undefined;
+                  const next = first ?? "NUEVO";
 
-                setForm((s) => ({
-                  ...s,
-                  kind: next,
-                  sourceOrderCode: next === "NUEVO" ? "" : s.sourceOrderCode,
-                }));
-              }}
-            >
-              {orderKinds.map((k) => (
-                <SelectItem key={k.value}>{k.label}</SelectItem>
-              ))}
-            </Select>
+                  setForm((s) => ({
+                    ...s,
+                    kind: next,
+                    sourceOrderCode: next === "NUEVO" ? "" : s.sourceOrderCode,
+                  }));
+                }}
+              >
+                {orderKinds.map((k) => (
+                  <SelectItem key={k.value}>{k.label}</SelectItem>
+                ))}
+              </Select>
 
-            {form.kind === "COMPLETACION" || form.kind === "REFERENTE" ? (
+              {form.kind === "COMPLETACION" || form.kind === "REFERENTE" ? (
+                <Input
+                  label="Source order code"
+                  value={form.sourceOrderCode}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, sourceOrderCode: v }))
+                  }
+                />
+              ) : null}
+
               <Input
-                label="Source order code"
-                value={form.sourceOrderCode}
+                description="Optional. Used to identify the order before operational approval."
+                label="Provisional code"
+                value={form.provisionalCode}
                 onValueChange={(v) =>
-                  setForm((s) => ({ ...s, sourceOrderCode: v }))
+                  setForm((s) => ({ ...s, provisionalCode: v }))
                 }
               />
-            ) : null}
 
-            <Input
-              description="Optional. Used to identify the order before operational approval."
-              label="Provisional code"
-              value={form.provisionalCode}
-              onValueChange={(v) =>
-                setForm((s) => ({ ...s, provisionalCode: v }))
-              }
-            />
+              <Select
+                isDisabled={!canChangeStatus && Boolean(order)}
+                label="Status"
+                selectedKeys={[form.status]}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
 
-            <Select
-              isDisabled={!canChangeStatus && Boolean(order)}
-              label="Status"
-              selectedKeys={[form.status]}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
+                  setForm((s) => ({
+                    ...s,
+                    status: (first as OrderStatus) ?? "PENDIENTE",
+                  }));
+                }}
+              >
+                {orderStatuses
+                  .filter((st) => allowedStatuses.includes(st.value))
+                  .map((st) => (
+                    <SelectItem key={st.value}>{st.label}</SelectItem>
+                  ))}
+              </Select>
 
-                setForm((s) => ({
-                  ...s,
-                  status: (first as OrderStatus) ?? "PENDIENTE",
-                }));
-              }}
+              <Input
+                isReadOnly
+                className="hidden"
+                label="Currency"
+                value={form.currency}
+              />
+
+              <Select
+                label="Currency"
+                selectedKeys={[form.currency]}
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
+
+                  setForm((s) => ({ ...s, currency: String(first ?? "COP") }));
+                }}
+              >
+                {currencies.map((c) => (
+                  <SelectItem key={c}>{c}</SelectItem>
+                ))}
+              </Select>
+
+              <Input
+                label="Discount (%)"
+                max={100}
+                min={0}
+                type="number"
+                value={form.discount}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, discount: toPercentString(v) }))
+                }
+              />
+
+              <Input
+                label="Shipping fee"
+                min={0}
+                type="number"
+                value={form.shippingFee}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, shippingFee: toNumberString(v) }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm">VAT enabled</span>
+              <Switch
+                isSelected={form.ivaEnabled}
+                onValueChange={(v) => setForm((s) => ({ ...s, ivaEnabled: v }))}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              isDisabled={submitting}
+              variant="flat"
+              onPress={() => onOpenChange(false)}
             >
-              {orderStatuses.filter((st) => allowedStatuses.includes(st.value)).map((st) => (
-                <SelectItem key={st.value}>{st.label}</SelectItem>
-              ))}
-            </Select>
-
-            <Input
-              isReadOnly
-              className="hidden"
-              label="Currency"
-              value={form.currency}
-            />
-
-            <Select
-              label="Currency"
-              selectedKeys={[form.currency]}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
-
-                setForm((s) => ({ ...s, currency: String(first ?? "COP") }));
-              }}
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={submitting}
+              isLoading={submitting}
+              onPress={submit}
             >
-              {currencies.map((c) => (
-                <SelectItem key={c}>{c}</SelectItem>
-              ))}
-            </Select>
-
-            <Input
-              label="Discount (%)"
-              max={100}
-              min={0}
-              type="number"
-              value={form.discount}
-              onValueChange={(v) =>
-                setForm((s) => ({ ...s, discount: toPercentString(v) }))
-              }
-            />
-
-            <Input
-              label="Shipping fee"
-              min={0}
-              type="number"
-              value={form.shippingFee}
-              onValueChange={(v) =>
-                setForm((s) => ({ ...s, shippingFee: toNumberString(v) }))
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-sm">VAT enabled</span>
-            <Switch
-              isSelected={form.ivaEnabled}
-              onValueChange={(v) => setForm((s) => ({ ...s, ivaEnabled: v }))}
-            />
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            isDisabled={submitting}
-            variant="flat"
-            onPress={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            color="primary"
-            isDisabled={submitting}
-            isLoading={submitting}
-            onPress={submit}
-          >
-            {submitting ? "Saving..." : order ? "Save" : "Create"}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
+              {submitting ? "Saving..." : order ? "Save" : "Create"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
       </Modal>
 
       <ConfirmActionModal

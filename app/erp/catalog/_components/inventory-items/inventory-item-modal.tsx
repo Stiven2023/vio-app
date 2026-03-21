@@ -38,6 +38,7 @@ const CATEGORY_OPTIONS = [
   { id: "REPUESTOS", name: "Repuestos" },
   { id: "REVENTA", name: "Reventa" },
 ] as const;
+
 type Paginated<T> = {
   items: T[];
   page: number;
@@ -112,16 +113,19 @@ export function InventoryItemModal({
 
     if (!sku) {
       setError("El codigo de variante es obligatorio");
+
       return;
     }
 
     if (!color && !size) {
       setError("Para agregar variante inicial, define color o talla");
+
       return;
     }
 
     if (initialVariants.some((variant) => variant.sku.toUpperCase() === sku)) {
       setError("El codigo de variante ya fue agregado en esta lista");
+
       return;
     }
 
@@ -148,6 +152,7 @@ export function InventoryItemModal({
     if (!isOpen) return;
 
     let active = true;
+
     setLoadingSuppliers(true);
     apiJson<Paginated<SupplierRow>>(`/api/suppliers?page=1&pageSize=600`)
       .then((res) => {
@@ -233,12 +238,15 @@ export function InventoryItemModal({
           <Select
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
+            items={CATEGORY_OPTIONS}
             label="Categoria"
-            startContent={<BsGrid className="text-default-400" />}
             selectedKeys={new Set([categoryType])}
+            startContent={<BsGrid className="text-default-400" />}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
-              const value = String(first ?? "INSUMOS_PRODUCCION").trim().toUpperCase();
+              const value = String(first ?? "INSUMOS_PRODUCCION")
+                .trim()
+                .toUpperCase();
 
               if (
                 value === "PAPELERIA" ||
@@ -247,12 +255,12 @@ export function InventoryItemModal({
                 value === "REVENTA"
               ) {
                 setCategoryType(value);
+
                 return;
               }
 
               setCategoryType("INSUMOS_PRODUCCION");
             }}
-            items={CATEGORY_OPTIONS}
           >
             {(category) => (
               <SelectItem key={category.id} textValue={category.name}>
@@ -265,10 +273,11 @@ export function InventoryItemModal({
             errorMessage={error ?? undefined}
             isInvalid={Boolean(error)}
             label="Unidad de medida"
-            startContent={<BsRulers className="text-default-400" />}
             selectedKeys={unit ? [String(unit)] : []}
+            startContent={<BsRulers className="text-default-400" />}
             onSelectionChange={(keys: any) => {
               const k = Array.from(keys as any)[0];
+
               setUnit(k ? String(k) : "");
             }}
           >
@@ -276,12 +285,7 @@ export function InventoryItemModal({
             <SelectItem key="metros">Metros</SelectItem>
             <SelectItem key="talla">Talla</SelectItem>
 
-            {unit &&
-            ![
-              "unidades",
-              "metros",
-              "talla",
-            ].includes(unit) ? (
+            {unit && !["unidades", "metros", "talla"].includes(unit) ? (
               <SelectItem key={unit}>{unit}</SelectItem>
             ) : null}
           </Select>
@@ -306,14 +310,17 @@ export function InventoryItemModal({
           <Select
             isDisabled={submitting || loadingSuppliers}
             isLoading={loadingSuppliers}
+            items={[{ id: "__none", name: "Sin proveedor" }, ...suppliers]}
             label="Proveedor (opcional)"
-            startContent={<BsTruck className="text-default-400" />}
             selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
+            startContent={<BsTruck className="text-default-400" />}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
-              setSupplierId(first === "__none" ? "" : first ? String(first) : "");
+
+              setSupplierId(
+                first === "__none" ? "" : first ? String(first) : "",
+              );
             }}
-            items={[{ id: "__none", name: "Sin proveedor" }, ...suppliers]}
           >
             {(s) => (
               <SelectItem key={s.id} textValue={s.name}>
@@ -328,7 +335,9 @@ export function InventoryItemModal({
 
           {!item ? (
             <div className="space-y-2 rounded-lg border border-default-200 p-3">
-              <p className="text-sm font-semibold">Variantes iniciales (obligatorio)</p>
+              <p className="text-sm font-semibold">
+                Variantes iniciales (obligatorio)
+              </p>
               <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                 <Input
                   label="Codigo variante"
@@ -363,7 +372,9 @@ export function InventoryItemModal({
 
               <div className="space-y-1">
                 {initialVariants.length === 0 ? (
-                  <p className="text-xs text-danger">Debes agregar al menos una variante inicial.</p>
+                  <p className="text-xs text-danger">
+                    Debes agregar al menos una variante inicial.
+                  </p>
                 ) : (
                   initialVariants.map((variant, index) => (
                     <div
@@ -380,7 +391,9 @@ export function InventoryItemModal({
                         startContent={<BsTrash />}
                         variant="light"
                         onPress={() => {
-                          setInitialVariants((prev) => prev.filter((v) => v.id !== variant.id));
+                          setInitialVariants((prev) =>
+                            prev.filter((v) => v.id !== variant.id),
+                          );
                         }}
                       />
                     </div>

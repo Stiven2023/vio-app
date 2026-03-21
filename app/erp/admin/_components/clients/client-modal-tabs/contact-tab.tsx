@@ -1,9 +1,14 @@
+import type {
+  FormErrors,
+  FormState,
+  SetFormState,
+} from "../client-modal.types";
+
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { BsEnvelopeFill, BsPersonFill } from "react-icons/bs";
 
 import { TAX_REGIMES } from "../client-modal.constants";
-import type { FormErrors, FormState, SetFormState } from "../client-modal.types";
 
 type Props = {
   form: FormState;
@@ -15,9 +20,9 @@ export function ContactTab({ form, errors, setForm }: Props) {
   return (
     <div className="space-y-4 py-4">
       <Select
+        isRequired
         errorMessage={errors.taxRegime}
         isInvalid={Boolean(errors.taxRegime)}
-        isRequired
         label="Tax regime (VAT)"
         selectedKeys={[form.taxRegime]}
         onChange={(e) => setForm((s) => ({ ...s, taxRegime: e.target.value }))}
@@ -28,11 +33,11 @@ export function ContactTab({ form, errors, setForm }: Props) {
       </Select>
 
       <Input
+        isRequired
         description="Contact person at the company"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.contactName}
         isInvalid={Boolean(errors.contactName)}
-        isRequired
         label="Contact name"
         startContent={<BsPersonFill className="text-xl text-default-500" />}
         value={form.contactName}
@@ -40,16 +45,16 @@ export function ContactTab({ form, errors, setForm }: Props) {
       />
 
       <Input
+        isRequired
+        autoComplete="email"
         description="Critical field for invoicing"
         endContent={<span className="text-danger">*</span>}
         errorMessage={errors.email}
+        inputMode="email"
         isInvalid={Boolean(errors.email)}
-        isRequired
         label="Email address"
         startContent={<BsEnvelopeFill className="text-xl text-default-500" />}
         type="text"
-        inputMode="email"
-        autoComplete="email"
         value={form.email}
         onValueChange={(v) => setForm((s) => ({ ...s, email: v }))}
       />

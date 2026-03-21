@@ -54,13 +54,13 @@ export function InventoryItemsTab({
   const endpoint = useMemo(() => {
     const q = search.trim();
 
-    return q ? `/api/inventory-items?q=${encodeURIComponent(q)}` : "/api/inventory-items";
+    return q
+      ? `/api/inventory-items?q=${encodeURIComponent(q)}`
+      : "/api/inventory-items";
   }, [search]);
 
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<InventoryItem>(
-    endpoint,
-    10,
-  );
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<InventoryItem>(endpoint, 10);
 
   useEffect(() => {
     setPage(1);
@@ -71,7 +71,9 @@ export function InventoryItemsTab({
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const emptyContent = useMemo(() => {
@@ -133,7 +135,10 @@ export function InventoryItemsTab({
       </div>
 
       {loading ? (
-        <TableSkeleton ariaLabel="Inventario" headers={["Nombre", "Unidad", "Stock actual", "Acciones"]} />
+        <TableSkeleton
+          ariaLabel="Inventario"
+          headers={["Nombre", "Unidad", "Stock actual", "Acciones"]}
+        />
       ) : (
         <Table aria-label="Inventario">
           <TableHeader>
@@ -151,11 +156,17 @@ export function InventoryItemsTab({
                   <div className="flex items-center gap-2">
                     <span>{item.currentStock ?? "0"}</span>
                     {item.lastMovementType === "ENTRADA" ? (
-                      <span className="text-success" title="Último movimiento: entrada">
+                      <span
+                        className="text-success"
+                        title="Último movimiento: entrada"
+                      >
                         <BsArrowUp />
                       </span>
                     ) : item.lastMovementType === "SALIDA" ? (
-                      <span className="text-danger" title="Último movimiento: salida">
+                      <span
+                        className="text-danger"
+                        title="Último movimiento: salida"
+                      >
                         <BsArrowDown />
                       </span>
                     ) : null}
@@ -243,8 +254,8 @@ export function InventoryItemsTab({
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
       <InventoryItemModal
-        item={editing}
         isOpen={modalOpen}
+        item={editing}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
@@ -266,8 +277,8 @@ export function InventoryItemsTab({
       />
 
       <InventoryItemDetailsModal
-        item={detailItem}
         isOpen={detailOpen}
+        item={detailItem}
         onOpenChange={(open) => {
           if (!open) setDetailItem(null);
           setDetailOpen(open);

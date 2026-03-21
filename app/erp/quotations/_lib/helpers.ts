@@ -1,4 +1,10 @@
-import { Addition, ClientPriceType, Currency, OrderType, ProductOption, QuoteItem } from "./types";
+import {
+  Addition,
+  ClientPriceType,
+  Currency,
+  ProductOption,
+  QuoteItem,
+} from "./types";
 
 export function makeItem(): QuoteItem {
   return {
@@ -34,6 +40,7 @@ export function asMoney(value: number): string {
 export function toNumber(value: string | null | undefined): number {
   if (!value) return 0;
   const parsed = Number(value);
+
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
@@ -43,18 +50,31 @@ export function resolveCopUnitPrice(
   clientPriceType: ClientPriceType,
 ): number {
   if (clientPriceType === "MAYORISTA") {
-    return toNumber(product.priceMayorista || product.priceCopBase || product.priceCopR1);
+    return toNumber(
+      product.priceMayorista || product.priceCopBase || product.priceCopR1,
+    );
   }
 
   if (clientPriceType === "COLANTA") {
-    return toNumber(product.priceColanta || product.priceCopBase || product.priceCopR1);
+    return toNumber(
+      product.priceColanta || product.priceCopBase || product.priceCopR1,
+    );
   }
 
   if (clientPriceType === "VIOMAR") {
-    if (quantity <= 499) return toNumber(product.priceCopBase || product.priceCopR1);
-    if (quantity <= 1000) return toNumber(product.priceCopR2 || product.priceCopBase || product.priceCopR1);
+    if (quantity <= 499)
+      return toNumber(product.priceCopBase || product.priceCopR1);
+    if (quantity <= 1000)
+      return toNumber(
+        product.priceCopR2 || product.priceCopBase || product.priceCopR1,
+      );
 
-    return toNumber(product.priceCopR3 || product.priceCopR2 || product.priceCopBase || product.priceCopR1);
+    return toNumber(
+      product.priceCopR3 ||
+        product.priceCopR2 ||
+        product.priceCopBase ||
+        product.priceCopR1,
+    );
   }
 
   if (clientPriceType === "AUTORIZADO") {

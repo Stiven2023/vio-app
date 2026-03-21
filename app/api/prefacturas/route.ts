@@ -24,7 +24,12 @@ import { parsePagination } from "@/src/utils/pagination";
 import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-const CLIENT_PRICE_TYPES = new Set(["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"]);
+const CLIENT_PRICE_TYPES = new Set([
+  "AUTORIZADO",
+  "MAYORISTA",
+  "VIOMAR",
+  "COLANTA",
+]);
 
 async function resolveAdvisorFilter(request: Request) {
   const role = getRoleFromRequest(request);
@@ -40,13 +45,16 @@ async function resolveAdvisorFilter(request: Request) {
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
+
   return Number.isFinite(n) ? n : 0;
 }
 
 function toPositiveInt(v: unknown) {
   const n = Number(String(v));
+
   if (!Number.isFinite(n)) return 1;
   const normalized = Math.round(n);
+
   return normalized > 0 ? normalized : 1;
 }
 
@@ -60,7 +68,9 @@ function toNumericString(value: unknown) {
 }
 
 function normalizeTaxZone(value: unknown) {
-  const normalized = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  const normalized = String(value ?? "CONTINENTAL")
+    .trim()
+    .toUpperCase();
 
   if (
     normalized === "FREE_ZONE" ||
@@ -81,10 +91,12 @@ function isMissingColumnError(error: unknown) {
   // Walk up to 4 levels of error chaining (error → cause → cause.cause…)
   // Drizzle 0.45 + node-postgres wraps PG errors differently depending on version.
   let curr: any = error;
+
   for (let depth = 0; depth < 4; depth++) {
     if (!curr || typeof curr !== "object") break;
     const code = String(curr.code ?? "");
     const msg = String(curr.message ?? "").toLowerCase();
+
     if (
       code === "42703" ||
       msg.includes("does not exist") ||
@@ -95,6 +107,7 @@ function isMissingColumnError(error: unknown) {
     }
     curr = curr.cause ?? curr.error ?? null;
   }
+
   return false;
 }
 
@@ -107,7 +120,8 @@ function calculateTotalProductsFromItems(items: any[]) {
     if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice)) return acc;
 
     const lineSubtotal = quantity * unitPrice;
-    const discountAmount = lineSubtotal * (Number.isFinite(discount) ? discount / 100 : 0);
+    const discountAmount =
+      lineSubtotal * (Number.isFinite(discount) ? discount / 100 : 0);
     const lineTotal = lineSubtotal - discountAmount;
 
     return acc + (Number.isFinite(lineTotal) ? lineTotal : 0);
@@ -120,9 +134,11 @@ type OrderTypeCode = "VN" | "VI" | "VT" | "VW";
 
 async function resolveEmployeeId(request: Request) {
   const direct = getEmployeeIdFromRequest(request);
+
   if (direct) return direct;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) return null;
 
   const [row] = await db
@@ -163,6 +179,7 @@ async function generatePrefacturaCode(tx: any) {
     .limit(1);
 
   const next = (row?.maxSuffix ?? 10000) + 1;
+
   return `PRE${String(next).padStart(5, "0")}`;
 }
 
@@ -176,9 +193,11 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_PEDIDO");
+
   if (forbidden) return forbidden;
 
   const advisorScope = await resolveAdvisorFilter(request);
+
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });
   }
@@ -187,10 +206,18 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
     const q = String(searchParams.get("q") ?? "").trim();
-    const status = String(searchParams.get("status") ?? "all").trim().toUpperCase();
-    const type = String(searchParams.get("type") ?? "all").trim().toUpperCase();
-    const documentType = String(searchParams.get("documentType") ?? "all").trim().toUpperCase();
-    const orderStatus = String(searchParams.get("orderStatus") ?? "all").trim().toUpperCase();
+    const status = String(searchParams.get("status") ?? "all")
+      .trim()
+      .toUpperCase();
+    const type = String(searchParams.get("type") ?? "all")
+      .trim()
+      .toUpperCase();
+    const documentType = String(searchParams.get("documentType") ?? "all")
+      .trim()
+      .toUpperCase();
+    const orderStatus = String(searchParams.get("orderStatus") ?? "all")
+      .trim()
+      .toUpperCase();
 
     const filters = [] as Array<any>;
 
@@ -251,7 +278,9 @@ export async function GET(request: Request) {
         scopedFilters.push(sql`${documentTypeExpr} = ${documentType}`);
       }
 
-      const whereClause = scopedFilters.length ? and(...scopedFilters) : undefined;
+      const whereClause = scopedFilters.length
+        ? and(...scopedFilters)
+        : undefined;
 
       [{ total }] = await db
         .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
@@ -275,7 +304,9 @@ export async function GET(request: Request) {
           totalProducts: prefacturas.totalProducts,
           subtotal: prefacturas.subtotal,
           total: prefacturas.total,
-          clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+          clientName: sql<
+            string | null
+          >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
           documentType: documentTypeExpr,
           approvedAt: prefacturas.approvedAt,
           createdAt: prefacturas.createdAt,
@@ -289,15 +320,22 @@ export async function GET(request: Request) {
         .limit(pageSize)
         .offset(offset);
     } catch (err1) {
-      console.warn("[prefacturas GET] tier-1 fallback:", (err1 as any)?.message);
+      console.warn(
+        "[prefacturas GET] tier-1 fallback:",
+        (err1 as any)?.message,
+      );
 
       // Tier 2: without computed documentType (avoids iva_enabled / document_type)
       try {
         const baseFilters = [...filters] as Array<any>;
-        const whereClause = baseFilters.length ? and(...baseFilters) : undefined;
+        const whereClause = baseFilters.length
+          ? and(...baseFilters)
+          : undefined;
 
         [{ total }] = await db
-          .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
+          .select({
+            total: sql<number>`count(distinct ${prefacturas.id})::int`,
+          })
           .from(prefacturas)
           .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
           .leftJoin(orders, eq(prefacturas.orderId, orders.id))
@@ -318,7 +356,9 @@ export async function GET(request: Request) {
             totalProducts: prefacturas.totalProducts,
             subtotal: prefacturas.subtotal,
             total: prefacturas.total,
-            clientName: sql<string | null>`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+            clientName: sql<
+              string | null
+            >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
             documentType: sql<string | null>`null`,
             approvedAt: prefacturas.approvedAt,
             createdAt: prefacturas.createdAt,
@@ -332,18 +372,26 @@ export async function GET(request: Request) {
           .limit(pageSize)
           .offset(offset);
       } catch (err2) {
-        console.warn("[prefacturas GET] tier-2 fallback:", (err2 as any)?.message);
+        console.warn(
+          "[prefacturas GET] tier-2 fallback:",
+          (err2 as any)?.message,
+        );
 
         // Tier 3: minimal query — only base prefacturas columns, no joins that
         // reference potentially-missing columns
         try {
           const baseFilters = filters.filter(
-            (f: any) => !String(f).includes("orders") && !String(f).includes("clients"),
+            (f: any) =>
+              !String(f).includes("orders") && !String(f).includes("clients"),
           );
-          const whereClause = baseFilters.length ? and(...baseFilters) : undefined;
+          const whereClause = baseFilters.length
+            ? and(...baseFilters)
+            : undefined;
 
           [{ total }] = await db
-            .select({ total: sql<number>`count(distinct ${prefacturas.id})::int` })
+            .select({
+              total: sql<number>`count(distinct ${prefacturas.id})::int`,
+            })
             .from(prefacturas)
             .where(whereClause);
 
@@ -376,7 +424,10 @@ export async function GET(request: Request) {
             documentType: null,
           }));
         } catch (err3) {
-          console.error("[prefacturas GET] tier-3 failed:", (err3 as any)?.message);
+          console.error(
+            "[prefacturas GET] tier-3 failed:",
+            (err3 as any)?.message,
+          );
           // Last resort: return empty page rather than 500
           total = 0;
           items = [];
@@ -394,8 +445,10 @@ export async function GET(request: Request) {
       detail: (error as any)?.detail,
     });
     const response = dbErrorResponse(error);
+
     if (response) return response;
     const errMsg = (error as any)?.message ?? String(error);
+
     return new Response(
       process.env.NODE_ENV === "development"
         ? `Error: ${errMsg}`
@@ -415,6 +468,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_PEDIDO");
+
   if (forbidden) return forbidden;
 
   try {
@@ -434,7 +488,9 @@ export async function POST(request: Request) {
     const quotationIdRaw = String(body?.quotationId ?? "").trim();
     const quotationCodeRaw = String(body?.quotationCode ?? "").trim();
     const orderName = String(body?.orderName ?? "").trim();
-    const orderType = String(body?.orderType ?? "").trim().toUpperCase();
+    const orderType = String(body?.orderType ?? "")
+      .trim()
+      .toUpperCase();
 
     let quotationId = quotationIdRaw;
 
@@ -454,7 +510,11 @@ export async function POST(request: Request) {
         .trim()
         .toUpperCase();
       const currency =
-        String(body?.currency ?? "COP").trim().toUpperCase() === "USD" ? "USD" : "COP";
+        String(body?.currency ?? "COP")
+          .trim()
+          .toUpperCase() === "USD"
+          ? "USD"
+          : "COP";
       const items = Array.isArray(body?.items) ? body.items : [];
 
       if (!clientId) {
@@ -467,7 +527,9 @@ export async function POST(request: Request) {
 
       // items are optional for standalone prefacturas (sin cotización)
       const normalizedOrderType: OrderTypeCode =
-        orderType === "VI" || orderType === "VT" || orderType === "VW" ? orderType : "VN";
+        orderType === "VI" || orderType === "VT" || orderType === "VW"
+          ? orderType
+          : "VN";
 
       const computedTotalProducts = calculateTotalProductsFromItems(items);
       const subtotal = toNumericString(body?.subtotal);
@@ -477,7 +539,9 @@ export async function POST(request: Request) {
       ).trim();
       const taxZoneSnapshot = normalizeTaxZone(body?.taxZoneSnapshot);
       const shippingEnabled = Boolean(body?.shippingEnabled);
-      const shippingFee = shippingEnabled ? toNumericString(body?.shippingFee) : "0.00";
+      const shippingFee = shippingEnabled
+        ? toNumericString(body?.shippingFee)
+        : "0.00";
 
       const employeeId = await resolveEmployeeId(request);
 
@@ -561,13 +625,24 @@ export async function POST(request: Request) {
               .where(inArray(additions.id, additionIds))
           : [];
 
-        const productNameById = new Map(productRows.map((row) => [String(row.id), row.name]));
-        const additionNameById = new Map(additionRows.map((row) => [String(row.id), row.name]));
+        const productNameById = new Map(
+          productRows.map((row) => [String(row.id), row.name]),
+        );
+        const additionNameById = new Map(
+          additionRows.map((row) => [String(row.id), row.name]),
+        );
 
-        const conditionalTypes = new Set(["COMPLETACION", "REFERENTE", "REPOSICION"]);
+        const conditionalTypes = new Set([
+          "COMPLETACION",
+          "REFERENTE",
+          "REPOSICION",
+        ]);
         const referencedItems = items.filter((raw: any) => {
-          const type = String(raw?.orderType ?? "").trim().toUpperCase();
+          const type = String(raw?.orderType ?? "")
+            .trim()
+            .toUpperCase();
           const code = String(raw?.orderCodeReference ?? "").trim();
+
           return conditionalTypes.has(type) && Boolean(code);
         });
 
@@ -587,7 +662,10 @@ export async function POST(request: Request) {
           : [];
 
         const referencedOrderIdByCode = new Map(
-          referencedOrders.map((row) => [String(row.orderCode), String(row.id)]),
+          referencedOrders.map((row) => [
+            String(row.orderCode),
+            String(row.id),
+          ]),
         );
 
         const referencedOrderIds = Array.from(
@@ -631,10 +709,15 @@ export async function POST(request: Request) {
               .where(inArray(orderItems.orderId, referencedOrderIds as any))
           : [];
 
-        const referencedDesignsByOrderId = new Map<string, typeof referencedDesignItems>();
+        const referencedDesignsByOrderId = new Map<
+          string,
+          typeof referencedDesignItems
+        >();
+
         for (const design of referencedDesignItems) {
           const key = String(design.orderId ?? "");
           const current = referencedDesignsByOrderId.get(key) ?? [];
+
           current.push(design);
           referencedDesignsByOrderId.set(key, current);
         }
@@ -650,26 +733,36 @@ export async function POST(request: Request) {
         for (let index = 0; index < items.length; index++) {
           const item = items[index];
           const productId = String(item?.productId ?? "").trim();
+
           if (!productId) {
             throw new Error("item productId required");
           }
 
-          const orderTypeNormalized = String(item?.orderType ?? "").trim().toUpperCase();
-          const referenceOrderCode = String(item?.orderCodeReference ?? "").trim();
+          const orderTypeNormalized = String(item?.orderType ?? "")
+            .trim()
+            .toUpperCase();
+          const referenceOrderCode = String(
+            item?.orderCodeReference ?? "",
+          ).trim();
           const referenceDesign = String(item?.designNumber ?? "").trim();
           const referencedOrderId = referenceOrderCode
             ? referencedOrderIdByCode.get(referenceOrderCode)
             : undefined;
           const sourceCandidates = referencedOrderId
-            ? referencedDesignsByOrderId.get(referencedOrderId) ?? []
+            ? (referencedDesignsByOrderId.get(referencedOrderId) ?? [])
             : [];
           const sourceDesign = conditionalTypes.has(orderTypeNormalized)
             ? sourceCandidates.find((candidate) => {
                 const designRef = referenceDesign.toUpperCase();
+
                 return (
                   String(candidate.id ?? "") === referenceDesign ||
-                  String(candidate.manufacturingId ?? "").trim().toUpperCase() === designRef ||
-                  String(candidate.name ?? "").trim().toUpperCase() === designRef
+                  String(candidate.manufacturingId ?? "")
+                    .trim()
+                    .toUpperCase() === designRef ||
+                  String(candidate.name ?? "")
+                    .trim()
+                    .toUpperCase() === designRef
                 );
               })
             : null;
@@ -679,7 +772,9 @@ export async function POST(request: Request) {
           const discount = Math.min(100, Math.max(0, asNumber(item?.discount)));
           const subtotalLine = unitPrice * qty;
           const lineTotal = subtotalLine - subtotalLine * (discount / 100);
-          const itemAdditions = Array.isArray(item?.additions) ? item.additions : [];
+          const itemAdditions = Array.isArray(item?.additions)
+            ? item.additions
+            : [];
           const process = ["PRODUCCION", "BODEGA", "COMPRAS"].includes(
             String(item?.process ?? "").toUpperCase(),
           )
@@ -689,12 +784,16 @@ export async function POST(request: Request) {
             orderType: String(item?.orderType ?? "NORMAL"),
             process,
             additions: itemAdditions.map((add: any) => ({
-              additionName: additionNameById.get(String(add?.id ?? "")) ?? "Adición",
+              additionName:
+                additionNameById.get(String(add?.id ?? "")) ?? "Adición",
             })),
           });
           const additionEvidence = itemAdditions.length
             ? itemAdditions
-                .map((add: any) => additionNameById.get(String(add?.id ?? "")) ?? "Adición")
+                .map(
+                  (add: any) =>
+                    additionNameById.get(String(add?.id ?? "")) ?? "Adición",
+                )
                 .join(", ")
             : null;
 
@@ -712,8 +811,10 @@ export async function POST(request: Request) {
             hasAdditions: sourceDesign
               ? Boolean(sourceDesign.hasAdditions)
               : itemAdditions.length > 0,
-            additionEvidence: sourceDesign?.additionEvidence ?? additionEvidence,
-            observations: sourceDesign?.observations ?? `Demora estimada: ${leadDays} días`,
+            additionEvidence:
+              sourceDesign?.additionEvidence ?? additionEvidence,
+            observations:
+              sourceDesign?.observations ?? `Demora estimada: ${leadDays} días`,
             fabric: sourceDesign?.fabric ?? null,
             imageUrl: sourceDesign?.imageUrl ?? null,
             screenPrint: Boolean(sourceDesign?.screenPrint ?? false),
@@ -737,6 +838,7 @@ export async function POST(request: Request) {
 
           for (const add of itemAdditions) {
             const additionId = String(add?.id ?? "").trim();
+
             if (!additionId) continue;
 
             additionsQueue.push({
@@ -756,10 +858,13 @@ export async function POST(request: Request) {
           : [];
 
         if (additionsQueue.length > 0) {
-          const additionRowsToInsert: Array<typeof orderItemAdditions.$inferInsert> = [];
+          const additionRowsToInsert: Array<
+            typeof orderItemAdditions.$inferInsert
+          > = [];
 
           for (const additionRow of additionsQueue) {
             const mappedItem = insertedItems[additionRow.itemIndex];
+
             if (!mappedItem?.id) continue;
 
             additionRowsToInsert.push({
@@ -771,11 +876,15 @@ export async function POST(request: Request) {
           }
 
           if (additionRowsToInsert.length > 0) {
-            await tx.insert(orderItemAdditions).values(additionRowsToInsert as any);
+            await tx
+              .insert(orderItemAdditions)
+              .values(additionRowsToInsert as any);
           }
         }
 
-        let createdPrefactura: { id: string; prefacturaCode: string } | null = null;
+        let createdPrefactura: { id: string; prefacturaCode: string } | null =
+          null;
+
         for (let attempt = 0; attempt < 5; attempt++) {
           const prefacturaCode = await generatePrefacturaCode(tx);
 
@@ -791,21 +900,35 @@ export async function POST(request: Request) {
                 subtotal,
                 total,
                 approvedAt: new Date(),
-                advanceRequired: body?.advanceRequired != null
-                  ? String(Math.max(0, Number(body.advanceRequired) || 0))
-                  : "0",
+                advanceRequired:
+                  body?.advanceRequired != null
+                    ? String(Math.max(0, Number(body.advanceRequired) || 0))
+                    : "0",
                 advanceMethod:
-                  body?.advanceMethod === "EFECTIVO" || body?.advanceMethod === "TRANSFERENCIA"
+                  body?.advanceMethod === "EFECTIVO" ||
+                  body?.advanceMethod === "TRANSFERENCIA"
                     ? body.advanceMethod
                     : null,
                 hasConvenio: Boolean(body?.hasConvenio),
-                convenioType: body?.convenioType ? String(body.convenioType).slice(0, 80) : null,
-                convenioNotes: body?.convenioNotes ? String(body.convenioNotes) : null,
-                convenioExpiresAt: body?.convenioExpiresAt ? String(body.convenioExpiresAt) : null,
+                convenioType: body?.convenioType
+                  ? String(body.convenioType).slice(0, 80)
+                  : null,
+                convenioNotes: body?.convenioNotes
+                  ? String(body.convenioNotes)
+                  : null,
+                convenioExpiresAt: body?.convenioExpiresAt
+                  ? String(body.convenioExpiresAt)
+                  : null,
                 hasClientApproval: Boolean(body?.hasClientApproval),
-                clientApprovalDate: body?.clientApprovalDate ? String(body.clientApprovalDate) : null,
-                clientApprovalBy: body?.clientApprovalBy ? String(body.clientApprovalBy).slice(0, 150) : null,
-                clientApprovalNotes: body?.clientApprovalNotes ? String(body.clientApprovalNotes) : null,
+                clientApprovalDate: body?.clientApprovalDate
+                  ? String(body.clientApprovalDate)
+                  : null,
+                clientApprovalBy: body?.clientApprovalBy
+                  ? String(body.clientApprovalBy).slice(0, 150)
+                  : null,
+                clientApprovalNotes: body?.clientApprovalNotes
+                  ? String(body.clientApprovalNotes)
+                  : null,
                 clientApprovalImageUrl: clientApprovalImageUrl || null,
                 clientPriceType: clientPriceType || "VIOMAR",
                 municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
@@ -813,10 +936,18 @@ export async function POST(request: Request) {
                 withholdingTaxRate: toNumericString(body?.withholdingTaxRate),
                 withholdingIcaRate: toNumericString(body?.withholdingIcaRate),
                 withholdingIvaRate: toNumericString(body?.withholdingIvaRate),
-                withholdingTaxAmount: toNumericString(body?.withholdingTaxAmount),
-                withholdingIcaAmount: toNumericString(body?.withholdingIcaAmount),
-                withholdingIvaAmount: toNumericString(body?.withholdingIvaAmount),
-                totalAfterWithholdings: toNumericString(body?.totalAfterWithholdings),
+                withholdingTaxAmount: toNumericString(
+                  body?.withholdingTaxAmount,
+                ),
+                withholdingIcaAmount: toNumericString(
+                  body?.withholdingIcaAmount,
+                ),
+                withholdingIvaAmount: toNumericString(
+                  body?.withholdingIvaAmount,
+                ),
+                totalAfterWithholdings: toNumericString(
+                  body?.totalAfterWithholdings,
+                ),
               })
               .returning({
                 id: prefacturas.id,
@@ -854,42 +985,50 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin;
-    const proxyResponse = await fetch(`${origin}/api/quotations/${quotationId}/prefactura`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        cookie: request.headers.get("cookie") ?? "",
+    const proxyResponse = await fetch(
+      `${origin}/api/quotations/${quotationId}/prefactura`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          cookie: request.headers.get("cookie") ?? "",
+        },
+        body: JSON.stringify({
+          orderName,
+          orderType:
+            orderType === "VI" || orderType === "VT" || orderType === "VW"
+              ? orderType
+              : "VN",
+          municipalityFiscalSnapshot: body?.municipalityFiscalSnapshot,
+          taxZoneSnapshot: body?.taxZoneSnapshot,
+          withholdingTaxRate: body?.withholdingTaxRate,
+          withholdingIcaRate: body?.withholdingIcaRate,
+          withholdingIvaRate: body?.withholdingIvaRate,
+          withholdingTaxAmount: body?.withholdingTaxAmount,
+          withholdingIcaAmount: body?.withholdingIcaAmount,
+          withholdingIvaAmount: body?.withholdingIvaAmount,
+          totalAfterWithholdings: body?.totalAfterWithholdings,
+        }),
+        cache: "no-store",
       },
-      body: JSON.stringify({
-        orderName,
-        orderType:
-          orderType === "VI" || orderType === "VT" || orderType === "VW"
-            ? orderType
-            : "VN",
-        municipalityFiscalSnapshot: body?.municipalityFiscalSnapshot,
-        taxZoneSnapshot: body?.taxZoneSnapshot,
-        withholdingTaxRate: body?.withholdingTaxRate,
-        withholdingIcaRate: body?.withholdingIcaRate,
-        withholdingIvaRate: body?.withholdingIvaRate,
-        withholdingTaxAmount: body?.withholdingTaxAmount,
-        withholdingIcaAmount: body?.withholdingIcaAmount,
-        withholdingIvaAmount: body?.withholdingIvaAmount,
-        totalAfterWithholdings: body?.totalAfterWithholdings,
-      }),
-      cache: "no-store",
-    });
+    );
 
     const contentType = proxyResponse.headers.get("content-type") ?? "";
+
     if (contentType.includes("application/json")) {
       const payload = await proxyResponse.json();
+
       return Response.json(payload, { status: proxyResponse.status });
     }
 
     const text = await proxyResponse.text();
+
     return new Response(text, { status: proxyResponse.status });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear prefactura", { status: 500 });
   }
 }

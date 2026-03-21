@@ -1,6 +1,7 @@
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function sanitizeBaseName(name: string): string {
@@ -14,13 +15,16 @@ function sanitizeBaseName(name: string): string {
 
 function resolveFileExtension(file: File): string {
   const fromName = path.extname(file.name || "").toLowerCase();
+
   if (fromName) return fromName;
 
   const typeParts = (file.type || "").split("/");
   const subtype = typeParts.length === 2 ? typeParts[1] : "";
+
   if (!subtype) return "";
 
   const cleanSubtype = subtype.split("+")[0].toLowerCase();
+
   return cleanSubtype ? `.${cleanSubtype}` : "";
 }
 
@@ -60,17 +64,20 @@ export async function POST(request: Request) {
 
     if (!cloudName || !apiKey || !apiSecret) {
       console.warn("⚠️ Cloudinary no configurado, usando almacenamiento local");
-      
+
       const documentsDir = path.join(process.cwd(), "public/documents");
+
       await mkdir(documentsDir, { recursive: true });
 
       const filePath = path.join(documentsDir, localFileName);
       const bytes = await file.arrayBuffer();
+
       await writeFile(filePath, new Uint8Array(bytes));
 
       console.log("✅ Documento guardado localmente:", filePath);
 
       const publicUrl = `/documents/${localFileName}`;
+
       return Response.json({ url: publicUrl });
     }
 
@@ -92,6 +99,7 @@ export async function POST(request: Request) {
       .digest("hex");
 
     const formDataCloudinary = new FormData();
+
     formDataCloudinary.append("file", file);
     formDataCloudinary.append("api_key", apiKey);
     Object.entries(params).forEach(([k, v]) => formDataCloudinary.append(k, v));
@@ -106,12 +114,17 @@ export async function POST(request: Request) {
       {
         method: "POST",
         body: formDataCloudinary,
-      }
+      },
     );
 
     if (!uploadRes.ok) {
       const errorText = await uploadRes.text();
-      console.error("❌ Cloudinary error:", { status: uploadRes.status, errorText });
+
+      console.error("❌ Cloudinary error:", {
+        status: uploadRes.status,
+        errorText,
+      });
+
       return new Response(`Error al subir a Cloudinary: ${uploadRes.status}`, {
         status: 500,
       });
@@ -129,9 +142,10 @@ export async function POST(request: Request) {
     return Response.json({ url: json.secure_url });
   } catch (error) {
     console.error("❌ Error guardando documento:", error);
+
     return new Response(
       `Error al guardar el documento: ${error instanceof Error ? error.message : "Error desconocido"}`,
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -828,7 +828,11 @@ Object.defineProperty(InventoryLocationEnum, "enumValues", {
 });
 
 export const InventoryCategoryType = {
+  MATERIA_PRIMA: "MATERIA_PRIMA",
+  TELAS: "TELAS",
+  EMPAQUES: "EMPAQUES",
   INSUMOS_PRODUCCION: "INSUMOS_PRODUCCION",
+  INSUMOS_VARIOS: "INSUMOS_VARIOS",
   PAPELERIA: "PAPELERIA",
   ASEO: "ASEO",
   REPUESTOS: "REPUESTOS",
@@ -836,7 +840,11 @@ export const InventoryCategoryType = {
 } as const;
 
 export const inventoryCategoryTypeValues = [
+  "MATERIA_PRIMA",
+  "TELAS",
+  "EMPAQUES",
   "INSUMOS_PRODUCCION",
+  "INSUMOS_VARIOS",
   "PAPELERIA",
   "ASEO",
   "REPUESTOS",
@@ -846,6 +854,46 @@ export const inventoryCategoryTypeValues = [
 export const InventoryCategoryTypeEnum = z.enum(inventoryCategoryTypeValues);
 Object.defineProperty(InventoryCategoryTypeEnum, "enumValues", {
   value: inventoryCategoryTypeValues,
+});
+
+export const WarehousePurpose = {
+  GENERAL: "GENERAL",
+  MATERIA_PRIMA: "MATERIA_PRIMA",
+  PRODUCCION: "PRODUCCION",
+  PRODUCTO_TERMINADO: "PRODUCTO_TERMINADO",
+  TRANSITO: "TRANSITO",
+} as const;
+
+export const warehousePurposeValues = [
+  "GENERAL",
+  "MATERIA_PRIMA",
+  "PRODUCCION",
+  "PRODUCTO_TERMINADO",
+  "TRANSITO",
+] as const;
+
+export const WarehousePurposeEnum = z.enum(warehousePurposeValues);
+Object.defineProperty(WarehousePurposeEnum, "enumValues", {
+  value: warehousePurposeValues,
+});
+
+export const WarehouseTransferStatus = {
+  PENDIENTE: "PENDIENTE",
+  APROBADA: "APROBADA",
+  RECHAZADA: "RECHAZADA",
+} as const;
+
+export const warehouseTransferStatusValues = [
+  "PENDIENTE",
+  "APROBADA",
+  "RECHAZADA",
+] as const;
+
+export const WarehouseTransferStatusEnum = z.enum(
+  warehouseTransferStatusValues,
+);
+Object.defineProperty(WarehouseTransferStatusEnum, "enumValues", {
+  value: warehouseTransferStatusValues,
 });
 
 export const StockMovementType = {

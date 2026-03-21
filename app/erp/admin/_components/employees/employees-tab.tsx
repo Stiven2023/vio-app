@@ -3,7 +3,7 @@
 import type { Employee } from "../../_lib/types";
 import type { ClientFormPrefill } from "../clients/client-modal.types";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import {
@@ -71,15 +71,28 @@ export function EmployeesTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Employee | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState<string | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [viewingDocuments, setViewingDocuments] = useState<Employee | null>(null);
+  const [viewingDocuments, setViewingDocuments] = useState<Employee | null>(
+    null,
+  );
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Employee | null>(null);
-  const [detail, setDetail] = useState<
-    { employee: Employee; user: { id: string; email: string; emailVerified: boolean | null; isActive: boolean | null; createdAt: string | null } | null } | null
-  >(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Employee | null>(
+    null,
+  );
+  const [detail, setDetail] = useState<{
+    employee: Employee;
+    user: {
+      id: string;
+      email: string;
+      emailVerified: boolean | null;
+      isActive: boolean | null;
+      createdAt: string | null;
+    } | null;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -113,6 +126,73 @@ export function EmployeesTab({
 
     return "Sin empleados";
   }, [loading, search, status]);
+
+  const exportCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/employees/export";
+    anchor.download = "employees-export.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const downloadTemplate = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/employees/import/template";
+    anchor.download = "employees-import-template.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const importCsv = async (file: File) => {
+    if (importing) return;
+    const isCsv =
+      file.type === "text/csv" ||
+      file.name.toLowerCase().endsWith(".csv") ||
+      file.type === "application/vnd.ms-excel";
+    if (!isCsv) {
+      toast.error("Selecciona un archivo CSV válido");
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/employees/import", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || (typeof payload === "string" ? payload : "No se pudo importar el CSV"),
+        );
+      }
+      const createdCount = Number(payload?.createdCount ?? 0);
+      const updatedCount = Number(payload?.updatedCount ?? 0);
+      const failedCount = Number(payload?.failedCount ?? 0);
+      const firstError = Array.isArray(payload?.errors)
+        ? String(payload.errors[0]?.message ?? "")
+        : "";
+      if (createdCount === 0 && updatedCount === 0 && failedCount > 0) {
+        toast.error(`No se importó ningún registro. ${firstError || "Revisa el archivo CSV."}`);
+        return;
+      }
+      if (failedCount > 0) {
+        toast.success(`Importación parcial: ${createdCount} creados, ${updatedCount} editados, ${failedCount} con error`);
+      } else {
+        toast.success(`Importación exitosa: ${createdCount} creados, ${updatedCount} editados`);
+      }
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const onSaved = () => {
     refreshRefs();
@@ -170,6 +250,7 @@ export function EmployeesTab({
   const createAsClient = async (employee: Employee) => {
     if (!employee.email) {
       toast.error("Para crear como cliente, el empleado debe tener email.");
+
       return;
     }
 
@@ -213,6 +294,7 @@ export function EmployeesTab({
   const createAsSupplier = async (employee: Employee) => {
     if (!employee.email) {
       toast.error("Para crear como proveedor, el empleado debe tener email.");
+
       return;
     }
 
@@ -254,7 +336,10 @@ export function EmployeesTab({
 
   const createAsConfectionist = async (employee: Employee) => {
     if (!employee.email) {
-      toast.error("Para crear como confeccionista, el empleado debe tener email.");
+      toast.error(
+        "Para crear como confeccionista, el empleado debe tener email.",
+      );
+
       return;
     }
 
@@ -293,6 +378,7 @@ export function EmployeesTab({
   const createAsPacker = async (employee: Employee) => {
     if (!employee.email) {
       toast.error("Para crear como empaque, el empleado debe tener email.");
+
       return;
     }
 
@@ -350,7 +436,23 @@ export function EmployeesTab({
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            accept=".csv"
+            className="hidden"
+            type="file"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); }}
+          />
+          <Button variant="flat" onPress={exportCsv}>
+            Exportar CSV
+          </Button>
+          <Button variant="flat" onPress={downloadTemplate}>
+            Descargar plantilla CSV
+          </Button>
+          <Button color="secondary" isLoading={importing} onPress={() => fileInputRef.current?.click()}>
+            Importar CSV
+          </Button>
           {canCreate ? (
             <Button
               color="primary"
@@ -396,15 +498,21 @@ export function EmployeesTab({
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(e) => (
               <TableRow key={e.id}>
-                <TableCell className="font-mono text-xs text-primary">{e.employeeCode ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs text-primary">
+                  {e.employeeCode ?? "—"}
+                </TableCell>
                 <TableCell>{e.name}</TableCell>
                 <TableCell>
                   <Chip size="sm" variant="flat">
                     {e.identificationType}
                   </Chip>
                 </TableCell>
-                <TableCell className="text-default-500">{e.email ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{e.fullMobile ?? e.mobile ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {e.email ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {e.fullMobile ?? e.mobile ?? "-"}
+                </TableCell>
                 <TableCell>
                   {e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "-"}
                 </TableCell>
@@ -522,10 +630,9 @@ export function EmployeesTab({
           setDetailsOpen(open);
         }}
         onRequestCreateClient={
-          legalOnlyMode ? undefined : () => detail?.employee && createAsClient(detail.employee)
-        }
-        onRequestCreateSupplier={
-          legalOnlyMode ? undefined : () => detail?.employee && createAsSupplier(detail.employee)
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsClient(detail.employee)
         }
         onRequestCreateConfectionist={
           legalOnlyMode
@@ -533,7 +640,14 @@ export function EmployeesTab({
             : () => detail?.employee && createAsConfectionist(detail.employee)
         }
         onRequestCreatePacker={
-          legalOnlyMode ? undefined : () => detail?.employee && createAsPacker(detail.employee)
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsPacker(detail.employee)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsSupplier(detail.employee)
         }
       />
 

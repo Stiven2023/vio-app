@@ -49,7 +49,8 @@ export default async function JuridicaPage({
   const canChangeClientLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_CLIENTE;
   const canChangeEmployeeLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_EMPLEADO;
   const canChangeSupplierLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_PROVEEDOR;
-  const canChangeConfectionistLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA;
+  const canChangeConfectionistLegalStatus =
+    perms.CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA;
   const canChangePackerLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_EMPAQUE;
 
   const resolvedParams = searchParams ? await searchParams : undefined;
@@ -60,21 +61,22 @@ export default async function JuridicaPage({
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">Legal</h1>
         <p className="text-default-600 mt-1">
-          Single view by sections with tabs. Starts with clients and their legal status.
+          Single view by sections with tabs. Starts with clients and their legal
+          status.
         </p>
       </header>
 
       <JuridicaTabs
-        canViewClient={canViewClient}
-        canViewConfectionist={canViewConfectionist}
-        canViewEmployee={canViewEmployee}
-        canViewPacker={canViewPacker}
-        canViewSupplier={canViewSupplier}
         canChangeClientLegalStatus={canChangeClientLegalStatus}
         canChangeConfectionistLegalStatus={canChangeConfectionistLegalStatus}
         canChangeEmployeeLegalStatus={canChangeEmployeeLegalStatus}
         canChangePackerLegalStatus={canChangePackerLegalStatus}
         canChangeSupplierLegalStatus={canChangeSupplierLegalStatus}
+        canViewClient={canViewClient}
+        canViewConfectionist={canViewConfectionist}
+        canViewEmployee={canViewEmployee}
+        canViewPacker={canViewPacker}
+        canViewSupplier={canViewSupplier}
         initialTab={initialTab}
       />
     </div>

@@ -13,10 +13,12 @@ function normalizeCode(value: string) {
 
 function isMissingColumnError(error: unknown) {
   let curr: any = error;
+
   for (let depth = 0; depth < 4; depth++) {
     if (!curr || typeof curr !== "object") break;
     const code = String(curr.code ?? "");
     const msg = String(curr.message ?? "").toLowerCase();
+
     if (
       code === "42703" ||
       msg.includes("does not exist") ||
@@ -27,6 +29,7 @@ function isMissingColumnError(error: unknown) {
     }
     curr = curr.cause ?? curr.error ?? null;
   }
+
   return false;
 }
 
@@ -169,7 +172,8 @@ export async function POST(request: Request) {
   const code = normalizeCode(String(body?.code ?? ""));
   const name = String(body?.name ?? "").trim();
   const accountRef = String(body?.accountRef ?? "").trim();
-  const isOfficial = body?.isOfficial !== undefined ? Boolean(body.isOfficial) : false;
+  const isOfficial =
+    body?.isOfficial !== undefined ? Boolean(body.isOfficial) : false;
   const isActive = body?.isActive !== undefined ? Boolean(body.isActive) : true;
 
   if (!code) return new Response("code required", { status: 400 });
@@ -218,7 +222,8 @@ export async function PUT(request: Request) {
   const code = normalizeCode(String(body?.code ?? ""));
   const name = String(body?.name ?? "").trim();
   const accountRef = String(body?.accountRef ?? "").trim();
-  const isOfficial = body?.isOfficial !== undefined ? Boolean(body.isOfficial) : false;
+  const isOfficial =
+    body?.isOfficial !== undefined ? Boolean(body.isOfficial) : false;
   const isActive = body?.isActive !== undefined ? Boolean(body.isActive) : true;
 
   if (!id) return new Response("id required", { status: 400 });

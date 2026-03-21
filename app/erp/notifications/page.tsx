@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { NotificationsPage } from "./_components/notifications-page";
 
-
 export default async function NotificationsRoute() {
   const token = (await cookies()).get("auth_token")?.value;
 

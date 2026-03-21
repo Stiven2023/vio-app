@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 const moduleMeta = {
   erp: {
     title: "ERP",
-    description: "Comprehensive operations: sales, purchasing, production and accounting",
+    description:
+      "Comprehensive operations: sales, purchasing, production and accounting",
   },
   mes: {
     title: "MES",
@@ -21,6 +22,7 @@ const moduleMeta = {
 function getModuleFromPath(pathname: string) {
   if (pathname === "/mes" || pathname.startsWith("/mes/")) return "mes";
   if (pathname === "/crm" || pathname.startsWith("/crm/")) return "crm";
+
   return "erp";
 }
 
@@ -60,7 +62,7 @@ export function AppFooter() {
           <NextLink className="hover:text-default-900" href="/crm">
             CRM
           </NextLink>
-            <span className="text-default-400">Viomar Platform v2</span>
+          <span className="text-default-400">Viomar Platform v2</span>
         </div>
       </div>
     </footer>

@@ -198,9 +198,7 @@ export default function RegisterUser() {
           required
           endContent={
             <Button
-              aria-label={
-                showPassword ? "Hide password" : "Show password"
-              }
+              aria-label={showPassword ? "Hide password" : "Show password"}
               size="sm"
               type="button"
               variant="light"

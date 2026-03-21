@@ -1,5 +1,6 @@
-import { useMemo } from "react";
 import type { QuoteItem, DocumentType } from "../_lib/types";
+
+import { useMemo } from "react";
 
 export interface QuoteCalculations {
   subtotal: number;
@@ -25,6 +26,7 @@ export function useQuoteCalculations(
       // Sumar adiciones del item
       const additionsTotal = row.additions.reduce((addAcc, add) => {
         const addSubtotal = add.quantity * add.unitPrice;
+
         return addAcc + addSubtotal;
       }, 0);
 
@@ -39,5 +41,12 @@ export function useQuoteCalculations(
     const advancePayment = total * 0.5;
 
     return { subtotal, iva, total, advancePayment };
-  }, [insuranceEnabled, insuranceFee, items, shippingEnabled, shippingFee, documentType]);
+  }, [
+    insuranceEnabled,
+    insuranceFee,
+    items,
+    shippingEnabled,
+    shippingFee,
+    documentType,
+  ]);
 }

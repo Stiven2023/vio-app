@@ -66,6 +66,7 @@ export async function requirePermission(
   }
 
   const overrides = ROLE_PERMISSION_OVERRIDES[roleName] ?? [];
+
   if (overrides.includes(permissionName)) {
     return null;
   }
@@ -80,15 +81,12 @@ export async function requirePermission(
     .from(rolePermissions)
     .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
     .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(
-      and(
-        eq(roles.name, roleName),
-        inArray(permissions.name, candidates),
-      ),
-    )
+    .where(and(eq(roles.name, roleName), inArray(permissions.name, candidates)))
     .limit(1);
 
-  return rows.length > 0 ? null : new Response("Access denied: missing permission", { status: 403 });
+  return rows.length > 0
+    ? null
+    : new Response("Access denied: missing permission", { status: 403 });
 }
 
 /**
@@ -101,13 +99,16 @@ export async function checkPermissions(
   permissionNames: string[],
 ): Promise<Record<string, boolean>> {
   const result: Record<string, boolean> = {};
+
   for (const name of permissionNames) result[name] = false;
 
   const roleName = getRoleFromRequest(request);
+
   if (!roleName) return result;
 
   if (roleName === "ADMINISTRADOR") {
     for (const name of permissionNames) result[name] = true;
+
     return result;
   }
 
@@ -115,6 +116,7 @@ export async function checkPermissions(
 
   // Build full candidate → original name map
   const candidateToOriginal = new Map<string, string>();
+
   for (const name of permissionNames) {
     if (overrides.includes(name)) {
       result[name] = true;
@@ -123,6 +125,7 @@ export async function checkPermissions(
     const candidates = Array.from(
       new Set([name, ...(PERMISSION_ALIASES[name] ?? [])]),
     );
+
     for (const c of candidates) candidateToOriginal.set(c, name);
   }
 
@@ -136,14 +139,12 @@ export async function checkPermissions(
     .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
     .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
     .where(
-      and(
-        eq(roles.name, roleName),
-        inArray(permissions.name, allCandidates),
-      ),
+      and(eq(roles.name, roleName), inArray(permissions.name, allCandidates)),
     );
 
   for (const row of rows) {
     const original = candidateToOriginal.get(row.permName);
+
     if (original) result[original] = true;
   }
 

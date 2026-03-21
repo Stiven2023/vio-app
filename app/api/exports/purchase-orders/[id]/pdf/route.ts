@@ -1,15 +1,23 @@
-import { eq, inArray } from "drizzle-orm";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { eq, inArray } from "drizzle-orm";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+
 import { db } from "@/src/db";
-import { employees, inventoryItemVariants, purchaseOrderItems, purchaseOrders, suppliers } from "@/src/db/schema";
+import {
+  employees,
+  inventoryItemVariants,
+  purchaseOrderItems,
+  purchaseOrders,
+  suppliers,
+} from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function asNumber(value: unknown) {
   const parsed = Number(String(value ?? "0"));
+
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -25,7 +33,9 @@ function formatMoney(value: unknown) {
 function formatDate(value: unknown) {
   if (!value) return "-";
   const date = new Date(String(value));
+
   if (Number.isNaN(date.getTime())) return "-";
+
   return new Intl.DateTimeFormat("es-CO").format(date);
 }
 
@@ -35,22 +45,30 @@ function sanitizeWinAnsi(value: unknown) {
 
 function truncateText(value: unknown, max = 48) {
   const text = String(value ?? "-").trim() || "-";
+
   if (text.length <= max) return text;
+
   return `${text.slice(0, Math.max(0, max - 3))}...`;
 }
 
-async function readImageSourceBytes(source: string): Promise<Uint8Array | null> {
+async function readImageSourceBytes(
+  source: string,
+): Promise<Uint8Array | null> {
   const value = String(source ?? "").trim();
+
   if (!value) return null;
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     const response = await fetch(value);
+
     if (!response.ok) return null;
+
     return new Uint8Array(await response.arrayBuffer());
   }
 
   const normalized = value.startsWith("/") ? value.slice(1) : value;
   const diskPath = join(process.cwd(), "public", normalized);
+
   return new Uint8Array(await readFile(diskPath));
 }
 
@@ -65,6 +83,7 @@ const COMPANY_INFO = {
 
 async function embedImageFromSource(pdf: PDFDocument, source: string) {
   const bytes = await readImageSourceBytes(source);
+
   if (!bytes) return null;
 
   try {
@@ -91,6 +110,7 @@ export async function GET(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
@@ -144,6 +164,7 @@ export async function GET(
 
   const variantIds = items.map((i) => i.variantId).filter(Boolean) as string[];
   const variantMap = new Map<string, string>();
+
   if (variantIds.length > 0) {
     const variantRows = await db
       .select({
@@ -154,8 +175,10 @@ export async function GET(
       })
       .from(inventoryItemVariants)
       .where(inArray(inventoryItemVariants.id, variantIds));
+
     for (const v of variantRows) {
       const label = [v.color, v.size].filter(Boolean).join(" / ") || v.sku;
+
       variantMap.set(v.id, label);
     }
   }
@@ -174,7 +197,7 @@ export async function GET(
   const lineColor = rgb(0.82, 0.84, 0.88);
   const textColor = rgb(0.14, 0.16, 0.2);
   const mutedColor = rgb(0.42, 0.45, 0.52);
-  const accent = rgb(0, 0.831, 0.667);      // #00D4AA teal
+  const accent = rgb(0, 0.831, 0.667); // #00D4AA teal
   const paleAccent = rgb(0.88, 0.99, 0.97); // pale teal
 
   let page = pdf.addPage([pageWidth, pageHeight]);
@@ -204,9 +227,11 @@ export async function GET(
 
     // ── Bloque izquierdo: logo + datos empresa ───────────────────────────────
     let leftY = headerY;
+
     if (logo) {
       const logoWidth = Math.min(160, halfW * 0.75);
       const logoHeight = (logo.height / logo.width) * logoWidth;
+
       page.drawImage(logo, {
         x: margin,
         y: leftY - logoHeight,
@@ -216,17 +241,46 @@ export async function GET(
       leftY -= logoHeight + 8;
     }
     drawText(COMPANY_INFO.name, margin, leftY - 11, 10, "bold");
-    drawText(`Nit ${COMPANY_INFO.nit}`, margin, leftY - 23, 8, "regular", mutedColor);
-    drawText(COMPANY_INFO.address, margin, leftY - 35, 8, "regular", mutedColor);
-    drawText(`Tel: ${COMPANY_INFO.phone}`, margin, leftY - 47, 8, "regular", accent);
+    drawText(
+      `Nit ${COMPANY_INFO.nit}`,
+      margin,
+      leftY - 23,
+      8,
+      "regular",
+      mutedColor,
+    );
+    drawText(
+      COMPANY_INFO.address,
+      margin,
+      leftY - 35,
+      8,
+      "regular",
+      mutedColor,
+    );
+    drawText(
+      `Tel: ${COMPANY_INFO.phone}`,
+      margin,
+      leftY - 47,
+      8,
+      "regular",
+      accent,
+    );
     drawText(COMPANY_INFO.city, margin, leftY - 59, 8, "regular", accent);
 
     // ── Bloque derecho: título orden ─────────────────────────────────────────
     drawText("Orden de compra", rightX, headerY - 16, 16, "bold");
-    drawText(`No. ${String(order.purchaseOrderCode ?? "OC")}`, rightX, headerY - 34, 10, "regular", mutedColor);
+    drawText(
+      `No. ${String(order.purchaseOrderCode ?? "OC")}`,
+      rightX,
+      headerY - 34,
+      10,
+      "regular",
+      mutedColor,
+    );
 
     // línea separadora horizontal
     const separatorY = Math.min(leftY - 72, headerY - 80);
+
     page.drawLine({
       start: { x: margin, y: separatorY },
       end: { x: pageWidth - margin, y: separatorY },
@@ -266,6 +320,7 @@ export async function GET(
 
     rows.forEach(([label, value], index) => {
       const rowY = y - 38 - index * 18;
+
       drawText(`${label}:`, x + 12, rowY, 9, "bold", mutedColor);
       drawText(value || "-", x + 94, rowY, 9);
     });
@@ -297,10 +352,16 @@ export async function GET(
     [
       ["Código", String(order.purchaseOrderCode ?? "-")],
       ["Estado", String(order.status ?? "-")],
-      ["Ciudad", `${String(order.supplierCity ?? "-")} / ${String(order.supplierDepartment ?? "-")}`],
+      [
+        "Ciudad",
+        `${String(order.supplierCity ?? "-")} / ${String(order.supplierDepartment ?? "-")}`,
+      ],
       ["Dirección", truncateText(order.supplierAddress, 28)],
       ["Correo", String(order.supplierEmail ?? "-")],
-      ["Entrega", order.finalizedAt ? formatDate(order.finalizedAt) : "Pendiente"],
+      [
+        "Entrega",
+        order.finalizedAt ? formatDate(order.finalizedAt) : "Pendiente",
+      ],
     ],
     rightX,
     leftWidth,
@@ -336,8 +397,11 @@ export async function GET(
   y -= 26;
 
   items.forEach((item) => {
-    const variantLabel = item.variantId ? (variantMap.get(item.variantId) ?? null) : null;
+    const variantLabel = item.variantId
+      ? (variantMap.get(item.variantId) ?? null)
+      : null;
     const rowHeight = variantLabel ? 42 : 30;
+
     ensureSpace(rowHeight);
 
     page.drawRectangle({
@@ -351,8 +415,14 @@ export async function GET(
     });
 
     const midY = variantLabel ? y - 13 : y - 18;
+
     drawText(String(item.itemCode ?? "-"), columnX.code, midY, 8);
-    drawText(`${truncateText(item.itemName, 34)} (${String(item.unit ?? "und")})`, columnX.name, midY, 8);
+    drawText(
+      `${truncateText(item.itemName, 34)} (${String(item.unit ?? "und")})`,
+      columnX.name,
+      midY,
+      8,
+    );
     if (variantLabel) {
       drawText(variantLabel, columnX.name, y - 26, 7, "regular", mutedColor);
     }
@@ -386,6 +456,7 @@ export async function GET(
   if (String(order.notes ?? "").trim()) {
     ensureSpace(78);
     const notesY = y - 84;
+
     page.drawRectangle({
       x: margin,
       y: notesY,
@@ -414,6 +485,7 @@ export async function GET(
 
   signatures.forEach((label, index) => {
     const x = margin + index * (signatureWidth + 12);
+
     page.drawLine({
       start: { x, y: signatureY },
       end: { x: x + signatureWidth, y: signatureY },

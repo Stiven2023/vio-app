@@ -217,11 +217,15 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const { searchParams } = new URL(request.url);
-  const identification = String(searchParams.get("identification") ?? "").trim();
+  const identification = String(
+    searchParams.get("identification") ?? "",
+  ).trim();
   const identificationType = String(
     searchParams.get("identificationType") ?? "",
   ).trim();
-  const moduleName = String(searchParams.get("module") ?? "").trim() as ModuleName;
+  const moduleName = String(
+    searchParams.get("module") ?? "",
+  ).trim() as ModuleName;
   const excludeId = String(searchParams.get("excludeId") ?? "").trim();
 
   if (!identification || !identificationType) {
@@ -258,7 +262,13 @@ export async function GET(request: Request) {
     : sameModuleRows;
 
   const otherModules = (
-    ["client", "employee", "confectionist", "supplier", "packer"] as ModuleName[]
+    [
+      "client",
+      "employee",
+      "confectionist",
+      "supplier",
+      "packer",
+    ] as ModuleName[]
   ).filter((module) => module !== moduleName);
 
   const otherMatches: NormalizedRecord[] = [];
@@ -268,9 +278,15 @@ export async function GET(request: Request) {
       request,
       VIEW_PERMISSION_BY_MODULE[targetModule],
     );
+
     if (canSeeTarget) continue;
 
-    const rows = await queryByModule(targetModule, identificationType, identification);
+    const rows = await queryByModule(
+      targetModule,
+      identificationType,
+      identification,
+    );
+
     if (rows[0]) otherMatches.push(rows[0]);
   }
 

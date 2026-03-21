@@ -1,5 +1,6 @@
-import { apiJson } from "@/app/erp/admin/_lib/api";
 import { z } from "zod";
+
+import { apiJson } from "@/app/erp/admin/_lib/api";
 
 const legalStatusSchema = z.object({
   status: z.enum(["VIGENTE", "EN_REVISION", "BLOQUEADO"], {
@@ -13,10 +14,10 @@ export type LegalStatusUpdate = z.infer<typeof legalStatusSchema>;
 
 export async function updatePackerLegalStatus(
   packerId: string,
-  data: LegalStatusUpdate
+  data: LegalStatusUpdate,
 ) {
   const validated = legalStatusSchema.safeParse(data);
-  
+
   if (!validated.success) {
     throw new Error(validated.error.issues[0]?.message || "Datos inválidos");
   }
@@ -26,7 +27,7 @@ export async function updatePackerLegalStatus(
     {
       method: "POST",
       body: JSON.stringify(validated.data),
-    }
+    },
   );
 
   return response;
@@ -34,21 +35,22 @@ export async function updatePackerLegalStatus(
 
 export async function getPackerLegalStatusHistory(packerId: string) {
   const response = await apiJson<any>(
-    `/api/packers/${packerId}/legal-status-history`
+    `/api/packers/${packerId}/legal-status-history`,
   );
+
   return response;
 }
 
-export async function checkPackerLegalStatus(
-  packerId: string
-): Promise<any> {
+export async function checkPackerLegalStatus(packerId: string): Promise<any> {
   try {
     const response = await apiJson<any>(
-      `/api/packers/${packerId}/legal-status/check`
+      `/api/packers/${packerId}/legal-status/check`,
     );
+
     return response;
   } catch (error) {
     console.error("Error verificando estado jurídico del empacador:", error);
+
     return {
       status: null,
       canOperate: false,

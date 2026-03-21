@@ -25,8 +25,19 @@ import {
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryOutputSchema } from "../../_lib/schemas";
 
-type WarehouseRow = { id: string; code: string; name: string; isActive?: boolean | null };
-type VariantRow = { id: string; sku: string; color: string | null; size: string | null; isActive?: boolean | null };
+type WarehouseRow = {
+  id: string;
+  code: string;
+  name: string;
+  isActive?: boolean | null;
+};
+type VariantRow = {
+  id: string;
+  sku: string;
+  color: string | null;
+  size: string | null;
+  isActive?: boolean | null;
+};
 
 export function InventoryOutputModal({
   output,
@@ -70,7 +81,8 @@ export function InventoryOutputModal({
   const [submitting, setSubmitting] = useState(false);
 
   const itemOptions = items;
-  const selectedItem = itemOptions.find((item) => item.id === inventoryItemId) ?? null;
+  const selectedItem =
+    itemOptions.find((item) => item.id === inventoryItemId) ?? null;
   const variantRequired = Boolean(selectedItem?.id);
 
   useEffect(() => {
@@ -99,9 +111,7 @@ export function InventoryOutputModal({
         status: string | null;
         requesterEmployeeName: string | null;
       }>;
-    }>(
-      `/api/inventory-outputs/order-items-options?pageSize=200`,
-    )
+    }>(`/api/inventory-outputs/order-items-options?pageSize=200`)
       .then((res) => {
         if (!active) return;
         setOrderItems(Array.isArray(res.items) ? res.items : []);
@@ -121,18 +131,24 @@ export function InventoryOutputModal({
 
   useEffect(() => {
     const id = String(inventoryItemId ?? "").trim();
+
     if (!id || !isOpen) {
       setVariants([]);
       setVariantId("");
+
       return;
     }
 
     let active = true;
+
     setLoadingVariants(true);
-    apiJson<{ items: VariantRow[] }>(`/api/inventory-item-variants?inventoryItemId=${id}&page=1&pageSize=200`)
+    apiJson<{ items: VariantRow[] }>(
+      `/api/inventory-item-variants?inventoryItemId=${id}&page=1&pageSize=200`,
+    )
       .then((res) => {
         if (!active) return;
         const rows = (res.items ?? []).filter((v) => v.isActive !== false);
+
         setVariants(rows);
         if (rows.length === 0) setVariantId("");
       })
@@ -153,11 +169,13 @@ export function InventoryOutputModal({
   useEffect(() => {
     if (!variantId) {
       setAvailable(null);
+
       return;
     }
 
     if (!warehouseId) {
       setAvailable(null);
+
       return;
     }
 
@@ -192,6 +210,7 @@ export function InventoryOutputModal({
 
     if (variantRequired && !variantId) {
       setError("Este item requiere seleccionar una variante");
+
       return;
     }
 
@@ -216,7 +235,9 @@ export function InventoryOutputModal({
       setSubmitting(true);
       await apiJson(`/api/inventory-outputs`, {
         method: output ? "PUT" : "POST",
-        body: JSON.stringify(output ? { id: output.id, ...parsed.data } : parsed.data),
+        body: JSON.stringify(
+          output ? { id: output.id, ...parsed.data } : parsed.data,
+        ),
       });
       toast.success(output ? "Salida actualizada" : "Salida creada");
       onOpenChange(false);
@@ -234,21 +255,24 @@ export function InventoryOutputModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{output ? "Editar salida" : "Registrar salida"}</ModalHeader>
+        <ModalHeader>
+          {output ? "Editar salida" : "Registrar salida"}
+        </ModalHeader>
         <ModalBody>
           <Select
             isDisabled={submitting || itemsLoading}
             isLoading={itemsLoading}
+            items={itemOptions}
             label="Item"
-            startContent={<BsBoxSeam className="text-default-400" />}
             selectedKeys={
               inventoryItemId ? new Set([inventoryItemId]) : new Set([])
             }
+            startContent={<BsBoxSeam className="text-default-400" />}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setInventoryItemId(first ? String(first) : "");
             }}
-            items={itemOptions}
           >
             {(it) => (
               <SelectItem key={it.id} textValue={it.name}>
@@ -271,17 +295,22 @@ export function InventoryOutputModal({
             isDisabled={submitting || loadingVariants || variants.length === 0}
             isLoading={loadingVariants}
             isRequired={variantRequired}
+            items={variants}
             label="Variante"
             selectedKeys={variantId ? new Set([variantId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setVariantId(first ? String(first) : "");
             }}
-            items={variants}
           >
             {(variant) => (
-              <SelectItem key={variant.id} textValue={`${variant.sku} ${variant.color ?? ""} ${variant.size ?? ""}`}>
-                {variant.sku} {variant.color ? `- ${variant.color}` : ""} {variant.size ? `- ${variant.size}` : ""}
+              <SelectItem
+                key={variant.id}
+                textValue={`${variant.sku} ${variant.color ?? ""} ${variant.size ?? ""}`}
+              >
+                {variant.sku} {variant.color ? `- ${variant.color}` : ""}{" "}
+                {variant.size ? `- ${variant.size}` : ""}
               </SelectItem>
             )}
           </Select>
@@ -289,14 +318,15 @@ export function InventoryOutputModal({
           <Select
             isDisabled={submitting || warehousesLoading}
             isLoading={warehousesLoading}
+            items={warehouses.filter((w) => w.isActive !== false)}
             label="Bodega"
-            startContent={<BsGeoAlt className="text-default-400" />}
             selectedKeys={warehouseId ? new Set([warehouseId]) : new Set([])}
+            startContent={<BsGeoAlt className="text-default-400" />}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setWarehouseId(first ? String(first) : "");
             }}
-            items={warehouses.filter((w) => w.isActive !== false)}
           >
             {(w) => (
               <SelectItem key={w.id} textValue={`${w.code} ${w.name}`}>
@@ -318,14 +348,15 @@ export function InventoryOutputModal({
           <Select
             isDisabled={submitting || orderItemsLoading}
             isLoading={orderItemsLoading}
+            items={orderItems}
             label="Pedido y diseño"
-            startContent={<BsCardText className="text-default-400" />}
             selectedKeys={orderItemId ? new Set([orderItemId]) : new Set([])}
+            startContent={<BsCardText className="text-default-400" />}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setOrderItemId(first ? String(first) : "");
             }}
-            items={orderItems}
           >
             {(it) => (
               <SelectItem

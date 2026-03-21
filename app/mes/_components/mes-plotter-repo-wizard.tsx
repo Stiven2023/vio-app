@@ -43,9 +43,9 @@ export function PlotterRepoWizard({
   onClose,
   onRepoGenerated,
 }: PlotterRepoWizardProps) {
-  const [step, setStep] = useState<"confirm" | "launched" | "repo_ask" | "repo_form" | "done">(
-    "confirm",
-  );
+  const [step, setStep] = useState<
+    "confirm" | "launched" | "repo_ask" | "repo_form" | "done"
+  >("confirm");
   const [launchedMissing, setLaunchedMissing] = useState<boolean | null>(null);
   const [needsRepo, setNeedsRepo] = useState<boolean | null>(null);
   const [repoItemType, setRepoItemType] = useState<RepoItemType>("PIEZA");
@@ -75,6 +75,7 @@ export function PlotterRepoWizard({
     if (!answer) {
       // User says quantities DO match - close
       handleClose();
+
       return;
     }
     setStep("launched");
@@ -89,6 +90,7 @@ export function PlotterRepoWizard({
     setNeedsRepo(needs);
     if (!needs) {
       handleClose();
+
       return;
     }
     setStep("repo_form");
@@ -132,20 +134,29 @@ export function PlotterRepoWizard({
         throw new Error(String(data?.message ?? "No se pudo crear el ticket"));
       }
 
-      const ticketRef = `REPO-PLO-${String(data?.id ?? "").slice(0, 8).toUpperCase()}`;
+      const ticketRef = `REPO-PLO-${String(data?.id ?? "")
+        .slice(0, 8)
+        .toUpperCase()}`;
+
       setGeneratedTicket(ticketRef);
       setStep("done");
       onRepoGenerated(ticketRef);
       toast.success(`Ticket de reposición ${ticketRef} generado`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al generar ticket");
+      toast.error(
+        error instanceof Error ? error.message : "Error al generar ticket",
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} size="md" onOpenChange={(open) => !open && handleClose()}>
+    <Modal
+      isOpen={isOpen}
+      size="md"
+      onOpenChange={(open) => !open && handleClose()}
+    >
       <ModalContent>
         <>
           <ModalHeader className="flex items-center gap-2">
@@ -156,7 +167,11 @@ export function PlotterRepoWizard({
           <ModalBody className="gap-4 py-4">
             {step === "confirm" && (
               <>
-                <Card className="border border-warning-200 bg-warning-50" radius="sm" shadow="none">
+                <Card
+                  className="border border-warning-200 bg-warning-50"
+                  radius="sm"
+                  shadow="none"
+                >
                   <CardBody className="gap-1 py-3">
                     <p className="text-sm font-medium text-warning-800">
                       La cantidad producida no coincide con lo esperado
@@ -168,11 +183,15 @@ export function PlotterRepoWizard({
                       </div>
                       <div>
                         <p className="text-xs text-default-500">Producido</p>
-                        <p className="text-lg font-bold text-danger">{producedQty}</p>
+                        <p className="text-lg font-bold text-danger">
+                          {producedQty}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-default-500">Faltante</p>
-                        <p className="text-lg font-bold text-warning">{missing}</p>
+                        <p className="text-lg font-bold text-warning">
+                          {missing}
+                        </p>
                       </div>
                     </div>
                   </CardBody>
@@ -185,14 +204,19 @@ export function PlotterRepoWizard({
 
             {step === "launched" && (
               <p className="text-sm text-default-600">
-                ¿Ya lanzaste el faltante de <strong>{missing} unidad(es)</strong>?
+                ¿Ya lanzaste el faltante de{" "}
+                <strong>{missing} unidad(es)</strong>?
               </p>
             )}
 
             {step === "repo_ask" && (
               <>
                 {launchedMissing !== null && (
-                  <Chip color={launchedMissing ? "success" : "warning"} size="sm" variant="flat">
+                  <Chip
+                    color={launchedMissing ? "success" : "warning"}
+                    size="sm"
+                    variant="flat"
+                  >
                     Faltante lanzado: {launchedMissing ? "SÍ" : "NO"}
                   </Chip>
                 )}
@@ -204,7 +228,9 @@ export function PlotterRepoWizard({
 
             {step === "repo_form" && (
               <div className="space-y-3">
-                <p className="text-sm font-medium">Datos del ticket de reposición</p>
+                <p className="text-sm font-medium">
+                  Datos del ticket de reposición
+                </p>
                 <Divider />
                 <Select
                   disallowEmptySelection
@@ -239,10 +265,20 @@ export function PlotterRepoWizard({
                   onValueChange={setRepoNotes}
                 />
                 <div className="rounded-medium bg-default-50 border border-default-200 p-3 text-xs text-default-500 space-y-1">
-                  <p><strong>Pedido:</strong> {orderCode}</p>
-                  <p><strong>Diseño:</strong> {designName}</p>
-                  {size && <p><strong>Talla:</strong> {size}</p>}
-                  <p><strong>Unidades a reponer:</strong> {missing}</p>
+                  <p>
+                    <strong>Pedido:</strong> {orderCode}
+                  </p>
+                  <p>
+                    <strong>Diseño:</strong> {designName}
+                  </p>
+                  {size && (
+                    <p>
+                      <strong>Talla:</strong> {size}
+                    </p>
+                  )}
+                  <p>
+                    <strong>Unidades a reponer:</strong> {missing}
+                  </p>
                 </div>
               </div>
             )}
@@ -280,10 +316,18 @@ export function PlotterRepoWizard({
 
             {step === "launched" && (
               <>
-                <Button size="sm" variant="flat" onPress={() => handleLaunched(false)}>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  onPress={() => handleLaunched(false)}
+                >
                   No
                 </Button>
-                <Button color="primary" size="sm" onPress={() => handleLaunched(true)}>
+                <Button
+                  color="primary"
+                  size="sm"
+                  onPress={() => handleLaunched(true)}
+                >
                   Sí
                 </Button>
               </>
@@ -291,10 +335,18 @@ export function PlotterRepoWizard({
 
             {step === "repo_ask" && (
               <>
-                <Button size="sm" variant="flat" onPress={() => handleNeedsRepo(false)}>
+                <Button
+                  size="sm"
+                  variant="flat"
+                  onPress={() => handleNeedsRepo(false)}
+                >
                   No
                 </Button>
-                <Button color="primary" size="sm" onPress={() => handleNeedsRepo(true)}>
+                <Button
+                  color="primary"
+                  size="sm"
+                  onPress={() => handleNeedsRepo(true)}
+                >
                   Sí
                 </Button>
               </>

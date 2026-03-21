@@ -38,7 +38,9 @@ export async function GET(request: Request) {
       .select({ total: sql<number>`count(*)::int` })
       .from(orderItemStatusHistory);
 
-    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where
+      ? await totalQuery.where(where)
+      : await totalQuery;
 
     const itemsQuery = db
       .select({
@@ -69,7 +71,9 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar historial de Diseños", {
       status: 500,
     });

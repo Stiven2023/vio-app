@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { orderPayments, orders } from "@/src/db/schema";
@@ -59,10 +59,14 @@ export async function POST(request: Request) {
     const depositAmount = toPositiveNumericString(body.depositAmount);
 
     if (!depositAmount) {
-      return new Response("Deposit amount must be greater than 0", { status: 400 });
+      return new Response("Deposit amount must be greater than 0", {
+        status: 400,
+      });
     }
 
-    const method = String(body.method ?? "").trim().toUpperCase();
+    const method = String(body.method ?? "")
+      .trim()
+      .toUpperCase();
 
     if (!methods.has(method)) {
       return new Response("Invalid payment method", { status: 400 });
@@ -87,6 +91,7 @@ export async function POST(request: Request) {
         bankRow,
         transferCurrency,
       );
+
       if (bankValidationError) {
         return new Response(bankValidationError, { status: 400 });
       }
@@ -102,20 +107,30 @@ export async function POST(request: Request) {
         ? null
         : String(body.proofImageUrl).trim() || null;
 
-    const allocationsRaw = Array.isArray(body.allocations) ? body.allocations : [];
+    const allocationsRaw = Array.isArray(body.allocations)
+      ? body.allocations
+      : [];
 
     const allocations = allocationsRaw
       .map((a) => ({
         orderId: String(a?.orderId ?? "").trim(),
         amount: toPositiveNumericString(a?.amount),
       }))
-      .filter((a) => a.orderId && a.amount) as Array<{ orderId: string; amount: string }>;
+      .filter((a) => a.orderId && a.amount) as Array<{
+      orderId: string;
+      amount: string;
+    }>;
 
     if (allocations.length === 0) {
-      return new Response("At least one allocation is required", { status: 400 });
+      return new Response("At least one allocation is required", {
+        status: 400,
+      });
     }
 
-    const assignedTotal = allocations.reduce((acc, item) => acc + Number(item.amount), 0);
+    const assignedTotal = allocations.reduce(
+      (acc, item) => acc + Number(item.amount),
+      0,
+    );
     const depositTotal = Number(depositAmount);
 
     if (!Number.isFinite(assignedTotal) || assignedTotal <= 0) {
@@ -123,10 +138,14 @@ export async function POST(request: Request) {
     }
 
     if (assignedTotal > depositTotal) {
-      return new Response("Allocated total cannot exceed deposit amount", { status: 400 });
+      return new Response("Allocated total cannot exceed deposit amount", {
+        status: 400,
+      });
     }
 
-    const uniqueOrderIds = Array.from(new Set(allocations.map((a) => a.orderId)));
+    const uniqueOrderIds = Array.from(
+      new Set(allocations.map((a) => a.orderId)),
+    );
 
     const existingOrders = await db
       .select({ id: orders.id, clientId: orders.clientId })
@@ -162,7 +181,7 @@ export async function POST(request: Request) {
             depositAmount,
             referenceCode,
             method: method as any,
-            bankId: method === "TRANSFERENCIA" ? bankRow?.id ?? null : null,
+            bankId: method === "TRANSFERENCIA" ? (bankRow?.id ?? null) : null,
             transferBank: null,
             transferCurrency:
               method === "TRANSFERENCIA" ? transferCurrency : null,
@@ -190,7 +209,11 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo registrar el abono distribuido", { status: 500 });
+
+    return new Response("No se pudo registrar el abono distribuido", {
+      status: 500,
+    });
   }
 }

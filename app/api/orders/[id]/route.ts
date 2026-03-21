@@ -2,7 +2,10 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { clients, orders } from "@/src/db/schema";
-import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getEmployeeIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -24,6 +27,7 @@ export async function GET(
 
   const role = getRoleFromRequest(request);
   const employeeId = getEmployeeIdFromRequest(request);
+
   if (role === "ASESOR" && !employeeId) {
     return new Response("Forbidden", { status: 403 });
   }

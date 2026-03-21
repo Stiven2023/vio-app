@@ -24,9 +24,11 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role) return new Response("Unauthorized", { status: 401 });
 
   const allowedStatuses = getAllowedStatusesForRole(role);
+
   if (allowedStatuses.length === 0) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -90,9 +92,11 @@ export async function GET(request: Request) {
       : [];
 
     const materialsByItem = new Map<string, typeof materialsRows>();
+
     for (const row of materialsRows) {
       if (!row.orderItemId) continue;
       const list = materialsByItem.get(row.orderItemId) ?? [];
+
       list.push(row);
       materialsByItem.set(row.orderItemId, list);
     }
@@ -113,7 +117,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar items de operario", {
       status: 500,
     });

@@ -42,9 +42,18 @@ type StatusFilter = "all" | "active" | "inactive";
 type CatalogType = "NACIONAL" | "INTERNACIONAL";
 type ProductSort = "codeAsc" | "codeDesc";
 
-function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+function formatCurrency(
+  value: string | null | undefined,
+  currency: "COP" | "USD",
+) {
   const amount = Number(value ?? 0);
-  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+
+  if (
+    !Number.isFinite(amount) ||
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return "-";
   }
 
@@ -69,7 +78,8 @@ export function ProductsTab({
   activeCatalog?: CatalogType;
   categories?: Category[];
 }) {
-  const [internalActiveCatalog, setInternalActiveCatalog] = useState<CatalogType>("NACIONAL");
+  const [internalActiveCatalog, setInternalActiveCatalog] =
+    useState<CatalogType>("NACIONAL");
   const [internalCategories, setInternalCategories] = useState<Category[]>([]);
   const [searchCode, setSearchCode] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -132,11 +142,22 @@ export function ProductsTab({
 
   useEffect(() => {
     setProductsPage(1);
-  }, [currentCatalog, status, categoryFilter, searchCode, sort, setProductsPage]);
+  }, [
+    currentCatalog,
+    status,
+    categoryFilter,
+    searchCode,
+    sort,
+    setProductsPage,
+  ]);
 
   const emptyContent = useMemo(() => {
     if (productsLoading) return "";
-    if (searchCode.trim() !== "" || status !== "all" || categoryFilter !== "all") {
+    if (
+      searchCode.trim() !== "" ||
+      status !== "all" ||
+      categoryFilter !== "all"
+    ) {
       return "Sin resultados";
     }
 
@@ -166,8 +187,18 @@ export function ProductsTab({
     }
   };
 
+  const exportCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/products/export";
+    anchor.download = "products-export.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
   const downloadTemplate = () => {
     const anchor = document.createElement("a");
+
     anchor.href = "/api/products/import/template";
     anchor.download = "products-import-template.csv";
     document.body.appendChild(anchor);
@@ -185,12 +216,14 @@ export function ProductsTab({
 
     if (!isCsv) {
       toast.error("Selecciona un archivo CSV válido");
+
       return;
     }
 
     setImporting(true);
     try {
       const formData = new FormData();
+
       formData.append("file", file);
 
       const response = await fetch("/api/products/import", {
@@ -203,7 +236,10 @@ export function ProductsTab({
 
       if (!response.ok) {
         throw new Error(
-          payload?.message || (typeof payload === "string" ? payload : "No se pudo importar el CSV"),
+          payload?.message ||
+            (typeof payload === "string"
+              ? payload
+              : "No se pudo importar el CSV"),
         );
       }
 
@@ -218,6 +254,7 @@ export function ProductsTab({
         toast.error(
           `No se creó ningún producto. ${firstError || "Revisa el archivo CSV y vuelve a intentar."}`,
         );
+
         return;
       }
 
@@ -296,10 +333,14 @@ export function ProductsTab({
             type="file"
             onChange={(event) => {
               const file = event.target.files?.[0];
+
               if (!file) return;
               importCsv(file);
             }}
           />
+          <Button variant="flat" onPress={exportCsv}>
+            Exportar CSV
+          </Button>
           <Button variant="flat" onPress={downloadTemplate}>
             Descargar plantilla CSV
           </Button>
@@ -338,11 +379,18 @@ export function ProductsTab({
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Categoría</TableColumn>
-            <TableColumn>{currentCatalog === "INTERNACIONAL" ? "Precio USD" : "Precio Base (1-499)"}</TableColumn>
+            <TableColumn>
+              {currentCatalog === "INTERNACIONAL"
+                ? "Precio USD"
+                : "Precio Base (1-499)"}
+            </TableColumn>
             <TableColumn>Activo</TableColumn>
             <TableColumn>Acciones</TableColumn>
           </TableHeader>
-          <TableBody emptyContent={emptyContent} items={productsData?.items ?? []}>
+          <TableBody
+            emptyContent={emptyContent}
+            items={productsData?.items ?? []}
+          >
             {(p) => (
               <TableRow key={p.id}>
                 <TableCell className="font-medium text-default-700">
@@ -476,7 +524,6 @@ export function ProductsTab({
           setConfirmOpen(open);
         }}
       />
-
     </div>
   );
 }

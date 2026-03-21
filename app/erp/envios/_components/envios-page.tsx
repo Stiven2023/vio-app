@@ -62,7 +62,12 @@ export function EnviosPage() {
   const [saving, setSaving] = useState(false);
   const [recipientQuery, setRecipientQuery] = useState("");
   const [recipientOptions, setRecipientOptions] = useState<
-    Array<{ id: string; code: string | null; name: string; contactName: string | null }>
+    Array<{
+      id: string;
+      code: string | null;
+      name: string;
+      contactName: string | null;
+    }>
   >([]);
 
   const [form, setForm] = useState({
@@ -84,7 +89,10 @@ export function EnviosPage() {
 
   const endpoint = useMemo(() => {
     const query = q.trim();
-    return query ? `/api/shipments?q=${encodeURIComponent(query)}` : "/api/shipments";
+
+    return query
+      ? `/api/shipments?q=${encodeURIComponent(query)}`
+      : "/api/shipments";
   }, [q]);
 
   const { data, loading, page, setPage, refresh } = usePaginatedApi<Shipment>(
@@ -95,15 +103,22 @@ export function EnviosPage() {
   const loadRecipients = async (query: string, area: string) => {
     if (area !== "CONFECCIONISTA") {
       setRecipientOptions([]);
+
       return;
     }
 
     try {
       const res = await apiJson<{
-        items: Array<{ id: string; code: string | null; name: string; contactName: string | null }>;
+        items: Array<{
+          id: string;
+          code: string | null;
+          name: string;
+          contactName: string | null;
+        }>;
       }>(
         `/api/shipments/recipients?area=${encodeURIComponent(area)}&q=${encodeURIComponent(query.trim())}`,
       );
+
       setRecipientOptions(Array.isArray(res.items) ? res.items : []);
     } catch {
       setRecipientOptions([]);
@@ -113,8 +128,12 @@ export function EnviosPage() {
   const createShipment = async () => {
     if (saving) return;
 
-    if (form.toArea === "CONFECCIONISTA" && !String(form.recipientId ?? "").trim()) {
+    if (
+      form.toArea === "CONFECCIONISTA" &&
+      !String(form.recipientId ?? "").trim()
+    ) {
       toast.error("Selecciona un confeccionista destinatario");
+
       return;
     }
 
@@ -201,7 +220,9 @@ export function EnviosPage() {
         >
           {(row) => (
             <TableRow key={row.id}>
-              <TableCell>{row.mode === "CLIENT" ? "Client" : "Internal"}</TableCell>
+              <TableCell>
+                {row.mode === "CLIENT" ? "Client" : "Internal"}
+              </TableCell>
               <TableCell>{row.orderCode}</TableCell>
               <TableCell>{row.designName}</TableCell>
               <TableCell>{row.size}</TableCell>
@@ -217,14 +238,22 @@ export function EnviosPage() {
               </TableCell>
               <TableCell>
                 {row.isReceived ? (
-                  <Chip color="success" size="sm">Received</Chip>
+                  <Chip color="success" size="sm">
+                    Received
+                  </Chip>
                 ) : (
-                  <Chip color="warning" size="sm">Pending</Chip>
+                  <Chip color="warning" size="sm">
+                    Pending
+                  </Chip>
                 )}
               </TableCell>
               <TableCell>
                 {row.mode === "INTERNAL" && !row.isReceived ? (
-                  <Button size="sm" variant="flat" onPress={() => markReceived(row)}>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={() => markReceived(row)}
+                  >
                     Mark received
                   </Button>
                 ) : (
@@ -247,7 +276,11 @@ export function EnviosPage() {
               selectedKeys={[form.mode]}
               onSelectionChange={(keys) => {
                 const key = String(Array.from(keys)[0] ?? "INTERNAL");
-                setForm((prev) => ({ ...prev, mode: key === "CLIENT" ? "CLIENT" : "INTERNAL" }));
+
+                setForm((prev) => ({
+                  ...prev,
+                  mode: key === "CLIENT" ? "CLIENT" : "INTERNAL",
+                }));
               }}
             >
               <SelectItem key="INTERNAL">Internal</SelectItem>
@@ -256,21 +289,26 @@ export function EnviosPage() {
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Select
+                items={AREA_OPTIONS}
                 label="From"
                 selectedKeys={[form.fromArea]}
                 onSelectionChange={(keys) =>
-                  setForm((prev) => ({ ...prev, fromArea: String(Array.from(keys)[0] ?? "") }))
+                  setForm((prev) => ({
+                    ...prev,
+                    fromArea: String(Array.from(keys)[0] ?? ""),
+                  }))
                 }
-                items={AREA_OPTIONS}
               >
                 {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
               </Select>
 
               <Select
+                items={AREA_OPTIONS}
                 label="To"
                 selectedKeys={[form.toArea]}
                 onSelectionChange={(keys) => {
                   const toArea = String(Array.from(keys)[0] ?? "");
+
                   setForm((prev) => ({
                     ...prev,
                     toArea,
@@ -280,13 +318,16 @@ export function EnviosPage() {
                   setRecipientQuery("");
                   void loadRecipients("", toArea);
                 }}
-                items={AREA_OPTIONS}
               >
                 {(item) => <SelectItem key={item.key}>{item.label}</SelectItem>}
               </Select>
             </div>
 
-            <Input label="Sent by" value={form.sentBy} onValueChange={(v) => setForm((p) => ({ ...p, sentBy: v }))} />
+            <Input
+              label="Sent by"
+              value={form.sentBy}
+              onValueChange={(v) => setForm((p) => ({ ...p, sentBy: v }))}
+            />
             {form.toArea === "CONFECCIONISTA" ? (
               <Autocomplete
                 defaultItems={recipientOptions}
@@ -300,7 +341,10 @@ export function EnviosPage() {
                 }}
                 onSelectionChange={(key) => {
                   const id = String(key ?? "");
-                  const selected = recipientOptions.find((item) => item.id === id);
+                  const selected = recipientOptions.find(
+                    (item) => item.id === id,
+                  );
+
                   setForm((prev) => ({
                     ...prev,
                     recipientId: id,
@@ -314,19 +358,45 @@ export function EnviosPage() {
                     textValue={`${item.code ?? ""} ${item.name} ${item.contactName ?? ""}`}
                   >
                     <div className="flex flex-col">
-                      <span className="font-medium">{item.code ?? "-"} · {item.name}</span>
-                      <span className="text-xs text-default-500">{item.contactName ?? "No contact"}</span>
+                      <span className="font-medium">
+                        {item.code ?? "-"} · {item.name}
+                      </span>
+                      <span className="text-xs text-default-500">
+                        {item.contactName ?? "No contact"}
+                      </span>
                     </div>
                   </AutocompleteItem>
                 )}
               </Autocomplete>
             ) : (
-              <Input label="Recipient" value={form.recipientName} onValueChange={(v) => setForm((p) => ({ ...p, recipientName: v, recipientId: "" }))} />
+              <Input
+                label="Recipient"
+                value={form.recipientName}
+                onValueChange={(v) =>
+                  setForm((p) => ({ ...p, recipientName: v, recipientId: "" }))
+                }
+              />
             )}
-            <Input label="Order" value={form.orderCode} onValueChange={(v) => setForm((p) => ({ ...p, orderCode: v }))} />
-            <Input label="Design" value={form.designName} onValueChange={(v) => setForm((p) => ({ ...p, designName: v }))} />
-            <Input label="Size" value={form.size} onValueChange={(v) => setForm((p) => ({ ...p, size: v }))} />
-            <Input label="Route / destination" value={form.routePath} onValueChange={(v) => setForm((p) => ({ ...p, routePath: v }))} />
+            <Input
+              label="Order"
+              value={form.orderCode}
+              onValueChange={(v) => setForm((p) => ({ ...p, orderCode: v }))}
+            />
+            <Input
+              label="Design"
+              value={form.designName}
+              onValueChange={(v) => setForm((p) => ({ ...p, designName: v }))}
+            />
+            <Input
+              label="Size"
+              value={form.size}
+              onValueChange={(v) => setForm((p) => ({ ...p, size: v }))}
+            />
+            <Input
+              label="Route / destination"
+              value={form.routePath}
+              onValueChange={(v) => setForm((p) => ({ ...p, routePath: v }))}
+            />
 
             {form.mode === "CLIENT" ? (
               <>
@@ -334,7 +404,10 @@ export function EnviosPage() {
                   label="Client pays?"
                   selectedKeys={[form.paymentStatus]}
                   onSelectionChange={(keys) =>
-                    setForm((prev) => ({ ...prev, paymentStatus: String(Array.from(keys)[0] ?? "PENDIENTE") }))
+                    setForm((prev) => ({
+                      ...prev,
+                      paymentStatus: String(Array.from(keys)[0] ?? "PENDIENTE"),
+                    }))
                   }
                 >
                   <SelectItem key="PAGADO">Paid</SelectItem>
@@ -345,7 +418,10 @@ export function EnviosPage() {
                   label="Client document type"
                   selectedKeys={[form.customerDocumentType]}
                   onSelectionChange={(keys) =>
-                    setForm((prev) => ({ ...prev, customerDocumentType: String(Array.from(keys)[0] ?? "F") }))
+                    setForm((prev) => ({
+                      ...prev,
+                      customerDocumentType: String(Array.from(keys)[0] ?? "F"),
+                    }))
                   }
                 >
                   <SelectItem key="F">F (Cash receipt)</SelectItem>
@@ -356,7 +432,10 @@ export function EnviosPage() {
                   label="Email"
                   selectedKeys={[form.emailMode]}
                   onSelectionChange={(keys) =>
-                    setForm((prev) => ({ ...prev, emailMode: String(Array.from(keys)[0] ?? "REGISTRADO") }))
+                    setForm((prev) => ({
+                      ...prev,
+                      emailMode: String(Array.from(keys)[0] ?? "REGISTRADO"),
+                    }))
                   }
                 >
                   <SelectItem key="REGISTRADO">Registered</SelectItem>
@@ -367,13 +446,19 @@ export function EnviosPage() {
                 <Input
                   label="New email (if applicable)"
                   value={form.emailTo}
-                  onValueChange={(v) => setForm((prev) => ({ ...prev, emailTo: v }))}
+                  onValueChange={(v) =>
+                    setForm((prev) => ({ ...prev, emailTo: v }))
+                  }
                 />
               </>
             ) : null}
           </ModalBody>
           <ModalFooter>
-            <Button isDisabled={saving} variant="flat" onPress={() => setModalOpen(false)}>
+            <Button
+              isDisabled={saving}
+              variant="flat"
+              onPress={() => setModalOpen(false)}
+            >
               Cancel
             </Button>
             <Button color="primary" isLoading={saving} onPress={createShipment}>

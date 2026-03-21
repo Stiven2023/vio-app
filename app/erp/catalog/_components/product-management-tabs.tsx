@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Tab, Tabs } from "@heroui/tabs";
 
 import { apiJson } from "../_lib/api";
+
 import { ProductsTab } from "./products/products-tab";
 import { AdditionsTab } from "./additions/additions-tab";
 
@@ -60,16 +61,13 @@ export function ProductManagementTabs({
       {activeTab === "products" ? (
         <ProductsTab
           activeCatalog={activeCatalog}
-          categories={categories}
           canCreate={canCreate}
-          canEdit={canEdit}
           canDelete={canDelete}
+          canEdit={canEdit}
+          categories={categories}
         />
       ) : (
-        <AdditionsTab
-          activeCatalog={activeCatalog}
-          categories={categories}
-        />
+        <AdditionsTab activeCatalog={activeCatalog} categories={categories} />
       )}
     </div>
   );

@@ -37,20 +37,42 @@ export function EmployeeDocumentsModal({
   }> = [
     { label: "Cédula", url: employee.identityDocumentUrl, required: true },
     { label: "Hoja de vida", url: employee.hojaDeVidaUrl, required: true },
-    { label: "Certificado laboral", url: employee.certificadoLaboralUrl, required: true },
-    { label: "Certificado de estudios", url: employee.certificadoEstudiosUrl, required: true },
-    { label: "Certificado EPS", url: employee.epsCertificateUrl, required: true },
-    { label: "Certificado de pensión", url: employee.pensionCertificateUrl, required: true },
-    { label: "Certificado bancario", url: employee.bankCertificateUrl, required: true },
+    {
+      label: "Certificado laboral",
+      url: employee.certificadoLaboralUrl,
+      required: true,
+    },
+    {
+      label: "Certificado de estudios",
+      url: employee.certificadoEstudiosUrl,
+      required: true,
+    },
+    {
+      label: "Certificado EPS",
+      url: employee.epsCertificateUrl,
+      required: true,
+    },
+    {
+      label: "Certificado de pensión",
+      url: employee.pensionCertificateUrl,
+      required: true,
+    },
+    {
+      label: "Certificado bancario",
+      url: employee.bankCertificateUrl,
+      required: true,
+    },
   ];
 
   const downloadDocument = (url: string | null | undefined) => {
     if (!url) {
       toast.error("El documento no tiene URL válida");
+
       return;
     }
 
     const anchor = document.createElement("a");
+
     anchor.href = url;
     anchor.target = "_blank";
     anchor.rel = "noopener noreferrer";
@@ -97,13 +119,19 @@ export function EmployeeDocumentsModal({
                     <div className="flex items-center gap-3">
                       <BsFileEarmarkPdf
                         className={
-                          doc.url ? "text-success text-xl" : "text-danger text-xl"
+                          doc.url
+                            ? "text-success text-xl"
+                            : "text-danger text-xl"
                         }
                       />
                       <div className="flex flex-col gap-1">
-                        <p className="font-medium text-foreground">{doc.label}</p>
+                        <p className="font-medium text-foreground">
+                          {doc.label}
+                        </p>
                         <p className="text-xs text-default-500">
-                          {doc.required && <span className="text-danger">Requerido</span>}
+                          {doc.required && (
+                            <span className="text-danger">Requerido</span>
+                          )}
                           {doc.url && (
                             <span className="text-success">
                               {doc.required && " • "}
@@ -119,11 +147,11 @@ export function EmployeeDocumentsModal({
                     {doc.url ? (
                       <Button
                         isIconOnly
-                        size="sm"
-                        variant="flat"
                         color="success"
-                        onPress={() => downloadDocument(doc.url)}
+                        size="sm"
                         title="Descargar documento"
+                        variant="flat"
+                        onPress={() => downloadDocument(doc.url)}
                       >
                         <BsDownload />
                       </Button>

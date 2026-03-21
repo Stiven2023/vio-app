@@ -14,26 +14,29 @@ export default async function AprobacionInicialComprasPage() {
   });
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
+
   if (forbidden) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Initial Approval — Purchases</h1>
-      <p className="text-default-600 mt-1">Orders grouped by order for approval in PURCHASING process.</p>
+      <p className="text-default-600 mt-1">
+        Orders grouped by order for approval in PURCHASING process.
+      </p>
       <div className="mt-6">
         <ProgramacionItemsTable
-          process="COMPRAS"
-          orderStatus="APROBACION"
-          actualizacionQueue="APROBACION"
-          showProcessColumn
-          basePath="/aprobacion-inicial"
-          actualizacionBasePath="/aprobacion-inicial/actualizacion"
           enableDecisions
+          showProcessColumn
+          actualizacionBasePath="/aprobacion-inicial/actualizacion"
+          actualizacionQueue="APROBACION"
+          basePath="/aprobacion-inicial"
           labels={{
             principal: "Main Approval",
             bodega: "Warehouse Approval",
             compras: "Purchasing Approval",
           }}
+          orderStatus="APROBACION"
+          process="COMPRAS"
         />
       </div>
     </div>

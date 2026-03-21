@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role) return new Response("Unauthorized", { status: 401 });
 
   if (
@@ -32,7 +33,9 @@ export async function GET(request: Request) {
         id: confectionists.id,
         name: confectionists.name,
         activeCount: sql<number>`count(${orderItemConfection.id})::int`,
-        latestAssigned: sql<string | null>`max(${orderItemConfection.assignedAt})::text`,
+        latestAssigned: sql<
+          string | null
+        >`max(${orderItemConfection.assignedAt})::text`,
       })
       .from(confectionists)
       .leftJoin(
@@ -48,7 +51,9 @@ export async function GET(request: Request) {
     return Response.json({ items: rows });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar carga de confeccionistas", {
       status: 500,
     });

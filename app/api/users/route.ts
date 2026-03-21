@@ -154,7 +154,9 @@ export async function PUT(request: Request) {
       status: 400,
     });
   }
-  const identifier = String(email ?? "").trim().toLowerCase();
+  const identifier = String(email ?? "")
+    .trim()
+    .toLowerCase();
 
   const candidates = identifier.includes("@")
     ? [identifier]

@@ -291,7 +291,9 @@ export function WithholdingsTab({
             Refresh
           </Button>
           <Button
-            isDisabled={!withholdingsData || withholdingsData.items.length === 0}
+            isDisabled={
+              !withholdingsData || withholdingsData.items.length === 0
+            }
             size="sm"
             variant="flat"
             onPress={() => exportRowsToExcel(withholdingsData?.items ?? [])}
@@ -340,7 +342,9 @@ export function WithholdingsTab({
                   Total retenciones
                 </div>
                 <div className="text-2xl font-semibold text-warning-600">
-                  {formatMoney(withholdingsData?.summary?.totalWithholding ?? 0)}
+                  {formatMoney(
+                    withholdingsData?.summary?.totalWithholding ?? 0,
+                  )}
                 </div>
               </CardBody>
             </Card>
@@ -432,7 +436,9 @@ export function WithholdingsTab({
               size="sm"
               variant="bordered"
               onSelectionChange={(keys) => {
-                const value = String(Array.from(keys)[0] ?? "ALL").toUpperCase();
+                const value = String(
+                  Array.from(keys)[0] ?? "ALL",
+                ).toUpperCase();
 
                 setTaxZone(value as "ALL" | TaxZone);
               }}
@@ -507,7 +513,9 @@ export function WithholdingsTab({
                   <TableCell>{formatRate(row.withholdingIcaRate)}</TableCell>
                   <TableCell>{formatRate(row.withholdingIvaRate)}</TableCell>
                   <TableCell>{formatMoney(row.totalWithholding)}</TableCell>
-                  <TableCell>{formatMoney(row.totalAfterWithholding)}</TableCell>
+                  <TableCell>
+                    {formatMoney(row.totalAfterWithholding)}
+                  </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -553,7 +561,9 @@ export function WithholdingsTab({
               <TableColumn>Acciones</TableColumn>
             </TableHeader>
             <TableBody
-              emptyContent={ratesLoading ? "Cargando..." : "No hay tasas configuradas"}
+              emptyContent={
+                ratesLoading ? "Cargando..." : "No hay tasas configuradas"
+              }
               items={rates}
             >
               {(row) => (
@@ -623,7 +633,11 @@ export function WithholdingsTab({
             <Button variant="flat" onPress={() => setEditRateOpen(false)}>
               Cancelar
             </Button>
-            <Button color="primary" isLoading={saveRateLoading} onPress={saveRates}>
+            <Button
+              color="primary"
+              isLoading={saveRateLoading}
+              onPress={saveRates}
+            >
               Guardar
             </Button>
           </ModalFooter>
