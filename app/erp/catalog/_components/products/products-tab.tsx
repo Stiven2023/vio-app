@@ -166,6 +166,15 @@ export function ProductsTab({
     }
   };
 
+  const exportCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/products/export";
+    anchor.download = "products-export.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
   const downloadTemplate = () => {
     const anchor = document.createElement("a");
     anchor.href = "/api/products/import/template";
@@ -300,6 +309,9 @@ export function ProductsTab({
               importCsv(file);
             }}
           />
+          <Button variant="flat" onPress={exportCsv}>
+            Exportar CSV
+          </Button>
           <Button variant="flat" onPress={downloadTemplate}>
             Descargar plantilla CSV
           </Button>

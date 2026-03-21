@@ -1,0 +1,347 @@
+import { eq, sql } from "drizzle-orm";
+
+import { db } from "@/src/db";
+import { confectionists } from "@/src/db/schema";
+import { dbErrorResponse } from "@/src/utils/db-errors";
+import { requirePermission } from "@/src/utils/permission-middleware";
+import { rateLimit } from "@/src/utils/rate-limit";
+
+type ImportRow = {
+  confectionistCode?: string;
+  name?: string;
+  identificationType?: string;
+  identification?: string;
+  taxRegime?: string;
+  type?: string;
+  specialty?: string;
+  contactName?: string;
+  email?: string;
+  mobile?: string;
+  address?: string;
+  city?: string;
+  isActive?: string;
+};
+
+function normalizeHeader(value: string) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function decodeCsvTextFromBytes(bytes: Uint8Array) {
+  const utf8Text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+  if (!utf8Text.includes("�")) return utf8Text;
+  try {
+    return new TextDecoder("windows-1252").decode(bytes);
+  } catch {
+    return utf8Text;
+  }
+}
+
+function detectDelimiter(headerLine: string) {
+  const delimiters = [";", ",", "\t"];
+  let selected = ",";
+  let bestCount = -1;
+  for (const delimiter of delimiters) {
+    const count = headerLine.split(delimiter).length;
+    if (count > bestCount) {
+      bestCount = count;
+      selected = delimiter;
+    }
+  }
+  return selected;
+}
+
+function parseCsvLine(line: string, delimiter: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+        continue;
+      }
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (char === delimiter && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  cells.push(current);
+  return cells.map((c) => c.trim());
+}
+
+function parseIsActive(value: string | undefined): boolean | undefined {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return undefined;
+  if (["1", "true", "si", "sí", "activo", "activa"].includes(raw)) return true;
+  if (["0", "false", "no", "inactivo", "inactiva"].includes(raw)) return false;
+  throw new Error("isActive inválido: usa SI/NO o true/false");
+}
+
+function parseCsv(content: string): ImportRow[] {
+  const normalized = content
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+  const lines = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith("#"));
+
+  if (lines.length < 2) return [];
+
+  const delimiter = detectDelimiter(lines[0]);
+  const rawHeaders = parseCsvLine(lines[0], delimiter);
+  const headers = rawHeaders.map(normalizeHeader);
+
+  const getCell = (cells: string[], aliases: string[]) => {
+    const aliasSet = aliases.map(normalizeHeader);
+    const index = headers.findIndex((h) => aliasSet.includes(h));
+    return index >= 0 ? String(cells[index] ?? "").trim() : "";
+  };
+
+  const rows: ImportRow[] = [];
+
+  for (let lineIndex = 1; lineIndex < lines.length; lineIndex += 1) {
+    const cells = parseCsvLine(lines[lineIndex], delimiter);
+
+    const row: ImportRow = {
+      confectionistCode: getCell(cells, [
+        "confectionistCode",
+        "codigoConfeccionista",
+      ]),
+      name: getCell(cells, ["name", "nombre"]),
+      identificationType: getCell(cells, [
+        "identificationType",
+        "tipoIdentificacion",
+        "tipoDoc",
+      ]),
+      identification: getCell(cells, ["identification", "identificacion", "documento"]),
+      taxRegime: getCell(cells, ["taxRegime", "regimenFiscal", "regimen"]),
+      type: getCell(cells, ["type", "tipo"]),
+      specialty: getCell(cells, ["specialty", "especialidad"]),
+      contactName: getCell(cells, ["contactName", "nombreContacto", "contacto"]),
+      email: getCell(cells, ["email", "correo"]),
+      mobile: getCell(cells, ["mobile", "celular", "movil"]),
+      address: getCell(cells, ["address", "direccion"]),
+      city: getCell(cells, ["city", "ciudad"]),
+      isActive: getCell(cells, ["isActive", "activo", "estado"]),
+    };
+
+    if (!row.name && !row.confectionistCode) continue;
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+async function generateConfectionistCode(): Promise<string> {
+  const [last] = await db
+    .select({ confectionistCode: confectionists.confectionistCode })
+    .from(confectionists)
+    .orderBy(sql`${confectionists.confectionistCode} DESC`)
+    .limit(1);
+
+  let nextNumber = 1001;
+  if (last?.confectionistCode) {
+    const lastNumber = Number.parseInt(last.confectionistCode.replace(/^CON/i, ""), 10);
+    if (!Number.isNaN(lastNumber)) nextNumber = lastNumber + 1;
+  }
+  return `CON${nextNumber}`;
+}
+
+const VALID_ID_TYPES = ["CC", "NIT", "CE", "PAS", "EMPRESA_EXTERIOR"] as const;
+const VALID_TAX_REGIMES = [
+  "REGIMEN_COMUN",
+  "REGIMEN_SIMPLIFICADO",
+  "NO_RESPONSABLE",
+] as const;
+
+export async function POST(request: Request) {
+  const limited = rateLimit(request, {
+    key: "confectionists:import:post",
+    limit: 20,
+    windowMs: 60_000,
+  });
+
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "CREAR_CONFECCIONISTA");
+
+  if (forbidden) return forbidden;
+
+  try {
+    const formData = await request.formData();
+    const file = formData.get("file");
+
+    if (!(file instanceof File)) {
+      return new Response("CSV requerido en el campo file", { status: 400 });
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const csvText = decodeCsvTextFromBytes(bytes);
+    const rows = parseCsv(csvText);
+
+    if (rows.length === 0) {
+      return new Response("El CSV no contiene filas válidas", { status: 400 });
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+    const errors: Array<{ row: number; message: string }> = [];
+
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const rowNumber = index + 2;
+
+      try {
+        const confectionistCodeRaw = String(row.confectionistCode ?? "")
+          .trim()
+          .toUpperCase();
+        const isEdit = confectionistCodeRaw.length > 0;
+
+        if (!isEdit) {
+          const name = String(row.name ?? "").trim();
+          if (!name) throw new Error("name requerido en creación");
+
+          const identificationTypeRaw = String(
+            row.identificationType ?? ""
+          ).trim().toUpperCase() as (typeof VALID_ID_TYPES)[number];
+          if (!VALID_ID_TYPES.includes(identificationTypeRaw)) {
+            throw new Error(
+              `identificationType inválido: ${identificationTypeRaw}. Usa: ${VALID_ID_TYPES.join(", ")}`
+            );
+          }
+
+          const identification = String(row.identification ?? "").trim();
+          if (!identification) throw new Error("identification requerida en creación");
+
+          const taxRegimeRaw = String(
+            row.taxRegime ?? ""
+          ).trim().toUpperCase() as (typeof VALID_TAX_REGIMES)[number];
+          if (!VALID_TAX_REGIMES.includes(taxRegimeRaw)) {
+            throw new Error(
+              `taxRegime inválido: ${taxRegimeRaw}. Usa: ${VALID_TAX_REGIMES.join(", ")}`
+            );
+          }
+
+          const address = String(row.address ?? "").trim();
+          if (!address) throw new Error("address requerido en creación");
+
+          const [duplicate] = await db
+            .select({ id: confectionists.id })
+            .from(confectionists)
+            .where(eq(confectionists.identification, identification))
+            .limit(1);
+
+          if (duplicate) {
+            throw new Error(
+              `Ya existe un confeccionista con identificación: ${identification}`
+            );
+          }
+
+          const confectionistCode = await generateConfectionistCode();
+
+          await db.insert(confectionists).values({
+            confectionistCode,
+            name,
+            identificationType: identificationTypeRaw,
+            identification,
+            taxRegime: taxRegimeRaw,
+            type: row.type ? String(row.type).trim() : null,
+            specialty: row.specialty ? String(row.specialty).trim() : null,
+            contactName: row.contactName ? String(row.contactName).trim() : null,
+            email: row.email ? String(row.email).trim() : null,
+            mobile: row.mobile ? String(row.mobile).trim() : null,
+            address,
+            city: row.city ? String(row.city).trim() : "Medellín",
+            intlDialCode: "57",
+            isActive: true,
+          });
+
+          createdCount += 1;
+          continue;
+        }
+
+        const [existing] = await db
+          .select()
+          .from(confectionists)
+          .where(eq(confectionists.confectionistCode, confectionistCodeRaw))
+          .limit(1);
+
+        if (!existing) {
+          throw new Error(
+            `confectionistCode no existe para edición: ${confectionistCodeRaw}`
+          );
+        }
+
+        const patch: Partial<typeof confectionists.$inferInsert> = {};
+
+        if (row.name?.trim()) patch.name = row.name.trim();
+        if (row.contactName?.trim()) patch.contactName = row.contactName.trim();
+        if (row.email?.trim()) patch.email = row.email.trim();
+        if (row.address?.trim()) patch.address = row.address.trim();
+        if (row.city?.trim()) patch.city = row.city.trim();
+        if (row.mobile?.trim()) patch.mobile = row.mobile.trim();
+        if (row.type?.trim()) patch.type = row.type.trim();
+        if (row.specialty?.trim()) patch.specialty = row.specialty.trim();
+
+        if (row.taxRegime?.trim()) {
+          const taxRegimeRaw = row.taxRegime.trim().toUpperCase() as (typeof VALID_TAX_REGIMES)[number];
+          if (!VALID_TAX_REGIMES.includes(taxRegimeRaw)) {
+            throw new Error(`taxRegime inválido: ${taxRegimeRaw}`);
+          }
+          patch.taxRegime = taxRegimeRaw;
+        }
+
+        const activeValue = parseIsActive(row.isActive);
+        if (activeValue !== undefined) patch.isActive = activeValue;
+
+        if (Object.keys(patch).length === 0) {
+          throw new Error(
+            `Fila sin cambios para edición (${confectionistCodeRaw})`
+          );
+        }
+
+        await db
+          .update(confectionists)
+          .set(patch)
+          .where(eq(confectionists.id, existing.id));
+
+        updatedCount += 1;
+      } catch (error) {
+        errors.push({
+          row: rowNumber,
+          message: error instanceof Error ? error.message : "Error desconocido",
+        });
+      }
+    }
+
+    return Response.json({
+      message: "Importación finalizada",
+      totalRows: rows.length,
+      createdCount,
+      updatedCount,
+      failedCount: errors.length,
+      errors,
+    });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+    if (response) return response;
+
+    return new Response("No se pudo importar confeccionistas desde CSV", {
+      status: 500,
+    });
+  }
+}

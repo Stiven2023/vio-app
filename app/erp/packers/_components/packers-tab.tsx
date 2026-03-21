@@ -3,7 +3,7 @@
 import type { Paginated } from "@/app/erp/catalog/_lib/types";
 import type { Packer as AdminPacker } from "@/app/erp/admin/_lib/types";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -77,6 +77,8 @@ export function PackersTab({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Packer | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Packer | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
@@ -113,6 +115,73 @@ export function PackersTab({
 
     return "Sin empacadores";
   }, [loading, search, status]);
+
+  const exportCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/packers/export";
+    anchor.download = "packers-export.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const downloadTemplate = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/packers/import/template";
+    anchor.download = "packers-import-template.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const importCsv = async (file: File) => {
+    if (importing) return;
+    const isCsv =
+      file.type === "text/csv" ||
+      file.name.toLowerCase().endsWith(".csv") ||
+      file.type === "application/vnd.ms-excel";
+    if (!isCsv) {
+      toast.error("Selecciona un archivo CSV válido");
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/packers/import", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || (typeof payload === "string" ? payload : "No se pudo importar el CSV"),
+        );
+      }
+      const createdCount = Number(payload?.createdCount ?? 0);
+      const updatedCount = Number(payload?.updatedCount ?? 0);
+      const failedCount = Number(payload?.failedCount ?? 0);
+      const firstError = Array.isArray(payload?.errors)
+        ? String(payload.errors[0]?.message ?? "")
+        : "";
+      if (createdCount === 0 && updatedCount === 0 && failedCount > 0) {
+        toast.error(`No se importó ningún registro. ${firstError || "Revisa el archivo CSV."}`);
+        return;
+      }
+      if (failedCount > 0) {
+        toast.success(`Importación parcial: ${createdCount} creados, ${updatedCount} editados, ${failedCount} con error`);
+      } else {
+        toast.success(`Importación exitosa: ${createdCount} creados, ${updatedCount} editados`);
+      }
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const remove = async () => {
     const p = pendingDelete;
@@ -283,7 +352,23 @@ export function PackersTab({
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            accept=".csv"
+            className="hidden"
+            type="file"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); }}
+          />
+          <Button variant="flat" onPress={exportCsv}>
+            Exportar CSV
+          </Button>
+          <Button variant="flat" onPress={downloadTemplate}>
+            Descargar plantilla CSV
+          </Button>
+          <Button color="secondary" isLoading={importing} onPress={() => fileInputRef.current?.click()}>
+            Importar CSV
+          </Button>
           {canCreate ? (
             <Button
               color="primary"
