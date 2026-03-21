@@ -574,8 +574,10 @@ export function PettyCashTab({
                       <span
                         className={
                           row.transactionType === "EXPENSE"
-                            ? "text-danger-600 font-medium"
-                            : "text-success-600 font-medium"
+                            ? "font-medium text-danger-600"
+                            : row.transactionType === "ADJUSTMENT"
+                              ? "font-medium text-warning-600"
+                              : "font-medium text-success-600"
                         }
                       >
                         {row.transactionType === "EXPENSE" ? "−" : "+"}

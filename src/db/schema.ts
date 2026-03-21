@@ -2108,7 +2108,7 @@ export const pettyCashFunds = pgTable("petty_cash_funds", {
 
 export const pettyCashTransactions = pgTable("petty_cash_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
-  transactionCode: varchar("transaction_code", { length: 20 })
+  transactionCode: varchar("transaction_code", { length: 30 })
     .unique()
     .notNull(),
   fundId: uuid("fund_id")

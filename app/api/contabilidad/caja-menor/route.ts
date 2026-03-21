@@ -246,7 +246,9 @@ export async function POST(request: Request) {
 
       if (match) nextNum = parseInt(match[1], 10) + 1;
     }
-    const transactionCode = `CM-${String(nextNum).padStart(6, "0")}`;
+    // Append a timestamp suffix to reduce (but not eliminate) race-condition collisions;
+    // the unique constraint on transactionCode provides the definitive guard.
+    const transactionCode = `CM-${String(nextNum).padStart(6, "0")}-${Date.now().toString(36).toUpperCase()}`;
 
     const [newTx] = await db.transaction(async (tx) => {
       const [transaction] = await tx

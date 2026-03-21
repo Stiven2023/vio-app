@@ -86,7 +86,7 @@ export async function POST(request: Request) {
         description: description || null,
         initialBalance: String(numInitial),
         currentBalance: String(numInitial),
-        maxBalance: maxBalance ? String(parseFloat(maxBalance)) : "0",
+        maxBalance: maxBalance ? String(parseFloat(maxBalance)) : null,
         currency: currency || "COP",
         status: "ACTIVE",
       })
