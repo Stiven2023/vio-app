@@ -190,6 +190,10 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    return dbErrorResponse(error);
+    const dbError = dbErrorResponse(error);
+
+    if (dbError) return dbError;
+
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

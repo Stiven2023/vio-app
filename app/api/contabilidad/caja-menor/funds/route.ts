@@ -42,7 +42,11 @@ export async function GET(request: Request) {
 
     return Response.json({ items: funds });
   } catch (error) {
-    return dbErrorResponse(error);
+    const dbError = dbErrorResponse(error);
+
+    if (dbError) return dbError;
+
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -94,6 +98,10 @@ export async function POST(request: Request) {
 
     return Response.json(fund, { status: 201 });
   } catch (error) {
-    return dbErrorResponse(error);
+    const dbError = dbErrorResponse(error);
+
+    if (dbError) return dbError;
+
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

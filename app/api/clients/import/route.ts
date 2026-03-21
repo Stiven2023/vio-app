@@ -25,6 +25,8 @@ type ImportRow = {
   isActive?: string;
 };
 
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 function normalizeHeader(value: string) {
   return String(value ?? "")
     .normalize("NFD")
@@ -150,7 +152,7 @@ function parseCsv(content: string): ImportRow[] {
 }
 
 async function generateClientCode(
-  tx: typeof db,
+  tx: DbTransaction,
   clientType: "NACIONAL" | "EXTRANJERO" | "EMPLEADO"
 ): Promise<string> {
   const prefix =

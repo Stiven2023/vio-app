@@ -155,13 +155,20 @@ async function generateEmployeeCode(): Promise<string> {
 }
 
 const VALID_ID_TYPES = ["CC", "NIT", "CE", "PAS", "EMPRESA_EXTERIOR"] as const;
-const VALID_CONTRACT_TYPES = [
-  "TERMINO_FIJO",
-  "TERMINO_INDEFINIDO",
-  "PRESTACION_SERVICIOS",
-  "OBRA_LABOR",
-  "APRENDIZAJE",
-] as const;
+const CONTRACT_TYPE_ALIASES = {
+  FIXED_TERM: "FIXED_TERM",
+  TERMINO_FIJO: "FIXED_TERM",
+  INDEFINITE_TERM: "INDEFINITE_TERM",
+  TERMINO_INDEFINIDO: "INDEFINITE_TERM",
+  WORK_CONTRACT: "WORK_CONTRACT",
+  OBRA_LABOR: "WORK_CONTRACT",
+  SERVICE_CONTRACT: "SERVICE_CONTRACT",
+  PRESTACION_SERVICIOS: "SERVICE_CONTRACT",
+  APRENDIZAJE: "FIXED_TERM",
+} as const;
+
+type ContractTypeAlias = keyof typeof CONTRACT_TYPE_ALIASES;
+type ContractTypeValue = (typeof CONTRACT_TYPE_ALIASES)[ContractTypeAlias];
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, {
@@ -226,17 +233,17 @@ export async function POST(request: Request) {
           const address = String(row.address ?? "").trim();
           if (!address) throw new Error("address requerido en creación");
 
-          let contractTypeValue:
-            | (typeof VALID_CONTRACT_TYPES)[number]
-            | null = null;
+          let contractTypeValue: ContractTypeValue | null = null;
           if (row.contractType?.trim()) {
-            const raw = row.contractType.trim().toUpperCase() as (typeof VALID_CONTRACT_TYPES)[number];
-            if (!VALID_CONTRACT_TYPES.includes(raw)) {
+            const raw = row.contractType.trim().toUpperCase() as ContractTypeAlias;
+            const mapped = CONTRACT_TYPE_ALIASES[raw];
+
+            if (!mapped) {
               throw new Error(
-                `contractType inválido: ${raw}. Usa: ${VALID_CONTRACT_TYPES.join(", ")}`
+                `contractType inválido: ${raw}. Usa: ${Object.keys(CONTRACT_TYPE_ALIASES).join(", ")}`
               );
             }
-            contractTypeValue = raw;
+            contractTypeValue = mapped;
           }
 
           const [duplicate] = await db
@@ -293,11 +300,13 @@ export async function POST(request: Request) {
         if (row.department?.trim()) patch.department = row.department.trim();
 
         if (row.contractType?.trim()) {
-          const raw = row.contractType.trim().toUpperCase() as (typeof VALID_CONTRACT_TYPES)[number];
-          if (!VALID_CONTRACT_TYPES.includes(raw)) {
+          const raw = row.contractType.trim().toUpperCase() as ContractTypeAlias;
+          const mapped = CONTRACT_TYPE_ALIASES[raw];
+
+          if (!mapped) {
             throw new Error(`contractType inválido: ${raw}`);
           }
-          patch.contractType = raw;
+          patch.contractType = mapped;
         }
 
         const activeValue = parseIsActive(row.isActive);
