@@ -290,6 +290,14 @@ export const inventoryCategoryTypePgEnum = pgEnum(
   "inventory_category_type",
   inventoryCategoryTypeValues,
 );
+export const warehousePurposePgEnum = pgEnum(
+  "warehouse_purpose",
+  warehousePurposeValues,
+);
+export const warehouseTransferStatusPgEnum = pgEnum(
+  "warehouse_transfer_status",
+  warehouseTransferStatusValues,
+);
 export const stockMovementTypePgEnum = pgEnum(
   "stock_movement_type",
   stockMovementTypeValues,
