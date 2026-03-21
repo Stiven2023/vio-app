@@ -156,12 +156,26 @@ async function generateEmployeeCode(): Promise<string> {
 
 const VALID_ID_TYPES = ["CC", "NIT", "CE", "PAS", "EMPRESA_EXTERIOR"] as const;
 const VALID_CONTRACT_TYPES = [
-  "TERMINO_FIJO",
-  "TERMINO_INDEFINIDO",
-  "PRESTACION_SERVICIOS",
-  "OBRA_LABOR",
-  "APRENDIZAJE",
+  "FIXED_TERM",
+  "INDEFINITE_TERM",
+  "WORK_CONTRACT",
+  "SERVICE_CONTRACT",
 ] as const;
+
+// Maps both English DB enum values and Spanish legacy CSV values to the DB enum.
+// Spanish aliases: TERMINO_FIJO→FIXED_TERM, TERMINO_INDEFINIDO→INDEFINITE_TERM,
+// OBRA_LABOR→WORK_CONTRACT, PRESTACION_SERVICIOS/APRENDIZAJE→SERVICE_CONTRACT.
+const CONTRACT_TYPE_MAP: Record<string, (typeof VALID_CONTRACT_TYPES)[number]> = {
+  FIXED_TERM: "FIXED_TERM",
+  TERMINO_FIJO: "FIXED_TERM",
+  INDEFINITE_TERM: "INDEFINITE_TERM",
+  TERMINO_INDEFINIDO: "INDEFINITE_TERM",
+  WORK_CONTRACT: "WORK_CONTRACT",
+  OBRA_LABOR: "WORK_CONTRACT",
+  SERVICE_CONTRACT: "SERVICE_CONTRACT",
+  PRESTACION_SERVICIOS: "SERVICE_CONTRACT",
+  APRENDIZAJE: "SERVICE_CONTRACT",
+};
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, {
@@ -226,17 +240,16 @@ export async function POST(request: Request) {
           const address = String(row.address ?? "").trim();
           if (!address) throw new Error("address requerido en creación");
 
-          let contractTypeValue:
-            | (typeof VALID_CONTRACT_TYPES)[number]
-            | null = null;
+          let contractTypeValue: (typeof VALID_CONTRACT_TYPES)[number] | null = null;
           if (row.contractType?.trim()) {
-            const raw = row.contractType.trim().toUpperCase() as (typeof VALID_CONTRACT_TYPES)[number];
-            if (!VALID_CONTRACT_TYPES.includes(raw)) {
+            const raw = row.contractType.trim().toUpperCase();
+            const mapped = CONTRACT_TYPE_MAP[raw];
+            if (!mapped) {
               throw new Error(
-                `contractType inválido: ${raw}. Usa: ${VALID_CONTRACT_TYPES.join(", ")}`
+                `contractType inválido: ${raw}. Usa: ${Object.keys(CONTRACT_TYPE_MAP).join(", ")}`
               );
             }
-            contractTypeValue = raw;
+            contractTypeValue = mapped;
           }
 
           const [duplicate] = await db
@@ -293,11 +306,12 @@ export async function POST(request: Request) {
         if (row.department?.trim()) patch.department = row.department.trim();
 
         if (row.contractType?.trim()) {
-          const raw = row.contractType.trim().toUpperCase() as (typeof VALID_CONTRACT_TYPES)[number];
-          if (!VALID_CONTRACT_TYPES.includes(raw)) {
+          const raw = row.contractType.trim().toUpperCase();
+          const mapped = CONTRACT_TYPE_MAP[raw];
+          if (!mapped) {
             throw new Error(`contractType inválido: ${raw}`);
           }
-          patch.contractType = raw;
+          patch.contractType = mapped;
         }
 
         const activeValue = parseIsActive(row.isActive);
