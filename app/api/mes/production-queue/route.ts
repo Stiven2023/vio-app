@@ -13,6 +13,7 @@ import {
   getRoleFromRequest,
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationForRoles } from "@/src/utils/notifications";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 const ALLOWED_ROLES = new Set([
@@ -161,6 +162,15 @@ export async function POST(request: Request) {
         status: "EN_COLA",
       })
       .returning();
+
+    void createNotificationForRoles(
+      ["ADMINISTRADOR", "LIDER_OPERACIONAL", "PROGRAMACION"],
+      {
+        title: "Diseño en cola de producción",
+        message: `Diseño "${design}" agregado a la cola de producción (prioridad: ${priority}).`,
+        href: `/erp/mes/production-queue`,
+      },
+    );
 
     return Response.json(created, { status: 201 });
   } catch (error) {

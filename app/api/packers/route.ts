@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { packers, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -237,6 +238,17 @@ export async function POST(request: Request) {
         notes: "Estado inicial al crear empaquetador",
       });
     }
+
+    void createNotificationsForPermission("VER_EMPAQUE", {
+      title: "Empacador registrado",
+      message: `Se registró el empacador ${packerCode} – ${name}.`,
+      href: `/erp/empaque/${newPackerId ?? ""}`,
+    });
+    void createNotificationsForPermission("VER_ESTADO_JURIDICO_EMPAQUE", {
+      title: "Empacador nuevo en revisión jurídica",
+      message: `El empacador ${packerCode} requiere revisión jurídica inicial.`,
+      href: `/erp/empaque/${newPackerId ?? ""}`,
+    });
 
     return Response.json(created, { status: 201 });
   } catch (error) {

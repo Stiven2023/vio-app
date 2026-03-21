@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { employeeLeaves, employees } from "@/src/db/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -244,7 +245,7 @@ export async function POST(request: Request) {
     }
 
     const [employeeExists] = await db
-      .select({ id: employees.id })
+      .select({ id: employees.id, name: employees.name })
       .from(employees)
       .where(and(eq(employees.id, employeeId), eq(employees.isActive, true)))
       .limit(1);
@@ -268,6 +269,14 @@ export async function POST(request: Request) {
         approvedBy,
       })
       .returning({ id: employeeLeaves.id });
+
+    const leaveTypeLabel = leaveType === "PAID" ? "remunerado" : "no remunerado";
+
+    void createNotificationsForPermission("VER_PERMISOS_EMPLEADO", {
+      title: "Permiso/ausencia registrado",
+      message: `Se registró un permiso ${leaveTypeLabel} para el empleado ${employeeExists.name ?? employeeId} (${startDate} – ${endDate}).`,
+      href: `/erp/rh/permisos-ausencias`,
+    });
 
     return Response.json(
       { id: created?.id ?? null, ok: true },

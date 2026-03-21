@@ -3,6 +3,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { employees, payrollProvisions } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -308,6 +309,12 @@ export async function POST(request: Request) {
     });
 
     await db.insert(payrollProvisions).values(toInsert);
+
+    void createNotificationsForPermission("VER_PROVISIONES_NOMINA", {
+      title: "Provisiones de nómina generadas",
+      message: `Se generaron ${toInsert.length} provisiones de nómina para el período ${period}.`,
+      href: `/erp/rh/provisiones-nomina`,
+    });
 
     return Response.json({
       created: toInsert.length,

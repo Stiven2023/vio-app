@@ -3,6 +3,7 @@ import { eq, sql, desc } from "drizzle-orm";
 import { db } from "@/src/db";
 import { suppliers, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -249,6 +250,17 @@ export async function POST(request: Request) {
     });
   }
 
+  void createNotificationsForPermission("VER_PROVEEDOR", {
+    title: "Proveedor creado",
+    message: `Se registró el proveedor ${supplierCode} – ${String(body.name ?? "").trim()}.`,
+    href: `/erp/proveedores/${newSupplierId ?? ""}`,
+  });
+  void createNotificationsForPermission("VER_ESTADO_JURIDICO_PROVEEDOR", {
+    title: "Proveedor nuevo en revisión jurídica",
+    message: `El proveedor ${supplierCode} requiere revisión jurídica inicial.`,
+    href: `/erp/proveedores/${newSupplierId ?? ""}`,
+  });
+
   return Response.json(created, { status: 201 });
 }
 
@@ -411,6 +423,12 @@ export async function PUT(request: Request) {
       thirdPartyName: supplier.name,
       status: "EN_REVISION",
       notes: `Cambios detectados: ${changedFields.join(", ")}`,
+    });
+
+    void createNotificationsForPermission("VER_ESTADO_JURIDICO_PROVEEDOR", {
+      title: "Proveedor en revisión jurídica",
+      message: `El proveedor ${supplier.supplierCode ?? String(id)} requiere revisión por cambios en: ${changedFields.join(", ")}.`,
+      href: `/erp/proveedores/${String(id)}`,
     });
   }
 

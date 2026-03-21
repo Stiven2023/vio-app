@@ -38,3 +38,22 @@ export async function createNotificationsForPermission(
     })),
   );
 }
+
+export async function createNotificationForRoles(
+  roleNames: string[],
+  payload: NotificationPayload,
+) {
+  const uniqueRoles = Array.from(new Set(roleNames.filter(Boolean)));
+
+  if (uniqueRoles.length === 0) return;
+
+  await db.insert(notifications).values(
+    uniqueRoles.map((role) => ({
+      title: payload.title,
+      message: payload.message,
+      role,
+      href: payload.href ?? null,
+      isRead: false,
+    })),
+  );
+}

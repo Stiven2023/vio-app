@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { employees, payrollProvisions, pilaGenerations } from "@/src/db/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -340,6 +341,12 @@ export async function POST(request: Request) {
       .where(eq(pilaGenerations.period, period))
       .orderBy(desc(pilaGenerations.generatedAt))
       .limit(1);
+
+    void createNotificationsForPermission("VER_PILA", {
+      title: "PILA generada",
+      message: `Se generó la PILA para el período ${period}.`,
+      href: `/erp/rh/pila`,
+    });
 
     return Response.json({
       period,
