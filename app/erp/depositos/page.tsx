@@ -26,10 +26,8 @@ export default async function DepositsPage() {
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Payments and cash flow</h1>
-      <p className="text-default-600 mt-1">
-        Payment overview with filters by method, cash and transfers.
-      </p>
+      <h1 className="text-2xl font-bold">Depósitos - Efectivo y Transferencias</h1>
+      <p className="text-default-600 mt-1">Registro unificado de depósitos en efectivo y consignaciones bancarias, con seguimiento de estado y aprobación de pagos.</p>
       <div className="mt-6">
         <AccountingTabs
           canApprovePayments={canApprovePayments}

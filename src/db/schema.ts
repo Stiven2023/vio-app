@@ -139,6 +139,8 @@ export {
   mesAssignmentStatusValues,
   mesRepoItemTypeValues,
   mesRepoReasonValues,
+  pettyCashTransactionTypeValues,
+  pettyCashFundStatusValues,
 } from "./enums";
 
 import {
@@ -201,6 +203,8 @@ import {
   mesAssignmentStatusValues,
   mesRepoItemTypeValues,
   mesRepoReasonValues,
+  pettyCashTransactionTypeValues,
+  pettyCashFundStatusValues,
 } from "./enums";
 
 /* ========================= */
@@ -336,13 +340,13 @@ export const mesRepoReasonPgEnum = pgEnum(
   "mes_repo_reason",
   mesRepoReasonValues,
 );
-export const warehousePurposePgEnum = pgEnum(
-  "warehouse_purpose",
-  warehousePurposeValues,
+export const pettyCashTransactionTypePgEnum = pgEnum(
+  "petty_cash_transaction_type",
+  pettyCashTransactionTypeValues,
 );
-export const warehouseTransferStatusPgEnum = pgEnum(
-  "warehouse_transfer_status",
-  warehouseTransferStatusValues,
+export const pettyCashFundStatusPgEnum = pgEnum(
+  "petty_cash_fund_status",
+  pettyCashFundStatusValues,
 );
 
 /* Backward compatibility aliases for schema column definitions */
@@ -390,6 +394,8 @@ export const mesQueueStatusEnum = mesQueueStatusPgEnum;
 export const mesAssignmentStatusEnum = mesAssignmentStatusPgEnum;
 export const mesRepoItemTypeEnum = mesRepoItemTypePgEnum;
 export const mesRepoReasonEnum = mesRepoReasonPgEnum;
+export const pettyCashTransactionTypeEnum = pettyCashTransactionTypePgEnum;
+export const pettyCashFundStatusEnum = pettyCashFundStatusPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -2086,5 +2092,68 @@ export const clientLegalStatus = pgTable("client_legal_status", {
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   updatedBy: uuid("updated_by").references(() => employees.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   CAJA MENOR (PETTY CASH)
+========================= */
+
+export const pettyCashFunds = pgTable("petty_cash_funds", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description"),
+  responsibleEmployeeId: uuid("responsible_employee_id").references(
+    () => employees.id,
+  ),
+  initialBalance: numeric("initial_balance", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  currentBalance: numeric("current_balance", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  maxBalance: numeric("max_balance", { precision: 14, scale: 2 }).default("0"),
+  currency: varchar("currency", { length: 5 }).notNull().default("COP"),
+  status: pettyCashFundStatusEnum("status").notNull().default("ACTIVE"),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const pettyCashTransactions = pgTable("petty_cash_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  transactionCode: varchar("transaction_code", { length: 30 })
+    .unique()
+    .notNull(),
+  fundId: uuid("fund_id")
+    .notNull()
+    .references(() => pettyCashFunds.id),
+  transactionDate: date("transaction_date").notNull(),
+  transactionType: pettyCashTransactionTypeEnum("transaction_type").notNull(),
+  category: varchar("category", { length: 100 }),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  balanceBefore: numeric("balance_before", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  balanceAfter: numeric("balance_after", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  referenceCode: varchar("reference_code", { length: 120 }),
+  attachmentUrl: text("attachment_url"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });

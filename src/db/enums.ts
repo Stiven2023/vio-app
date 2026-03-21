@@ -635,6 +635,12 @@ export const permissionValues = [
   "ANULAR_RECIBO_CAJA",
   "VER_CARTERA",
   "EXPORTAR_CARTERA",
+  // Caja Menor
+  "VER_CAJA_MENOR",
+  "CREAR_CAJA_MENOR",
+  "GESTIONAR_CAJA_MENOR",
+  // Estado de Resultados
+  "VER_ESTADO_RESULTADOS",
   // RH - new modules
   "VER_PROVISIONES_NOMINA",
   "CREAR_PROVISIONES_NOMINA",
@@ -1138,6 +1144,28 @@ export const MesRepoReason = {
   DAÑO: "DAÑO",
   INCORRECTO: "INCORRECTO",
 } as const;
+
+export const pettyCashTransactionTypeValues = [
+  "EXPENSE",
+  "REPLENISHMENT",
+  "OPENING",
+  "ADJUSTMENT",
+] as const;
+export type PettyCashTransactionType =
+  (typeof pettyCashTransactionTypeValues)[number];
+export const PettyCashTransactionTypeEnum = z.enum(
+  pettyCashTransactionTypeValues,
+);
+Object.defineProperty(PettyCashTransactionTypeEnum, "enumValues", {
+  value: pettyCashTransactionTypeValues,
+});
+
+export const pettyCashFundStatusValues = ["ACTIVE", "INACTIVE"] as const;
+export type PettyCashFundStatus = (typeof pettyCashFundStatusValues)[number];
+export const PettyCashFundStatusEnum = z.enum(pettyCashFundStatusValues);
+Object.defineProperty(PettyCashFundStatusEnum, "enumValues", {
+  value: pettyCashFundStatusValues,
+});
 
 export const mesRepoReasonValues = ["FALTANTE", "DAÑO", "INCORRECTO"] as const;
 

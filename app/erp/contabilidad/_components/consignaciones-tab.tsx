@@ -98,7 +98,7 @@ export function DepositsTab({
 }) {
   const [detailRow, setDetailRow] = useState<DepositRow | null>(null);
   const [q, setQ] = useState("");
-  // Consignaciones es solo para transferencias bancarias
+  const [method, setMethod] = useState("all");
   const [bank, setBank] = useState("all");
   const [currency, setCurrency] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
@@ -106,6 +106,13 @@ export function DepositsTab({
   const [bankOptions, setBankOptions] = useState<
     Array<{ value: string; label: string }>
   >([{ value: "all", label: "Todos" }]);
+
+  const methodOptions = [
+    { value: "all", label: "Todos" },
+    { value: "EFECTIVO", label: "Efectivo" },
+    { value: "TRANSFERENCIA", label: "Transferencia bancaria" },
+    { value: "CREDITO", label: "Crédito" },
+  ];
 
   const currencyOptions = [
     { value: "all", label: "Todas" },
@@ -135,7 +142,7 @@ export function DepositsTab({
     const query = q.trim();
 
     if (query) sp.set("q", query);
-    sp.set("method", "TRANSFERENCIA");
+    if (method !== "all") sp.set("method", method);
     if (bank !== "all") sp.set("bank", bank);
     if (currency !== "all") sp.set("currency", currency);
     if (dateFrom) sp.set("dateFrom", dateFrom);
@@ -143,7 +150,7 @@ export function DepositsTab({
     const qs = sp.toString();
 
     return `/api/contabilidad/consignaciones${qs ? `?${qs}` : ""}`;
-  }, [bank, currency, dateFrom, dateTo, q]);
+  }, [bank, currency, dateFrom, dateTo, method, q]);
 
   const { data, loading, page, setPage, refresh } = usePaginatedApi<DepositRow>(
     endpoint,
@@ -170,11 +177,27 @@ export function DepositsTab({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Card>
           <CardBody className="gap-1">
             <div className="text-xs uppercase tracking-wide text-default-500">
-              Total transferencias
+              Total Efectivo
+            </div>
+            <div className="text-2xl font-semibold">
+              {formatMoney(
+                paymentsData?.summary?.totalEfectivo ?? 0,
+                cardCurrency,
+              )}
+            </div>
+            <p className="text-xs text-default-500">
+              Suma de pagos en efectivo según los filtros.
+            </p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="gap-1">
+            <div className="text-xs uppercase tracking-wide text-default-500">
+              Total Transferencias
             </div>
             <div className="text-2xl font-semibold">
               {formatMoney(
@@ -190,7 +213,7 @@ export function DepositsTab({
         <Card>
           <CardBody className="gap-1">
             <div className="text-xs uppercase tracking-wide text-default-500">
-              Total general
+              Total General
             </div>
             <div className="text-2xl font-semibold">
               {formatMoney(
@@ -212,6 +235,13 @@ export function DepositsTab({
             placeholder="Buscar por pedido, cliente, referencia o banco..."
             value={q}
             onValueChange={setQ}
+          />
+          <FilterSelect
+            className="sm:w-48"
+            label="Método"
+            options={methodOptions}
+            value={method}
+            onChange={setMethod}
           />
           <FilterSelect
             className="sm:w-48"
@@ -249,6 +279,7 @@ export function DepositsTab({
             variant="flat"
             onPress={() => {
               setQ("");
+              setMethod("all");
               setBank("all");
               setCurrency("all");
               setDateFrom("");
@@ -303,10 +334,6 @@ export function DepositsTab({
               const rowCurrency = String(
                 row.transferCurrency ?? "COP",
               ).toUpperCase();
-              const bankLabel =
-                [row.bankCode, row.bankName].filter(Boolean).join(" - ") ||
-                row.transferBank ||
-                "-";
 
               return (
                 <TableRow key={row.id}>
@@ -399,7 +426,7 @@ export function DepositsTab({
         }}
       >
         <ModalContent>
-          <ModalHeader>Detalle de consignacion</ModalHeader>
+          <ModalHeader>Detalle de depósito</ModalHeader>
           <ModalBody>
             {detailRow ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
