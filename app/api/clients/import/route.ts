@@ -1,10 +1,23 @@
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
+import * as schema from "@/src/db/schema";
 import { clients } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+type DbOrTx =
+  | typeof db
+  | PgTransaction<
+      NodePgQueryResultHKT,
+      typeof schema,
+      ExtractTablesWithRelations<typeof schema>
+    >;
 
 type ImportRow = {
   clientCode?: string;
@@ -152,7 +165,7 @@ function parseCsv(content: string): ImportRow[] {
 }
 
 async function generateClientCode(
-  tx: DbTransaction,
+  tx: typeof db,
   clientType: "NACIONAL" | "EXTRANJERO" | "EMPLEADO"
 ): Promise<string> {
   const prefix =

@@ -244,6 +244,7 @@ export async function POST(request: Request) {
               );
             }
             contractTypeValue = mapped;
+            contractTypeValue = mapped;
           }
 
           const [duplicate] = await db
@@ -306,6 +307,7 @@ export async function POST(request: Request) {
           if (!mapped) {
             throw new Error(`contractType inválido: ${raw}`);
           }
+          patch.contractType = mapped;
           patch.contractType = mapped;
         }
 
