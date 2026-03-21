@@ -11,6 +11,7 @@ import {
 } from "@/src/db/schema";
 import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { buildExpiryDateFromDelivery } from "@/src/utils/quotation-delivery";
@@ -460,10 +461,13 @@ export async function POST(request: Request) {
       return header;
     });
 
-    return Response.json(
-      { id: created.id, quoteCode: created.quoteCode },
-      { status: 201 },
-    );
+    void createNotificationsForPermission("VER_COTIZACION", {
+      title: "Cotización creada",
+      message: `Se creó la cotización ${created.quoteCode}.`,
+      href: `/erp/cotizaciones/${created.id}`,
+    });
+
+    return Response.json({ id: created.id, quoteCode: created.quoteCode }, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
 

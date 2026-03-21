@@ -7,6 +7,7 @@ import {
   banks,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -306,6 +307,12 @@ export async function POST(request: Request) {
       }
 
       return reconciliation;
+    });
+
+    void createNotificationsForPermission("VER_CONCILIACION_BANCARIA", {
+      title: "Conciliación bancaria creada",
+      message: `Se creó la conciliación bancaria para el período ${period}.`,
+      href: `/erp/contabilidad/conciliaciones-bancarias`,
     });
 
     return Response.json({ ok: true, id: created.id }, { status: 201 });

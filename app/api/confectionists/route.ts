@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { confectionists, clients, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -267,6 +268,17 @@ export async function POST(request: Request) {
         notes: "Estado inicial al crear confeccionista",
       });
     }
+
+    void createNotificationsForPermission("VER_CONFECCIONISTA", {
+      title: "Confeccionista registrado",
+      message: `Se registró el confeccionista ${confectionistCode} – ${name}.`,
+      href: `/erp/confeccionistas/${newConfectionistId ?? ""}`,
+    });
+    void createNotificationsForPermission("VER_ESTADO_JURIDICO_CONFECCIONISTA", {
+      title: "Confeccionista nuevo en revisión jurídica",
+      message: `El confeccionista ${confectionistCode} requiere revisión jurídica inicial.`,
+      href: `/erp/confeccionistas/${newConfectionistId ?? ""}`,
+    });
 
     return Response.json(created, { status: 201 });
   } catch (error) {

@@ -11,6 +11,7 @@ import {
 } from "@/src/db/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -293,6 +294,12 @@ export async function POST(request: Request) {
       });
 
       return order;
+    });
+
+    void createNotificationsForPermission("CREAR_ORDEN_COMPRA", {
+      title: "Orden de compra creada",
+      message: `Se creó la orden de compra ${created.purchaseOrderCode}.`,
+      href: `/erp/compras/${created.id}`,
     });
 
     return Response.json(created, { status: 201 });

@@ -9,6 +9,7 @@ import {
 } from "@/src/db/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -475,6 +476,12 @@ export async function POST(request: Request) {
       }
 
       return receipt;
+    });
+
+    void createNotificationsForPermission("VER_RECIBO_CAJA", {
+      title: "Recibo de caja creado",
+      message: `Se creó el recibo de caja ${created.receiptCode}.`,
+      href: `/erp/contabilidad/recibos-caja`,
     });
 
     return Response.json(created, { status: 201 });

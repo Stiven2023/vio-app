@@ -7,6 +7,7 @@ import {
   checkPermissions,
   requirePermission,
 } from "@/src/utils/permission-middleware";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 import {
@@ -557,6 +558,17 @@ export async function POST(request: Request) {
       `📋 Cliente ${newClient.clientCode} creado en estado EN_REVISION`,
     );
 
+    void createNotificationsForPermission("VER_CLIENTE", {
+      title: "Cliente creado",
+      message: `Se registró el cliente ${newClient.clientCode} – ${newClient.name}.`,
+      href: `/erp/clientes/${newClient.id}`,
+    });
+    void createNotificationsForPermission("VER_ESTADO_JURIDICO_CLIENTE", {
+      title: "Cliente nuevo en revisión jurídica",
+      message: `El cliente ${newClient.clientCode} requiere revisión jurídica inicial.`,
+      href: `/erp/clientes/${newClient.id}`,
+    });
+
     return Response.json(newClient, { status: 201 });
   } catch (e: unknown) {
     const code =
@@ -913,6 +925,12 @@ export async function PUT(request: Request) {
           console.log(
             `⚠️ Cliente ${id} enviado a revisión automáticamente. Campos modificados: ${changedFields.join(", ")}`,
           );
+
+          void createNotificationsForPermission("VER_ESTADO_JURIDICO_CLIENTE", {
+            title: "Cliente en revisión jurídica",
+            message: `El cliente ${currentClient.clientCode} requiere revisión por cambios en: ${changedFields.join(", ")}.`,
+            href: `/erp/clientes/${String(id)}`,
+          });
         } catch (revisionError) {
           console.error(
             "Advertencia: No se pudo registrar revisión automática:",

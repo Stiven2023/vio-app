@@ -16,10 +16,8 @@ import {
   getRoleFromRequest,
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import {
-  resolveWarehouseIdByLocation,
-  syncInventoryForItem,
-} from "@/src/utils/inventory-sync";
+import { resolveWarehouseIdByLocation, syncInventoryForItem } from "@/src/utils/inventory-sync";
+import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -201,6 +199,7 @@ export async function PUT(
       const [order] = await tx
         .select({
           id: purchaseOrders.id,
+          purchaseOrderCode: purchaseOrders.purchaseOrderCode,
           status: purchaseOrders.status,
           approvalExpiresAt: purchaseOrders.approvalExpiresAt,
         })
@@ -250,7 +249,7 @@ export async function PUT(
           employeeId,
         });
 
-        return { kind: "ok" as const, updated };
+        return { kind: "ok" as const, updated, purchaseOrderCode: order.purchaseOrderCode, action: "APROBAR_COSTOS" as const };
       }
 
       if (action === "RECHAZAR_COSTOS") {
@@ -288,7 +287,7 @@ export async function PUT(
           employeeId,
         });
 
-        return { kind: "ok" as const, updated };
+        return { kind: "ok" as const, updated, purchaseOrderCode: order.purchaseOrderCode, action: "RECHAZAR_COSTOS" as const };
       }
 
       if (isExpired(order.approvalExpiresAt)) {
@@ -326,7 +325,7 @@ export async function PUT(
           employeeId,
         });
 
-        return { kind: "ok" as const, updated };
+        return { kind: "ok" as const, updated, purchaseOrderCode: order.purchaseOrderCode, action: "INICIAR_RUTA" as const };
       }
 
       const forbiddenEntry = await requirePermission(
@@ -407,7 +406,7 @@ export async function PUT(
         employeeId,
       });
 
-      return { kind: "ok" as const, updated };
+      return { kind: "ok" as const, updated, purchaseOrderCode: order.purchaseOrderCode, action: "FINALIZAR" as const };
     });
 
     if (result.kind === "not-found")
@@ -434,6 +433,35 @@ export async function PUT(
       return new Response("Bodega no encontrada", { status: 409 });
     if (result.kind === "invalid-status")
       return new Response("Estado inválido", { status: 409 });
+
+    const poCode = result.purchaseOrderCode ?? orderId;
+    const poHref = `/erp/compras/${orderId}`;
+
+    if (result.action === "APROBAR_COSTOS") {
+      void createNotificationsForPermission("CREAR_ORDEN_COMPRA", {
+        title: "Orden de compra aprobada",
+        message: `La orden ${poCode} fue aprobada. Vigencia: 5 días.`,
+        href: poHref,
+      });
+    } else if (result.action === "RECHAZAR_COSTOS") {
+      void createNotificationsForPermission("CREAR_ORDEN_COMPRA", {
+        title: "Orden de compra rechazada",
+        message: `La orden ${poCode} fue rechazada.`,
+        href: poHref,
+      });
+    } else if (result.action === "INICIAR_RUTA") {
+      void createNotificationsForPermission("CREAR_ORDEN_COMPRA", {
+        title: "Ruta de compra iniciada",
+        message: `La orden ${poCode} inició coordinación logística.`,
+        href: poHref,
+      });
+    } else if (result.action === "FINALIZAR") {
+      void createNotificationsForPermission("CREAR_ORDEN_COMPRA", {
+        title: "Orden de compra finalizada",
+        message: `La orden ${poCode} fue finalizada. Inventario actualizado.`,
+        href: poHref,
+      });
+    }
 
     return Response.json(result.updated);
   } catch (error) {
