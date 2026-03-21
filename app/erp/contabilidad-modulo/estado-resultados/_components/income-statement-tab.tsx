@@ -362,8 +362,10 @@ export function IncomeStatementTab() {
                   width={60}
                 />
                 <Tooltip
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  formatter={((value: number, name: string) => [fmt(value), name]) as any}
+                  formatter={(value, name) => {
+                    const num = typeof value === "number" ? value : parseFloat(String(value));
+                    return [fmt(isNaN(num) ? 0 : num), String(name)];
+                  }}
                   labelStyle={{ fontWeight: 600, marginBottom: 4 }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
