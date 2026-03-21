@@ -45,7 +45,9 @@ export async function GET(request: Request) {
     return Response.json({ items });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron cargar opciones de salida", {
       status: 500,
     });

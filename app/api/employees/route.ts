@@ -17,6 +17,7 @@ function formatMobile(intlCode: string, mobile: string): string {
   }
 
   const parts: string[] = [];
+
   for (let i = 0; i < clean.length; i += 3) {
     parts.push(clean.slice(i, i + 3));
   }
@@ -97,7 +98,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar empleados", { status: 500 });
   }
 }
@@ -190,9 +193,11 @@ export async function POST(request: Request) {
       .limit(1);
 
     let nextNumber = 1001;
+
     if (lastEmployee.length > 0 && lastEmployee[0]?.employeeCode) {
       const lastCode = lastEmployee[0].employeeCode;
       const lastNumber = parseInt(lastCode.replace(/^EMP/i, ""), 10);
+
       if (!isNaN(lastNumber)) {
         nextNumber = lastNumber + 1;
       }
@@ -275,6 +280,7 @@ export async function POST(request: Request) {
 
       if (sourceClient.length > 0) {
         const client = sourceClient[0];
+
         sourceClientDocuments = {
           identityDocumentUrl: client.identityDocumentUrl,
           rutDocumentUrl: client.rutDocumentUrl,
@@ -317,7 +323,8 @@ export async function POST(request: Request) {
         identityDocumentUrl:
           payload.identityDocumentUrl ||
           sourceClientDocuments.identityDocumentUrl,
-        rutDocumentUrl: payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+        rutDocumentUrl:
+          payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
         commerceChamberDocumentUrl:
           payload.commerceChamberDocumentUrl ||
           sourceClientDocuments.commerceChamberDocumentUrl,
@@ -436,6 +443,7 @@ export async function PUT(request: Request) {
       ? String(payload.intlDialCode).trim()
       : "57";
     const mobile = payload.mobile ? String(payload.mobile).trim() : null;
+
     patch.fullMobile = mobile ? formatMobile(intl, mobile) : null;
   }
 
@@ -455,7 +463,8 @@ export async function PUT(request: Request) {
       : null;
   if (payload.roleId !== undefined)
     patch.roleId = payload.roleId ? String(payload.roleId).trim() : null;
-  if (payload.isActive !== undefined) patch.isActive = Boolean(payload.isActive);
+  if (payload.isActive !== undefined)
+    patch.isActive = Boolean(payload.isActive);
 
   // Manejar campos de documentos
   if (payload.identityDocumentUrl !== undefined)
@@ -546,6 +555,7 @@ export async function PUT(request: Request) {
     ];
 
     const changedFields: string[] = [];
+
     for (const field of criticalFields) {
       const key = field as keyof typeof employee;
       const patchValue =

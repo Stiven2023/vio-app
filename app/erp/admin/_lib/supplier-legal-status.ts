@@ -1,5 +1,6 @@
-import { apiJson } from "@/app/erp/admin/_lib/api";
 import { z } from "zod";
+
+import { apiJson } from "@/app/erp/admin/_lib/api";
 
 const legalStatusSchema = z.object({
   status: z.enum(["VIGENTE", "EN_REVISION", "BLOQUEADO"], {
@@ -13,10 +14,10 @@ export type LegalStatusUpdate = z.infer<typeof legalStatusSchema>;
 
 export async function updateSupplierLegalStatus(
   supplierId: string,
-  data: LegalStatusUpdate
+  data: LegalStatusUpdate,
 ) {
   const validated = legalStatusSchema.safeParse(data);
-  
+
   if (!validated.success) {
     throw new Error(validated.error.issues[0]?.message || "Datos inválidos");
   }
@@ -26,7 +27,7 @@ export async function updateSupplierLegalStatus(
     {
       method: "POST",
       body: JSON.stringify(validated.data),
-    }
+    },
   );
 
   return response;
@@ -34,21 +35,24 @@ export async function updateSupplierLegalStatus(
 
 export async function getSupplierLegalStatusHistory(supplierId: string) {
   const response = await apiJson<any>(
-    `/api/suppliers/${supplierId}/legal-status-history`
+    `/api/suppliers/${supplierId}/legal-status-history`,
   );
+
   return response;
 }
 
 export async function checkSupplierLegalStatus(
-  supplierId: string
+  supplierId: string,
 ): Promise<any> {
   try {
     const response = await apiJson<any>(
-      `/api/suppliers/${supplierId}/legal-status/check`
+      `/api/suppliers/${supplierId}/legal-status/check`,
     );
+
     return response;
   } catch (error) {
     console.error("Error verificando estado jurídico del proveedor:", error);
+
     return {
       status: null,
       canOperate: false,

@@ -27,7 +27,8 @@ export default async function PurchaseOrdersPage() {
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Purchase orders</h1>
       <p className="text-default-600 mt-1">
-        Purchasing operations center: documentation, approval, routes and logistics coordination.
+        Purchasing operations center: documentation, approval, routes and
+        logistics coordination.
       </p>
       <div className="mt-6">
         <PurchaseOrdersTab canFinalize={canFinalize} />

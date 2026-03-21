@@ -1,6 +1,7 @@
 "use client";
 
 import type { InventoryItem } from "../../_lib/types";
+
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
@@ -82,6 +83,7 @@ export function InventoryItemDetailsModal({
   const loadVariants = async () => {
     if (!item?.id || !canManageVariants) {
       setVariants([]);
+
       return;
     }
 
@@ -90,6 +92,7 @@ export function InventoryItemDetailsModal({
       const res = await apiJson<VariantsResponse>(
         `/api/inventory-item-variants?inventoryItemId=${item.id}&page=1&pageSize=300`,
       );
+
       setVariants(res.items ?? []);
     } catch {
       setVariants([]);
@@ -110,7 +113,9 @@ export function InventoryItemDetailsModal({
       { label: "Unidad", value: item?.unit ?? "-" },
       {
         label: "Stock actual",
-        value: canManageVariants ? variantTotalStock : (item?.currentStock ?? "0"),
+        value: canManageVariants
+          ? variantTotalStock
+          : (item?.currentStock ?? "0"),
       },
       { label: "Descripcion", value: item?.description ?? "-" },
       { label: "Modelo", value: "Variantes obligatorias" },
@@ -120,6 +125,7 @@ export function InventoryItemDetailsModal({
 
   const removeVariant = async () => {
     const variant = pendingDelete;
+
     if (!variant || deletingId) return;
 
     setDeletingId(variant.id);
@@ -142,11 +148,16 @@ export function InventoryItemDetailsModal({
   return (
     <Modal isOpen={isOpen} size="4xl" onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{item ? `Detalle item: ${item.name}` : "Detalle item"}</ModalHeader>
+        <ModalHeader>
+          {item ? `Detalle item: ${item.name}` : "Detalle item"}
+        </ModalHeader>
         <ModalBody>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {detailRows.map((row) => (
-              <div key={row.label} className="rounded-md border border-default-200 p-2">
+              <div
+                key={row.label}
+                className="rounded-md border border-default-200 p-2"
+              >
                 <p className="text-xs text-default-500">{row.label}</p>
                 <p className="text-sm font-medium break-words">{row.value}</p>
               </div>
@@ -188,7 +199,9 @@ export function InventoryItemDetailsModal({
                       <TableCell>{variant.color ?? "-"}</TableCell>
                       <TableCell>{variant.size ?? "-"}</TableCell>
                       <TableCell>{variant.currentStock ?? "0"}</TableCell>
-                      <TableCell>{variant.isActive ? "Activa" : "Inactiva"}</TableCell>
+                      <TableCell>
+                        {variant.isActive ? "Activa" : "Inactiva"}
+                      </TableCell>
                       <TableCell>
                         <Dropdown>
                           <DropdownTrigger>
@@ -236,9 +249,9 @@ export function InventoryItemDetailsModal({
       </ModalContent>
 
       <InventoryVariantModal
+        isOpen={variantModalOpen}
         itemId={item?.id ?? ""}
         variant={editingVariant}
-        isOpen={variantModalOpen}
         onOpenChange={setVariantModalOpen}
         onSaved={loadVariants}
       />
@@ -246,7 +259,9 @@ export function InventoryItemDetailsModal({
       <ConfirmActionModal
         cancelLabel="Cancelar"
         confirmLabel="Eliminar"
-        description={pendingDelete ? `¿Eliminar variante ${pendingDelete.sku}?` : undefined}
+        description={
+          pendingDelete ? `¿Eliminar variante ${pendingDelete.sku}?` : undefined
+        }
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
         title="Confirmar eliminación"

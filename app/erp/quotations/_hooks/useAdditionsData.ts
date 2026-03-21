@@ -1,7 +1,9 @@
+import type { AdditionOption, Currency } from "../_lib/types";
+
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
-import type { AdditionOption, Currency } from "../_lib/types";
 
 export function useAdditionsData(currency: Currency) {
   const [additions, setAdditions] = useState<AdditionOption[]>([]);

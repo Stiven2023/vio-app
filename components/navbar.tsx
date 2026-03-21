@@ -47,7 +47,9 @@ const localeLabel: Record<SupportedLocale, string> = {
   es: "ESP",
 };
 
-const isSupportedLocale = (value: string | null | undefined): value is SupportedLocale => {
+const isSupportedLocale = (
+  value: string | null | undefined,
+): value is SupportedLocale => {
   return value === "en" || value === "es";
 };
 
@@ -122,7 +124,9 @@ const getModuleFromPath = (pathname: string): AppModule => {
 export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(() => resolvePreferredLocale(pathname));
+  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(() =>
+    resolvePreferredLocale(pathname),
+  );
   const currentModule = getModuleFromPath(pathname);
   const moduleRoot = currentModule === "erp" ? "/erp" : `/${currentModule}`;
   const moduleTitle = currentModule.toUpperCase();
@@ -170,7 +174,8 @@ export const Navbar = () => {
       spanish: "Español (ESP)",
       user: currentLocale === "es" ? "Usuario" : "User",
       currentUser: currentLocale === "es" ? "Usuario actual" : "Current user",
-      notifications: currentLocale === "es" ? "Notificaciones" : "Notifications",
+      notifications:
+        currentLocale === "es" ? "Notificaciones" : "Notifications",
       logOut: currentLocale === "es" ? "Cerrar sesión" : "Log out",
       noRole: currentLocale === "es" ? "SIN_ROL" : "NO_ROLE",
     }),
@@ -189,15 +194,19 @@ export const Navbar = () => {
     setCanSeeConfectionists(Boolean(permissions?.VER_CONFECCIONISTA));
     setCanSeePackers(Boolean(permissions?.VER_EMPAQUE));
     setCanSeeStatusHistory(Boolean(permissions?.VER_HISTORIAL_ESTADO));
-    setCanSeePayments(Boolean(permissions?.VER_PAGO || permissions?.CREAR_PAGO));
+    setCanSeePayments(
+      Boolean(permissions?.VER_PAGO || permissions?.CREAR_PAGO),
+    );
   };
 
   const readCachedPermissions = () => {
     if (typeof window === "undefined") return null;
     try {
       const raw = sessionStorage.getItem(permissionsStorageKey);
+
       if (!raw) return null;
       const parsed = JSON.parse(raw) as Record<string, boolean> | null;
+
       return parsed && typeof parsed === "object" ? parsed : null;
     } catch {
       return null;
@@ -208,7 +217,10 @@ export const Navbar = () => {
     if (typeof window === "undefined") return;
     if (!permissions) return;
     try {
-      sessionStorage.setItem(permissionsStorageKey, JSON.stringify(permissions));
+      sessionStorage.setItem(
+        permissionsStorageKey,
+        JSON.stringify(permissions),
+      );
     } catch {
       // ignore storage errors
     }
@@ -222,15 +234,18 @@ export const Navbar = () => {
       if (typeof window !== "undefined") {
         sessionStorage.removeItem(permissionsStorageKey);
       }
+
       return;
     }
 
     if (currentModule !== "erp") {
       applyPermissions();
+
       return;
     }
 
     const cached = readCachedPermissions();
+
     if (cached) {
       applyPermissions(cached);
     }
@@ -292,11 +307,17 @@ export const Navbar = () => {
     };
 
     window.addEventListener("storage", handleStorage);
-    window.addEventListener("viomar:locale-change", syncLocale as EventListener);
+    window.addEventListener(
+      "viomar:locale-change",
+      syncLocale as EventListener,
+    );
 
     return () => {
       window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("viomar:locale-change", syncLocale as EventListener);
+      window.removeEventListener(
+        "viomar:locale-change",
+        syncLocale as EventListener,
+      );
     };
   }, []);
 
@@ -315,7 +336,9 @@ export const Navbar = () => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(localeStorageKey, nextLocale);
       window.sessionStorage.setItem(localeStorageKey, nextLocale);
-      window.dispatchEvent(new CustomEvent("viomar:locale-change", { detail: nextLocale }));
+      window.dispatchEvent(
+        new CustomEvent("viomar:locale-change", { detail: nextLocale }),
+      );
     }
 
     const localizedPath = pathname === "/" || localePathRegex.test(pathname);
@@ -327,7 +350,12 @@ export const Navbar = () => {
 
   const toErpHref = (href: string) => {
     if (!href.startsWith("/")) return href;
-    if (href === "/" || href.startsWith("/erp") || href.startsWith("/mes") || href.startsWith("/crm")) {
+    if (
+      href === "/" ||
+      href.startsWith("/erp") ||
+      href.startsWith("/mes") ||
+      href.startsWith("/crm")
+    ) {
       return href;
     }
 
@@ -340,7 +368,8 @@ export const Navbar = () => {
       ? "/"
       : pathname;
 
-  const isModuleHrefActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isModuleHrefActive = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   const isActive = (href: string) =>
     pathname === toErpHref(href) ||
@@ -362,20 +391,25 @@ export const Navbar = () => {
         canSeeSuppliers,
       }),
     [
-    currentLocale,
-    canSeeCatalog,
-    canSeeClients,
-    canSeeOrders,
-    canSeePayments,
-    canSeePurchaseOrders,
-    canSeeStatusHistory,
-    canSeeSuppliers,
-    isAuthenticated,
+      currentLocale,
+      canSeeCatalog,
+      canSeeClients,
+      canSeeOrders,
+      canSeePayments,
+      canSeePurchaseOrders,
+      canSeeStatusHistory,
+      canSeeSuppliers,
+      isAuthenticated,
     ],
   );
 
   const otherItems = useMemo(
-    () => buildNavbarOtherItems({ locale: currentLocale, isAuthenticated, isAdmin }),
+    () =>
+      buildNavbarOtherItems({
+        locale: currentLocale,
+        isAuthenticated,
+        isAdmin,
+      }),
     [currentLocale, isAdmin, isAuthenticated],
   );
 
@@ -412,16 +446,19 @@ export const Navbar = () => {
 
   return (
     <HeroUINavbar
-      maxWidth="full"
-      position="sticky"
       className="overflow-x-hidden"
       classNames={{
         wrapper: "px-2 sm:px-4 xl:px-6 gap-1 sm:gap-3 xl:gap-4",
       }}
+      maxWidth="full"
+      position="sticky"
     >
       <NavbarContent className="flex flex-none items-center" justify="start">
         <NavbarItem>
-          <NextLink className="text-sm font-semibold text-default-700" href={currentModule === "erp" ? "/erp/dashboard" : moduleRoot}>
+          <NextLink
+            className="text-sm font-semibold text-default-700"
+            href={currentModule === "erp" ? "/erp/dashboard" : moduleRoot}
+          >
             {moduleTitle}
           </NextLink>
         </NavbarItem>
@@ -432,7 +469,12 @@ export const Navbar = () => {
           <ul className="flex gap-2 items-center">
             {moduleQuickItems.map((item) => (
               <NavbarItem key={`module-${item.href}`}>
-                <Button as={NextLink} href={item.href} size="sm" variant={isModuleHrefActive(item.href) ? "solid" : "light"}>
+                <Button
+                  as={NextLink}
+                  href={item.href}
+                  size="sm"
+                  variant={isModuleHrefActive(item.href) ? "solid" : "light"}
+                >
                   {item.name}
                 </Button>
               </NavbarItem>
@@ -441,7 +483,12 @@ export const Navbar = () => {
         ) : operarioOnly ? (
           <ul className="flex gap-2 items-center">
             <NavbarItem>
-              <Button as={NextLink} href="/erp/dashboard" size="sm" variant={isActive("/dashboard") ? "solid" : "light"}>
+              <Button
+                as={NextLink}
+                href="/erp/dashboard"
+                size="sm"
+                variant={isActive("/dashboard") ? "solid" : "light"}
+              >
                 {uiText.dashboard}
               </Button>
             </NavbarItem>
@@ -450,7 +497,11 @@ export const Navbar = () => {
                 as={NextLink}
                 href="/erp/shipments"
                 size="sm"
-                variant={isActive("/shipments") || isActive("/envios") ? "solid" : "light"}
+                variant={
+                  isActive("/shipments") || isActive("/envios")
+                    ? "solid"
+                    : "light"
+                }
               >
                 {uiText.shipments}
               </Button>
@@ -458,15 +509,19 @@ export const Navbar = () => {
           </ul>
         ) : (
           <ul className="flex items-center gap-1">
-            {visibleSections.map((section) => (
+            {visibleSections.map((section) =>
               section.key === "dashboard" ? (
                 <NavbarItem key={section.key}>
                   <Button
                     as={NextLink}
                     href="/erp/dashboard"
-                    startContent={<section.icon className="text-sm" />}
                     size="sm"
-                    variant={section.items.some((item) => isActive(item.href)) ? "solid" : "light"}
+                    startContent={<section.icon className="text-sm" />}
+                    variant={
+                      section.items.some((item) => isActive(item.href))
+                        ? "solid"
+                        : "light"
+                    }
                   >
                     {section.label}
                   </Button>
@@ -476,59 +531,87 @@ export const Navbar = () => {
                   <Button
                     as={NextLink}
                     href={toErpHref(section.items[0].href)}
-                    startContent={<section.icon className="text-sm" />}
                     size="sm"
-                    variant={isActive(section.items[0].href) ? "solid" : "light"}
+                    startContent={<section.icon className="text-sm" />}
+                    variant={
+                      isActive(section.items[0].href) ? "solid" : "light"
+                    }
                   >
                     {section.label}
                   </Button>
                 </NavbarItem>
               ) : (
                 <NavbarItem key={section.key}>
-                  <Dropdown onOpenChange={(open) => setOpenGroup(open ? section.key : null)}>
+                  <Dropdown
+                    onOpenChange={(open) =>
+                      setOpenGroup(open ? section.key : null)
+                    }
+                  >
                     <DropdownTrigger>
                       <Button
-                        startContent={<section.icon className="text-sm" />}
+                        className={clsx(
+                          openGroup === section.key ? "bg-default-200" : "",
+                        )}
                         endContent={<BsChevronDown className="text-xs" />}
                         size="sm"
+                        startContent={<section.icon className="text-sm" />}
                         variant={
-                          section.items.some((item) => isActive(item.href) && !item.href.startsWith("/under-construction"))
+                          section.items.some(
+                            (item) =>
+                              isActive(item.href) &&
+                              !item.href.startsWith("/under-construction"),
+                          )
                             ? "solid"
                             : "light"
                         }
-                        className={clsx(openGroup === section.key ? "bg-default-200" : "")}
                       >
                         {section.label}
                       </Button>
                     </DropdownTrigger>
                     <DropdownMenu aria-label={section.label}>
                       {section.items.map((item) => (
-                        <DropdownItem key={`${section.key}-${item.href}`} as={NextLink} href={toErpHref(item.href)}>
+                        <DropdownItem
+                          key={`${section.key}-${item.href}`}
+                          as={NextLink}
+                          href={toErpHref(item.href)}
+                        >
                           {item.name}
                         </DropdownItem>
                       ))}
                     </DropdownMenu>
                   </Dropdown>
                 </NavbarItem>
-              )
-            ))}
+              ),
+            )}
 
             <NavbarItem key="others">
-              <Dropdown onOpenChange={(open) => setOpenGroup(open ? "others" : null)}>
+              <Dropdown
+                onOpenChange={(open) => setOpenGroup(open ? "others" : null)}
+              >
                 <DropdownTrigger>
                   <Button
-                    startContent={<OtherMenuIcon className="text-sm" />}
+                    className={clsx(
+                      openGroup === "others" ? "bg-default-200" : "",
+                    )}
                     endContent={<BsChevronDown className="text-xs" />}
                     size="sm"
-                    variant={otherItems.some((item) => isActive(item.href)) ? "solid" : "light"}
-                    className={clsx(openGroup === "others" ? "bg-default-200" : "")}
+                    startContent={<OtherMenuIcon className="text-sm" />}
+                    variant={
+                      otherItems.some((item) => isActive(item.href))
+                        ? "solid"
+                        : "light"
+                    }
                   >
                     {uiText.more}
                   </Button>
                 </DropdownTrigger>
                 <DropdownMenu aria-label={uiText.more}>
                   {otherItems.map((item) => (
-                    <DropdownItem key={`others-${item.href}`} as={NextLink} href={toErpHref(item.href)}>
+                    <DropdownItem
+                      key={`others-${item.href}`}
+                      as={NextLink}
+                      href={toErpHref(item.href)}
+                    >
                       {item.name}
                     </DropdownItem>
                   ))}
@@ -539,7 +622,10 @@ export const Navbar = () => {
         )}
       </NavbarContent>
 
-      <NavbarContent className="hidden xl:flex basis-1/4 pr-2 lg:pr-4" justify="end">
+      <NavbarContent
+        className="hidden xl:flex basis-1/4 pr-2 lg:pr-4"
+        justify="end"
+      >
         <NavbarItem className="hidden xl:flex items-center">
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
@@ -547,9 +633,11 @@ export const Navbar = () => {
                 {localeLabel[currentLocale]}
               </Button>
             </DropdownTrigger>
-              <DropdownMenu
+            <DropdownMenu
               aria-label="Language selector"
-              onAction={(key) => handleLocaleChange(String(key) as SupportedLocale)}
+              onAction={(key) =>
+                handleLocaleChange(String(key) as SupportedLocale)
+              }
             >
               <DropdownItem key="en">{uiText.english}</DropdownItem>
               <DropdownItem key="es">{uiText.spanish}</DropdownItem>
@@ -567,24 +655,54 @@ export const Navbar = () => {
               <DropdownTrigger>
                 <Button className="h-auto px-2" variant="light">
                   <div className="flex items-center gap-1">
-                    <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+                    <Avatar
+                      name={user?.name ?? "VIOMAR"}
+                      size="sm"
+                      src={user?.avatarUrl ?? undefined}
+                    />
                     <BsChevronDown className="text-xs text-default-500" />
                   </div>
                 </Button>
               </DropdownTrigger>
-              <DropdownMenu aria-label="User menu" onAction={(key) => void handleUserMenuAction(String(key))}>
-                <DropdownItem key="user-header" isReadOnly className="opacity-100 cursor-default" textValue={uiText.currentUser}>
+              <DropdownMenu
+                aria-label="User menu"
+                onAction={(key) => void handleUserMenuAction(String(key))}
+              >
+                <DropdownItem
+                  key="user-header"
+                  isReadOnly
+                  className="opacity-100 cursor-default"
+                  textValue={uiText.currentUser}
+                >
                   <div className="flex items-center gap-3 py-1">
-                    <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+                    <Avatar
+                      name={user?.name ?? "VIOMAR"}
+                      size="sm"
+                      src={user?.avatarUrl ?? undefined}
+                    />
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium leading-tight">{user?.name ?? uiText.user}</span>
-                      <span className="text-xs text-default-500 leading-tight">{role ?? uiText.noRole}</span>
+                      <span className="text-sm font-medium leading-tight">
+                        {user?.name ?? uiText.user}
+                      </span>
+                      <span className="text-xs text-default-500 leading-tight">
+                        {role ?? uiText.noRole}
+                      </span>
                     </div>
                   </div>
                 </DropdownItem>
-                {currentModule === "erp" ? <DropdownItem key="notifications">{uiText.notifications}</DropdownItem> : null}
-                {currentModule === "erp" ? <DropdownItem key="options">{uiText.options}</DropdownItem> : null}
-                <DropdownItem key="logout" className="text-danger" color="danger">
+                {currentModule === "erp" ? (
+                  <DropdownItem key="notifications">
+                    {uiText.notifications}
+                  </DropdownItem>
+                ) : null}
+                {currentModule === "erp" ? (
+                  <DropdownItem key="options">{uiText.options}</DropdownItem>
+                ) : null}
+                <DropdownItem
+                  key="logout"
+                  className="text-danger"
+                  color="danger"
+                >
                   {uiText.logOut}
                 </DropdownItem>
               </DropdownMenu>
@@ -593,11 +711,20 @@ export const Navbar = () => {
         ) : null}
       </NavbarContent>
 
-      <NavbarContent className="xl:hidden ml-auto flex-none gap-1 sm:gap-2 min-w-0" justify="end">
+      <NavbarContent
+        className="xl:hidden ml-auto flex-none gap-1 sm:gap-2 min-w-0"
+        justify="end"
+      >
         {isAuthenticated ? (
           <div className="flex items-center gap-2 min-w-0">
-            <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
-            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">{user?.name ?? uiText.user}</div>
+            <Avatar
+              name={user?.name ?? "VIOMAR"}
+              size="sm"
+              src={user?.avatarUrl ?? undefined}
+            />
+            <div className="text-xs font-medium truncate max-w-[120px] hidden sm:block">
+              {user?.name ?? uiText.user}
+            </div>
           </div>
         ) : null}
         <Dropdown placement="bottom-end">
@@ -608,7 +735,9 @@ export const Navbar = () => {
           </DropdownTrigger>
           <DropdownMenu
             aria-label="Mobile language selector"
-            onAction={(key) => handleLocaleChange(String(key) as SupportedLocale)}
+            onAction={(key) =>
+              handleLocaleChange(String(key) as SupportedLocale)
+            }
           >
             <DropdownItem key="en">{uiText.english}</DropdownItem>
             <DropdownItem key="es">{uiText.spanish}</DropdownItem>
@@ -649,14 +778,20 @@ export const Navbar = () => {
           ) : (
             <>
               {visibleSections.map((section) => (
-                <div key={`mobile-${section.key}`} className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2">
+                <div
+                  key={`mobile-${section.key}`}
+                  className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2"
+                >
                   <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-default-500 flex items-center gap-2">
                     <section.icon className="text-sm" />
                     {section.label}
                   </div>
                   <div className="flex flex-col">
                     {section.items.map((item) => (
-                      <NavbarMenuItem key={`mobile-${section.key}-${item.href}`} className="w-full min-w-0">
+                      <NavbarMenuItem
+                        key={`mobile-${section.key}-${item.href}`}
+                        className="w-full min-w-0"
+                      >
                         <Link
                           className="block w-full min-w-0 whitespace-normal break-words"
                           color="foreground"
@@ -678,7 +813,10 @@ export const Navbar = () => {
                 </div>
                 <div className="flex flex-col">
                   {otherItems.map((item) => (
-                    <NavbarMenuItem key={`mobile-others-${item.href}`} className="w-full min-w-0">
+                    <NavbarMenuItem
+                      key={`mobile-others-${item.href}`}
+                      className="w-full min-w-0"
+                    >
                       <Link
                         className="block w-full min-w-0 whitespace-normal break-words"
                         color="foreground"

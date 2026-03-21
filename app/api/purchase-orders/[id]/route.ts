@@ -11,7 +11,10 @@ import {
   stockMovements,
   suppliers,
 } from "@/src/db/schema";
-import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getEmployeeIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { resolveWarehouseIdByLocation, syncInventoryForItem } from "@/src/utils/inventory-sync";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
@@ -28,16 +31,21 @@ const COST_APPROVER_ROLES = new Set([
 function isExpired(value: Date | string | null | undefined) {
   if (!value) return false;
   const date = new Date(String(value));
+
   if (Number.isNaN(date.getTime())) return false;
+
   return date.getTime() < Date.now();
 }
 
-async function addHistory(tx: any, args: {
-  orderId: string;
-  action: string;
-  notes?: string | null;
-  employeeId?: string | null;
-}) {
+async function addHistory(
+  tx: any,
+  args: {
+    orderId: string;
+    action: string;
+    notes?: string | null;
+    employeeId?: string | null;
+  },
+) {
   await tx.insert(purchaseOrderHistory).values({
     purchaseOrderId: args.orderId,
     action: args.action,
@@ -59,11 +67,13 @@ export async function GET(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   try {
     const { id } = await params;
     const orderId = String(id ?? "").trim();
+
     if (!orderId) return new Response("id required", { status: 400 });
 
     const [order] = await db
@@ -135,7 +145,9 @@ export async function GET(
     return Response.json({ ...order, items });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar la orden", { status: 500 });
   }
 }
@@ -155,20 +167,31 @@ export async function PUT(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   try {
     const { id } = await params;
     const orderId = String(id ?? "").trim();
+
     if (!orderId) return new Response("id required", { status: 400 });
 
     const body = (await request.json()) as UpdateBody;
-    const action = String(body?.action ?? "").trim().toUpperCase();
+    const action = String(body?.action ?? "")
+      .trim()
+      .toUpperCase();
     const reason = String(body?.reason ?? "").trim();
     const employeeId = getEmployeeIdFromRequest(request);
     const role = String(getRoleFromRequest(request) ?? "");
 
-    if (!["APROBAR_COSTOS", "RECHAZAR_COSTOS", "INICIAR_RUTA", "FINALIZAR"].includes(action)) {
+    if (
+      ![
+        "APROBAR_COSTOS",
+        "RECHAZAR_COSTOS",
+        "INICIAR_RUTA",
+        "FINALIZAR",
+      ].includes(action)
+    ) {
       return new Response("action inválida", { status: 400 });
     }
 
@@ -196,7 +219,9 @@ export async function PUT(
         }
 
         const approvedAt = new Date();
-        const approvalExpiresAt = new Date(approvedAt.getTime() + 5 * 24 * 60 * 60 * 1000);
+        const approvalExpiresAt = new Date(
+          approvedAt.getTime() + 5 * 24 * 60 * 60 * 1000,
+        );
 
         const [updated] = await tx
           .update(purchaseOrders)
@@ -303,7 +328,11 @@ export async function PUT(
         return { kind: "ok" as const, updated, purchaseOrderCode: order.purchaseOrderCode, action: "INICIAR_RUTA" as const };
       }
 
-      const forbiddenEntry = await requirePermission(request, "REGISTRAR_ENTRADA");
+      const forbiddenEntry = await requirePermission(
+        request,
+        "REGISTRAR_ENTRADA",
+      );
+
       if (forbiddenEntry) {
         return { kind: "forbidden-entry" as const };
       }
@@ -329,7 +358,10 @@ export async function PUT(
         return { kind: "no-items" as const };
       }
 
-      const warehouseId = await resolveWarehouseIdByLocation(tx, "BODEGA_PRINCIPAL");
+      const warehouseId = await resolveWarehouseIdByLocation(
+        tx,
+        "BODEGA_PRINCIPAL",
+      );
 
       if (!warehouseId) {
         return { kind: "warehouse-not-found" as const };
@@ -377,15 +409,30 @@ export async function PUT(
       return { kind: "ok" as const, updated, purchaseOrderCode: order.purchaseOrderCode, action: "FINALIZAR" as const };
     });
 
-    if (result.kind === "not-found") return new Response("Not found", { status: 404 });
-    if (result.kind === "forbidden-costs") return new Response("Solo costos puede aprobar/rechazar", { status: 403 });
-    if (result.kind === "forbidden-entry") return new Response("No tienes permiso para registrar entrada", { status: 403 });
-    if (result.kind === "already") return new Response("Ya finalizada", { status: 409 });
-    if (result.kind === "expired") return new Response("La orden está vencida (vigencia 5 días)", { status: 409 });
-    if (result.kind === "reason-required") return new Response("reason requerido", { status: 400 });
-    if (result.kind === "no-items") return new Response("Sin items", { status: 409 });
-    if (result.kind === "warehouse-not-found") return new Response("Bodega no encontrada", { status: 409 });
-    if (result.kind === "invalid-status") return new Response("Estado inválido", { status: 409 });
+    if (result.kind === "not-found")
+      return new Response("Not found", { status: 404 });
+    if (result.kind === "forbidden-costs")
+      return new Response("Solo costos puede aprobar/rechazar", {
+        status: 403,
+      });
+    if (result.kind === "forbidden-entry")
+      return new Response("No tienes permiso para registrar entrada", {
+        status: 403,
+      });
+    if (result.kind === "already")
+      return new Response("Ya finalizada", { status: 409 });
+    if (result.kind === "expired")
+      return new Response("La orden está vencida (vigencia 5 días)", {
+        status: 409,
+      });
+    if (result.kind === "reason-required")
+      return new Response("reason requerido", { status: 400 });
+    if (result.kind === "no-items")
+      return new Response("Sin items", { status: 409 });
+    if (result.kind === "warehouse-not-found")
+      return new Response("Bodega no encontrada", { status: 409 });
+    if (result.kind === "invalid-status")
+      return new Response("Estado inválido", { status: 409 });
 
     const poCode = result.purchaseOrderCode ?? orderId;
     const poHref = `/erp/compras/${orderId}`;
@@ -419,7 +466,9 @@ export async function PUT(
     return Response.json(result.updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo finalizar la orden", { status: 500 });
   }
 }

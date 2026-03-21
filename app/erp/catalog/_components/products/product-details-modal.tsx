@@ -12,9 +12,18 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 
-function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+function formatCurrency(
+  value: string | null | undefined,
+  currency: "COP" | "USD",
+) {
   const amount = Number(value ?? 0);
-  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+
+  if (
+    !Number.isFinite(amount) ||
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return "-";
   }
 
@@ -38,14 +47,20 @@ export function ProductDetailsModal({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} scrollBehavior="inside">
+    <Modal isOpen={isOpen} scrollBehavior="inside" onOpenChange={onOpenChange}>
       <ModalContent className="max-w-5xl">
         <ModalHeader>Detalle del producto</ModalHeader>
         <ModalBody>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="rounded-large border border-default-200 p-3 space-y-3 h-fit">
-              <h4 className="text-sm font-semibold text-default-700">Datos generales</h4>
-              <Input isReadOnly label="Código" value={product?.productCode ?? "-"} />
+              <h4 className="text-sm font-semibold text-default-700">
+                Datos generales
+              </h4>
+              <Input
+                isReadOnly
+                label="Código"
+                value={product?.productCode ?? "-"}
+              />
               <Input isReadOnly label="Nombre" value={product?.name ?? "-"} />
               <Input
                 isReadOnly
@@ -61,15 +76,25 @@ export function ProductDetailsModal({
             </section>
 
             <section className="rounded-large border border-default-200 p-3 space-y-3">
-              <h4 className="text-sm font-semibold text-default-700">Precios y vigencia</h4>
+              <h4 className="text-sm font-semibold text-default-700">
+                Precios y vigencia
+              </h4>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <Input isReadOnly label="Base (1-499)" value={formatCurrency(product?.priceCopR1, "COP")} />
+                <Input
+                  isReadOnly
+                  label="Base (1-499)"
+                  value={formatCurrency(product?.priceCopR1, "COP")}
+                />
                 <Input
                   isReadOnly
                   label="+499 (500-1000)"
                   value={formatCurrency(product?.priceCopR2, "COP")}
                 />
-                <Input isReadOnly label="+1000 (1001+)" value={formatCurrency(product?.priceCopR3, "COP")} />
+                <Input
+                  isReadOnly
+                  label="+1000 (1001+)"
+                  value={formatCurrency(product?.priceCopR3, "COP")}
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -91,7 +116,11 @@ export function ProductDetailsModal({
                   label="COP internacional"
                   value={formatCurrency(product?.priceCopInternational, "COP")}
                 />
-                <Input isReadOnly label="USD" value={formatCurrency(product?.priceUSD, "USD")} />
+                <Input
+                  isReadOnly
+                  label="USD"
+                  value={formatCurrency(product?.priceUSD, "USD")}
+                />
               </div>
             </section>
           </div>

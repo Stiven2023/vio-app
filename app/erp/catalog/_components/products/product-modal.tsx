@@ -19,6 +19,7 @@ import { BsBoxSeam, BsCashCoin, BsClockHistory, BsTag } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createProductSchema } from "../../_lib/schemas";
+
 import { getTRMColombia, applyTRMConversion } from "@/src/utils/trm";
 
 type FormState = {
@@ -98,6 +99,7 @@ export function ProductModal({
             priceCopInternational: "",
             priceUSD: "",
           }));
+
           return;
         }
 
@@ -123,7 +125,7 @@ export function ProductModal({
         }
       }, 400);
     },
-    [toast]
+    [toast],
   );
 
   useEffect(() => {
@@ -136,17 +138,26 @@ export function ProductModal({
       description: product?.description ?? "",
       categoryId: product?.categoryId ?? "",
       priceCopBase: product?.priceCopBase ? String(product.priceCopBase) : "",
-      priceCopInternational: product?.priceCopInternational ? String(product.priceCopInternational) : "",
+      priceCopInternational: product?.priceCopInternational
+        ? String(product.priceCopInternational)
+        : "",
       priceCopR1: product?.priceCopR1 ? String(product.priceCopR1) : "",
       priceCopR2: product?.priceCopR2 ? String(product.priceCopR2) : "",
       priceCopR3: product?.priceCopR3 ? String(product.priceCopR3) : "",
-      priceMayorista: product?.priceMayorista ? String(product.priceMayorista) : "",
+      priceMayorista: product?.priceMayorista
+        ? String(product.priceMayorista)
+        : "",
       priceColanta: product?.priceColanta ? String(product.priceColanta) : "",
       priceUSD: product?.priceUSD ? String(product.priceUSD) : "",
-      startDate: product?.startDate ? String(product.startDate).slice(0, 10) : "",
-      endDate: product?.endDate ? String(product.endDate).slice(0, 10) : fixedEndDate,
+      startDate: product?.startDate
+        ? String(product.startDate).slice(0, 10)
+        : "",
+      endDate: product?.endDate
+        ? String(product.endDate).slice(0, 10)
+        : fixedEndDate,
       isActive: Boolean(product?.isActive ?? true),
     };
+
     setForm(newForm);
 
     return () => {
@@ -171,7 +182,9 @@ export function ProductModal({
       description: form.description.trim() ? form.description : undefined,
       categoryId: form.categoryId ? form.categoryId : undefined,
       priceCopBase: form.priceCopBase.trim() ? form.priceCopBase : undefined,
-      priceCopInternational: form.priceCopInternational.trim() ? form.priceCopInternational : undefined,
+      priceCopInternational: form.priceCopInternational.trim()
+        ? form.priceCopInternational
+        : undefined,
       priceCopR1: form.priceCopR1,
       priceCopR2: form.priceCopR2,
       priceCopR3: form.priceCopR3,
@@ -206,12 +219,16 @@ export function ProductModal({
 
       try {
         const trm = await getTRMColombia();
+
         trmUsed = trm;
 
         const baseR1 = Number(parsed.data.priceCopR1 ?? "");
 
         if (!Number.isFinite(baseR1) || baseR1 <= 0) {
-          toast.error("Precio base (1-499) requerido para calcular internacional.");
+          toast.error(
+            "Precio base (1-499) requerido para calcular internacional.",
+          );
+
           return;
         }
 
@@ -227,6 +244,7 @@ export function ProductModal({
       } catch (trmError) {
         console.error("TRM conversion error:", trmError);
         toast.error("Error al obtener TRM. Intenta nuevamente.");
+
         return;
       }
 
@@ -238,13 +256,21 @@ export function ProductModal({
         priceCopInternational: finalPriceCopInternational
           ? Number(finalPriceCopInternational)
           : null,
-        priceCopR1: parsed.data.priceCopR1 ? Number(parsed.data.priceCopR1) : null,
-        priceCopR2: parsed.data.priceCopR2 ? Number(parsed.data.priceCopR2) : null,
-        priceCopR3: parsed.data.priceCopR3 ? Number(parsed.data.priceCopR3) : null,
+        priceCopR1: parsed.data.priceCopR1
+          ? Number(parsed.data.priceCopR1)
+          : null,
+        priceCopR2: parsed.data.priceCopR2
+          ? Number(parsed.data.priceCopR2)
+          : null,
+        priceCopR3: parsed.data.priceCopR3
+          ? Number(parsed.data.priceCopR3)
+          : null,
         priceMayorista: parsed.data.priceMayorista
           ? Number(parsed.data.priceMayorista)
           : null,
-        priceColanta: parsed.data.priceColanta ? Number(parsed.data.priceColanta) : null,
+        priceColanta: parsed.data.priceColanta
+          ? Number(parsed.data.priceColanta)
+          : null,
         priceUSD: finalPriceUSD ? Number(finalPriceUSD) : null,
         trmUsed: trmUsed,
         startDate: parsed.data.startDate ? parsed.data.startDate : null,
@@ -269,7 +295,7 @@ export function ProductModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} scrollBehavior="inside">
+    <Modal isOpen={isOpen} scrollBehavior="inside" onOpenChange={onOpenChange}>
       <ModalContent className="max-w-6xl">
         <ModalHeader>
           {product ? "Editar producto" : "Crear producto"}
@@ -277,7 +303,9 @@ export function ProductModal({
         <ModalBody>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="rounded-large border border-default-200 p-3 space-y-3 h-fit">
-              <h4 className="text-sm font-semibold text-default-700">Datos del producto</h4>
+              <h4 className="text-sm font-semibold text-default-700">
+                Datos del producto
+              </h4>
               <Input
                 isReadOnly
                 label="Código de producto"
@@ -299,12 +327,14 @@ export function ProductModal({
                 label="Descripción"
                 startContent={<BsTag className="text-default-400" />}
                 value={form.description}
-                onValueChange={(v) => setForm((s) => ({ ...s, description: v }))}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, description: v }))
+                }
               />
 
               <Select
-                isDisabled={!canPickCategory}
                 errorMessage={errors.categoryId}
+                isDisabled={!canPickCategory}
                 isInvalid={Boolean(errors.categoryId)}
                 label="Categoría"
                 selectedKeys={form.categoryId ? [form.categoryId] : []}
@@ -321,7 +351,9 @@ export function ProductModal({
             </section>
 
             <section className="rounded-large border border-default-200 p-3 space-y-3">
-              <h4 className="text-sm font-semibold text-default-700">Precios y vigencia</h4>
+              <h4 className="text-sm font-semibold text-default-700">
+                Precios y vigencia
+              </h4>
               <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-3">
                 <Input
                   errorMessage={errors.priceCopR1}
@@ -340,7 +372,9 @@ export function ProductModal({
                   label="Precio +499 (500-1000)"
                   startContent={<BsCashCoin className="text-default-400" />}
                   value={form.priceCopR2}
-                  onValueChange={(v) => setForm((s) => ({ ...s, priceCopR2: v }))}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, priceCopR2: v }))
+                  }
                 />
                 <Input
                   errorMessage={errors.priceCopR3}
@@ -348,7 +382,9 @@ export function ProductModal({
                   label="Precio +1000 (1001+)"
                   startContent={<BsCashCoin className="text-default-400" />}
                   value={form.priceCopR3}
-                  onValueChange={(v) => setForm((s) => ({ ...s, priceCopR3: v }))}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, priceCopR3: v }))
+                  }
                 />
               </div>
 
@@ -369,32 +405,36 @@ export function ProductModal({
                   label="Precio fijo Colanta"
                   startContent={<BsCashCoin className="text-default-400" />}
                   value={form.priceColanta}
-                  onValueChange={(v) => setForm((s) => ({ ...s, priceColanta: v }))}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, priceColanta: v }))
+                  }
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2">
                 <Input
+                  isReadOnly
                   label="Precio COP internacional"
                   startContent={<BsCashCoin className="text-default-400" />}
                   value={form.priceCopInternational}
-                  isReadOnly
                 />
                 <Input
+                  isReadOnly
                   label="Precio USD"
                   startContent={<BsCashCoin className="text-default-400" />}
                   value={form.priceUSD}
-                  isReadOnly
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Input
                   label="Inicio vigencia"
-                  type="date"
                   startContent={<BsClockHistory className="text-default-400" />}
+                  type="date"
                   value={form.startDate}
-                  onValueChange={(v) => setForm((s) => ({ ...s, startDate: v }))}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, startDate: v }))
+                  }
                 />
                 <Input
                   isReadOnly
@@ -422,11 +462,7 @@ export function ProductModal({
           >
             Cancelar
           </Button>
-          <Button
-            color="primary"
-            isLoading={submitting}
-            onPress={submit}
-          >
+          <Button color="primary" isLoading={submitting} onPress={submit}>
             {product ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

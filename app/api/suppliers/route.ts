@@ -1,3 +1,5 @@
+import type { SupplierFormPrefill } from "./supplier-modal.types";
+
 import { eq, sql, desc } from "drizzle-orm";
 
 import { db } from "@/src/db";
@@ -7,7 +9,6 @@ import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
-import type { SupplierFormPrefill } from "./supplier-modal.types";
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -74,7 +75,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar proveedores", { status: 500 });
   }
 }
@@ -94,6 +97,7 @@ async function generateSupplierCode(): Promise<string> {
   const lastCode = lastSupplier[0].supplierCode || "PROV1000";
   const numberPart = parseInt(lastCode.replace("PROV", ""));
   const nextNumber = numberPart + 1;
+
   return `PROV${String(nextNumber).padStart(4, "0")}`;
 }
 
@@ -165,6 +169,7 @@ export async function POST(request: Request) {
 
     if (sourceClient.length > 0) {
       const client = sourceClient[0];
+
       sourceClientDocuments = {
         identityDocumentUrl: client.identityDocumentUrl,
         rutDocumentUrl: client.rutDocumentUrl,
@@ -180,20 +185,25 @@ export async function POST(request: Request) {
   const mergedPayload = {
     ...body,
     identityDocumentUrl:
-      (body as any).identityDocumentUrl || sourceClientDocuments.identityDocumentUrl,
-    rutDocumentUrl: (body as any).rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+      (body as any).identityDocumentUrl ||
+      sourceClientDocuments.identityDocumentUrl,
+    rutDocumentUrl:
+      (body as any).rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
     commerceChamberDocumentUrl:
       (body as any).commerceChamberDocumentUrl ||
       sourceClientDocuments.commerceChamberDocumentUrl,
     passportDocumentUrl:
-      (body as any).passportDocumentUrl || sourceClientDocuments.passportDocumentUrl,
+      (body as any).passportDocumentUrl ||
+      sourceClientDocuments.passportDocumentUrl,
     taxCertificateDocumentUrl:
       (body as any).taxCertificateDocumentUrl ||
       sourceClientDocuments.taxCertificateDocumentUrl,
     companyIdDocumentUrl:
-      (body as any).companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+      (body as any).companyIdDocumentUrl ||
+      sourceClientDocuments.companyIdDocumentUrl,
     bankCertificateUrl:
-      (body as any).bankCertificateUrl || sourceClientDocuments.bankCertificateUrl,
+      (body as any).bankCertificateUrl ||
+      sourceClientDocuments.bankCertificateUrl,
   };
 
   const created = await db
@@ -297,8 +307,7 @@ export async function PUT(request: Request) {
   if (data.contactName !== undefined)
     patch.contactName = String(data.contactName).trim();
   if (data.email !== undefined) patch.email = String(data.email).trim();
-  if (data.address !== undefined)
-    patch.address = String(data.address).trim();
+  if (data.address !== undefined) patch.address = String(data.address).trim();
 
   // Optional fields
   if (data.dv !== undefined) patch.dv = data.dv ? String(data.dv).trim() : null;
@@ -403,9 +412,11 @@ export async function PUT(request: Request) {
   ];
 
   const changedFields: string[] = [];
+
   for (const field of criticalFields) {
     const key = field as keyof typeof supplier;
-    const patchValue = patch[key as keyof Partial<typeof suppliers.$inferInsert>];
+    const patchValue =
+      patch[key as keyof Partial<typeof suppliers.$inferInsert>];
 
     if (patchValue !== undefined && supplier[key] !== patchValue) {
       changedFields.push(field);
@@ -467,4 +478,3 @@ export async function DELETE(request: Request) {
 
   return Response.json(deleted);
 }
-

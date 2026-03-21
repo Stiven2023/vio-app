@@ -1,13 +1,5 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Input } from "@heroui/input";
-import { Select, SelectItem } from "@heroui/select";
-import { Button } from "@heroui/button";
-import { Card, CardBody, CardHeader } from "@heroui/card";
-
-import { apiJson } from "@/app/erp/catalog/_lib/api";
-
 import type {
   Addition,
   AdditionOption,
@@ -15,6 +7,14 @@ import type {
   Currency,
   QuoteItem,
 } from "../_lib/types";
+
+import { useEffect, useMemo, useState } from "react";
+import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
+import { Button } from "@heroui/button";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+
+import { apiJson } from "@/app/erp/catalog/_lib/api";
 
 type QuotationsAdditionsPanelProps = {
   row: QuoteItem;
@@ -37,8 +37,11 @@ export function QuotationsAdditionsPanel({
   onAddAddition,
   asMoney,
 }: QuotationsAdditionsPanelProps) {
-  const isAuthorizedManual = currency === "COP" && clientPriceType === "AUTORIZADO";
-  const isConditional = ["COMPLETACION", "REFERENTE", "REPOSICION"].includes(row.orderType);
+  const isAuthorizedManual =
+    currency === "COP" && clientPriceType === "AUTORIZADO";
+  const isConditional = ["COMPLETACION", "REFERENTE", "REPOSICION"].includes(
+    row.orderType,
+  );
 
   const [orderSearch, setOrderSearch] = useState(row.referenceOrderCode ?? "");
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -88,21 +91,26 @@ export function QuotationsAdditionsPanel({
   useEffect(() => {
     if (!isConditional) return;
     const code = orderSearch.trim();
+
     if (!code) {
       setOrderOptions([]);
       setSelectedOrderId("");
       setDesignOptions([]);
+
       return;
     }
 
     const timer = setTimeout(() => {
       setOrdersLoading(true);
-      apiJson<{ orders: Array<any> }>(`/api/quotations/references?q=${encodeURIComponent(code)}`)
+      apiJson<{ orders: Array<any> }>(
+        `/api/quotations/references?q=${encodeURIComponent(code)}`,
+      )
         .then((res) => {
           setOrderOptions(res.orders ?? []);
           const exact = (res.orders ?? []).find(
             (order) => order.orderCode === code,
           );
+
           if (exact) setSelectedOrderId(exact.id);
         })
         .catch(() => {
@@ -119,11 +127,14 @@ export function QuotationsAdditionsPanel({
   useEffect(() => {
     if (!isConditional || !selectedOrderId) {
       setDesignOptions([]);
+
       return;
     }
 
     setDesignsLoading(true);
-    apiJson<{ designs: Array<any> }>(`/api/quotations/references?orderId=${encodeURIComponent(selectedOrderId)}`)
+    apiJson<{ designs: Array<any> }>(
+      `/api/quotations/references?orderId=${encodeURIComponent(selectedOrderId)}`,
+    )
       .then((res) => {
         setDesignOptions(res.designs ?? []);
       })
@@ -136,19 +147,22 @@ export function QuotationsAdditionsPanel({
   }, [isConditional, selectedOrderId]);
 
   return (
-    <Card radius="md" shadow="none" className="border border-default-200 mt-2">
+    <Card className="border border-default-200 mt-2" radius="md" shadow="none">
       <CardHeader className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Additions for {row.product}</span>
+        <span className="text-sm font-semibold">
+          Additions for {row.product}
+        </span>
         <Button
+          color="primary"
           size="sm"
           variant="light"
-          color="primary"
           onPress={() => {
             const newAddition: Addition = {
               id: "",
               quantity: row.quantity,
               unitPrice: 0,
             };
+
             onAddAddition(row.id, newAddition);
           }}
         >
@@ -161,23 +175,26 @@ export function QuotationsAdditionsPanel({
           <div className="space-y-3 rounded-lg border border-default-200 bg-default-50 dark:bg-default-100/10 p-3">
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <Input
-                size="sm"
                 label="Search order by code"
                 placeholder="E.g: ORD-001"
+                size="sm"
                 value={orderSearch}
                 variant="bordered"
                 onValueChange={setOrderSearch}
               />
 
               <Select
-                size="sm"
-                label="Reference order"
-                variant="bordered"
                 isLoading={ordersLoading}
+                label="Reference order"
                 selectedKeys={selectedOrderId ? [selectedOrderId] : []}
+                size="sm"
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const first = String(Array.from(keys)[0] ?? "");
-                  const selected = orderOptions.find((order) => order.id === first);
+                  const selected = orderOptions.find(
+                    (order) => order.id === first,
+                  );
+
                   setSelectedOrderId(first);
                   onUpdateItem(row.id, {
                     referenceOrderCode: selected?.orderCode ?? "",
@@ -186,62 +203,102 @@ export function QuotationsAdditionsPanel({
                 }}
               >
                 {orderOptions.map((order) => (
-                  <SelectItem key={order.id}>{`${order.orderCode} · ${order.clientName ?? "No client"}`}</SelectItem>
+                  <SelectItem
+                    key={order.id}
+                  >{`${order.orderCode} · ${order.clientName ?? "No client"}`}</SelectItem>
                 ))}
               </Select>
 
               <Select
-                size="sm"
-                label="Reference design"
-                variant="bordered"
-                isLoading={designsLoading}
                 isDisabled={!selectedOrderId}
+                isLoading={designsLoading}
+                label="Reference design"
                 selectedKeys={row.referenceDesign ? [row.referenceDesign] : []}
+                size="sm"
+                variant="bordered"
                 onSelectionChange={(keys) => {
                   const first = String(Array.from(keys)[0] ?? "");
+
                   onUpdateItem(row.id, { referenceDesign: first });
                 }}
               >
                 {designOptions.map((design) => (
-                  <SelectItem key={design.id}>{`${design.designNumber} · ${design.designName}`}</SelectItem>
+                  <SelectItem
+                    key={design.id}
+                  >{`${design.designNumber} · ${design.designName}`}</SelectItem>
                 ))}
               </Select>
             </div>
 
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <div className="rounded-md border border-default-200 bg-content1 p-3">
-                <p className="text-xs font-semibold text-default-600">Order preview</p>
+                <p className="text-xs font-semibold text-default-600">
+                  Order preview
+                </p>
                 {selectedOrder ? (
                   <div className="mt-1 space-y-1 text-xs text-default-700">
-                    <p><span className="font-medium">Code:</span> {selectedOrder.orderCode}</p>
-                    <p><span className="font-medium">Client:</span> {selectedOrder.clientName ?? "-"}</p>
-                    <p><span className="font-medium">Type:</span> {selectedOrder.kind ?? "-"}</p>
-                    <p><span className="font-medium">Status:</span> {selectedOrder.status ?? "-"}</p>
-                    <p><span className="font-medium">Designs:</span> {selectedOrder.itemCount ?? 0}</p>
+                    <p>
+                      <span className="font-medium">Code:</span>{" "}
+                      {selectedOrder.orderCode}
+                    </p>
+                    <p>
+                      <span className="font-medium">Client:</span>{" "}
+                      {selectedOrder.clientName ?? "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Type:</span>{" "}
+                      {selectedOrder.kind ?? "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Status:</span>{" "}
+                      {selectedOrder.status ?? "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Designs:</span>{" "}
+                      {selectedOrder.itemCount ?? 0}
+                    </p>
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-default-500">Select an order to see its summary.</p>
+                  <p className="mt-1 text-xs text-default-500">
+                    Select an order to see its summary.
+                  </p>
                 )}
               </div>
 
               <div className="rounded-md border border-default-200 bg-content1 p-3">
-                <p className="text-xs font-semibold text-default-600">Design preview</p>
+                <p className="text-xs font-semibold text-default-600">
+                  Design preview
+                </p>
                 {selectedDesign ? (
                   <div className="mt-1 space-y-2 text-xs text-default-700">
-                    <p><span className="font-medium">Number:</span> {selectedDesign.designNumber}</p>
-                    <p><span className="font-medium">Name:</span> {selectedDesign.designName}</p>
-                    <p><span className="font-medium">Status:</span> {selectedDesign.status ?? "-"}</p>
-                    <p><span className="font-medium">Quantity:</span> {selectedDesign.quantity ?? 0}</p>
+                    <p>
+                      <span className="font-medium">Number:</span>{" "}
+                      {selectedDesign.designNumber}
+                    </p>
+                    <p>
+                      <span className="font-medium">Name:</span>{" "}
+                      {selectedDesign.designName}
+                    </p>
+                    <p>
+                      <span className="font-medium">Status:</span>{" "}
+                      {selectedDesign.status ?? "-"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Quantity:</span>{" "}
+                      {selectedDesign.quantity ?? 0}
+                    </p>
                     {selectedDesign.previewImageUrl ? (
                       <img
-                        src={selectedDesign.previewImageUrl}
                         alt={`Design ${selectedDesign.designNumber}`}
                         className="h-28 w-full rounded border border-default-200 object-cover"
+                        src={selectedDesign.previewImageUrl}
                       />
                     ) : null}
                   </div>
                 ) : (
-                  <p className="mt-1 text-xs text-default-500">Select a design to see preview.</p>
+                  <p className="mt-1 text-xs text-default-500">
+                    Select a design to see preview.
+                  </p>
                 )}
               </div>
             </div>
@@ -250,27 +307,32 @@ export function QuotationsAdditionsPanel({
 
         {/* Additions list */}
         {row.additions.length === 0 ? (
-          <p className="text-xs text-default-500">No additions for this product</p>
+          <p className="text-xs text-default-500">
+            No additions for this product
+          </p>
         ) : (
           <div className="space-y-2">
             {row.additions.map((add, addIndex) => {
               const addTotal = row.quantity * add.unitPrice;
+
               return (
                 <div
                   key={`${row.id}-${addIndex}`}
                   className="flex gap-2 items-center bg-content1 p-2 rounded border border-default-200"
                 >
                   <Select
-                    size="sm"
-                    placeholder="Select product"
-                    label="Addition"
-                    variant="flat"
                     className="flex-1 min-w-64"
                     isLoading={loadingAdditions}
+                    label="Addition"
+                    placeholder="Select product"
                     selectedKeys={add.id ? [add.id] : []}
+                    size="sm"
+                    variant="flat"
                     onSelectionChange={(keys) => {
                       const first = String(Array.from(keys)[0] ?? "");
-                      const selectedAddition = additions.find((p) => p.id === first);
+                      const selectedAddition = additions.find(
+                        (p) => p.id === first,
+                      );
                       const updated = row.additions.map((a, index) =>
                         index === addIndex
                           ? {
@@ -281,8 +343,8 @@ export function QuotationsAdditionsPanel({
                                 selectedAddition && !isAuthorizedManual
                                   ? Number(
                                       currency === "USD"
-                                        ? selectedAddition.priceUSD ?? 0
-                                        : selectedAddition.priceCopBase ?? 0,
+                                        ? (selectedAddition.priceUSD ?? 0)
+                                        : (selectedAddition.priceCopBase ?? 0),
                                     )
                                   : isAuthorizedManual
                                     ? 0
@@ -290,6 +352,7 @@ export function QuotationsAdditionsPanel({
                             }
                           : a,
                       );
+
                       onUpdateItem(row.id, { additions: updated });
                     }}
                   >
@@ -300,22 +363,22 @@ export function QuotationsAdditionsPanel({
                     ))}
                   </Select>
                   <Input
+                    isReadOnly
+                    classNames={{ input: "w-16 text-center" }}
+                    label="Qty"
                     size="sm"
                     type="number"
-                    label="Qty"
                     value={String(row.quantity)}
                     variant="flat"
-                    classNames={{ input: "w-16 text-center" }}
-                    isReadOnly
                   />
                   <Input
-                    size="sm"
-                    type="number"
-                    placeholder={`Value (${currency})`}
-                    value={String(add.unitPrice)}
-                    variant="flat"
                     classNames={{ input: "w-20 text-center" }}
                     isReadOnly={!isAuthorizedManual}
+                    placeholder={`Value (${currency})`}
+                    size="sm"
+                    type="number"
+                    value={String(add.unitPrice)}
+                    variant="flat"
                     onValueChange={(v) => {
                       if (!isAuthorizedManual) return;
                       const updated = row.additions.map((a, index) =>
@@ -327,16 +390,20 @@ export function QuotationsAdditionsPanel({
                             }
                           : a,
                       );
+
                       onUpdateItem(row.id, { additions: updated });
                     }}
                   />
                   <span className="text-xs font-semibold w-24 text-right">{`${asMoney(addTotal)} ${currency}`}</span>
                   <Button
+                    color="danger"
                     size="sm"
                     variant="light"
-                    color="danger"
                     onPress={() => {
-                      const updated = row.additions.filter((_, index) => index !== addIndex);
+                      const updated = row.additions.filter(
+                        (_, index) => index !== addIndex,
+                      );
+
                       onUpdateItem(row.id, { additions: updated });
                     }}
                   >

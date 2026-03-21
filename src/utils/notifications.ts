@@ -1,7 +1,12 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { notifications, permissions, rolePermissions, roles } from "@/src/db/schema";
+import {
+  notifications,
+  permissions,
+  rolePermissions,
+  roles,
+} from "@/src/db/schema";
 
 type NotificationPayload = {
   title: string;

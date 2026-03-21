@@ -1,7 +1,9 @@
+import type { Currency, ProductOption } from "../_lib/types";
+
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
-import type { Currency, ProductOption } from "../_lib/types";
 
 export function useProductsData(currency: Currency) {
   const [products, setProducts] = useState<ProductOption[]>([]);

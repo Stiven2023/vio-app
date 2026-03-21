@@ -1,5 +1,13 @@
 "use client";
 
+import type {
+  BankOption,
+  InventoryItemOption,
+  PurchaseOrderDetail,
+  SupplierOption,
+  VariantOption,
+} from "../_lib/types";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -10,13 +18,6 @@ import { Select, SelectItem } from "@heroui/select";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
 import { createPurchaseOrderSchema } from "../_lib/schemas";
-import type {
-  BankOption,
-  InventoryItemOption,
-  PurchaseOrderDetail,
-  SupplierOption,
-  VariantOption,
-} from "../_lib/types";
 
 type OptionsResponse = {
   suppliers: SupplierOption[];
@@ -42,6 +43,7 @@ type ModalState = {
 
 function parseNumeric(value: string) {
   const parsed = Number(String(value ?? "").replace(/,/g, "."));
+
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
@@ -58,6 +60,7 @@ function variantLabel(v: VariantOption): string {
   if (v.color && v.size) return `${v.color} / ${v.size}`;
   if (v.color) return v.color;
   if (v.size) return v.size;
+
   return v.sku;
 }
 
@@ -85,7 +88,9 @@ export function PurchaseOrderPageForm({
   const [error, setError] = useState<string | null>(null);
 
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
-  const [inventoryItems, setInventoryItems] = useState<InventoryItemOption[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItemOption[]>(
+    [],
+  );
   const [banks, setBanks] = useState<BankOption[]>([]);
 
   const [supplierId, setSupplierId] = useState("");
@@ -104,14 +109,19 @@ export function PurchaseOrderPageForm({
         setLoading(true);
         const [options, detail] = await Promise.all([
           apiJson<OptionsResponse>("/api/purchase-orders/options"),
-          isEdit ? apiJson<PurchaseOrderDetail>(`/api/purchase-orders/${orderId}`) : Promise.resolve(null),
+          isEdit
+            ? apiJson<PurchaseOrderDetail>(`/api/purchase-orders/${orderId}`)
+            : Promise.resolve(null),
         ]);
 
         if (!active) return;
 
         setSuppliers(options.suppliers ?? []);
         setInventoryItems(options.inventoryItems ?? []);
-        const bankRows = Array.isArray(options.banks) ? options.banks.filter((b) => b.isActive !== false) : [];
+        const bankRows = Array.isArray(options.banks)
+          ? options.banks.filter((b) => b.isActive !== false)
+          : [];
+
         setBanks(bankRows);
 
         if (detail) {
@@ -177,9 +187,12 @@ export function PurchaseOrderPageForm({
   );
 
   // Modal computed values
-  const modalItem = modal.inventoryItemId ? itemById.get(modal.inventoryItemId) ?? null : null;
+  const modalItem = modal.inventoryItemId
+    ? (itemById.get(modal.inventoryItemId) ?? null)
+    : null;
   const modalVariants = modalItem?.variants ?? [];
-  const modalSubtotal = parseNumeric(modal.quantity) * parseNumeric(modal.unitPrice);
+  const modalSubtotal =
+    parseNumeric(modal.quantity) * parseNumeric(modal.unitPrice);
 
   const openAddModal = () => {
     setModal({ ...EMPTY_MODAL, open: true });
@@ -187,6 +200,7 @@ export function PurchaseOrderPageForm({
 
   const openEditModal = (index: number) => {
     const row = items[index];
+
     if (!row) return;
     setModal({
       open: true,
@@ -203,11 +217,21 @@ export function PurchaseOrderPageForm({
   };
 
   const confirmModal = () => {
-    const { inventoryItemId, variantId, quantity, unitPrice, editingIndex } = modal;
+    const { inventoryItemId, variantId, quantity, unitPrice, editingIndex } =
+      modal;
+
     if (!inventoryItemId || !quantity || !unitPrice) return;
-    const newItem: DraftItem = { inventoryItemId, variantId, quantity, unitPrice };
+    const newItem: DraftItem = {
+      inventoryItemId,
+      variantId,
+      quantity,
+      unitPrice,
+    };
+
     if (editingIndex !== null) {
-      setItems((prev) => prev.map((item, idx) => (idx === editingIndex ? newItem : item)));
+      setItems((prev) =>
+        prev.map((item, idx) => (idx === editingIndex ? newItem : item)),
+      );
     } else {
       setItems((prev) => [...prev, newItem]);
     }
@@ -215,7 +239,8 @@ export function PurchaseOrderPageForm({
   };
 
   const handleItemSelectInModal = (value: string) => {
-    const selected = value ? itemById.get(value) ?? null : null;
+    const selected = value ? (itemById.get(value) ?? null) : null;
+
     setModal((prev) => ({
       ...prev,
       inventoryItemId: value,
@@ -242,11 +267,13 @@ export function PurchaseOrderPageForm({
 
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Invalid data");
+
       return;
     }
 
     if (supplierId && !canAssociateSupplier) {
       setError("You do not have permission to associate a supplier");
+
       return;
     }
 
@@ -283,12 +310,15 @@ export function PurchaseOrderPageForm({
       <div className="rounded-3xl border border-teal-200 bg-gradient-to-br from-teal-50 via-content1 to-teal-50/30 p-5 shadow-sm dark:border-teal-800/40 dark:from-teal-950/30 dark:via-content1 dark:to-teal-900/10">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-teal-700 dark:text-teal-400">Viomar</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-teal-700 dark:text-teal-400">
+              Viomar
+            </p>
             <h1 className="mt-2 text-2xl font-semibold text-default-900">
               {isEdit ? "Edit purchase order" : "New purchase order"}
             </h1>
             <p className="mt-1 text-sm text-default-600">
-              Supplier flow, master bank and cost lines for purchase coordination.
+              Supplier flow, master bank and cost lines for purchase
+              coordination.
             </p>
           </div>
           <div className="rounded-xl border border-teal-200 bg-content2 px-3 py-2 text-xs text-default-700 dark:border-teal-800/40">
@@ -303,13 +333,16 @@ export function PurchaseOrderPageForm({
           <Select
             isDisabled={submitting || loading || !canAssociateSupplier}
             isLoading={loading}
+            items={supplierOptions}
             label="Supplier"
             selectedKeys={supplierId ? new Set([supplierId]) : new Set([])}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
-              setSupplierId(first === "__none" ? "" : first ? String(first) : "");
+
+              setSupplierId(
+                first === "__none" ? "" : first ? String(first) : "",
+              );
             }}
-            items={supplierOptions}
           >
             {(supplier) => (
               <SelectItem key={supplier.id} textValue={supplier.name}>
@@ -322,44 +355,52 @@ export function PurchaseOrderPageForm({
             <Select
               isDisabled={submitting || loading}
               isLoading={loading}
+              items={banks}
               label="Bank"
               selectedKeys={bankId ? new Set([bankId]) : new Set([])}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
                 const value = first ? String(first) : "";
                 const bank = banks.find((row) => row.id === value);
+
                 setBankId(value);
                 if (bank?.accountRef) setBankAccountRef(bank.accountRef);
               }}
-              items={banks}
             >
               {(bank) => (
-                <SelectItem key={bank.id} textValue={`${bank.code} – ${bank.name}`}>
-                  <span className="font-mono text-xs text-default-500">{bank.code}</span>
+                <SelectItem
+                  key={bank.id}
+                  textValue={`${bank.code} – ${bank.name}`}
+                >
+                  <span className="font-mono text-xs text-default-500">
+                    {bank.code}
+                  </span>
                   <span className="ml-2">{bank.name}</span>
                 </SelectItem>
               )}
             </Select>
 
             <Input
+              isDisabled={submitting || loading}
               label="Bank reference"
               value={bankAccountRef}
               onValueChange={setBankAccountRef}
-              isDisabled={submitting || loading}
             />
           </div>
 
           <Input
+            isDisabled={submitting || loading}
             label="Notes"
             value={notes}
             onValueChange={setNotes}
-            isDisabled={submitting || loading}
           />
         </div>
 
         {/* Summary panel */}
         <div className="space-y-3 rounded-2xl border border-default-200 bg-default-50 p-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">Summary</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">
+            Summary
+          </h3>
           <div className="space-y-2 rounded-xl bg-content2 p-3">
             <div className="flex items-center justify-between text-sm text-default-600">
               <span>Lines</span>
@@ -367,12 +408,16 @@ export function PurchaseOrderPageForm({
             </div>
             <div className="flex items-center justify-between text-sm text-default-600">
               <span>Supplier</span>
-              <span className="max-w-[170px] truncate text-right">{selectedSupplier?.name ?? "Unassigned"}</span>
+              <span className="max-w-[170px] truncate text-right">
+                {selectedSupplier?.name ?? "Unassigned"}
+              </span>
             </div>
             <div className="flex items-center justify-between text-sm text-default-600">
               <span>Bank</span>
               <span className="max-w-[170px] truncate text-right">
-                {selectedBank ? `${selectedBank.code} – ${selectedBank.name}` : "-"}
+                {selectedBank
+                  ? `${selectedBank.code} – ${selectedBank.name}`
+                  : "-"}
               </span>
             </div>
             <div className="h-px bg-default-200" />
@@ -387,8 +432,15 @@ export function PurchaseOrderPageForm({
       {/* Items table */}
       <div className="space-y-3 rounded-2xl border border-default-200 bg-content1 p-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">Items</h3>
-          <Button color="primary" variant="flat" isDisabled={submitting || loading} onPress={openAddModal}>
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-default-700">
+            Items
+          </h3>
+          <Button
+            color="primary"
+            isDisabled={submitting || loading}
+            variant="flat"
+            onPress={openAddModal}
+          >
             Add item
           </Button>
         </div>
@@ -413,43 +465,68 @@ export function PurchaseOrderPageForm({
               </thead>
               <tbody>
                 {items.map((row, index) => {
-                  const source = row.inventoryItemId ? itemById.get(row.inventoryItemId) ?? null : null;
-                  const variant = row.variantId
-                    ? source?.variants.find((v) => v.id === row.variantId) ?? null
+                  const source = row.inventoryItemId
+                    ? (itemById.get(row.inventoryItemId) ?? null)
                     : null;
-                  const lineTotal = parseNumeric(row.quantity) * parseNumeric(row.unitPrice);
+                  const variant = row.variantId
+                    ? (source?.variants.find((v) => v.id === row.variantId) ??
+                      null)
+                    : null;
+                  const lineTotal =
+                    parseNumeric(row.quantity) * parseNumeric(row.unitPrice);
 
                   return (
-                    <tr key={index} className="border-b border-default-100 last:border-b-0 hover:bg-default-50/50">
-                      <td className="py-2 px-2 text-default-400">{index + 1}</td>
+                    <tr
+                      key={index}
+                      className="border-b border-default-100 last:border-b-0 hover:bg-default-50/50"
+                    >
+                      <td className="py-2 px-2 text-default-400">
+                        {index + 1}
+                      </td>
                       <td className="py-2 px-2">
-                        <p className="font-medium text-default-800">{source?.name ?? row.inventoryItemId}</p>
+                        <p className="font-medium text-default-800">
+                          {source?.name ?? row.inventoryItemId}
+                        </p>
                         {source?.itemCode ? (
-                          <p className="text-xs text-default-400">{source.itemCode}</p>
+                          <p className="text-xs text-default-400">
+                            {source.itemCode}
+                          </p>
                         ) : null}
                       </td>
                       <td className="py-2 px-2 text-default-500">
-                        {variant ? variantLabel(variant) : <span className="text-default-300">—</span>}
+                        {variant ? (
+                          variantLabel(variant)
+                        ) : (
+                          <span className="text-default-300">—</span>
+                        )}
                       </td>
                       <td className="py-2 px-2 text-right">{row.quantity}</td>
-                      <td className="py-2 px-2 text-right">{formatMoney(parseNumeric(row.unitPrice))}</td>
-                      <td className="py-2 px-2 text-right font-semibold text-default-800">{formatMoney(lineTotal)}</td>
+                      <td className="py-2 px-2 text-right">
+                        {formatMoney(parseNumeric(row.unitPrice))}
+                      </td>
+                      <td className="py-2 px-2 text-right font-semibold text-default-800">
+                        {formatMoney(lineTotal)}
+                      </td>
                       <td className="py-2 px-2">
                         <div className="flex items-center justify-end gap-1">
                           <Button
+                            isDisabled={submitting}
                             size="sm"
                             variant="flat"
-                            isDisabled={submitting}
                             onPress={() => openEditModal(index)}
                           >
                             Edit
                           </Button>
                           <Button
-                            size="sm"
-                            variant="light"
                             color="danger"
                             isDisabled={submitting}
-                            onPress={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                            size="sm"
+                            variant="light"
+                            onPress={() =>
+                              setItems((prev) =>
+                                prev.filter((_, i) => i !== index),
+                              )
+                            }
                           >
                             Remove
                           </Button>
@@ -467,7 +544,11 @@ export function PurchaseOrderPageForm({
       {error ? <div className="text-sm text-danger">{error}</div> : null}
 
       <div className="flex items-center justify-end gap-2">
-        <Button variant="flat" isDisabled={submitting} onPress={() => router.push("/erp/purchase-orders")}>
+        <Button
+          isDisabled={submitting}
+          variant="flat"
+          onPress={() => router.push("/erp/purchase-orders")}
+        >
           Cancel
         </Button>
         <Button color="primary" isLoading={submitting} onPress={submit}>
@@ -485,22 +566,34 @@ export function PurchaseOrderPageForm({
       >
         <ModalContent>
           <ModalHeader>
-            {modal.editingIndex !== null ? `Edit item #${modal.editingIndex + 1}` : "Add item"}
+            {modal.editingIndex !== null
+              ? `Edit item #${modal.editingIndex + 1}`
+              : "Add item"}
           </ModalHeader>
           <ModalBody className="space-y-4 pb-5">
             <Select
               isLoading={loading}
+              items={inventoryItems}
               label="Inventory item"
-              selectedKeys={modal.inventoryItemId ? new Set([modal.inventoryItemId]) : new Set([])}
+              selectedKeys={
+                modal.inventoryItemId
+                  ? new Set([modal.inventoryItemId])
+                  : new Set([])
+              }
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0];
+
                 handleItemSelectInModal(first ? String(first) : "");
               }}
-              items={inventoryItems}
             >
               {(item) => (
-                <SelectItem key={item.id} textValue={`${item.itemCode ?? ""} ${item.name}`}>
-                  <span className="font-mono text-xs text-default-500">{item.itemCode ?? "—"}</span>
+                <SelectItem
+                  key={item.id}
+                  textValue={`${item.itemCode ?? ""} ${item.name}`}
+                >
+                  <span className="font-mono text-xs text-default-500">
+                    {item.itemCode ?? "—"}
+                  </span>
                   <span className="ml-2">{item.name}</span>
                 </SelectItem>
               )}
@@ -508,19 +601,27 @@ export function PurchaseOrderPageForm({
 
             {modalVariants.length > 0 && (
               <Select
+                items={modalVariants}
                 label="Variant"
                 placeholder="Select variant…"
-                selectedKeys={modal.variantId ? new Set([modal.variantId]) : new Set([])}
+                selectedKeys={
+                  modal.variantId ? new Set([modal.variantId]) : new Set([])
+                }
                 onSelectionChange={(keys) => {
                   const first = Array.from(keys)[0];
-                  setModal((prev) => ({ ...prev, variantId: first ? String(first) : "" }));
+
+                  setModal((prev) => ({
+                    ...prev,
+                    variantId: first ? String(first) : "",
+                  }));
                 }}
-                items={modalVariants}
               >
                 {(v) => (
                   <SelectItem key={v.id} textValue={variantLabel(v)}>
                     <span>{variantLabel(v)}</span>
-                    <span className="ml-2 text-xs text-default-400">{v.sku}</span>
+                    <span className="ml-2 text-xs text-default-400">
+                      {v.sku}
+                    </span>
                   </SelectItem>
                 )}
               </Select>
@@ -529,25 +630,31 @@ export function PurchaseOrderPageForm({
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Quantity"
-                type="number"
                 min="0"
                 step="0.01"
+                type="number"
                 value={modal.quantity}
-                onValueChange={(v) => setModal((prev) => ({ ...prev, quantity: v }))}
+                onValueChange={(v) =>
+                  setModal((prev) => ({ ...prev, quantity: v }))
+                }
               />
               <Input
                 label="Unit price"
-                type="number"
                 min="0"
                 step="0.01"
+                type="number"
                 value={modal.unitPrice}
-                onValueChange={(v) => setModal((prev) => ({ ...prev, unitPrice: v }))}
+                onValueChange={(v) =>
+                  setModal((prev) => ({ ...prev, unitPrice: v }))
+                }
               />
             </div>
 
             <div className="flex items-center justify-between rounded-xl border border-default-200 bg-default-50 px-4 py-3">
               <span className="text-sm text-default-500">Subtotal</span>
-              <span className="text-lg font-semibold text-default-800">{formatMoney(modalSubtotal)}</span>
+              <span className="text-lg font-semibold text-default-800">
+                {formatMoney(modalSubtotal)}
+              </span>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -556,7 +663,9 @@ export function PurchaseOrderPageForm({
               </Button>
               <Button
                 color="primary"
-                isDisabled={!modal.inventoryItemId || !modal.quantity || !modal.unitPrice}
+                isDisabled={
+                  !modal.inventoryItemId || !modal.quantity || !modal.unitPrice
+                }
                 onPress={confirmModal}
               >
                 {modal.editingIndex !== null ? "Save" : "Add"}

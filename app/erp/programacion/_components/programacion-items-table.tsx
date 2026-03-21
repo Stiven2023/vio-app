@@ -1,5 +1,7 @@
 "use client";
 
+import type { OrderItemStatus } from "@/src/utils/order-status";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Button } from "@heroui/button";
@@ -13,9 +15,6 @@ import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
 import { BsThreeDotsVertical } from "react-icons/bs";
-import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
-import type { OrderItemStatus } from "@/src/utils/order-status";
-import { AlertToast } from "@/components/alert-toast";
 import {
   Table,
   TableBody,
@@ -24,6 +23,9 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
+
+import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
+import { AlertToast } from "@/components/alert-toast";
 
 type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
 
@@ -87,7 +89,9 @@ const DEFAULT_VISIBLE_COLUMNS = [
 function formatDate(value: string | null) {
   if (!value) return "-";
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return "-";
+
   return new Intl.DateTimeFormat("es-CO", {
     year: "numeric",
     month: "2-digit",
@@ -174,7 +178,7 @@ export function ProgramacionItemsTable({
   groupByOrder = true,
 }: {
   process: ProcessType;
-    orderStatus?: "PRODUCCION" | "PROGRAMACION" | "APROBACION";
+  orderStatus?: "PRODUCCION" | "PROGRAMACION" | "APROBACION";
   basePath?: string;
   actualizacionBasePath?: string;
   decompressByDesign?: boolean;
@@ -201,15 +205,21 @@ export function ProgramacionItemsTable({
   const [gender, setGender] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [deliverySort, setDeliverySort] = useState<"DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA">("DEFAULT");
+  const [deliverySort, setDeliverySort] = useState<
+    "DEFAULT" | "MAS_PROXIMA" | "MAS_LEJANA"
+  >("DEFAULT");
   const [selectedColumns, setSelectedColumns] = useState<Set<string>>(
     () => new Set(DEFAULT_VISIBLE_COLUMNS),
   );
-  const [currentView, setCurrentView] = useState<"GENERAL" | "ACTUALIZACION">(view ?? "GENERAL");
-  const effectiveGroupByOrder = currentView === "ACTUALIZACION" ? false : groupByOrder;
+  const [currentView, setCurrentView] = useState<"GENERAL" | "ACTUALIZACION">(
+    view ?? "GENERAL",
+  );
+  const effectiveGroupByOrder =
+    currentView === "ACTUALIZACION" ? false : groupByOrder;
   const isColumnVisible = (key: string) => selectedColumns.has(key);
   const visibleDataColumnsCount = selectedColumns.size;
-  const shouldEnableHorizontalScroll = visibleDataColumnsCount + (enableDecisions ? 1 : 0) > 11;
+  const shouldEnableHorizontalScroll =
+    visibleDataColumnsCount + (enableDecisions ? 1 : 0) > 11;
 
   useEffect(() => {
     if (currentView !== "ACTUALIZACION") return;
@@ -217,7 +227,9 @@ export function ProgramacionItemsTable({
     setSelectedColumns((prev) => {
       if (prev.has("diseno")) return prev;
       const next = new Set(prev);
+
       next.add("diseno");
+
       return next;
     });
   }, [currentView]);
@@ -247,14 +259,16 @@ export function ProgramacionItemsTable({
 
   useEffect(() => {
     let active = true;
+
     setLoading(true);
 
-      fetch(`/api/programacion/items?${buildQuery()}`, {
+    fetch(`/api/programacion/items?${buildQuery()}`, {
       credentials: "include",
       cache: "no-store",
     })
       .then(async (response) => {
         if (!response.ok) throw new Error(await response.text());
+
         return (await response.json()) as Paginated<ProgramacionItem>;
       })
       .then((payload) => {
@@ -263,7 +277,13 @@ export function ProgramacionItemsTable({
       })
       .catch(() => {
         if (!active) return;
-        setData({ items: [], page: 1, pageSize: PAGE_SIZE, total: 0, hasNextPage: false });
+        setData({
+          items: [],
+          page: 1,
+          pageSize: PAGE_SIZE,
+          total: 0,
+          hasNextPage: false,
+        });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -272,15 +292,36 @@ export function ProgramacionItemsTable({
     return () => {
       active = false;
     };
-  }, [page, process, orderStatus, currentView, search, gender, startDate, endDate, deliverySort]);
+  }, [
+    page,
+    process,
+    orderStatus,
+    currentView,
+    search,
+    gender,
+    startDate,
+    endDate,
+    deliverySort,
+  ]);
 
   useEffect(() => {
     setPage(1);
-  }, [process, orderStatus, currentView, search, gender, startDate, endDate, deliverySort]);
+  }, [
+    process,
+    orderStatus,
+    currentView,
+    search,
+    gender,
+    startDate,
+    endDate,
+    deliverySort,
+  ]);
 
   const title = useMemo(() => {
-    if (process === "PRODUCCION") return labels?.principal ?? "Programación principal";
+    if (process === "PRODUCCION")
+      return labels?.principal ?? "Programación principal";
     if (process === "BODEGA") return labels?.bodega ?? "Programación bodega";
+
     return labels?.compras ?? "Programación compras";
   }, [labels?.bodega, labels?.compras, labels?.principal, process]);
 
@@ -318,20 +359,29 @@ export function ProgramacionItemsTable({
       );
 
       const failed = responses.find((r) => !r.ok);
+
       if (failed) {
-        setToast({ message: failed.message || "No se pudo actualizar el estado.", type: "error" });
+        setToast({
+          message: failed.message || "No se pudo actualizar el estado.",
+          type: "error",
+        });
+
         return;
       }
 
-      setToast({ message: "Estado actualizado correctamente.", type: "success" });
+      setToast({
+        message: "Estado actualizado correctamente.",
+        type: "success",
+      });
       setLoading(true);
-      const refreshed = await fetch(
-        `/api/programacion/items?${buildQuery()}`,
-        { credentials: "include", cache: "no-store" },
-      );
+      const refreshed = await fetch(`/api/programacion/items?${buildQuery()}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
 
       if (refreshed.ok) {
         const payload = (await refreshed.json()) as Paginated<ProgramacionItem>;
+
         setData(payload);
       }
     } catch {
@@ -346,26 +396,42 @@ export function ProgramacionItemsTable({
     const showDesignInFirstColumn =
       (isActualizacion && !effectiveGroupByOrder) ||
       (decompressByDesign && !effectiveGroupByOrder);
-    const showDesignColumn = !effectiveGroupByOrder && (!showDesignInFirstColumn && (isActualizacion || isColumnVisible("diseno")));
-    const showTallaColumn = !effectiveGroupByOrder && !isActualizacion && isColumnVisible("talla");
+    const showDesignColumn =
+      !effectiveGroupByOrder &&
+      !showDesignInFirstColumn &&
+      (isActualizacion || isColumnVisible("diseno"));
+    const showTallaColumn =
+      !effectiveGroupByOrder && !isActualizacion && isColumnVisible("talla");
 
     return (
       <>
-        {isColumnVisible("pedido")
-          ? <TableColumn>{showDesignInFirstColumn ? "PEDIDO / DISEÑO" : "PEDIDO"}</TableColumn>
-          : null}
-        {isColumnVisible("fechaPedido") ? <TableColumn>FECHA PEDIDO</TableColumn> : null}
+        {isColumnVisible("pedido") ? (
+          <TableColumn>
+            {showDesignInFirstColumn ? "PEDIDO / DISEÑO" : "PEDIDO"}
+          </TableColumn>
+        ) : null}
+        {isColumnVisible("fechaPedido") ? (
+          <TableColumn>FECHA PEDIDO</TableColumn>
+        ) : null}
         {isColumnVisible("cliente") ? <TableColumn>CLIENTE</TableColumn> : null}
-        {isColumnVisible("fechaEntrega") ? <TableColumn>FECHA DE ENTREGA</TableColumn> : null}
-        {isColumnVisible("vendedor") ? <TableColumn>VENDEDOR</TableColumn> : null}
+        {isColumnVisible("fechaEntrega") ? (
+          <TableColumn>FECHA DE ENTREGA</TableColumn>
+        ) : null}
+        {isColumnVisible("vendedor") ? (
+          <TableColumn>VENDEDOR</TableColumn>
+        ) : null}
         {showDesignColumn ? <TableColumn>DISEÑO</TableColumn> : null}
         {showTallaColumn ? <TableColumn>TALLA</TableColumn> : null}
-        {isColumnVisible("cantidad") ? <TableColumn>CANTIDAD</TableColumn> : null}
+        {isColumnVisible("cantidad") ? (
+          <TableColumn>CANTIDAD</TableColumn>
+        ) : null}
         {isColumnVisible("tela") ? <TableColumn>TELA</TableColumn> : null}
         {isColumnVisible("genero") ? <TableColumn>GENERO</TableColumn> : null}
         {isColumnVisible("proceso") ? <TableColumn>PROCESO</TableColumn> : null}
         {isColumnVisible("plazo") ? <TableColumn>PLAZO</TableColumn> : null}
-        {isColumnVisible("plazoHoras") ? <TableColumn>PLAZO EN HORAS</TableColumn> : null}
+        {isColumnVisible("plazoHoras") ? (
+          <TableColumn>PLAZO EN HORAS</TableColumn>
+        ) : null}
         {enableDecisions ? <TableColumn>ACCIONES</TableColumn> : null}
       </>
     );
@@ -434,8 +500,12 @@ export function ProgramacionItemsTable({
     const showDesignInFirstColumn =
       (isActualizacion && !effectiveGroupByOrder) ||
       (decompressByDesign && !effectiveGroupByOrder);
-    const showDesignColumn = !effectiveGroupByOrder && !showDesignInFirstColumn && (isActualizacion || isColumnVisible("diseno"));
-    const showTallaColumn = !effectiveGroupByOrder && !isActualizacion && isColumnVisible("talla");
+    const showDesignColumn =
+      !effectiveGroupByOrder &&
+      !showDesignInFirstColumn &&
+      (isActualizacion || isColumnVisible("diseno"));
+    const showTallaColumn =
+      !effectiveGroupByOrder && !isActualizacion && isColumnVisible("talla");
     const cells: Array<JSX.Element> = [];
 
     if (isColumnVisible("pedido")) {
@@ -454,23 +524,37 @@ export function ProgramacionItemsTable({
               ) : null}
             </div>
           ) : (
-            item.orderCode ?? "-"
+            (item.orderCode ?? "-")
           )}
         </TableCell>,
       );
     }
 
     if (isColumnVisible("fechaPedido")) {
-      cells.push(<TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>);
+      cells.push(
+        <TableCell key="fecha-pedido">{formatDate(item.orderDate)}</TableCell>,
+      );
     }
     if (isColumnVisible("cliente")) {
-      cells.push(<TableCell key="cliente">{item.clientCode ?? item.clientName ?? "-"}</TableCell>);
+      cells.push(
+        <TableCell key="cliente">
+          {item.clientCode ?? item.clientName ?? "-"}
+        </TableCell>,
+      );
     }
     if (isColumnVisible("fechaEntrega")) {
-      cells.push(<TableCell key="fecha-entrega">{formatDate(item.deliveryDate)}</TableCell>);
+      cells.push(
+        <TableCell key="fecha-entrega">
+          {formatDate(item.deliveryDate)}
+        </TableCell>,
+      );
     }
     if (isColumnVisible("vendedor")) {
-      cells.push(<TableCell key="vendedor">{renderSellerCell(item.sellerCode)}</TableCell>);
+      cells.push(
+        <TableCell key="vendedor">
+          {renderSellerCell(item.sellerCode)}
+        </TableCell>,
+      );
     }
     if (showDesignColumn) {
       cells.push(
@@ -498,12 +582,16 @@ export function ProgramacionItemsTable({
     }
     if (isColumnVisible("plazo")) {
       cells.push(
-        <TableCell key="plazo">{renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}</TableCell>,
+        <TableCell key="plazo">
+          {renderCountdownCell(item.deliveryDate, leadDaysLabel, "days")}
+        </TableCell>,
       );
     }
     if (isColumnVisible("plazoHoras")) {
       cells.push(
-        <TableCell key="plazo-horas">{renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}</TableCell>,
+        <TableCell key="plazo-horas">
+          {renderCountdownCell(item.deliveryDate, leadHoursLabel, "hours")}
+        </TableCell>,
       );
     }
     if (actionsCell) {
@@ -517,18 +605,34 @@ export function ProgramacionItemsTable({
     <div className="space-y-4">
       {toast ? <AlertToast message={toast.message} type={toast.type} /> : null}
       <div className="flex flex-wrap items-center gap-2">
-          <Button as={Link} href={basePath} variant={process === "PRODUCCION" ? "solid" : "flat"}>
+        <Button
+          as={Link}
+          href={basePath}
+          variant={process === "PRODUCCION" ? "solid" : "flat"}
+        >
           Producción
         </Button>
-          <Button as={Link} href={`${basePath}/bodega`} variant={process === "BODEGA" ? "solid" : "flat"}>
+        <Button
+          as={Link}
+          href={`${basePath}/bodega`}
+          variant={process === "BODEGA" ? "solid" : "flat"}
+        >
           Bodega
         </Button>
-          <Button as={Link} href={`${basePath}/compras`} variant={process === "COMPRAS" ? "solid" : "flat"}>
+        <Button
+          as={Link}
+          href={`${basePath}/compras`}
+          variant={process === "COMPRAS" ? "solid" : "flat"}
+        >
           Compras
         </Button>
         <Button
           variant={isActualizacion ? "solid" : "flat"}
-          onPress={() => setCurrentView((v) => (v === "ACTUALIZACION" ? "GENERAL" : "ACTUALIZACION"))}
+          onPress={() =>
+            setCurrentView((v) =>
+              v === "ACTUALIZACION" ? "GENERAL" : "ACTUALIZACION",
+            )
+          }
         >
           Actualización
         </Button>
@@ -539,7 +643,11 @@ export function ProgramacionItemsTable({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
         <Input
           label="Buscar"
-          placeholder={effectiveGroupByOrder ? "Pedido, cliente, vendedor" : "Pedido, cliente, diseño, vendedor, talla"}
+          placeholder={
+            effectiveGroupByOrder
+              ? "Pedido, cliente, vendedor"
+              : "Pedido, cliente, diseño, vendedor, talla"
+          }
           value={search}
           onValueChange={setSearch}
         />
@@ -548,6 +656,7 @@ export function ProgramacionItemsTable({
           selectedKeys={gender ? [gender] : []}
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0];
+
             setGender(first ? String(first) : "");
           }}
         >
@@ -555,15 +664,29 @@ export function ProgramacionItemsTable({
           <SelectItem key="MUJER">Mujer</SelectItem>
           <SelectItem key="UNISEX">Unisex</SelectItem>
         </Select>
-        <Input label="Desde" type="date" value={startDate} onValueChange={setStartDate} />
-        <Input label="Hasta" type="date" value={endDate} onValueChange={setEndDate} />
+        <Input
+          label="Desde"
+          type="date"
+          value={startDate}
+          onValueChange={setStartDate}
+        />
+        <Input
+          label="Hasta"
+          type="date"
+          value={endDate}
+          onValueChange={setEndDate}
+        />
         <Select
           label="Entrega"
           selectedKeys={[deliverySort]}
           onSelectionChange={(keys) => {
-            const first = String(Array.from(keys)[0] ?? "DEFAULT").toUpperCase();
+            const first = String(
+              Array.from(keys)[0] ?? "DEFAULT",
+            ).toUpperCase();
+
             if (first === "MAS_PROXIMA" || first === "MAS_LEJANA") {
               setDeliverySort(first);
+
               return;
             }
             setDeliverySort("DEFAULT");
@@ -575,15 +698,22 @@ export function ProgramacionItemsTable({
         </Select>
         <Select
           label="Columnas"
+          selectedKeys={
+            new Set(
+              Array.from(selectedColumns).filter((k) => {
+                if (k === "diseno" && effectiveGroupByOrder) return false;
+                if (k === "talla" && (effectiveGroupByOrder || isActualizacion))
+                  return false;
+
+                return true;
+              }),
+            )
+          }
           selectionMode="multiple"
-          selectedKeys={new Set(Array.from(selectedColumns).filter((k) => {
-            if (k === "diseno" && effectiveGroupByOrder) return false;
-            if (k === "talla" && (effectiveGroupByOrder || isActualizacion)) return false;
-            return true;
-          }))}
           onSelectionChange={(keys) => {
             if (keys === "all") {
               setSelectedColumns(new Set(ALL_COLUMN_KEYS));
+
               return;
             }
 
@@ -601,8 +731,12 @@ export function ProgramacionItemsTable({
           <SelectItem key="cliente">Cliente</SelectItem>
           <SelectItem key="fechaEntrega">Fecha entrega</SelectItem>
           <SelectItem key="vendedor">Vendedor</SelectItem>
-          {!effectiveGroupByOrder ? <SelectItem key="diseno">Diseño</SelectItem> : null}
-          {!effectiveGroupByOrder && !isActualizacion ? <SelectItem key="talla">Talla</SelectItem> : null}
+          {!effectiveGroupByOrder ? (
+            <SelectItem key="diseno">Diseño</SelectItem>
+          ) : null}
+          {!effectiveGroupByOrder && !isActualizacion ? (
+            <SelectItem key="talla">Talla</SelectItem>
+          ) : null}
           <SelectItem key="cantidad">Cantidad</SelectItem>
           <SelectItem key="tela">Tela</SelectItem>
           <SelectItem key="genero">Género</SelectItem>
@@ -616,32 +750,39 @@ export function ProgramacionItemsTable({
         <div className="rounded-medium border border-default-200 bg-content1 p-4">
           <div className="space-y-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={`programacion-skeleton-${index}`} className="h-8 w-full rounded-medium" />
+              <Skeleton
+                key={`programacion-skeleton-${index}`}
+                className="h-8 w-full rounded-medium"
+              />
             ))}
           </div>
         </div>
       ) : hasRows ? (
-        <div className={`w-full pb-2 ${shouldEnableHorizontalScroll ? "overflow-x-auto" : "overflow-x-hidden"}`}>
+        <div
+          className={`w-full pb-2 ${shouldEnableHorizontalScroll ? "overflow-x-auto" : "overflow-x-hidden"}`}
+        >
           <Table
+            removeWrapper
             aria-label="Tabla programación"
-            className={shouldEnableHorizontalScroll ? "min-w-[1200px]" : "w-full table-fixed"}
+            className={
+              shouldEnableHorizontalScroll
+                ? "min-w-[1200px]"
+                : "w-full table-fixed"
+            }
             classNames={{
-              table: shouldEnableHorizontalScroll ? "min-w-[1200px]" : "w-full table-fixed",
+              table: shouldEnableHorizontalScroll
+                ? "min-w-[1200px]"
+                : "w-full table-fixed",
               th: "px-2 py-2 text-[11px]",
               td: "px-2 py-2 text-xs",
             }}
-            removeWrapper
           >
-          <TableHeader>
-            {renderHeaderColumns()}
-          </TableHeader>
-          <TableBody items={data?.items ?? []}>
-            {(item) => (
-              <TableRow key={item.id}>
-                {renderRowCells(item)}
-              </TableRow>
-            )}
-          </TableBody>
+            <TableHeader>{renderHeaderColumns()}</TableHeader>
+            <TableBody items={data?.items ?? []}>
+              {(item) => (
+                <TableRow key={item.id}>{renderRowCells(item)}</TableRow>
+              )}
+            </TableBody>
           </Table>
         </div>
       ) : (
@@ -661,7 +802,9 @@ export function ProgramacionItemsTable({
         </Button>
         <span className="text-xs text-default-500">
           Página {data?.page ?? page}
-          {data ? ` / ${Math.max(1, Math.ceil(data.total / data.pageSize))}` : ""}
+          {data
+            ? ` / ${Math.max(1, Math.ceil(data.total / data.pageSize))}`
+            : ""}
         </span>
         <Button
           isDisabled={loading || !data?.hasNextPage}

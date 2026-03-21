@@ -74,8 +74,12 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo consultar confeccionistas", { status: 500 });
+
+    return new Response("No se pudo consultar confeccionistas", {
+      status: 500,
+    });
   }
 }
 
@@ -100,7 +104,13 @@ export async function POST(request: Request) {
   const taxRegime = String(payload.taxRegime ?? "").trim();
   const address = String(payload.address ?? "").trim();
 
-  if (!name || !identificationType || !identification || !taxRegime || !address) {
+  if (
+    !name ||
+    !identificationType ||
+    !identification ||
+    !taxRegime ||
+    !address
+  ) {
     return new Response(
       "name, identificationType, identification, taxRegime y address son requeridos",
       { status: 400 },
@@ -116,12 +126,14 @@ export async function POST(request: Request) {
       .limit(1);
 
     let nextNumber = 1001;
+
     if (
       lastConfectionist.length > 0 &&
       lastConfectionist[0]?.confectionistCode
     ) {
       const lastCode = lastConfectionist[0].confectionistCode;
       const lastNumber = parseInt(lastCode.replace(/^CON/i, ""), 10);
+
       if (!isNaN(lastNumber)) {
         nextNumber = lastNumber + 1;
       }
@@ -155,6 +167,7 @@ export async function POST(request: Request) {
 
       if (sourceClient.length > 0) {
         const client = sourceClient[0];
+
         sourceClientDocuments = {
           identityDocumentUrl: client.identityDocumentUrl,
           rutDocumentUrl: client.rutDocumentUrl,
@@ -169,18 +182,22 @@ export async function POST(request: Request) {
     const mergedPayload = {
       ...payload,
       identityDocumentUrl:
-        payload.identityDocumentUrl || sourceClientDocuments.identityDocumentUrl,
-      rutDocumentUrl: payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+        payload.identityDocumentUrl ||
+        sourceClientDocuments.identityDocumentUrl,
+      rutDocumentUrl:
+        payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
       commerceChamberDocumentUrl:
         payload.commerceChamberDocumentUrl ||
         sourceClientDocuments.commerceChamberDocumentUrl,
       passportDocumentUrl:
-        payload.passportDocumentUrl || sourceClientDocuments.passportDocumentUrl,
+        payload.passportDocumentUrl ||
+        sourceClientDocuments.passportDocumentUrl,
       taxCertificateDocumentUrl:
         payload.taxCertificateDocumentUrl ||
         sourceClientDocuments.taxCertificateDocumentUrl,
       companyIdDocumentUrl:
-        payload.companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+        payload.companyIdDocumentUrl ||
+        sourceClientDocuments.companyIdDocumentUrl,
     };
 
     const created = await db
@@ -219,9 +236,7 @@ export async function POST(request: Request) {
         postalCode: payload.postalCode
           ? String(payload.postalCode).trim()
           : null,
-        country: payload.country
-          ? String(payload.country).trim()
-          : "COLOMBIA",
+        country: payload.country ? String(payload.country).trim() : "COLOMBIA",
         department: payload.department
           ? String(payload.department).trim()
           : "ANTIOQUIA",
@@ -268,7 +283,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear confeccionista", { status: 500 });
   }
 }
@@ -296,16 +313,22 @@ export async function PUT(request: Request) {
   const patch: Partial<typeof confectionists.$inferInsert> = {};
 
   // Campos obligatorios (.notNull()): solo actualizar si tienen valor
-  if (payload.name !== undefined && String(payload.name).trim()) 
+  if (payload.name !== undefined && String(payload.name).trim())
     patch.name = String(payload.name).trim();
-  if (payload.identificationType !== undefined && String(payload.identificationType).trim())
+  if (
+    payload.identificationType !== undefined &&
+    String(payload.identificationType).trim()
+  )
     patch.identificationType = String(payload.identificationType).trim() as
       | "CC"
       | "NIT"
       | "CE"
       | "PAS"
       | "EMPRESA_EXTERIOR";
-  if (payload.identification !== undefined && String(payload.identification).trim())
+  if (
+    payload.identification !== undefined &&
+    String(payload.identification).trim()
+  )
     patch.identification = String(payload.identification).trim();
   if (payload.taxRegime !== undefined && String(payload.taxRegime).trim())
     patch.taxRegime = String(payload.taxRegime).trim() as
@@ -321,7 +344,9 @@ export async function PUT(request: Request) {
   if (payload.type !== undefined)
     patch.type = payload.type ? String(payload.type).trim() : null;
   if (payload.specialty !== undefined)
-    patch.specialty = payload.specialty ? String(payload.specialty).trim() : null;
+    patch.specialty = payload.specialty
+      ? String(payload.specialty).trim()
+      : null;
   if (payload.contactName !== undefined)
     patch.contactName = payload.contactName
       ? String(payload.contactName).trim()
@@ -416,6 +441,7 @@ export async function PUT(request: Request) {
     ];
 
     const changedFields: string[] = [];
+
     for (const field of criticalFields) {
       const key = field as keyof typeof confectionist;
       const patchValue =
@@ -449,7 +475,9 @@ export async function PUT(request: Request) {
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo actualizar confeccionista", {
       status: 500,
     });

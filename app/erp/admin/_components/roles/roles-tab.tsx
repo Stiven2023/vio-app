@@ -68,9 +68,15 @@ function getRoleLevel(roleName: string) {
 
 const ROLE_BRANCHES: Array<{ leader: string; children: string[] }> = [
   { leader: "LIDER_JURIDICA", children: [] },
-  { leader: "LIDER_FINANCIERA", children: ["AUXILIAR_CONTABLE", "TESORERIA_Y_CARTERA"] },
+  {
+    leader: "LIDER_FINANCIERA",
+    children: ["AUXILIAR_CONTABLE", "TESORERIA_Y_CARTERA"],
+  },
   { leader: "LIDER_COMERCIAL", children: ["ASESOR"] },
-  { leader: "LIDER_SUMINISTROS", children: ["COMPRA_NACIONAL", "COMPRA_INTERNACIONAL"] },
+  {
+    leader: "LIDER_SUMINISTROS",
+    children: ["COMPRA_NACIONAL", "COMPRA_INTERNACIONAL"],
+  },
   { leader: "LIDER_DISEÑO", children: ["DISEÑADOR"] },
   {
     leader: "LIDER_OPERACIONAL",
@@ -110,7 +116,9 @@ export function RolesTab() {
 
     const sorted = [...items].sort((a, b) => {
       const levelDiff = getRoleLevel(a.name) - getRoleLevel(b.name);
+
       if (levelDiff !== 0) return levelDiff;
+
       return a.name.localeCompare(b.name, "es");
     });
 
@@ -201,13 +209,16 @@ export function RolesTab() {
       <div className="rounded-large border border-default-200 p-4">
         <p className="text-sm font-semibold">Árbol jerárquico de roles</p>
         <p className="mt-1 text-xs text-default-500">
-          Estructura tipo organigrama con ADMINISTRADOR en la raíz y ramas por área.
+          Estructura tipo organigrama con ADMINISTRADOR en la raíz y ramas por
+          área.
         </p>
 
         <div className="mt-3">
           <div className="flex justify-center">
             <span className="rounded-medium border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-              {roleTree.adminExists ? "ADMINISTRADOR" : "ADMINISTRADOR (pendiente)"}
+              {roleTree.adminExists
+                ? "ADMINISTRADOR"
+                : "ADMINISTRADOR (pendiente)"}
             </span>
           </div>
 
@@ -215,7 +226,10 @@ export function RolesTab() {
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {roleTree.branches.map((branch) => (
-              <div key={branch.leader} className="rounded-medium border border-default-200 p-3">
+              <div
+                key={branch.leader}
+                className="rounded-medium border border-default-200 p-3"
+              >
                 <div className="text-center">
                   <span className="rounded-medium border border-default-300 bg-default-100 px-2 py-1 text-xs font-medium">
                     {branch.leader}

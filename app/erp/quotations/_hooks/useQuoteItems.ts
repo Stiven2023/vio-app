@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from "react";
 import type {
   ClientPriceType,
   Currency,
@@ -6,6 +5,9 @@ import type {
   ProductOption,
   QuoteItem,
 } from "../_lib/types";
+
+import { useCallback, useEffect, useState } from "react";
+
 import { makeItem, resolveUnitPrice } from "../_lib/helpers";
 
 export function useQuoteItems(
@@ -14,7 +16,8 @@ export function useQuoteItems(
   clientPriceType: ClientPriceType,
 ) {
   const [items, setItems] = useState<QuoteItem[]>([makeItem()]);
-  const isAuthorizedManual = currency === "COP" && clientPriceType === "AUTORIZADO";
+  const isAuthorizedManual =
+    currency === "COP" && clientPriceType === "AUTORIZADO";
 
   // Actualizar items cuando cambian productos o moneda
   useEffect(() => {
@@ -24,7 +27,14 @@ export function useQuoteItems(
         const product = products.find((p) => p.id === row.productId);
 
         if (!product) {
-          return { ...row, productId: "", code: "", product: "", description: "", unitPrice: 0 };
+          return {
+            ...row,
+            productId: "",
+            code: "",
+            product: "",
+            description: "",
+            unitPrice: 0,
+          };
         }
 
         return {
@@ -50,9 +60,13 @@ export function useQuoteItems(
       setItems((prev) =>
         prev.map((row) => {
           if (row.id !== id) return row;
-          
+
           const validatedPatch = { ...patch };
-          if (validatedPatch.orderType !== undefined && typeof validatedPatch.orderType === 'string') {
+
+          if (
+            validatedPatch.orderType !== undefined &&
+            typeof validatedPatch.orderType === "string"
+          ) {
             const validOrderTypes: OrderType[] = [
               "NORMAL",
               "COMPLETACION",
@@ -61,7 +75,10 @@ export function useQuoteItems(
               "MUESTRA",
               "OBSEQUIO",
             ];
-            if (!validOrderTypes.includes(validatedPatch.orderType as OrderType)) {
+
+            if (
+              !validOrderTypes.includes(validatedPatch.orderType as OrderType)
+            ) {
               validatedPatch.orderType = "NORMAL";
             }
           }
@@ -97,7 +114,11 @@ export function useQuoteItems(
             };
           }
 
-          if (patch.quantity !== undefined && next.productId && !isAuthorizedManual) {
+          if (
+            patch.quantity !== undefined &&
+            next.productId &&
+            !isAuthorizedManual
+          ) {
             const product = products.find((p) => p.id === next.productId);
 
             if (product) {
@@ -127,6 +148,7 @@ export function useQuoteItems(
   const removeItem = useCallback((id: string) => {
     setItems((prev) => {
       if (prev.length === 1) return prev;
+
       return prev.filter((row) => row.id !== id);
     });
   }, []);

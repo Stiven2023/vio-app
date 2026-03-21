@@ -1,6 +1,7 @@
 import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
 import clsx from "clsx";
+import { Suspense } from "react";
 
 import { Providers } from "./providers";
 
@@ -8,9 +9,7 @@ import { ToastProvider } from "@/components/toast-provider";
 import { SessionBootstrap } from "@/components/session-bootstrap";
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
-import { Suspense } from "react";
 import { AppShell } from "@/components/app-shell";
-
 import { RouteLoader } from "@/components/route-loader";
 
 export const metadata: Metadata = {

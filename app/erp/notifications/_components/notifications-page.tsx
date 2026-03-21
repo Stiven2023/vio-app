@@ -111,6 +111,7 @@ export function NotificationsPage() {
     })
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text());
+
         return res.json();
       })
       .then((json) => {
@@ -182,6 +183,7 @@ export function NotificationsPage() {
                 selectedKeys={roleFilter ? [roleFilter] : []}
                 onSelectionChange={(keys) => {
                   const first = Array.from(keys)[0];
+
                   setRoleFilter(first ? String(first) : "");
                   setPage(1);
                 }}
@@ -236,7 +238,11 @@ export function NotificationsPage() {
                   </Chip>
                 ) : null}
                 {!n.isRead ? (
-                  <Button size="sm" variant="flat" onPress={() => markRead(n.id)}>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={() => markRead(n.id)}
+                  >
                     Marcar leido
                   </Button>
                 ) : null}

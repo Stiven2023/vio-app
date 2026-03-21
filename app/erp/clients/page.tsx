@@ -36,10 +36,10 @@ export default async function ClientsPage() {
       </p>
       <div className="mt-6">
         <ClientsTab
+          canChangeLegalStatus={canChangeLegalStatus}
           canCreate={canCreate}
           canDelete={canDelete}
           canEdit={canEdit}
-          canChangeLegalStatus={canChangeLegalStatus}
         />
       </div>
     </div>

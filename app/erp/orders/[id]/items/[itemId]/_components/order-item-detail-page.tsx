@@ -38,8 +38,10 @@ function buildGroupedSummary(packaging: Array<any>): GroupedRow[] {
   if (!Array.isArray(packaging) || packaging.length === 0) return [];
 
   const grouped = packaging.find((p) => p.mode === "AGRUPADO");
+
   if (grouped) {
     const size = String(grouped.size ?? "").trim();
+
     if (!size) return [];
     const qty = Number(grouped.quantity ?? 1);
 
@@ -47,15 +49,21 @@ function buildGroupedSummary(packaging: Array<any>): GroupedRow[] {
   }
 
   const map = new Map<string, number>();
+
   for (const row of packaging) {
     const size = String(row.size ?? "").trim();
+
     if (!size) continue;
     const qty = Number(row.quantity ?? 1);
     const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+
     map.set(size, (map.get(size) ?? 0) + safeQty);
   }
 
-  return Array.from(map.entries()).map(([size, quantity]) => ({ size, quantity }));
+  return Array.from(map.entries()).map(([size, quantity]) => ({
+    size,
+    quantity,
+  }));
 }
 
 function asNumber(value: unknown) {
@@ -65,7 +73,8 @@ function asNumber(value: unknown) {
 }
 
 function formatMoney(value: unknown, currency: string | null | undefined) {
-  const code = String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
+  const code =
+    String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
 
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -123,6 +132,7 @@ export function OrderItemDetailPage({
       const res = await apiJson<{ items: IssueRow[] }>(
         `/api/orders/items/${itemId}/issues`,
       );
+
       setIssues(Array.isArray(res.items) ? res.items : []);
     } catch {
       setIssues([]);
@@ -134,11 +144,11 @@ export function OrderItemDetailPage({
   useEffect(() => {
     if (!itemId) return;
     loadIssues();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId]);
 
   const reportIssue = async () => {
     const msg = issueMessage.trim();
+
     if (!msg) return;
     if (reporting) return;
 
@@ -205,10 +215,16 @@ export function OrderItemDetailPage({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Detalle del Diseño</h1>
-          <p className="text-default-600 mt-1">Informacion completa del Diseño.</p>
+          <p className="text-default-600 mt-1">
+            Informacion completa del Diseño.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
+          <Button
+            as={NextLink}
+            href={`/orders/${orderId}/items`}
+            variant="flat"
+          >
             Volver a Diseños
           </Button>
         </div>
@@ -256,10 +272,14 @@ export function OrderItemDetailPage({
             </div>
             <div>
               <div className="text-xs text-default-500">Tiene adiciones</div>
-              <div className="font-medium">{item?.hasAdditions ? "Sí" : "No"}</div>
+              <div className="font-medium">
+                {item?.hasAdditions ? "Sí" : "No"}
+              </div>
             </div>
             <div className="sm:col-span-2">
-              <div className="text-xs text-default-500">Evidencia de adición</div>
+              <div className="text-xs text-default-500">
+                Evidencia de adición
+              </div>
               <div className="font-medium whitespace-pre-wrap">
                 {String(item?.additionEvidence ?? "").trim() || "-"}
               </div>
@@ -375,15 +395,25 @@ export function OrderItemDetailPage({
               <TableColumn>Unitario</TableColumn>
               <TableColumn>Total</TableColumn>
             </TableHeader>
-            <TableBody emptyContent="Sin adiciones" items={payload?.additions ?? []}>
+            <TableBody
+              emptyContent="Sin adiciones"
+              items={payload?.additions ?? []}
+            >
               {(row: any) => (
-                <TableRow key={row.id ?? `${row.additionId}-${row.additionName}`}>
+                <TableRow
+                  key={row.id ?? `${row.additionId}-${row.additionName}`}
+                >
                   <TableCell>{row.additionCode ?? "-"}</TableCell>
                   <TableCell>{row.additionName ?? "-"}</TableCell>
                   <TableCell>{row.quantity ?? "-"}</TableCell>
-                  <TableCell>{formatMoney(row.unitPrice ?? 0, currency)}</TableCell>
                   <TableCell>
-                    {formatMoney(asNumber(row.quantity) * asNumber(row.unitPrice), currency)}
+                    {formatMoney(row.unitPrice ?? 0, currency)}
+                  </TableCell>
+                  <TableCell>
+                    {formatMoney(
+                      asNumber(row.quantity) * asNumber(row.unitPrice),
+                      currency,
+                    )}
                   </TableCell>
                 </TableRow>
               )}
@@ -430,10 +460,7 @@ export function OrderItemDetailPage({
               <TableColumn>Talla</TableColumn>
               <TableColumn>Cantidad</TableColumn>
             </TableHeader>
-            <TableBody
-              emptyContent="Sin registros"
-              items={individualRows}
-            >
+            <TableBody emptyContent="Sin registros" items={individualRows}>
               {(row: any) => (
                 <TableRow key={row.__key}>
                   <TableCell>{row.personName ?? "-"}</TableCell>
@@ -497,10 +524,15 @@ export function OrderItemDetailPage({
               <TableColumn>Entregado</TableColumn>
               <TableColumn>Nota</TableColumn>
             </TableHeader>
-            <TableBody emptyContent="Sin materiales" items={payload?.materials ?? []}>
+            <TableBody
+              emptyContent="Sin materiales"
+              items={payload?.materials ?? []}
+            >
               {(row) => (
                 <TableRow key={`${row.inventoryItemId}-${row.note}`}>
-                  <TableCell>{(row as any).itemName ?? row.inventoryItemId ?? "-"}</TableCell>
+                  <TableCell>
+                    {(row as any).itemName ?? row.inventoryItemId ?? "-"}
+                  </TableCell>
                   <TableCell>{row.quantity ?? "-"}</TableCell>
                   <TableCell>{(row as any).deliveredQty ?? "0"}</TableCell>
                   <TableCell>{row.note ?? "-"}</TableCell>

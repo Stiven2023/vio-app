@@ -5,7 +5,7 @@ import type { ConfectionistFormPrefill } from "./confectionist-modal.types";
 import type { ClientFormPrefill } from "@/app/erp/admin/_components/clients/client-modal.types";
 import type { Confectionist as AdminConfectionist } from "@/app/erp/admin/_lib/types";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -23,7 +23,17 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus, BsEyeFill, BsShieldCheck } from "react-icons/bs";
+import {
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+  BsPersonPlus,
+  BsEyeFill,
+  BsShieldCheck,
+} from "react-icons/bs";
+
+import { ConfectionistModal } from "./confectionist-modal";
+import { ConfectionistDetailsModal } from "./confectionist-details-modal";
 
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
@@ -33,9 +43,6 @@ import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
-
-import { ConfectionistModal } from "./confectionist-modal";
-import { ConfectionistDetailsModal } from "./confectionist-details-modal";
 import { ConfectionistLegalStatusModal } from "@/app/erp/admin/_components/confectionists/confectionist-legal-status-modal";
 
 export type Confectionist = AdminConfectionist & {
@@ -72,20 +79,25 @@ export function ConfectionistsTab({
   const [editing, setEditing] = useState<Confectionist | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [modalPrefill, setModalPrefill] = useState<ConfectionistFormPrefill | null>(
-    null,
-  );
+  const [modalPrefill, setModalPrefill] =
+    useState<ConfectionistFormPrefill | null>(null);
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Confectionist | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [viewingDocuments, setViewingDocuments] = useState<Confectionist | null>(null);
+  const [viewingDocuments, setViewingDocuments] =
+    useState<Confectionist | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Confectionist | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] =
+    useState<Confectionist | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!prefillCreate) return;
@@ -110,7 +122,8 @@ export function ConfectionistsTab({
       const mobile = c.mobile ?? "";
       const type = c.type ?? "";
       const specialty = c.specialty ?? "";
-      const dailyCapacity = c.dailyCapacity === null ? "" : String(c.dailyCapacity);
+      const dailyCapacity =
+        c.dailyCapacity === null ? "" : String(c.dailyCapacity);
 
       return (
         c.name.toLowerCase().includes(q) ||
@@ -131,6 +144,73 @@ export function ConfectionistsTab({
 
     return "Sin confeccionistas";
   }, [loading, search, status]);
+
+  const exportCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/confectionists/export";
+    anchor.download = "confectionists-export.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const downloadTemplate = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/confectionists/import/template";
+    anchor.download = "confectionists-import-template.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const importCsv = async (file: File) => {
+    if (importing) return;
+    const isCsv =
+      file.type === "text/csv" ||
+      file.name.toLowerCase().endsWith(".csv") ||
+      file.type === "application/vnd.ms-excel";
+    if (!isCsv) {
+      toast.error("Selecciona un archivo CSV válido");
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/confectionists/import", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || (typeof payload === "string" ? payload : "No se pudo importar el CSV"),
+        );
+      }
+      const createdCount = Number(payload?.createdCount ?? 0);
+      const updatedCount = Number(payload?.updatedCount ?? 0);
+      const failedCount = Number(payload?.failedCount ?? 0);
+      const firstError = Array.isArray(payload?.errors)
+        ? String(payload.errors[0]?.message ?? "")
+        : "";
+      if (createdCount === 0 && updatedCount === 0 && failedCount > 0) {
+        toast.error(`No se importó ningún registro. ${firstError || "Revisa el archivo CSV."}`);
+        return;
+      }
+      if (failedCount > 0) {
+        toast.success(`Importación parcial: ${createdCount} creados, ${updatedCount} editados, ${failedCount} con error`);
+      } else {
+        toast.success(`Importación exitosa: ${createdCount} creados, ${updatedCount} editados`);
+      }
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   const remove = async () => {
     const c = pendingDelete;
@@ -157,7 +237,10 @@ export function ConfectionistsTab({
 
   const createAsEmployee = async (confectionist: Confectionist) => {
     if (!confectionist.email) {
-      toast.error("Para crear como empleado, el confeccionista debe tener email.");
+      toast.error(
+        "Para crear como empleado, el confeccionista debe tener email.",
+      );
+
       return;
     }
 
@@ -189,7 +272,10 @@ export function ConfectionistsTab({
 
   const createAsSupplier = async (confectionist: Confectionist) => {
     if (!confectionist.email) {
-      toast.error("Para crear como proveedor, el confeccionista debe tener email.");
+      toast.error(
+        "Para crear como proveedor, el confeccionista debe tener email.",
+      );
+
       return;
     }
 
@@ -255,7 +341,9 @@ export function ConfectionistsTab({
           isActive: Boolean(confectionist.isActive ?? true),
           specialty: confectionist.specialty ?? "",
           dailyCapacity:
-            confectionist.dailyCapacity === null ? null : confectionist.dailyCapacity,
+            confectionist.dailyCapacity === null
+              ? null
+              : confectionist.dailyCapacity,
         }),
       });
 
@@ -288,7 +376,23 @@ export function ConfectionistsTab({
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            accept=".csv"
+            className="hidden"
+            type="file"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); }}
+          />
+          <Button variant="flat" onPress={exportCsv}>
+            Exportar CSV
+          </Button>
+          <Button variant="flat" onPress={downloadTemplate}>
+            Descargar plantilla CSV
+          </Button>
+          <Button color="secondary" isLoading={importing} onPress={() => fileInputRef.current?.click()}>
+            Importar CSV
+          </Button>
           {canCreate ? (
             <Button
               color="primary"
@@ -348,12 +452,18 @@ export function ConfectionistsTab({
                 <TableCell className="text-default-500">
                   {c.identificationType}
                 </TableCell>
-                <TableCell className="text-default-500">{c.email ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.email ?? "-"}
+                </TableCell>
                 <TableCell className="text-default-500">
                   {c.fullMobile ?? c.mobile ?? "-"}
                 </TableCell>
-                <TableCell className="text-default-500">{c.type ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{c.specialty ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.type ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {c.specialty ?? "-"}
+                </TableCell>
                 <TableCell className="text-default-500">
                   {c.dailyCapacity === null ? "-" : c.dailyCapacity}
                 </TableCell>
@@ -521,8 +631,8 @@ export function ConfectionistsTab({
 
       <ConfectionistModal
         confectionist={editing}
-        prefill={modalPrefill}
         isOpen={modalOpen}
+        prefill={modalPrefill}
         onOpenChange={(open) => {
           setModalOpen(open);
           if (!open) {
@@ -577,11 +687,11 @@ export function ConfectionistsTab({
         onRequestCreateEmployee={
           legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
         }
-        onRequestCreateSupplier={
-          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
-        }
         onRequestCreatePacker={
           legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
         }
       />
 
@@ -592,26 +702,41 @@ export function ConfectionistsTab({
       />
 
       <ThirdPartyDocumentsModal
-        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        documents={
+          viewingDocuments
+            ? [
+                {
+                  label: "Documento de identidad",
+                  url: viewingDocuments.identityDocumentUrl,
+                },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                {
+                  label: "Cámara de comercio",
+                  url: viewingDocuments.commerceChamberDocumentUrl,
+                },
+                {
+                  label: "Pasaporte",
+                  url: viewingDocuments.passportDocumentUrl,
+                },
+                {
+                  label: "Certificado tributario",
+                  url: viewingDocuments.taxCertificateDocumentUrl,
+                },
+                {
+                  label: "Documento empresa",
+                  url: viewingDocuments.companyIdDocumentUrl,
+                },
+              ]
+            : []
+        }
+        emptyMessage="Este confeccionista no tiene documentos cargados."
+        isOpen={documentsOpen}
         subtitle={
           viewingDocuments
             ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
             : undefined
         }
-        emptyMessage="Este confeccionista no tiene documentos cargados."
-        documents={
-          viewingDocuments
-            ? [
-                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
-                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
-                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
-                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
-                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
-                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
-              ]
-            : []
-        }
-        isOpen={documentsOpen}
+        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
         onOpenChange={(open) => {
           setDocumentsOpen(open);
           if (!open) setViewingDocuments(null);

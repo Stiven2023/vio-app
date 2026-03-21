@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { and, desc, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, like } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { employees, roles, users } from "@/src/db/schema";
@@ -17,6 +17,7 @@ function str(value: unknown) {
 
 function requireAdmin(request: Request) {
   const role = getRoleFromRequest(request);
+
   if (role !== "ADMINISTRADOR") {
     return new Response("Forbidden", { status: 403 });
   }
@@ -26,6 +27,7 @@ function requireAdmin(request: Request) {
 
 function makeUsername(role: ThirdRole, slot: number) {
   const base = role.toLowerCase();
+
   return `${base}${slot}`;
 }
 
@@ -40,7 +42,10 @@ async function buildNextEmployeeCode() {
   let nextNumber = 1001;
 
   if (lastEmployee?.employeeCode) {
-    const parsed = Number(String(lastEmployee.employeeCode).replace(/^EMP/i, ""));
+    const parsed = Number(
+      String(lastEmployee.employeeCode).replace(/^EMP/i, ""),
+    );
+
     if (Number.isFinite(parsed) && parsed > 0) {
       nextNumber = parsed + 1;
     }
@@ -76,6 +81,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = requireAdmin(request);
+
   if (forbidden) return forbidden;
 
   try {
@@ -97,13 +103,22 @@ export async function GET(request: Request) {
       })
       .from(employees)
       .leftJoin(users, eq(employees.userId, users.id))
-      .where(and(isNotNull(employees.userId), inArray(employees.roleId, [...roleIdSet] as string[])));
+      .where(
+        and(
+          isNotNull(employees.userId),
+          inArray(employees.roleId, [...roleIdSet] as string[]),
+        ),
+      );
 
     return Response.json({ items: rows });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudieron consultar cuentas de terceros", { status: 500 });
+
+    return new Response("No se pudieron consultar cuentas de terceros", {
+      status: 500,
+    });
   }
 }
 
@@ -117,6 +132,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const forbidden = requireAdmin(request);
+
   if (forbidden) return forbidden;
 
   const body = await request.json();
@@ -129,7 +145,12 @@ export async function POST(request: Request) {
     return new Response("role inválido", { status: 400 });
   }
 
-  if (!password || password.length < 7 || !/[A-Z]/.test(password) || /[^A-Za-z0-9.*]/.test(password)) {
+  if (
+    !password ||
+    password.length < 7 ||
+    !/[A-Z]/.test(password) ||
+    /[^A-Za-z0-9.*]/.test(password)
+  ) {
     return new Response("Contraseña inválida", { status: 400 });
   }
 
@@ -144,7 +165,9 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (!roleRow) {
-      return new Response(`No existe el rol ${role} en base de datos`, { status: 400 });
+      return new Response(`No existe el rol ${role} en base de datos`, {
+        status: 400,
+      });
     }
 
     const [existingUser] = await db
@@ -193,7 +216,9 @@ export async function POST(request: Request) {
         CONFECCIONISTA: 78000000,
         EMPAQUE: 79000000,
       };
-      const identification = await buildUniqueIdentification(baseByRole[role] + slot);
+      const identification = await buildUniqueIdentification(
+        baseByRole[role] + slot,
+      );
 
       await db.insert(employees).values({
         userId,
@@ -226,7 +251,9 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear/actualizar la cuenta de tercero", {
       status: 500,
     });

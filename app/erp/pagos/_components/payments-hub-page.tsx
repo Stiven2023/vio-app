@@ -32,7 +32,9 @@ export function PaymentsHubPage({
 }) {
   const [view, setView] = useState<"pedido" | "cliente">("pedido");
   const [query, setQuery] = useState("");
-  const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrderId ?? "");
+  const [selectedOrderId, setSelectedOrderId] = useState<string>(
+    initialOrderId ?? "",
+  );
   const [options, setOptions] = useState<OrderOption[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +51,7 @@ export function PaymentsHubPage({
       const res = await apiJson<{ items: OrderOption[] }>(
         `/api/pagos/orders?q=${encodeURIComponent(value.trim())}&limit=20`,
       );
+
       setOptions(Array.isArray(res.items) ? res.items : []);
     } catch {
       setOptions([]);
@@ -59,9 +62,11 @@ export function PaymentsHubPage({
 
   const onSelectOrder = (key: Key | null) => {
     const nextId = String(key ?? "");
+
     setSelectedOrderId(nextId);
 
     const option = options.find((item) => item.id === nextId);
+
     if (option) {
       setQuery(option.orderCode);
     }
@@ -73,7 +78,9 @@ export function PaymentsHubPage({
         aria-label="Vistas de pagos"
         selectedKey={view}
         variant="underlined"
-        onSelectionChange={(key) => setView(String(key) === "cliente" ? "cliente" : "pedido")}
+        onSelectionChange={(key) =>
+          setView(String(key) === "cliente" ? "cliente" : "pedido")
+        }
       >
         <Tab key="pedido" title="Pagos por pedido" />
         <Tab key="cliente" title="Pagos por cliente" />
@@ -126,7 +133,9 @@ export function PaymentsHubPage({
 
           {selectedOrderId ? (
             <Card>
-              <CardHeader className="font-semibold">Detalle de pagos por pedido</CardHeader>
+              <CardHeader className="font-semibold">
+                Detalle de pagos por pedido
+              </CardHeader>
               <CardBody>
                 <OrderPaymentsPage
                   canApprove={canApprove}

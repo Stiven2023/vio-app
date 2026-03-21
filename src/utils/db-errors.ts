@@ -7,12 +7,14 @@ type DbErrorShape = {
 function readDbErrorCode(error: unknown) {
   if (!error || typeof error !== "object") return null;
   const e = error as DbErrorShape;
+
   return e.code ?? e.cause?.code ?? null;
 }
 
 function readDbErrorMessage(error: unknown) {
   if (!error || typeof error !== "object") return "";
   const e = error as DbErrorShape;
+
   return `${e.message ?? ""} ${e.cause?.message ?? ""}`.trim();
 }
 
@@ -31,9 +33,12 @@ export function dbErrorResponse(error: unknown) {
   }
 
   if (code === "ETIMEDOUT" || msg.includes("timeout")) {
-    return new Response("Tiempo de espera agotado al conectar la base de datos", {
-      status: 503,
-    });
+    return new Response(
+      "Tiempo de espera agotado al conectar la base de datos",
+      {
+        status: 503,
+      },
+    );
   }
 
   return null;

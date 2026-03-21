@@ -139,7 +139,10 @@ async function assertAdvisorOwnsOrder(request: Request, orderId: string) {
 
 type OrderTypeCode = "VN" | "VI" | "VT" | "VW";
 
-async function generateOrderCode(tx: any, type: OrderTypeCode): Promise<string> {
+async function generateOrderCode(
+  tx: any,
+  type: OrderTypeCode,
+): Promise<string> {
   const prefix = `${type}-`;
   const seqLen = type === "VI" ? 4 : 6;
 
@@ -237,7 +240,9 @@ export async function GET(request: Request) {
   const { page, pageSize, offset } = parsePagination(searchParams);
   const q = String(searchParams.get("q") ?? "").trim();
   const status = String(searchParams.get("status") ?? "").trim();
-  const type = String(searchParams.get("type") ?? "").trim().toUpperCase();
+  const type = String(searchParams.get("type") ?? "")
+    .trim()
+    .toUpperCase();
 
   const filters: Array<any> = [
     q
@@ -347,7 +352,9 @@ export async function POST(request: Request) {
     .trim()
     .toUpperCase();
   const orderType =
-    normalizedType === "VI" || normalizedType === "VT" || normalizedType === "VW"
+    normalizedType === "VI" ||
+    normalizedType === "VT" ||
+    normalizedType === "VW"
       ? (normalizedType as OrderTypeCode)
       : ("VN" as OrderTypeCode);
 
@@ -486,12 +493,16 @@ export async function POST(request: Request) {
 
         if (!newOrderItemId || !srcOrderItemId) continue;
 
-        await insertOrderItemStatusHistory(tx, [
-          {
-            id: newOrderItemId,
-            status: String((newItem as any)?.status ?? "PENDIENTE"),
-          },
-        ], employeeId);
+        await insertOrderItemStatusHistory(
+          tx,
+          [
+            {
+              id: newOrderItemId,
+              status: String((newItem as any)?.status ?? "PENDIENTE"),
+            },
+          ],
+          employeeId,
+        );
 
         const srcPackaging = await tx
           .select()
@@ -850,7 +861,9 @@ export async function PUT(request: Request) {
         const [latestLegal] = await tx
           .select({ status: clientLegalStatusHistory.status })
           .from(clientLegalStatusHistory)
-          .where(eq(clientLegalStatusHistory.clientId, String(orderRow.clientId)))
+          .where(
+            eq(clientLegalStatusHistory.clientId, String(orderRow.clientId)),
+          )
           .orderBy(desc(clientLegalStatusHistory.createdAt))
           .limit(1);
 

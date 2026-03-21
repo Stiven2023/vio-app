@@ -2,7 +2,7 @@
 
 import type { Paginated } from "@/app/erp/catalog/_lib/types";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
@@ -21,7 +21,16 @@ import {
   TableRow,
 } from "@heroui/table";
 import { Input } from "@heroui/input";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsEyeFill, BsShieldCheck } from "react-icons/bs";
+import {
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+  BsEyeFill,
+  BsShieldCheck,
+} from "react-icons/bs";
+
+import { SupplierModal } from "./supplier-modal";
+import { SupplierDetailsModal } from "./supplier-details-modal";
 
 import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
@@ -30,9 +39,6 @@ import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
-
-import { SupplierModal } from "./supplier-modal";
-import { SupplierDetailsModal } from "./supplier-details-modal";
 import { SupplierLegalStatusModal } from "@/app/erp/admin/_components/suppliers/supplier-legal-status-modal";
 
 export type Supplier = {
@@ -88,8 +94,10 @@ export function SuppliersTab({
   canChangeLegalStatus?: boolean;
   legalOnlyMode?: boolean;
 }) {
-  const { data, loading, page, setPage, refresh } =
-    usePaginatedApi<Supplier>("/api/suppliers", 10);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Supplier>(
+    "/api/suppliers",
+    10,
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -99,13 +107,19 @@ export function SuppliersTab({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Supplier | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [viewingDocuments, setViewingDocuments] = useState<Supplier | null>(null);
+  const [viewingDocuments, setViewingDocuments] = useState<Supplier | null>(
+    null,
+  );
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Supplier | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Supplier | null>(
+    null,
+  );
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Supplier | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -135,6 +149,73 @@ export function SuppliersTab({
     return "No suppliers";
   }, [loading, search, status]);
 
+  const exportCsv = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/suppliers/export";
+    anchor.download = "suppliers-export.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const downloadTemplate = () => {
+    const anchor = document.createElement("a");
+    anchor.href = "/api/suppliers/import/template";
+    anchor.download = "suppliers-import-template.csv";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
+  const importCsv = async (file: File) => {
+    if (importing) return;
+    const isCsv =
+      file.type === "text/csv" ||
+      file.name.toLowerCase().endsWith(".csv") ||
+      file.type === "application/vnd.ms-excel";
+    if (!isCsv) {
+      toast.error("Selecciona un archivo CSV válido");
+      return;
+    }
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/suppliers/import", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(
+          payload?.message || (typeof payload === "string" ? payload : "No se pudo importar el CSV"),
+        );
+      }
+      const createdCount = Number(payload?.createdCount ?? 0);
+      const updatedCount = Number(payload?.updatedCount ?? 0);
+      const failedCount = Number(payload?.failedCount ?? 0);
+      const firstError = Array.isArray(payload?.errors)
+        ? String(payload.errors[0]?.message ?? "")
+        : "";
+      if (createdCount === 0 && updatedCount === 0 && failedCount > 0) {
+        toast.error(`No se importó ningún registro. ${firstError || "Revisa el archivo CSV."}`);
+        return;
+      }
+      if (failedCount > 0) {
+        toast.success(`Importación parcial: ${createdCount} creados, ${updatedCount} editados, ${failedCount} con error`);
+      } else {
+        toast.success(`Importación exitosa: ${createdCount} creados, ${updatedCount} editados`);
+      }
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const remove = async () => {
     const s = pendingDelete;
 
@@ -161,6 +242,7 @@ export function SuppliersTab({
   const createAsClient = async (supplier: Supplier) => {
     if (!supplier.email) {
       toast.error("To create as client, the supplier must have an email.");
+
       return;
     }
 
@@ -204,6 +286,7 @@ export function SuppliersTab({
   const createAsEmployee = async (supplier: Supplier) => {
     if (!supplier.email) {
       toast.error("To create as employee, the supplier must have an email.");
+
       return;
     }
 
@@ -302,14 +385,14 @@ export function SuppliersTab({
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <Input
-          className="sm:w-72"
-          placeholder="Search by code, name, email or contact…"
-          value={search}
-          onValueChange={setSearch}
-          isClearable
-          onClear={() => setSearch("")}
-        />
+          <Input
+            isClearable
+            className="sm:w-72"
+            placeholder="Search by code, name, email or contact…"
+            value={search}
+            onClear={() => setSearch("")}
+            onValueChange={setSearch}
+          />
           <FilterSelect
             className="sm:w-56"
             label="Status"
@@ -323,7 +406,23 @@ export function SuppliersTab({
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            accept=".csv"
+            className="hidden"
+            type="file"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); }}
+          />
+          <Button variant="flat" onPress={exportCsv}>
+            Exportar CSV
+          </Button>
+          <Button variant="flat" onPress={downloadTemplate}>
+            Descargar plantilla CSV
+          </Button>
+          <Button color="secondary" isLoading={importing} onPress={() => fileInputRef.current?.click()}>
+            Importar CSV
+          </Button>
           {canCreate ? (
             <Button
               color="primary"
@@ -376,7 +475,9 @@ export function SuppliersTab({
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.supplierCode}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell className="text-default-500">{s.identificationType}</TableCell>
+                <TableCell className="text-default-500">
+                  {s.identificationType}
+                </TableCell>
                 <TableCell className="text-default-500">
                   {s.email ?? "-"}
                 </TableCell>
@@ -495,19 +596,23 @@ export function SuppliersTab({
       )}
 
       {data ? (
-        <Pager data={data as Paginated<Supplier>} page={page} onChange={setPage} />
+        <Pager
+          data={data as Paginated<Supplier>}
+          page={page}
+          onChange={setPage}
+        />
       ) : null}
 
       <SupplierModal
-        supplier={editing}
         isOpen={modalOpen}
+        supplier={editing}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
 
       <SupplierDetailsModal
-        supplier={viewing}
         isOpen={detailsOpen}
+        supplier={viewing}
         onOpenChange={(open) => {
           setDetailsOpen(open);
           if (!open) setViewing(null);
@@ -515,11 +620,13 @@ export function SuppliersTab({
         onRequestCreateClient={
           legalOnlyMode ? undefined : () => viewing && createAsClient(viewing)
         }
+        onRequestCreateConfectionist={
+          legalOnlyMode
+            ? undefined
+            : () => viewing && createAsConfectionist(viewing)
+        }
         onRequestCreateEmployee={
           legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
-        }
-        onRequestCreateConfectionist={
-          legalOnlyMode ? undefined : () => viewing && createAsConfectionist(viewing)
         }
         onRequestCreatePacker={
           legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
@@ -527,33 +634,51 @@ export function SuppliersTab({
       />
 
       <SupplierLegalStatusModal
-        supplier={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
+        supplier={viewingLegalStatus}
         onOpenChange={setLegalStatusModalOpen}
       />
 
       <ThirdPartyDocumentsModal
-        title={`Documents of ${viewingDocuments?.name ?? ""}`}
+        documents={
+          viewingDocuments
+            ? [
+                {
+                  label: "Identity document",
+                  url: viewingDocuments.identityDocumentUrl,
+                },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                {
+                  label: "Chamber of commerce",
+                  url: viewingDocuments.commerceChamberDocumentUrl,
+                },
+                {
+                  label: "Passport",
+                  url: viewingDocuments.passportDocumentUrl,
+                },
+                {
+                  label: "Tax certificate",
+                  url: viewingDocuments.taxCertificateDocumentUrl,
+                },
+                {
+                  label: "Company document",
+                  url: viewingDocuments.companyIdDocumentUrl,
+                },
+                {
+                  label: "Bank certificate",
+                  url: viewingDocuments.bankCertificateUrl,
+                },
+              ]
+            : []
+        }
+        emptyMessage="This supplier has no uploaded documents."
+        isOpen={documentsOpen}
         subtitle={
           viewingDocuments
             ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
             : undefined
         }
-        emptyMessage="This supplier has no uploaded documents."
-        documents={
-          viewingDocuments
-            ? [
-                { label: "Identity document", url: viewingDocuments.identityDocumentUrl },
-                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
-                { label: "Chamber of commerce", url: viewingDocuments.commerceChamberDocumentUrl },
-                { label: "Passport", url: viewingDocuments.passportDocumentUrl },
-                { label: "Tax certificate", url: viewingDocuments.taxCertificateDocumentUrl },
-                { label: "Company document", url: viewingDocuments.companyIdDocumentUrl },
-                { label: "Bank certificate", url: viewingDocuments.bankCertificateUrl },
-              ]
-            : []
-        }
-        isOpen={documentsOpen}
+        title={`Documents of ${viewingDocuments?.name ?? ""}`}
         onOpenChange={(open) => {
           setDocumentsOpen(open);
           if (!open) setViewingDocuments(null);

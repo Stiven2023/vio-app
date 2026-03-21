@@ -25,6 +25,7 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -70,14 +71,12 @@ export async function PUT(request: Request) {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    await db
-      .update(users)
-      .set({ passwordHash })
-      .where(eq(users.id, userId));
+    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
 
     return Response.json({ ok: true });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
 
     return new Response("Failed to change password", { status: 500 });

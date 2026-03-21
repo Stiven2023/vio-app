@@ -896,9 +896,7 @@ export function PayrollProvisionsTab({ canCreate }: { canCreate: boolean }) {
           </TableHeader>
           <TableBody
             emptyContent={
-              loading
-                ? "Loading..."
-                : "No provisions for the selected filters."
+              loading ? "Loading..." : "No provisions for the selected filters."
             }
             isLoading={loading}
           >

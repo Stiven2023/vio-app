@@ -5,9 +5,6 @@ import {
   inventoryItemVariants,
   inventoryItems,
   orderItemMoldingInsumos,
-  orderItemMoldings,
-  orderItems,
-  orders,
 } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
@@ -28,9 +25,11 @@ export async function GET(request: Request) {
     limit: 60,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   try {
@@ -71,7 +70,9 @@ export async function GET(request: Request) {
     return Response.json({ items: rows });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not retrieve purchase needs", { status: 500 });
   }
 }

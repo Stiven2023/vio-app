@@ -27,7 +27,10 @@ export async function POST(request: Request) {
   const cronAuthorized = isCronAuthorized(request);
 
   if (!cronAuthorized) {
-    const forbidden = await requirePermission(request, "EDITAR_ITEM_INVENTARIO");
+    const forbidden = await requirePermission(
+      request,
+      "EDITAR_ITEM_INVENTARIO",
+    );
 
     if (forbidden) return forbidden;
   }

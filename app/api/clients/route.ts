@@ -30,6 +30,7 @@ function formatMobile(intlCode: string, mobile: string): string {
 
   // Para otros países, formato general: +código número (con espacio cada 3-4 dígitos)
   const parts: string[] = [];
+
   for (let i = 0; i < clean.length; i += 3) {
     parts.push(clean.slice(i, i + 3));
   }
@@ -55,6 +56,7 @@ function formatLandline(
   // Para Colombia con código de área
   if (intl === "57" && localCode) {
     const local = localCode.trim();
+
     // Formato: +57 (código) ### ####
     if (clean.length === 7) {
       formatted = `+${intl} (${local}) ${clean.slice(0, 3)} ${clean.slice(3)}`;
@@ -193,7 +195,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar clientes", { status: 500 });
   }
 }
@@ -308,6 +312,7 @@ export async function POST(request: Request) {
   }
 
   const mobileDigits = mobile.replace(/\D/g, "");
+
   if (mobileDigits.length < 7 || mobileDigits.length > 15) {
     return new Response("El móvil debe tener entre 7 y 15 dígitos", {
       status: 400,
@@ -603,6 +608,7 @@ export async function PUT(request: Request) {
 
   // Obtener cliente actual para detectar cambios
   let currentClient;
+
   try {
     currentClient = await db.query.clients.findFirst({
       where: eq(clients.id, String(id)),
@@ -613,6 +619,7 @@ export async function PUT(request: Request) {
     }
   } catch (error) {
     console.error("Error obteniendo cliente actual:", error);
+
     return new Response("Error al obtener datos del cliente", { status: 500 });
   }
 
@@ -788,6 +795,7 @@ export async function PUT(request: Request) {
       patch.creditLimit = null;
     } else {
       const parsedCreditLimit = Number(payload.creditLimit);
+
       if (!Number.isFinite(parsedCreditLimit) || parsedCreditLimit < 0) {
         return new Response("El monto tope de crédito es inválido", {
           status: 400,

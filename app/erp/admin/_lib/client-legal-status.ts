@@ -1,5 +1,6 @@
-import { apiJson } from "@/app/erp/admin/_lib/api";
 import { z } from "zod";
+
+import { apiJson } from "@/app/erp/admin/_lib/api";
 
 const legalStatusSchema = z.object({
   status: z.enum(["VIGENTE", "EN_REVISION", "BLOQUEADO"], {
@@ -28,18 +29,19 @@ export type ClientLegalStatusCheck = {
  * - Sin estado: debe estar inactivo
  */
 export function shouldClientBeActive(
-  status?: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null
+  status?: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null,
 ): boolean {
   if (!status) return false;
+
   return status === "VIGENTE";
 }
 
 export async function updateClientLegalStatus(
   clientId: string,
-  data: LegalStatusUpdate
+  data: LegalStatusUpdate,
 ) {
   const validated = legalStatusSchema.safeParse(data);
-  
+
   if (!validated.success) {
     throw new Error(validated.error.issues[0]?.message || "Datos inválidos");
   }
@@ -49,7 +51,7 @@ export async function updateClientLegalStatus(
     {
       method: "POST",
       body: JSON.stringify(validated.data),
-    }
+    },
   );
 
   return response;
@@ -57,8 +59,9 @@ export async function updateClientLegalStatus(
 
 export async function getClientLegalStatusHistory(clientId: string) {
   const response = await apiJson<any>(
-    `/api/clients/${clientId}/legal-status-history`
+    `/api/clients/${clientId}/legal-status-history`,
   );
+
   return response;
 }
 
@@ -67,15 +70,17 @@ export async function getClientLegalStatusHistory(clientId: string) {
  * Útil para validar si el cliente puede operar en otros módulos
  */
 export async function checkClientLegalStatus(
-  clientId: string
+  clientId: string,
 ): Promise<ClientLegalStatusCheck> {
   try {
     const response = await apiJson<ClientLegalStatusCheck>(
-      `/api/clients/${clientId}/legal-status/check`
+      `/api/clients/${clientId}/legal-status/check`,
     );
+
     return response;
   } catch (error) {
     console.error("Error verificando estado jurídico del cliente:", error);
+
     return {
       status: null,
       canOperate: false,

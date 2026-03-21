@@ -49,16 +49,19 @@ async function requireAdminRole(): Promise<Response | null> {
       : null;
 
   if (!payload) return new Response("Unauthorized", { status: 401 });
-  if (role !== "ADMINISTRADOR") return new Response("Forbidden", { status: 403 });
+  if (role !== "ADMINISTRADOR")
+    return new Response("Forbidden", { status: 403 });
 
   return null;
 }
 
 export async function GET() {
   const envGuard = requireDevEnvironment();
+
   if (envGuard) return envGuard;
 
   const authGuard = await requireAdminRole();
+
   if (authGuard) return authGuard;
 
   const override = (await cookies()).get("role_override")?.value ?? "";
@@ -68,9 +71,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const envGuard = requireDevEnvironment();
+
   if (envGuard) return envGuard;
 
   const authGuard = await requireAdminRole();
+
   if (authGuard) return authGuard;
 
   const body = (await request.json()) as { role?: string };
@@ -97,9 +102,11 @@ export async function POST(request: Request) {
 
 export async function DELETE() {
   const envGuard = requireDevEnvironment();
+
   if (envGuard) return envGuard;
 
   const authGuard = await requireAdminRole();
+
   if (authGuard) return authGuard;
 
   const response = Response.json({ roleOverride: "" });

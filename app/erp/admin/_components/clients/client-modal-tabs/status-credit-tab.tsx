@@ -1,3 +1,5 @@
+import type { FormState, SetFormState } from "../client-modal.types";
+
 import { Input } from "@heroui/input";
 import { Divider } from "@heroui/divider";
 import { Select, SelectItem } from "@heroui/select";
@@ -6,7 +8,6 @@ import { Card, CardBody } from "@heroui/card";
 import { BsCreditCardFill, BsInfoCircle } from "react-icons/bs";
 
 import { CLIENT_STATUSES } from "../client-modal.constants";
-import type { FormState, SetFormState } from "../client-modal.types";
 
 type Props = {
   form: FormState;
@@ -108,9 +109,9 @@ export function StatusCreditTab({ form, setForm, errors = {} }: Props) {
           />
 
           <Select
+            isRequired
             errorMessage={errors.taxZone}
             isInvalid={Boolean(errors.taxZone)}
-            isRequired
             label="Tax zone"
             selectedKeys={[form.taxZone]}
             onChange={(e) =>
@@ -130,9 +131,9 @@ export function StatusCreditTab({ form, setForm, errors = {} }: Props) {
           </div>
 
           <Select
+            isRequired
             errorMessage={errors.paymentType}
             isInvalid={Boolean(errors.paymentType)}
-            isRequired
             label="Payment type"
             selectedKeys={[form.paymentType]}
             onChange={(e) =>

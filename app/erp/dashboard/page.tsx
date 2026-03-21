@@ -3,7 +3,10 @@ import { redirect } from "next/navigation";
 
 import { ExchangeRateWidget } from "@/app/erp/dashboard/_components/exchange-rate-widget";
 import { DashboardSectionsSkeleton } from "@/app/erp/dashboard/_components/dashboard-sections-skeleton";
-import { getLatestUsdCopRatePair, getUsdCopRateHistory } from "@/src/utils/exchange-rate";
+import {
+  getLatestUsdCopRatePair,
+  getUsdCopRateHistory,
+} from "@/src/utils/exchange-rate";
 import { verifyAuthToken } from "@/src/utils/auth";
 
 export default async function DashboardPage() {
@@ -22,21 +25,22 @@ export default async function DashboardPage() {
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">Dashboard</h1>
         <p className="text-sm text-default-500">
-          Vista unica con secciones internas: KPIs, SLA, Estados de resultados y Comisiones.
+          Vista unica con secciones internas: KPIs, SLA, Estados de resultados y
+          Comisiones.
         </p>
       </header>
 
-      <section id="dolar-card" className="scroll-mt-24">
+      <section className="scroll-mt-24" id="dolar-card">
         <ExchangeRateWidget
-          pairLabel="USD/COP"
+          adjustmentApplied={latest?.adjustmentApplied ?? null}
           baseLabel="TRM base"
           currentRate={latest?.effectiveRate ?? null}
+          floorRate={latest?.floorRate ?? 3600}
+          history={history}
+          pairLabel="USD/COP"
           previousRate={previous?.effectiveRate ?? null}
           provider={latest?.provider ?? "datos.gov.co (TRM Colombia)"}
           sourceRate={latest?.sourceRate ?? null}
-          floorRate={latest?.floorRate ?? 3600}
-          adjustmentApplied={latest?.adjustmentApplied ?? null}
-          history={history}
         />
       </section>
 

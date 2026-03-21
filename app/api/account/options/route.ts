@@ -18,6 +18,7 @@ function formatMobile(intlCode: string, mobile: string): string {
   }
 
   const parts: string[] = [];
+
   for (let i = 0; i < clean.length; i += 3) {
     parts.push(clean.slice(i, i + 3));
   }
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -85,7 +87,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Failed to fetch account options", {
       status: 500,
     });
@@ -102,6 +106,7 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
@@ -130,7 +135,10 @@ export async function PUT(request: Request) {
         .trim()
         .toLowerCase();
 
-      if (preferredLanguage && !["es", "en", "pt"].includes(preferredLanguage)) {
+      if (
+        preferredLanguage &&
+        !["es", "en", "pt"].includes(preferredLanguage)
+      ) {
         return new Response("Invalid language. Use: es, en, or pt", {
           status: 400,
         });
@@ -141,6 +149,7 @@ export async function PUT(request: Request) {
 
     if (payload.name !== undefined) {
       const name = String(payload.name ?? "").trim();
+
       if (!name) return new Response("Name is required", { status: 400 });
       employeePatch.name = name;
     }
@@ -151,13 +160,16 @@ export async function PUT(request: Request) {
         : null;
 
     if (payload.mobile !== undefined)
-      employeePatch.mobile = payload.mobile ? String(payload.mobile).trim() : null;
+      employeePatch.mobile = payload.mobile
+        ? String(payload.mobile).trim()
+        : null;
 
     if (payload.mobile !== undefined || payload.intlDialCode !== undefined) {
       const intl = payload.intlDialCode
         ? String(payload.intlDialCode).trim()
         : "57";
       const mobile = payload.mobile ? String(payload.mobile).trim() : null;
+
       employeePatch.fullMobile = mobile ? formatMobile(intl, mobile) : null;
     }
 
@@ -172,7 +184,9 @@ export async function PUT(request: Request) {
         : null;
 
     if (payload.address !== undefined)
-      employeePatch.address = payload.address ? String(payload.address).trim() : null;
+      employeePatch.address = payload.address
+        ? String(payload.address).trim()
+        : null;
 
     if (payload.city !== undefined)
       employeePatch.city = payload.city ? String(payload.city).trim() : null;
@@ -253,6 +267,7 @@ export async function PUT(request: Request) {
     }
 
     const response = dbErrorResponse(error);
+
     if (response) return response;
 
     return new Response("Failed to update account options", {

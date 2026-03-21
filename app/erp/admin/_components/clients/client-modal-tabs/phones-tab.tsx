@@ -1,8 +1,12 @@
+import type {
+  FormErrors,
+  FormState,
+  SetFormState,
+} from "../client-modal.types";
+
 import { Input } from "@heroui/input";
 import { Divider } from "@heroui/divider";
 import { BsTelephoneFill } from "react-icons/bs";
-
-import type { FormErrors, FormState, SetFormState } from "../client-modal.types";
 
 type Props = {
   form: FormState;
@@ -24,13 +28,15 @@ export function PhonesTab({ form, errors, setForm }: Props) {
 
         <div className="md:col-span-2">
           <Input
+            isRequired
             description="Campo crítico para comunicación"
             endContent={<span className="text-danger">*</span>}
             errorMessage={errors.mobile}
             isInvalid={Boolean(errors.mobile)}
-            isRequired
             label="Móvil"
-            startContent={<BsTelephoneFill className="text-xl text-default-500" />}
+            startContent={
+              <BsTelephoneFill className="text-xl text-default-500" />
+            }
             value={form.mobile}
             onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
           />

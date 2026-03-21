@@ -14,27 +14,30 @@ export default async function AprobacionInicialActualizacionPage() {
   });
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
+
   if (forbidden) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Approval Update</h1>
-      <p className="text-default-600 mt-1">Approve design changes and send them to Scheduling - Update.</p>
+      <p className="text-default-600 mt-1">
+        Approve design changes and send them to Scheduling - Update.
+      </p>
       <div className="mt-6">
         <ProgramacionItemsTable
-          process="PRODUCCION"
-          orderStatus="APROBACION"
-          basePath="/aprobacion-inicial/actualizacion"
-          actualizacionBasePath="/aprobacion-inicial/actualizacion"
-          view="ACTUALIZACION"
-          actualizacionQueue="APROBACION"
           enableDecisions
+          actualizacionBasePath="/aprobacion-inicial/actualizacion"
+          actualizacionQueue="APROBACION"
+          basePath="/aprobacion-inicial/actualizacion"
           groupByOrder={false}
           labels={{
             principal: "Main Approval",
             bodega: "Warehouse Approval",
             compras: "Purchasing Approval",
           }}
+          orderStatus="APROBACION"
+          process="PRODUCCION"
+          view="ACTUALIZACION"
         />
       </div>
     </div>

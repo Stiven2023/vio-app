@@ -24,17 +24,23 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
+
   return Number.isFinite(n) ? n : 0;
 }
 
 function toNumericString(value: unknown) {
   const n = Number(value);
+
   if (!Number.isFinite(n)) return "0.00";
+
   return n.toFixed(2);
 }
 
 function normalizeTaxZone(value: unknown) {
-  const normalized = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  const normalized = String(value ?? "CONTINENTAL")
+    .trim()
+    .toUpperCase();
+
   if (
     normalized === "FREE_ZONE" ||
     normalized === "SAN_ANDRES" ||
@@ -48,8 +54,10 @@ function normalizeTaxZone(value: unknown) {
 
 function toPositiveInt(v: unknown) {
   const n = Number(String(v));
+
   if (!Number.isFinite(n)) return 1;
   const normalized = Math.round(n);
+
   return normalized > 0 ? normalized : 1;
 }
 
@@ -63,9 +71,11 @@ function dbCode(error: unknown) {
 
 async function resolveEmployeeId(request: Request) {
   const direct = getEmployeeIdFromRequest(request);
+
   if (direct) return direct;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) return null;
 
   const [row] = await db
@@ -108,6 +118,7 @@ async function generatePrefacturaCode(tx: any) {
     .limit(1);
 
   const next = (row?.maxSuffix ?? 10000) + 1;
+
   return `PRE${String(next).padStart(5, "0")}`;
 }
 
@@ -125,22 +136,31 @@ export async function POST(
 
   if (limited) return limited;
 
-  const forbiddenQuotation = await requirePermission(request, "EDITAR_COTIZACION");
+  const forbiddenQuotation = await requirePermission(
+    request,
+    "EDITAR_COTIZACION",
+  );
+
   if (forbiddenQuotation) return forbiddenQuotation;
 
   const forbiddenOrder = await requirePermission(request, "CREAR_PEDIDO");
+
   if (forbiddenOrder) return forbiddenOrder;
 
   const quotationId = String(params.id ?? "").trim();
+
   if (!quotationId) return new Response("id required", { status: 400 });
 
   let orderNameFromBody: string | null = null;
   let orderTypeFromBody: OrderTypeCode | null = null;
   let prefacturaFiscalInput: Record<string, unknown> = {};
+
   try {
     const body = await request.json();
     const rawOrderName = String(body?.orderName ?? "").trim();
-    const rawOrderType = String(body?.orderType ?? "").trim().toUpperCase();
+    const rawOrderType = String(body?.orderType ?? "")
+      .trim()
+      .toUpperCase();
 
     orderNameFromBody = rawOrderName ? rawOrderName : null;
     orderTypeFromBody =
@@ -223,36 +243,47 @@ export async function POST(
         await tx
           .update(prefacturas)
           .set({
-            municipalityFiscalSnapshot: prefacturaFiscalInput.municipalityFiscalSnapshot
-              ? String(prefacturaFiscalInput.municipalityFiscalSnapshot).trim()
-              : String(quotation.municipalityFiscalSnapshot ?? "").trim() || null,
+            municipalityFiscalSnapshot:
+              prefacturaFiscalInput.municipalityFiscalSnapshot
+                ? String(
+                    prefacturaFiscalInput.municipalityFiscalSnapshot,
+                  ).trim()
+                : String(quotation.municipalityFiscalSnapshot ?? "").trim() ||
+                  null,
             taxZoneSnapshot: normalizeTaxZone(
-              prefacturaFiscalInput.taxZoneSnapshot ?? quotation.taxZoneSnapshot,
+              prefacturaFiscalInput.taxZoneSnapshot ??
+                quotation.taxZoneSnapshot,
             ),
             withholdingTaxRate: toNumericString(
-              prefacturaFiscalInput.withholdingTaxRate ?? quotation.withholdingTaxRate,
+              prefacturaFiscalInput.withholdingTaxRate ??
+                quotation.withholdingTaxRate,
             ),
             withholdingIcaRate: toNumericString(
-              prefacturaFiscalInput.withholdingIcaRate ?? quotation.withholdingIcaRate,
+              prefacturaFiscalInput.withholdingIcaRate ??
+                quotation.withholdingIcaRate,
             ),
             withholdingIvaRate: toNumericString(
-              prefacturaFiscalInput.withholdingIvaRate ?? quotation.withholdingIvaRate,
+              prefacturaFiscalInput.withholdingIvaRate ??
+                quotation.withholdingIvaRate,
             ),
             withholdingTaxAmount: toNumericString(
-              prefacturaFiscalInput.withholdingTaxAmount ?? quotation.withholdingTaxAmount,
+              prefacturaFiscalInput.withholdingTaxAmount ??
+                quotation.withholdingTaxAmount,
             ),
             withholdingIcaAmount: toNumericString(
-              prefacturaFiscalInput.withholdingIcaAmount ?? quotation.withholdingIcaAmount,
+              prefacturaFiscalInput.withholdingIcaAmount ??
+                quotation.withholdingIcaAmount,
             ),
             withholdingIvaAmount: toNumericString(
-              prefacturaFiscalInput.withholdingIvaAmount ?? quotation.withholdingIvaAmount,
+              prefacturaFiscalInput.withholdingIvaAmount ??
+                quotation.withholdingIvaAmount,
             ),
             totalAfterWithholdings: toNumericString(
               prefacturaFiscalInput.totalAfterWithholdings ??
-                (asNumber(quotation.total) -
+                asNumber(quotation.total) -
                   asNumber(quotation.withholdingTaxAmount) -
                   asNumber(quotation.withholdingIcaAmount) -
-                  asNumber(quotation.withholdingIvaAmount)),
+                  asNumber(quotation.withholdingIvaAmount),
             ),
           })
           .where(eq(prefacturas.id, existingPrefactura.id));
@@ -284,8 +315,11 @@ export async function POST(
       }
 
       const orderTypeByQuotation =
-        String(quotation.currency ?? "COP").toUpperCase() === "USD" ? "VI" : "VN";
-      const orderType = (orderTypeFromBody ?? orderTypeByQuotation) as OrderTypeCode;
+        String(quotation.currency ?? "COP").toUpperCase() === "USD"
+          ? "VI"
+          : "VN";
+      const orderType = (orderTypeFromBody ??
+        orderTypeByQuotation) as OrderTypeCode;
       const orderName = orderNameFromBody ?? `Pedido ${quotation.quoteCode}`;
 
       let createdOrder: {
@@ -371,22 +405,34 @@ export async function POST(
               additionName: additions.name,
             })
             .from(quotationItemAdditions)
-            .leftJoin(additions, eq(quotationItemAdditions.additionId, additions.id))
-            .where(inArray(quotationItemAdditions.quotationItemId, quoteItemIds))
+            .leftJoin(
+              additions,
+              eq(quotationItemAdditions.additionId, additions.id),
+            )
+            .where(
+              inArray(quotationItemAdditions.quotationItemId, quoteItemIds),
+            )
         : [];
 
       const additionsByItem = new Map<string, typeof quoteAdditions>();
+
       for (const add of quoteAdditions) {
         const key = String(add.quotationItemId);
         const current = additionsByItem.get(key) ?? [];
+
         current.push(add);
         additionsByItem.set(key, current);
       }
 
-      const conditionalTypes = new Set(["COMPLETACION", "REFERENTE", "REPOSICION"]);
+      const conditionalTypes = new Set([
+        "COMPLETACION",
+        "REFERENTE",
+        "REPOSICION",
+      ]);
       const referencedQuoteItems = quoteItems.filter((item) => {
         const type = String(item.orderType ?? "").toUpperCase();
         const code = String(item.orderCodeReference ?? "").trim();
+
         return conditionalTypes.has(type) && Boolean(code);
       });
 
@@ -450,10 +496,15 @@ export async function POST(
             .where(inArray(orderItems.orderId, referencedOrderIds as any))
         : [];
 
-      const referencedDesignsByOrderId = new Map<string, typeof referencedDesignItems>();
+      const referencedDesignsByOrderId = new Map<
+        string,
+        typeof referencedDesignItems
+      >();
+
       for (const design of referencedDesignItems) {
         const key = String(design.orderId ?? "");
         const current = referencedDesignsByOrderId.get(key) ?? [];
+
         current.push(design);
         referencedDesignsByOrderId.set(key, current);
       }
@@ -467,22 +518,29 @@ export async function POST(
       }> = [];
 
       for (const item of quoteItems) {
-        const orderTypeNormalized = String(item.orderType ?? "").trim().toUpperCase();
+        const orderTypeNormalized = String(item.orderType ?? "")
+          .trim()
+          .toUpperCase();
         const referenceOrderCode = String(item.orderCodeReference ?? "").trim();
         const referenceDesign = String(item.designNumber ?? "").trim();
         const referencedOrderId = referenceOrderCode
           ? referencedOrderIdByCode.get(referenceOrderCode)
           : undefined;
         const sourceCandidates = referencedOrderId
-          ? referencedDesignsByOrderId.get(referencedOrderId) ?? []
+          ? (referencedDesignsByOrderId.get(referencedOrderId) ?? [])
           : [];
         const sourceDesign = conditionalTypes.has(orderTypeNormalized)
           ? sourceCandidates.find((candidate) => {
               const designNumber = referenceDesign.toUpperCase();
+
               return (
                 String(candidate.id ?? "") === referenceDesign ||
-                String(candidate.manufacturingId ?? "").trim().toUpperCase() === designNumber ||
-                String(candidate.name ?? "").trim().toUpperCase() === designNumber
+                String(candidate.manufacturingId ?? "")
+                  .trim()
+                  .toUpperCase() === designNumber ||
+                String(candidate.name ?? "")
+                  .trim()
+                  .toUpperCase() === designNumber
               );
             })
           : null;
@@ -523,7 +581,8 @@ export async function POST(
             : adds.length > 0,
           additionEvidence: sourceDesign?.additionEvidence ?? additionEvidence,
           observations:
-            sourceDesign?.observations ?? `Demora estimada: ${estimatedLeadDays} días`,
+            sourceDesign?.observations ??
+            `Demora estimada: ${estimatedLeadDays} días`,
           fabric: sourceDesign?.fabric ?? null,
           imageUrl: sourceDesign?.imageUrl ?? null,
           screenPrint: Boolean(sourceDesign?.screenPrint ?? false),
@@ -534,7 +593,8 @@ export async function POST(
           flag: Boolean(sourceDesign?.flag ?? false),
           gender: sourceDesign?.gender ?? null,
           process: sourceDesign?.process ?? process,
-          estimatedLeadDays: sourceDesign?.estimatedLeadDays ?? estimatedLeadDays,
+          estimatedLeadDays:
+            sourceDesign?.estimatedLeadDays ?? estimatedLeadDays,
           neckType: sourceDesign?.neckType ?? null,
           sleeve: sourceDesign?.sleeve ?? null,
           color: sourceDesign?.color ?? null,
@@ -573,11 +633,13 @@ export async function POST(
           });
 
         const used = new Set<string>();
+
         for (const quoteItem of quoteItems) {
           const match = insertedDesigns.find(
             (row) =>
               String(row.orderId ?? "") === createdOrder.id &&
-              String(row.productId ?? "") === String(quoteItem.productId ?? "") &&
+              String(row.productId ?? "") ===
+                String(quoteItem.productId ?? "") &&
               !used.has(String(row.id)),
           );
 
@@ -590,8 +652,12 @@ export async function POST(
 
       if (additionsQueue.length > 0) {
         const additionRows: Array<typeof orderItemAdditions.$inferInsert> = [];
+
         for (const entry of additionsQueue) {
-          const orderItemId = insertedByQuotationItem.get(entry.quotationItemId);
+          const orderItemId = insertedByQuotationItem.get(
+            entry.quotationItemId,
+          );
+
           if (!orderItemId) continue;
 
           additionRows.push({
@@ -607,11 +673,14 @@ export async function POST(
             await tx.insert(orderItemAdditions).values(additionRows as any);
           } catch (error) {
             const code = dbCode(error);
+
             if (code !== "42P01") {
               throw error;
             }
 
-            const legacyAdditionItems: Array<typeof orderItems.$inferInsert> = [];
+            const legacyAdditionItems: Array<typeof orderItems.$inferInsert> =
+              [];
+
             for (const row of additionRows) {
               const [baseItem] = await tx
                 .select({
@@ -631,7 +700,9 @@ export async function POST(
                 name: "Adición",
                 quantity: toPositiveInt(row.quantity),
                 unitPrice: String(row.unitPrice),
-                totalPrice: String(asNumber(row.quantity) * asNumber(row.unitPrice)),
+                totalPrice: String(
+                  asNumber(row.quantity) * asNumber(row.unitPrice),
+                ),
                 status: "PENDIENTE" as any,
                 requiresRevision: false,
                 isActive: true,
@@ -670,36 +741,48 @@ export async function POST(
                 totalProducts: String(quotation.totalProducts ?? "0"),
                 subtotal: String(quotation.subtotal ?? "0"),
                 total: String(quotation.total ?? "0"),
-                municipalityFiscalSnapshot: prefacturaFiscalInput.municipalityFiscalSnapshot
-                  ? String(prefacturaFiscalInput.municipalityFiscalSnapshot).trim()
-                  : String(quotation.municipalityFiscalSnapshot ?? "").trim() || null,
+                municipalityFiscalSnapshot:
+                  prefacturaFiscalInput.municipalityFiscalSnapshot
+                    ? String(
+                        prefacturaFiscalInput.municipalityFiscalSnapshot,
+                      ).trim()
+                    : String(
+                        quotation.municipalityFiscalSnapshot ?? "",
+                      ).trim() || null,
                 taxZoneSnapshot: normalizeTaxZone(
-                  prefacturaFiscalInput.taxZoneSnapshot ?? quotation.taxZoneSnapshot,
+                  prefacturaFiscalInput.taxZoneSnapshot ??
+                    quotation.taxZoneSnapshot,
                 ),
                 withholdingTaxRate: toNumericString(
-                  prefacturaFiscalInput.withholdingTaxRate ?? quotation.withholdingTaxRate,
+                  prefacturaFiscalInput.withholdingTaxRate ??
+                    quotation.withholdingTaxRate,
                 ),
                 withholdingIcaRate: toNumericString(
-                  prefacturaFiscalInput.withholdingIcaRate ?? quotation.withholdingIcaRate,
+                  prefacturaFiscalInput.withholdingIcaRate ??
+                    quotation.withholdingIcaRate,
                 ),
                 withholdingIvaRate: toNumericString(
-                  prefacturaFiscalInput.withholdingIvaRate ?? quotation.withholdingIvaRate,
+                  prefacturaFiscalInput.withholdingIvaRate ??
+                    quotation.withholdingIvaRate,
                 ),
                 withholdingTaxAmount: toNumericString(
-                  prefacturaFiscalInput.withholdingTaxAmount ?? quotation.withholdingTaxAmount,
+                  prefacturaFiscalInput.withholdingTaxAmount ??
+                    quotation.withholdingTaxAmount,
                 ),
                 withholdingIcaAmount: toNumericString(
-                  prefacturaFiscalInput.withholdingIcaAmount ?? quotation.withholdingIcaAmount,
+                  prefacturaFiscalInput.withholdingIcaAmount ??
+                    quotation.withholdingIcaAmount,
                 ),
                 withholdingIvaAmount: toNumericString(
-                  prefacturaFiscalInput.withholdingIvaAmount ?? quotation.withholdingIvaAmount,
+                  prefacturaFiscalInput.withholdingIvaAmount ??
+                    quotation.withholdingIvaAmount,
                 ),
                 totalAfterWithholdings: toNumericString(
                   prefacturaFiscalInput.totalAfterWithholdings ??
-                    (asNumber(quotation.total) -
+                    asNumber(quotation.total) -
                       asNumber(quotation.withholdingTaxAmount) -
                       asNumber(quotation.withholdingIcaAmount) -
-                      asNumber(quotation.withholdingIvaAmount)),
+                      asNumber(quotation.withholdingIvaAmount),
                 ),
                 approvedAt: new Date(),
               })
@@ -782,7 +865,9 @@ export async function POST(
     console.error("[quotations/:id/prefactura]", error);
 
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo convertir la cotización a prefactura", {
       status: 500,
     });

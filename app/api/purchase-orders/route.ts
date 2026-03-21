@@ -22,6 +22,7 @@ function formatDecimal(value: number, fractionDigits = 2) {
 
 function toPositiveNumber(value: unknown) {
   const n = Number(String(value ?? "").replace(/,/g, "."));
+
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
@@ -35,6 +36,7 @@ async function generatePurchaseOrderCode(tx: any) {
     .limit(1);
 
   const next = (row?.maxSuffix ?? 10000) + 1;
+
   return `OC${String(next).padStart(5, "0")}`;
 }
 
@@ -48,6 +50,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   try {
@@ -90,8 +93,12 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo consultar órdenes de compra", { status: 500 });
+
+    return new Response("No se pudo consultar órdenes de compra", {
+      status: 500,
+    });
   }
 }
 
@@ -100,7 +107,12 @@ type CreatePurchaseOrderBody = {
   bankId?: string | null;
   bankAccountRef?: string | null;
   notes?: string | null;
-  items?: Array<{ inventoryItemId: string; variantId?: string | null; quantity: unknown; unitPrice: unknown }>;
+  items?: Array<{
+    inventoryItemId: string;
+    variantId?: string | null;
+    quantity: unknown;
+    unitPrice: unknown;
+  }>;
 };
 
 export async function POST(request: Request) {
@@ -113,6 +125,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   try {
@@ -134,7 +147,11 @@ export async function POST(request: Request) {
     }
 
     if (supplierId) {
-      const forbiddenSupplier = await requirePermission(request, "ASOCIAR_PROVEEDOR");
+      const forbiddenSupplier = await requirePermission(
+        request,
+        "ASOCIAR_PROVEEDOR",
+      );
+
       if (forbiddenSupplier) return forbiddenSupplier;
     }
 
@@ -144,7 +161,9 @@ export async function POST(request: Request) {
 
     const normalizedItems = rawItems
       .map((it) => {
-        const inventoryItemId = String((it as any)?.inventoryItemId ?? "").trim();
+        const inventoryItemId = String(
+          (it as any)?.inventoryItemId ?? "",
+        ).trim();
         const variantId = String((it as any)?.variantId ?? "").trim() || null;
         const quantity = toPositiveNumber((it as any)?.quantity);
         const unitPrice = toPositiveNumber((it as any)?.unitPrice);
@@ -159,18 +178,23 @@ export async function POST(request: Request) {
           : null;
       })
       .filter(Boolean) as Array<{
-        inventoryItemId: string;
-        variantId: string | null;
-        quantity: string;
-        unitPrice: string;
-      }>;
+      inventoryItemId: string;
+      variantId: string | null;
+      quantity: string;
+      unitPrice: string;
+    }>;
 
     if (normalizedItems.length !== rawItems.length) {
       return new Response("items invalid", { status: 400 });
     }
 
     const [bankRow] = await db
-      .select({ id: banks.id, name: banks.name, accountRef: banks.accountRef, isActive: banks.isActive })
+      .select({
+        id: banks.id,
+        name: banks.name,
+        accountRef: banks.accountRef,
+        isActive: banks.isActive,
+      })
       .from(banks)
       .where(eq(banks.id, bankId))
       .limit(1);
@@ -179,7 +203,9 @@ export async function POST(request: Request) {
       return new Response("bank invalid", { status: 400 });
     }
 
-    const itemIds = Array.from(new Set(normalizedItems.map((item) => item.inventoryItemId)));
+    const itemIds = Array.from(
+      new Set(normalizedItems.map((item) => item.inventoryItemId)),
+    );
     const itemRows = await db
       .select({
         id: inventoryItems.id,
@@ -198,6 +224,7 @@ export async function POST(request: Request) {
 
     const orderItems = normalizedItems.map((item) => {
       const source = itemMap.get(item.inventoryItemId);
+
       if (!source) {
         throw new Error("items invalid");
       }
@@ -218,7 +245,10 @@ export async function POST(request: Request) {
       };
     });
 
-    const subtotal = orderItems.reduce((acc, item) => acc + Number(item.lineTotal), 0);
+    const subtotal = orderItems.reduce(
+      (acc, item) => acc + Number(item.lineTotal),
+      0,
+    );
     const subtotalValue = formatDecimal(subtotal);
 
     const created = await db.transaction(async (tx) => {
@@ -257,7 +287,9 @@ export async function POST(request: Request) {
       await tx.insert(purchaseOrderHistory).values({
         purchaseOrderId: order.id,
         action: "ORDEN_CREADA",
-        notes: notes ? `Orden creada. ${notes}` : "Orden creada en estado PENDIENTE",
+        notes: notes
+          ? `Orden creada. ${notes}`
+          : "Orden creada en estado PENDIENTE",
         performedBy: employeeId,
       });
 
@@ -273,7 +305,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear la orden de compra", { status: 500 });
   }
 }

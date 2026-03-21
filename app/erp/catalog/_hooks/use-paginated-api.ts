@@ -19,6 +19,7 @@ export function usePaginatedApi<T>(endpoint: string, pageSize: number) {
     if (!endpoint) {
       setData(null);
       setLoading(false);
+
       return;
     }
 

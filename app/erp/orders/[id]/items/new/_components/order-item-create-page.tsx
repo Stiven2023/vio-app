@@ -7,14 +7,14 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Select, SelectItem } from "@heroui/select";
 
-import { getErrorMessage } from "@/app/erp/orders/_lib/api";
-import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
-
 import { DesignSection } from "../../_components/order-item-modal/design-section";
 import { MaterialsSection } from "../../_components/order-item-modal/materials-section";
 import { PackagingSection } from "../../_components/order-item-modal/packaging-section";
 import { SocksSection } from "../../_components/order-item-modal/socks-section";
 import { useOrderItemModalState } from "../../_components/order-item-modal/use-order-item-modal-state";
+
+import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
+import { getErrorMessage } from "@/app/erp/orders/_lib/api";
 
 type Currency = "COP" | "USD";
 
@@ -51,7 +51,8 @@ function asNumber(v: unknown) {
 
 function pickCopScaleByQuantity(row: ProductPriceRow, quantity: number) {
   if (quantity <= 499) return row.priceCopR1 || row.priceCopBase;
-  if (quantity <= 1000) return row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
+  if (quantity <= 1000)
+    return row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 
   return row.priceCopR3 || row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 }
@@ -68,15 +69,30 @@ function resolveUnitPrice(args: {
   if (currency === "USD") return row.priceUSD;
 
   if (clientPriceType === "VIOMAR") {
-    return row.priceViomar || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+    return (
+      row.priceViomar ||
+      row.priceCopBase ||
+      row.priceCopR1 ||
+      pickCopScaleByQuantity(row, quantity)
+    );
   }
 
   if (clientPriceType === "COLANTA") {
-    return row.priceColanta || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+    return (
+      row.priceColanta ||
+      row.priceCopBase ||
+      row.priceCopR1 ||
+      pickCopScaleByQuantity(row, quantity)
+    );
   }
 
   if (clientPriceType === "MAYORISTA") {
-    return row.priceMayorista || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+    return (
+      row.priceMayorista ||
+      row.priceCopBase ||
+      row.priceCopR1 ||
+      pickCopScaleByQuantity(row, quantity)
+    );
   }
 
   if (clientPriceType === "AUTORIZADO") {
@@ -102,7 +118,8 @@ export function OrderItemCreatePage(props: {
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isUploadingAssets, setIsUploadingAssets] = React.useState(false);
-  const [priceClientType, setPriceClientType] = React.useState<string>("VIOMAR");
+  const [priceClientType, setPriceClientType] =
+    React.useState<string>("VIOMAR");
   const [imageOneFile, setImageOneFile] = React.useState<File | null>(null);
   const [imageTwoFile, setImageTwoFile] = React.useState<File | null>(null);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
@@ -138,6 +155,7 @@ export function OrderItemCreatePage(props: {
     fetch(`/api/orders/${orderId}/prefactura`)
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text());
+
         return (await res.json()) as {
           order?: { clientPriceType?: string | null };
         };
@@ -345,7 +363,9 @@ export function OrderItemCreatePage(props: {
           clientPriceType: priceClientType,
           quantity,
           row: selectedPrice,
-          manualUnitPrice: canEditUnitPrice ? String(item.unitPrice ?? "") : null,
+          manualUnitPrice: canEditUnitPrice
+            ? String(item.unitPrice ?? "")
+            : null,
         })
       : null;
 
@@ -454,7 +474,11 @@ export function OrderItemCreatePage(props: {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
+          <Button
+            as={NextLink}
+            href={`/orders/${orderId}/items`}
+            variant="flat"
+          >
             Volver
           </Button>
         </div>
@@ -513,7 +537,10 @@ export function OrderItemCreatePage(props: {
                   ? resolveUnitPrice({
                       currency: orderCurrency,
                       clientPriceType: priceClientType,
-                      quantity: Math.max(1, Math.floor(asNumber(item.quantity))),
+                      quantity: Math.max(
+                        1,
+                        Math.floor(asNumber(item.quantity)),
+                      ),
                       row,
                     })
                   : null;
@@ -559,8 +586,8 @@ export function OrderItemCreatePage(props: {
             computedTotal={computedTotal}
             imageOneFile={imageOneFile}
             imageTwoFile={imageTwoFile}
-            logoFile={logoFile}
             isCreateBlocked={isCreateBlocked}
+            logoFile={logoFile}
             orderKind={orderKind}
             value={item}
             onChange={setItem}
@@ -582,9 +609,9 @@ export function OrderItemCreatePage(props: {
             maxCurveQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
             mode={packagingMode}
             packaging={packaging}
+            onError={(m) => setError(m)}
             onModeChange={setPackagingMode}
             onPackagingChange={setPackaging}
-            onError={(m) => setError(m)}
           />
         </CardBody>
       </Card>
@@ -598,13 +625,13 @@ export function OrderItemCreatePage(props: {
             <SocksSection
               disabled={uiDisabled}
               garmentType={String(item.garmentType ?? "JUGADOR")}
-              requiresSocks={Boolean(item.requiresSocks)}
-              packaging={packaging}
               orderId={orderId}
+              packaging={packaging}
+              requiresSocks={Boolean(item.requiresSocks)}
               value={socks}
               onChange={setSocks}
-              onUploadingChange={setIsUploadingAssets}
               onError={(m) => setError(m)}
+              onUploadingChange={setIsUploadingAssets}
             />
           </CardBody>
         </Card>

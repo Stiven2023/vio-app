@@ -14,6 +14,7 @@ type ImageDropPasteInputProps = {
 
 function getPastedImageFile(e: React.ClipboardEvent<HTMLElement>) {
   const items = e.clipboardData?.items;
+
   if (!items) return null;
 
   for (const item of Array.from(items)) {
@@ -36,6 +37,7 @@ export function ImageDropPasteInput({
 }: ImageDropPasteInputProps) {
   const localPreviewUrl = useMemo(() => {
     if (!file) return null;
+
     return URL.createObjectURL(file);
   }, [file]);
 
@@ -57,6 +59,7 @@ export function ImageDropPasteInput({
           "rounded-medium border border-dashed border-default-300 bg-default-50 p-3 " +
           (disabled ? "opacity-60" : "")
         }
+        tabIndex={disabled ? -1 : 0}
         onDragOver={(e) => {
           if (disabled) return;
           e.preventDefault();
@@ -65,16 +68,17 @@ export function ImageDropPasteInput({
           if (disabled) return;
           e.preventDefault();
           const dropped = e.dataTransfer.files?.[0] ?? null;
+
           onFileChange(dropped);
         }}
         onPaste={(e) => {
           if (disabled) return;
           const pasted = getPastedImageFile(e);
+
           if (!pasted) return;
           e.preventDefault();
           onFileChange(pasted);
         }}
-        tabIndex={disabled ? -1 : 0}
       >
         <p className="text-xs text-default-500 mb-2">{helperText}</p>
         <input
@@ -83,6 +87,7 @@ export function ImageDropPasteInput({
           type="file"
           onChange={(e) => {
             const selected = e.target.files?.[0] ?? null;
+
             onFileChange(selected);
           }}
         />

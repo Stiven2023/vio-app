@@ -47,7 +47,10 @@ export async function GET(request: Request) {
         cashReceiptApplications,
         eq(cashReceiptApplications.prefacturaId, prefacturas.id),
       )
-      .leftJoin(cashReceipts, eq(cashReceiptApplications.cashReceiptId, cashReceipts.id))
+      .leftJoin(
+        cashReceipts,
+        eq(cashReceiptApplications.cashReceiptId, cashReceipts.id),
+      )
       .where(eq(prefacturas.clientId, clientId))
       .groupBy(prefacturas.id)
       .orderBy(asc(prefacturas.prefacturaCode));

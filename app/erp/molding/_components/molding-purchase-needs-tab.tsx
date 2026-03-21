@@ -1,5 +1,7 @@
 "use client";
 
+import type { PurchaseNeedRow } from "../_lib/types";
+
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
@@ -16,8 +18,6 @@ import { FiRefreshCw } from "react-icons/fi";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
 
-import type { PurchaseNeedRow } from "../_lib/types";
-
 export function MoldingPurchaseNeedsTab() {
   const [items, setItems] = useState<PurchaseNeedRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -28,6 +28,7 @@ export function MoldingPurchaseNeedsTab() {
       const res = await apiJson<{ items: PurchaseNeedRow[] }>(
         "/api/molding/purchase-needs",
       );
+
       setItems(res.items);
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -44,7 +45,8 @@ export function MoldingPurchaseNeedsTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-default-600">
-          Insumos grouped by inventory item where purchase is needed (qtyToPurchase &gt; 0).
+          Insumos grouped by inventory item where purchase is needed
+          (qtyToPurchase &gt; 0).
         </p>
         <Button
           isIconOnly
@@ -57,7 +59,7 @@ export function MoldingPurchaseNeedsTab() {
         </Button>
       </div>
 
-      <Table aria-label="Purchase needs" removeWrapper>
+      <Table removeWrapper aria-label="Purchase needs">
         <TableHeader>
           <TableColumn>Inventory item</TableColumn>
           <TableColumn>Variant SKU</TableColumn>
@@ -68,7 +70,9 @@ export function MoldingPurchaseNeedsTab() {
         <TableBody emptyContent="No pending purchases for molding insumos">
           {items.map((row) => (
             <TableRow key={`${row.inventoryItemId}-${row.variantId ?? "null"}`}>
-              <TableCell>{row.inventoryItemName ?? row.inventoryItemId}</TableCell>
+              <TableCell>
+                {row.inventoryItemName ?? row.inventoryItemId}
+              </TableCell>
               <TableCell>{row.variantSku ?? "—"}</TableCell>
               <TableCell>{row.inventoryItemUnit ?? "—"}</TableCell>
               <TableCell>

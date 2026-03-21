@@ -1,5 +1,7 @@
 "use client";
 
+import type { Client, ClientLegalStatusRecord } from "../../_lib/types";
+
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
@@ -21,8 +23,11 @@ import {
   BsShieldX,
   BsClipboard,
 } from "react-icons/bs";
-import type { Client, ClientLegalStatusRecord } from "../../_lib/types";
-import { updateClientLegalStatus, getClientLegalStatusHistory, shouldClientBeActive } from "../../_lib/client-legal-status";
+
+import {
+  updateClientLegalStatus,
+  getClientLegalStatusHistory,
+} from "../../_lib/client-legal-status";
 
 const statusConfig = {
   VIGENTE: {
@@ -58,7 +63,9 @@ export function ClientLegalStatusModal({
   onSaved?: () => void;
   canEdit?: boolean;
 }) {
-  const [status, setStatus] = useState<"VIGENTE" | "EN_REVISION" | "BLOQUEADO">("VIGENTE");
+  const [status, setStatus] = useState<"VIGENTE" | "EN_REVISION" | "BLOQUEADO">(
+    "VIGENTE",
+  );
   const [notes, setNotes] = useState("");
   const [reviewedBy, setReviewedBy] = useState("");
   const [history, setHistory] = useState<ClientLegalStatusRecord[]>([]);
@@ -72,11 +79,13 @@ export function ClientLegalStatusModal({
       setLoading(true);
       try {
         const data = await getClientLegalStatusHistory(client.id);
+
         setHistory(data || []);
-        
+
         // Pre-llenar con el estado más reciente
         if (data && data.length > 0) {
           const latest = data[0];
+
           setStatus(latest.status);
           setNotes(latest.notes || "");
           setReviewedBy(latest.reviewedBy || "");
@@ -95,11 +104,12 @@ export function ClientLegalStatusModal({
   const handleSave = async () => {
     if (!canEdit) {
       toast.error("Solo tienes permiso de visualización en estado jurídico.");
+
       return;
     }
 
     if (!client) return;
-    
+
     setSaving(true);
     try {
       await updateClientLegalStatus(client.id, {
@@ -109,13 +119,16 @@ export function ClientLegalStatusModal({
       });
 
       toast.success("Estado jurídico actualizado");
-      
+
       // Recargar historial
       const data = await getClientLegalStatusHistory(client.id);
+
       setHistory(data || []);
       onSaved?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al actualizar");
+      toast.error(
+        error instanceof Error ? error.message : "Error al actualizar",
+      );
     } finally {
       setSaving(false);
     }
@@ -141,10 +154,7 @@ export function ClientLegalStatusModal({
             <CardBody className="gap-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">Estado Actual</span>
-                <Chip
-                  color={currentConfig.color}
-                  variant="flat"
-                >
+                <Chip color={currentConfig.color} variant="flat">
                   {currentConfig.label}
                 </Chip>
               </div>
@@ -157,35 +167,37 @@ export function ClientLegalStatusModal({
           {/* Formulario */}
           <div className="space-y-4">
             <Select
+              className="max-w-xs"
               isDisabled={!canEdit}
               label="Cambiar Estado"
               selectedKeys={[status]}
               onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0] as "VIGENTE" | "EN_REVISION" | "BLOQUEADO";
+                const selected = Array.from(keys)[0] as
+                  | "VIGENTE"
+                  | "EN_REVISION"
+                  | "BLOQUEADO";
+
                 setStatus(selected);
               }}
-              className="max-w-xs"
             >
               {Object.entries(statusConfig).map(([key, config]) => (
-                <SelectItem key={key}>
-                  {config.label}
-                </SelectItem>
+                <SelectItem key={key}>{config.label}</SelectItem>
               ))}
             </Select>
             <Textarea
               isDisabled={!canEdit}
               label="Notas / Observaciones"
+              minRows={3}
               placeholder="Detalles del estado, motivo del cambio, etc."
               value={notes}
               onValueChange={setNotes}
-              minRows={3}
             />
 
             <Input
-              type="text"
               isDisabled={!canEdit}
               label="Revisado por"
               placeholder="Revisado por (usuario/nombre)"
+              type="text"
               value={reviewedBy}
               onValueChange={setReviewedBy}
             />
@@ -219,12 +231,13 @@ export function ClientLegalStatusModal({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <BsClipboard className="text-default-500" />
-                  </div>
+                </div>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {history.map((record) => {
                     const config = statusConfig[record.status];
                     const Icon = config.icon;
+
                     return (
                       <Card key={record.id} className="bg-default-50">
                         <CardBody className="gap-2 p-3">
@@ -237,7 +250,9 @@ export function ClientLegalStatusModal({
                             </div>
                             <span className="text-xs text-default-500">
                               {record.reviewedAt
-                                ? new Date(record.reviewedAt).toLocaleDateString("es-CO")
+                                ? new Date(
+                                    record.reviewedAt,
+                                  ).toLocaleDateString("es-CO")
                                 : "Sin fecha"}
                             </span>
                           </div>
@@ -259,7 +274,10 @@ export function ClientLegalStatusModal({
                               <div className="flex flex-wrap gap-1">
                                 {(() => {
                                   try {
-                                    const fields = JSON.parse(record.changedFields);
+                                    const fields = JSON.parse(
+                                      record.changedFields,
+                                    );
+
                                     return fields.map((field: string) => (
                                       <span
                                         key={field}
@@ -296,9 +314,9 @@ export function ClientLegalStatusModal({
           {canEdit ? (
             <Button
               color="primary"
-              onPress={handleSave}
-              isLoading={saving}
               isDisabled={loading}
+              isLoading={saving}
+              onPress={handleSave}
             >
               Guardar Cambio
             </Button>

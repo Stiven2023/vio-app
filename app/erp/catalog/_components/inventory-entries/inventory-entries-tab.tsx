@@ -1,5 +1,7 @@
 "use client";
 
+import type { InventoryEntry, InventoryItem } from "../../_lib/types";
+
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
@@ -24,16 +26,19 @@ import { usePaginatedApi } from "../../_hooks/use-paginated-api";
 import { Pager } from "../ui/pager";
 import { TableSkeleton } from "../ui/table-skeleton";
 import { FilterSearch } from "../ui/filter-search";
+import { DetailModal } from "../ui/detail-modal";
 
 import { InventoryEntryModal } from "./inventory-entry-modal";
-import { DetailModal } from "../ui/detail-modal";
 
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
-import type { InventoryEntry, InventoryItem } from "../../_lib/types";
-
 type SupplierRow = { id: string; name: string };
-type WarehouseRow = { id: string; code: string; name: string; isActive?: boolean | null };
+type WarehouseRow = {
+  id: string;
+  code: string;
+  name: string;
+  isActive?: boolean | null;
+};
 
 function locationLabel(value: InventoryEntry["location"]) {
   return value === "TIENDA" ? "Tienda" : "Bodega principal";
@@ -68,7 +73,9 @@ export function InventoryEntriesTab({
     let active = true;
 
     setLoadingItems(true);
-    apiJson<{ items: InventoryItem[] }>(`/api/inventory-items?page=1&pageSize=600`)
+    apiJson<{ items: InventoryItem[] }>(
+      `/api/inventory-items?page=1&pageSize=600`,
+    )
       .then((res) => {
         if (!active) return;
         setItems(res.items ?? []);
@@ -117,13 +124,13 @@ export function InventoryEntriesTab({
   const endpoint = useMemo(() => {
     const q = search.trim();
 
-    return q ? `/api/inventory-entries?q=${encodeURIComponent(q)}` : "/api/inventory-entries";
+    return q
+      ? `/api/inventory-entries?q=${encodeURIComponent(q)}`
+      : "/api/inventory-entries";
   }, [search]);
 
-  const { data, loading, page, setPage, refresh } = usePaginatedApi<InventoryEntry>(
-    endpoint,
-    10,
-  );
+  const { data, loading, page, setPage, refresh } =
+    usePaginatedApi<InventoryEntry>(endpoint, 10);
 
   useEffect(() => {
     setPage(1);
@@ -132,7 +139,9 @@ export function InventoryEntriesTab({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<InventoryEntry | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<InventoryEntry | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<InventoryEntry | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [detailEntry, setDetailEntry] = useState<InventoryEntry | null>(null);
 
@@ -221,13 +230,17 @@ export function InventoryEntriesTab({
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(entry) => (
               <TableRow key={entry.id}>
-                <TableCell>{entry.itemName ?? entry.inventoryItemId ?? "-"}</TableCell>
+                <TableCell>
+                  {entry.itemName ?? entry.inventoryItemId ?? "-"}
+                </TableCell>
                 <TableCell>{entry.variantSku ?? "-"}</TableCell>
                 <TableCell>{entry.supplierName ?? "-"}</TableCell>
                 <TableCell>{warehouseLabel(entry)}</TableCell>
                 <TableCell>{entry.quantity ?? "-"}</TableCell>
                 <TableCell>
-                  {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : "-"}
+                  {entry.createdAt
+                    ? new Date(entry.createdAt).toLocaleString()
+                    : "-"}
                 </TableCell>
                 <TableCell>
                   <Dropdown>
@@ -318,31 +331,36 @@ export function InventoryEntriesTab({
 
       <DetailModal
         isOpen={Boolean(detailEntry)}
-        title="Detalle de entrada"
-        onOpenChange={(open) => {
-          if (!open) setDetailEntry(null);
-        }}
         items={
           detailEntry
             ? [
-                { label: "Item", value: detailEntry.itemName ?? detailEntry.inventoryItemId ?? "-" },
+                {
+                  label: "Item",
+                  value:
+                    detailEntry.itemName ?? detailEntry.inventoryItemId ?? "-",
+                },
                 {
                   label: "Variante",
-                  value:
-                    detailEntry.variantSku
-                      ? `${detailEntry.variantSku}${detailEntry.variantColor ? ` - ${detailEntry.variantColor}` : ""}${detailEntry.variantSize ? ` - ${detailEntry.variantSize}` : ""}`
-                      : "-",
+                  value: detailEntry.variantSku
+                    ? `${detailEntry.variantSku}${detailEntry.variantColor ? ` - ${detailEntry.variantColor}` : ""}${detailEntry.variantSize ? ` - ${detailEntry.variantSize}` : ""}`
+                    : "-",
                 },
                 { label: "Proveedor", value: detailEntry.supplierName ?? "-" },
                 { label: "Bodega", value: warehouseLabel(detailEntry) },
                 { label: "Cantidad", value: detailEntry.quantity ?? "0" },
                 {
                   label: "Fecha",
-                  value: detailEntry.createdAt ? new Date(detailEntry.createdAt).toLocaleString() : "-",
+                  value: detailEntry.createdAt
+                    ? new Date(detailEntry.createdAt).toLocaleString()
+                    : "-",
                 },
               ]
             : []
         }
+        title="Detalle de entrada"
+        onOpenChange={(open) => {
+          if (!open) setDetailEntry(null);
+        }}
       />
     </div>
   );

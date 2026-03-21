@@ -33,7 +33,9 @@ export async function GET(request: Request) {
     return Response.json({ clients: clientItems, products: productItems });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo cargar opciones", { status: 500 });
   }
 }

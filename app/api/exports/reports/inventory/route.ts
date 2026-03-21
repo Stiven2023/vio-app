@@ -1,8 +1,10 @@
-import ExcelJS from "exceljs";
-import { sql } from "drizzle-orm";
+import type { Buffer as NodeBuffer } from "node:buffer";
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Buffer as NodeBuffer } from "node:buffer";
+
+import ExcelJS from "exceljs";
+import { sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { inventoryItems } from "@/src/db/schema";
@@ -14,6 +16,7 @@ type ImageExtension = "png" | "jpeg";
 
 function imageBase64(buffer: NodeBuffer, extension: ImageExtension) {
   const mime = extension === "png" ? "image/png" : "image/jpeg";
+
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
@@ -21,6 +24,7 @@ function formatDate(date: Date) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
+
   return `${y}/${m}/${d}`;
 }
 
@@ -53,6 +57,7 @@ function styleSectionTitle(
 ) {
   worksheet.mergeCells(rowNumber, fromCol, rowNumber, toCol);
   const cell = worksheet.getCell(rowNumber, fromCol);
+
   cell.value = title;
   cell.font = { bold: true };
   cell.alignment = { vertical: "middle", horizontal: "left" };
@@ -66,9 +71,11 @@ function styleTableHeader(
   toCol: number,
 ) {
   const row = worksheet.getRow(rowNumber);
+
   row.font = { bold: true };
   for (let col = fromCol; col <= toCol; col += 1) {
     const cell = worksheet.getCell(rowNumber, col);
+
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -145,6 +152,7 @@ export async function GET(request: Request) {
     .orderBy(inventoryItems.name);
 
   const workbook = new ExcelJS.Workbook();
+
   workbook.creator = companyName;
   workbook.created = new Date();
 
@@ -158,6 +166,7 @@ export async function GET(request: Request) {
     : undefined;
 
   const sheet = workbook.addWorksheet("Inventario");
+
   sheet.pageSetup = {
     orientation: "portrait",
     fitToWidth: 1,
@@ -182,10 +191,12 @@ export async function GET(request: Request) {
   sheet.mergeCells(1, 1, 1, 6);
   sheet.mergeCells(2, 1, 2, 6);
   const titleCell = sheet.getCell(1, 1);
+
   titleCell.value = companyName;
   titleCell.font = { size: 18, bold: true };
   titleCell.alignment = { vertical: "middle", horizontal: "left" };
   const subtitleCell = sheet.getCell(2, 1);
+
   subtitleCell.value = "Reporte de Inventario";
   subtitleCell.font = { size: 11 };
   subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
@@ -215,6 +226,7 @@ export async function GET(request: Request) {
   }
 
   let rowPointer = 7;
+
   styleSectionTitle(sheet, rowPointer, 1, 6, "INVENTARIO");
   rowPointer += 1;
 
@@ -235,6 +247,7 @@ export async function GET(request: Request) {
       outputs,
       stock,
     ]);
+
     applyRowBorder(sheet, row.number, 1, 6);
     centerRowCells(sheet, row.number, 1, 6);
     rowPointer = row.number + 1;

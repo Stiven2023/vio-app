@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Skeleton } from "@heroui/skeleton";
-import { EmployeeRegisterForm } from "@/components/employee-register-form";
 import { useRouter, useSearchParams } from "next/navigation";
+
+import { EmployeeRegisterForm } from "@/components/employee-register-form";
 
 export default function RegisterEmployee() {
   const [hydrated, setHydrated] = useState(false);
@@ -25,8 +26,8 @@ export default function RegisterEmployee() {
           </h1>
           <EmployeeRegisterForm
             employeeId={employeeId || undefined}
-            onSuccess={() => router.push("/admin")}
             submitLabel={isEditMode ? "Save" : "Register"}
+            onSuccess={() => router.push("/admin")}
           />
           <button
             className="mt-6 text-primary underline"

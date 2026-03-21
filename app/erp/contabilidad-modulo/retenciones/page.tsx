@@ -28,7 +28,9 @@ export default async function RetencionesPage() {
         Review withholdings by pre-invoice and manage tax-zone rates.
       </p>
       <div className="mt-6">
-        <WithholdingsTab canManageRates={Boolean(perms.GESTIONAR_RETENCIONES)} />
+        <WithholdingsTab
+          canManageRates={Boolean(perms.GESTIONAR_RETENCIONES)}
+        />
       </div>
     </div>
   );

@@ -42,18 +42,9 @@ export async function GET(request: Request) {
     "",
   ].join(";");
 
-  const sampleEditRow = [
-    "CAM01",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "NO",
-  ].join(";");
+  const sampleEditRow = ["CAM01", "", "", "", "", "", "", "", "", "NO"].join(
+    ";",
+  );
 
   const notes = [
     "# Nota: puedes enviar categoryId o categoryName; se recomienda categoryName.",
@@ -73,7 +64,8 @@ export async function GET(request: Request) {
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": "attachment; filename=products-import-template.csv",
+      "Content-Disposition":
+        "attachment; filename=products-import-template.csv",
       "Cache-Control": "no-store",
     },
   });

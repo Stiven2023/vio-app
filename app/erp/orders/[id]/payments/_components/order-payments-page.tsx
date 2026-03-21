@@ -97,19 +97,25 @@ type PaymentsResponse = {
 };
 
 function toAmountString(v: number | string | null | undefined) {
-  const raw = String(v ?? "").trim().replace(/,/g, ".");
+  const raw = String(v ?? "")
+    .trim()
+    .replace(/,/g, ".");
+
   if (!raw) return "";
   const n = Number(raw);
+
   return Number.isFinite(n) ? String(n) : "";
 }
 
 function toNumberInputValue(v: string) {
   const n = Number(String(v ?? "").replace(/,/g, "."));
+
   return Number.isFinite(n) ? n : 0;
 }
 
 function getPastedImageFile(e: React.ClipboardEvent<HTMLElement>) {
   const items = e.clipboardData?.items;
+
   if (!items) return null;
 
   for (const item of Array.from(items)) {
@@ -204,19 +210,24 @@ export function OrderPaymentsPage({
   const paymentsResponse = data as PaymentsResponse | null;
   const orderTotalValue = useMemo(() => {
     const fromApi = Number(paymentsResponse?.orderTotal ?? "NaN");
+
     if (Number.isFinite(fromApi)) return Math.max(0, fromApi);
     const fromOrder = Number(order?.total ?? "0");
+
     return Number.isFinite(fromOrder) ? Math.max(0, fromOrder) : 0;
   }, [order?.total, paymentsResponse?.orderTotal]);
 
   const paidTotalValue = useMemo(() => {
     const fromApi = Number(paymentsResponse?.paidTotal ?? "NaN");
+
     if (Number.isFinite(fromApi)) return Math.max(0, fromApi);
+
     return 0;
   }, [paymentsResponse?.paidTotal]);
 
   const requiredFor50Value = useMemo(() => {
     const minFor50 = orderTotalValue * 0.5;
+
     return Math.max(0, minFor50 - paidTotalValue);
   }, [orderTotalValue, paidTotalValue]);
 
@@ -228,10 +239,12 @@ export function OrderPaymentsPage({
   useEffect(() => {
     if (!proofFile) {
       setProofPreviewUrl(null);
+
       return;
     }
 
     const url = URL.createObjectURL(proofFile);
+
     setProofPreviewUrl(url);
 
     return () => {
@@ -285,7 +298,8 @@ export function OrderPaymentsPage({
     if (submitting) return;
 
     const nextErrors: { amount?: string; depositAmount?: string } = {};
-    const nextTransferErrors: { bankId?: string; transferCurrency?: string } = {};
+    const nextTransferErrors: { bankId?: string; transferCurrency?: string } =
+      {};
 
     const amount = form.amount ? Number(form.amount) : 0;
 
@@ -293,16 +307,23 @@ export function OrderPaymentsPage({
       nextErrors.amount = "Amount must be greater than 0";
       setFormErrors(nextErrors);
       toast.error(nextErrors.amount);
-      (document.getElementById("payment-amount") as HTMLInputElement | null)?.focus();
+      (
+        document.getElementById("payment-amount") as HTMLInputElement | null
+      )?.focus();
+
       return;
     }
 
     const deposit = form.depositAmount ? Number(form.depositAmount) : amount;
+
     if (!Number.isFinite(deposit) || deposit <= 0) {
       nextErrors.depositAmount = "Deposit amount must be greater than 0";
       setFormErrors(nextErrors);
       toast.error(nextErrors.depositAmount);
-      (document.getElementById("payment-deposit") as HTMLInputElement | null)?.focus();
+      (
+        document.getElementById("payment-deposit") as HTMLInputElement | null
+      )?.focus();
+
       return;
     }
 
@@ -314,20 +335,28 @@ export function OrderPaymentsPage({
       }
 
       if (!form.transferCurrency) {
-        nextTransferErrors.transferCurrency = "Currency is required for transfer payments";
+        nextTransferErrors.transferCurrency =
+          "Currency is required for transfer payments";
       }
 
       if (form.transferCurrency === "USD" && selectedBank?.code !== "VIO_EXT") {
-        nextTransferErrors.transferCurrency = "USD is only allowed with bank code VIO-EXT.";
+        nextTransferErrors.transferCurrency =
+          "USD is only allowed with bank code VIO-EXT.";
       }
 
       if (selectedBank?.code === "VIO_EXT" && form.transferCurrency !== "USD") {
-        nextTransferErrors.transferCurrency = "With bank code VIO-EXT, only USD is allowed.";
+        nextTransferErrors.transferCurrency =
+          "With bank code VIO-EXT, only USD is allowed.";
       }
 
       if (nextTransferErrors.bankId || nextTransferErrors.transferCurrency) {
         setFormErrors({ ...nextErrors, ...nextTransferErrors });
-        toast.error(nextTransferErrors.bankId ?? nextTransferErrors.transferCurrency ?? "Complete transfer fields");
+        toast.error(
+          nextTransferErrors.bankId ??
+            nextTransferErrors.transferCurrency ??
+            "Complete transfer fields",
+        );
+
         return;
       }
     }
@@ -345,11 +374,14 @@ export function OrderPaymentsPage({
         method: "POST",
         body: JSON.stringify({
           amount,
-          depositAmount: form.depositAmount ? Number(form.depositAmount) : amount,
+          depositAmount: form.depositAmount
+            ? Number(form.depositAmount)
+            : amount,
           referenceCode: form.referenceCode.trim() || null,
           method: form.method,
           bankId: form.method === "TRANSFERENCIA" ? form.bankId : null,
-          transferCurrency: form.method === "TRANSFERENCIA" ? form.transferCurrency : null,
+          transferCurrency:
+            form.method === "TRANSFERENCIA" ? form.transferCurrency : null,
           proofImageUrl,
         }),
       });
@@ -400,7 +432,11 @@ export function OrderPaymentsPage({
         method: "PUT",
         body: JSON.stringify({ status }),
       });
-      toast.success(status === "PAGADO" ? "Payment marked as deposited" : "Payment marked as not deposited");
+      toast.success(
+        status === "PAGADO"
+          ? "Payment marked as deposited"
+          : "Payment marked as not deposited",
+      );
       refresh();
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -427,7 +463,9 @@ export function OrderPaymentsPage({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Payments</h1>
-          <p className="text-default-600 mt-1">Create and review order payments.</p>
+          <p className="text-default-600 mt-1">
+            Create and review order payments.
+          </p>
         </div>
 
         <div className="flex gap-2">
@@ -465,15 +503,23 @@ export function OrderPaymentsPage({
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div className="rounded-medium border border-default-200 p-3">
                 <div className="text-xs text-default-500">Order total</div>
-                <div className="font-semibold">{formatMoney(orderTotalValue)}</div>
+                <div className="font-semibold">
+                  {formatMoney(orderTotalValue)}
+                </div>
               </div>
               <div className="rounded-medium border border-default-200 p-3">
-                <div className="text-xs text-default-500">Required payment for 50%</div>
-                <div className="font-semibold">{formatMoney(requiredFor50Value)}</div>
+                <div className="text-xs text-default-500">
+                  Required payment for 50%
+                </div>
+                <div className="font-semibold">
+                  {formatMoney(requiredFor50Value)}
+                </div>
               </div>
               <div className="rounded-medium border border-default-200 p-3">
                 <div className="text-xs text-default-500">Remaining</div>
-                <div className="font-semibold">{formatMoney(remainingValue)}</div>
+                <div className="font-semibold">
+                  {formatMoney(remainingValue)}
+                </div>
               </div>
             </div>
           </CardBody>
@@ -486,7 +532,9 @@ export function OrderPaymentsPage({
         </div>
         <div className="text-sm text-default-600">
           Page {page}
-          {data ? ` / ${Math.max(1, Math.ceil(data.total / data.pageSize))}` : ""}
+          {data
+            ? ` / ${Math.max(1, Math.ceil(data.total / data.pageSize))}`
+            : ""}
         </div>
       </div>
 
@@ -494,28 +542,40 @@ export function OrderPaymentsPage({
         <TableHeader columns={columns}>
           {(c: ColumnDef) => <TableColumn key={c.key}>{c.name}</TableColumn>}
         </TableHeader>
-        <TableBody emptyContent={loading ? "" : "No payments"} items={data?.items ?? []}>
+        <TableBody
+          emptyContent={loading ? "" : "No payments"}
+          items={data?.items ?? []}
+        >
           {(p) => (
             <TableRow key={p.id}>
               {(columnKey) => {
                 if (columnKey === "createdAt") {
                   return (
                     <TableCell>
-                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}
+                      {p.createdAt
+                        ? new Date(p.createdAt).toLocaleString()
+                        : "-"}
                     </TableCell>
                   );
                 }
 
-                if (columnKey === "method") return <TableCell>{p.method ?? "-"}</TableCell>;
+                if (columnKey === "method")
+                  return <TableCell>{p.method ?? "-"}</TableCell>;
                 if (columnKey === "bank") {
-                  const bankLabel = [p.bankCode, p.bankName].filter(Boolean).join(" - ") || p.transferBank || "-";
+                  const bankLabel =
+                    [p.bankCode, p.bankName].filter(Boolean).join(" - ") ||
+                    p.transferBank ||
+                    "-";
+
                   return (
                     <TableCell>
                       {p.method === "TRANSFERENCIA" ? (
                         <div className="flex flex-col">
                           <span>{bankLabel}</span>
                           <span className="text-xs text-default-500">
-                            {p.bankAccountRef ? `Account: ${p.bankAccountRef}` : "Account: -"}
+                            {p.bankAccountRef
+                              ? `Account: ${p.bankAccountRef}`
+                              : "Account: -"}
                           </span>
                         </div>
                       ) : (
@@ -525,11 +585,18 @@ export function OrderPaymentsPage({
                   );
                 }
                 if (columnKey === "status") {
-                  return <TableCell>{normalizePaymentStatusLabel(p.status)}</TableCell>;
+                  return (
+                    <TableCell>
+                      {normalizePaymentStatusLabel(p.status)}
+                    </TableCell>
+                  );
                 }
-                if (columnKey === "referenceCode") return <TableCell>{p.referenceCode ?? "-"}</TableCell>;
-                if (columnKey === "depositAmount") return <TableCell>{formatMoney(p.depositAmount)}</TableCell>;
-                if (columnKey === "amount") return <TableCell>{formatMoney(p.amount)}</TableCell>;
+                if (columnKey === "referenceCode")
+                  return <TableCell>{p.referenceCode ?? "-"}</TableCell>;
+                if (columnKey === "depositAmount")
+                  return <TableCell>{formatMoney(p.depositAmount)}</TableCell>;
+                if (columnKey === "amount")
+                  return <TableCell>{formatMoney(p.amount)}</TableCell>;
 
                 if (columnKey === "proof") {
                   return (
@@ -565,7 +632,9 @@ export function OrderPaymentsPage({
                             {canApprove ? (
                               <DropdownItem
                                 key="confirm"
-                                onPress={() => updatePaymentStatus(p.id, "PAGADO")}
+                                onPress={() =>
+                                  updatePaymentStatus(p.id, "PAGADO")
+                                }
                               >
                                 DEPOSITED
                               </DropdownItem>
@@ -573,7 +642,9 @@ export function OrderPaymentsPage({
                             {canApprove ? (
                               <DropdownItem
                                 key="not-arrived"
-                                onPress={() => updatePaymentStatus(p.id, "ANULADO")}
+                                onPress={() =>
+                                  updatePaymentStatus(p.id, "ANULADO")
+                                }
                               >
                                 NOT DEPOSITED
                               </DropdownItem>
@@ -581,8 +652,8 @@ export function OrderPaymentsPage({
                             <DropdownItem
                               key="delete"
                               className="text-danger"
-                              startContent={<BsTrash />}
                               isDisabled={!canEdit}
+                              startContent={<BsTrash />}
                               onPress={() => removePayment(p.id)}
                             >
                               VOID
@@ -639,47 +710,61 @@ export function OrderPaymentsPage({
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               <div className="rounded-medium border border-default-200 p-3">
                 <div className="text-xs text-default-500">Order total</div>
-                <div className="font-semibold">{formatMoney(orderTotalValue)}</div>
+                <div className="font-semibold">
+                  {formatMoney(orderTotalValue)}
+                </div>
               </div>
               <div className="rounded-medium border border-default-200 p-3">
-                <div className="text-xs text-default-500">Required payment for 50%</div>
-                <div className="font-semibold">{formatMoney(requiredFor50Value)}</div>
+                <div className="text-xs text-default-500">
+                  Required payment for 50%
+                </div>
+                <div className="font-semibold">
+                  {formatMoney(requiredFor50Value)}
+                </div>
               </div>
               <div className="rounded-medium border border-default-200 p-3">
                 <div className="text-xs text-default-500">Remaining</div>
-                <div className="font-semibold">{formatMoney(remainingValue)}</div>
+                <div className="font-semibold">
+                  {formatMoney(remainingValue)}
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <NumberInput
-                id="payment-amount"
                 hideStepper
-                isInvalid={Boolean(formErrors.amount)}
                 errorMessage={formErrors.amount}
-                label="Amount"
-                value={toNumberInputValue(form.amount)}
                 formatOptions={{
                   style: "currency",
-                  currency: (order?.currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP",
+                  currency:
+                    (order?.currency ?? "COP").toUpperCase() === "USD"
+                      ? "USD"
+                      : "COP",
                   maximumFractionDigits: 2,
                 }}
+                id="payment-amount"
+                isInvalid={Boolean(formErrors.amount)}
+                label="Amount"
+                value={toNumberInputValue(form.amount)}
                 onValueChange={(v) =>
                   setForm((s) => ({ ...s, amount: toAmountString(v) }))
                 }
               />
               <NumberInput
-                id="payment-deposit"
                 hideStepper
-                isInvalid={Boolean(formErrors.depositAmount)}
                 errorMessage={formErrors.depositAmount}
-                label="Deposit amount"
-                value={toNumberInputValue(form.depositAmount)}
                 formatOptions={{
                   style: "currency",
-                  currency: (order?.currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP",
+                  currency:
+                    (order?.currency ?? "COP").toUpperCase() === "USD"
+                      ? "USD"
+                      : "COP",
                   maximumFractionDigits: 2,
                 }}
+                id="payment-deposit"
+                isInvalid={Boolean(formErrors.depositAmount)}
+                label="Deposit amount"
+                value={toNumberInputValue(form.depositAmount)}
                 onValueChange={(v) =>
                   setForm((s) => ({ ...s, depositAmount: toAmountString(v) }))
                 }
@@ -687,12 +772,14 @@ export function OrderPaymentsPage({
               <Input
                 label="Reference code"
                 value={form.referenceCode}
-                onValueChange={(v) => setForm((s) => ({ ...s, referenceCode: v }))}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, referenceCode: v }))
+                }
               />
               <Select
-                isRequired={form.method === "TRANSFERENCIA"}
-                isInvalid={Boolean(formErrors.bankId)}
                 errorMessage={formErrors.bankId}
+                isInvalid={Boolean(formErrors.bankId)}
+                isRequired={form.method === "TRANSFERENCIA"}
                 label="Bank"
                 selectedKeys={form.bankId ? [form.bankId] : []}
                 onSelectionChange={(keys) => {
@@ -709,49 +796,76 @@ export function OrderPaymentsPage({
                           ? "COP"
                           : s.transferCurrency,
                   }));
-                  setFormErrors((prev) => ({ ...prev, bankId: undefined, transferCurrency: undefined }));
+                  setFormErrors((prev) => ({
+                    ...prev,
+                    bankId: undefined,
+                    transferCurrency: undefined,
+                  }));
                 }}
               >
                 {banks.map((bank) => (
-                  <SelectItem key={bank.id}>{`${bank.code} - ${bank.name}`}</SelectItem>
+                  <SelectItem
+                    key={bank.id}
+                  >{`${bank.code} - ${bank.name}`}</SelectItem>
                 ))}
               </Select>
               <Select
-                isRequired={form.method === "TRANSFERENCIA"}
-                isInvalid={Boolean(formErrors.transferCurrency)}
                 errorMessage={formErrors.transferCurrency}
+                isInvalid={Boolean(formErrors.transferCurrency)}
+                isRequired={form.method === "TRANSFERENCIA"}
                 label="Currency"
                 selectedKeys={[form.transferCurrency]}
                 onSelectionChange={(keys) => {
-                  const first = String(Array.from(keys)[0] ?? "COP").toUpperCase();
+                  const first = String(
+                    Array.from(keys)[0] ?? "COP",
+                  ).toUpperCase();
 
                   setForm((s) => ({
                     ...s,
                     transferCurrency: first === "USD" ? "USD" : "COP",
                     bankId:
                       first === "USD"
-                        ? (banks.find((bank) => bank.code === "VIO_EXT")?.id ?? "")
+                        ? (banks.find((bank) => bank.code === "VIO_EXT")?.id ??
+                          "")
                         : selectedBank?.code === "VIO_EXT"
                           ? ""
                           : s.bankId,
                   }));
-                  setFormErrors((prev) => ({ ...prev, bankId: undefined, transferCurrency: undefined }));
+                  setFormErrors((prev) => ({
+                    ...prev,
+                    bankId: undefined,
+                    transferCurrency: undefined,
+                  }));
                 }}
               >
-                <SelectItem key="COP" isDisabled={selectedBank?.code === "VIO_EXT"}>COP</SelectItem>
-                <SelectItem key="USD" isDisabled={selectedBank?.code !== "VIO_EXT"}>USD</SelectItem>
+                <SelectItem
+                  key="COP"
+                  isDisabled={selectedBank?.code === "VIO_EXT"}
+                >
+                  COP
+                </SelectItem>
+                <SelectItem
+                  key="USD"
+                  isDisabled={selectedBank?.code !== "VIO_EXT"}
+                >
+                  USD
+                </SelectItem>
               </Select>
               <Select
                 label="Method"
                 selectedKeys={[form.method]}
                 onSelectionChange={(keys) => {
-                  const first = Array.from(keys)[0] as PaymentMethod | undefined;
+                  const first = Array.from(keys)[0] as
+                    | PaymentMethod
+                    | undefined;
 
                   setForm((s) => ({
                     ...s,
                     method: first ?? "EFECTIVO",
                     transferCurrency:
-                      (first ?? "EFECTIVO") === "TRANSFERENCIA" ? s.transferCurrency : "COP",
+                      (first ?? "EFECTIVO") === "TRANSFERENCIA"
+                        ? s.transferCurrency
+                        : "COP",
                   }));
                 }}
               >
@@ -759,11 +873,7 @@ export function OrderPaymentsPage({
                   <SelectItem key={m.value}>{m.label}</SelectItem>
                 ))}
               </Select>
-              <Input
-                isReadOnly
-                label="Status"
-                value="NOT DEPOSITED"
-              />
+              <Input isReadOnly label="Status" value="NOT DEPOSITED" />
 
               <div className="sm:col-span-2">
                 <div className="text-sm text-default-600 mb-1">
@@ -771,21 +881,23 @@ export function OrderPaymentsPage({
                 </div>
                 <div
                   className="rounded-medium border border-dashed border-default-300 bg-default-50 p-3"
+                  tabIndex={0}
                   onDragOver={(e) => {
                     e.preventDefault();
                   }}
                   onDrop={(e) => {
                     e.preventDefault();
                     const file = e.dataTransfer.files?.[0] ?? null;
+
                     setProofFile(file);
                   }}
                   onPaste={(e) => {
                     const file = getPastedImageFile(e);
+
                     if (!file) return;
                     e.preventDefault();
                     setProofFile(file);
                   }}
-                  tabIndex={0}
                 >
                   <p className="text-xs text-default-500 mb-2">
                     Drag an image here, select one, or paste with Ctrl+V.
@@ -795,6 +907,7 @@ export function OrderPaymentsPage({
                     type="file"
                     onChange={(e) => {
                       const f = e.target.files?.[0] ?? null;
+
                       setProofFile(f);
                     }}
                   />

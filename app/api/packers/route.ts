@@ -19,6 +19,7 @@ async function generatePackerCode(): Promise<string> {
 
   if (last?.code) {
     const parsed = Number.parseInt(last.code.replace(/^EMPA/i, ""), 10);
+
     if (!Number.isNaN(parsed)) nextNumber = parsed + 1;
   }
 
@@ -91,7 +92,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar empaque", { status: 500 });
   }
 }
@@ -152,6 +155,7 @@ export async function POST(request: Request) {
 
       if (sourceClient.length > 0) {
         const client = sourceClient[0];
+
         sourceClientDocuments = {
           identityDocumentUrl: client.identityDocumentUrl,
           rutDocumentUrl: client.rutDocumentUrl,
@@ -166,18 +170,22 @@ export async function POST(request: Request) {
     const mergedPayload = {
       ...payload,
       identityDocumentUrl:
-        payload.identityDocumentUrl || sourceClientDocuments.identityDocumentUrl,
-      rutDocumentUrl: payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
+        payload.identityDocumentUrl ||
+        sourceClientDocuments.identityDocumentUrl,
+      rutDocumentUrl:
+        payload.rutDocumentUrl || sourceClientDocuments.rutDocumentUrl,
       commerceChamberDocumentUrl:
         payload.commerceChamberDocumentUrl ||
         sourceClientDocuments.commerceChamberDocumentUrl,
       passportDocumentUrl:
-        payload.passportDocumentUrl || sourceClientDocuments.passportDocumentUrl,
+        payload.passportDocumentUrl ||
+        sourceClientDocuments.passportDocumentUrl,
       taxCertificateDocumentUrl:
         payload.taxCertificateDocumentUrl ||
         sourceClientDocuments.taxCertificateDocumentUrl,
       companyIdDocumentUrl:
-        payload.companyIdDocumentUrl || sourceClientDocuments.companyIdDocumentUrl,
+        payload.companyIdDocumentUrl ||
+        sourceClientDocuments.companyIdDocumentUrl,
     };
 
     const created = await db
@@ -193,7 +201,9 @@ export async function POST(request: Request) {
           | "EMPRESA_EXTERIOR",
         identification,
         dv: payload.dv ? String(payload.dv).trim() : null,
-        packerType: payload.packerType ? String(payload.packerType).trim() : null,
+        packerType: payload.packerType
+          ? String(payload.packerType).trim()
+          : null,
         specialty: payload.specialty ? String(payload.specialty).trim() : null,
         contactName: payload.contactName
           ? String(payload.contactName).trim()
@@ -203,10 +213,14 @@ export async function POST(request: Request) {
           ? String(payload.intlDialCode).trim()
           : "57",
         mobile: payload.mobile ? String(payload.mobile).trim() : null,
-        fullMobile: payload.fullMobile ? String(payload.fullMobile).trim() : null,
+        fullMobile: payload.fullMobile
+          ? String(payload.fullMobile).trim()
+          : null,
         landline: payload.landline ? String(payload.landline).trim() : null,
         address,
-        postalCode: payload.postalCode ? String(payload.postalCode).trim() : null,
+        postalCode: payload.postalCode
+          ? String(payload.postalCode).trim()
+          : null,
         city: payload.city ? String(payload.city).trim() : "Medellín",
         department: payload.department
           ? String(payload.department).trim()
@@ -253,7 +267,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear empaque", { status: 500 });
   }
 }
@@ -284,7 +300,10 @@ export async function PUT(request: Request) {
     patch.name = String(payload.name).trim();
   }
 
-  if (payload.identificationType !== undefined && String(payload.identificationType).trim()) {
+  if (
+    payload.identificationType !== undefined &&
+    String(payload.identificationType).trim()
+  ) {
     patch.identificationType = String(payload.identificationType).trim() as
       | "CC"
       | "NIT"
@@ -293,7 +312,10 @@ export async function PUT(request: Request) {
       | "EMPRESA_EXTERIOR";
   }
 
-  if (payload.identification !== undefined && String(payload.identification).trim()) {
+  if (
+    payload.identification !== undefined &&
+    String(payload.identification).trim()
+  ) {
     patch.identification = String(payload.identification).trim();
   }
 
@@ -301,29 +323,44 @@ export async function PUT(request: Request) {
     patch.address = String(payload.address).trim();
   }
 
-  if (payload.dv !== undefined) patch.dv = payload.dv ? String(payload.dv).trim() : null;
+  if (payload.dv !== undefined)
+    patch.dv = payload.dv ? String(payload.dv).trim() : null;
   if (payload.packerType !== undefined)
-    patch.packerType = payload.packerType ? String(payload.packerType).trim() : null;
+    patch.packerType = payload.packerType
+      ? String(payload.packerType).trim()
+      : null;
   if (payload.specialty !== undefined)
-    patch.specialty = payload.specialty ? String(payload.specialty).trim() : null;
+    patch.specialty = payload.specialty
+      ? String(payload.specialty).trim()
+      : null;
   if (payload.contactName !== undefined)
-    patch.contactName = payload.contactName ? String(payload.contactName).trim() : null;
+    patch.contactName = payload.contactName
+      ? String(payload.contactName).trim()
+      : null;
   if (payload.email !== undefined)
     patch.email = payload.email ? String(payload.email).trim() : null;
   if (payload.intlDialCode !== undefined)
-    patch.intlDialCode = payload.intlDialCode ? String(payload.intlDialCode).trim() : null;
+    patch.intlDialCode = payload.intlDialCode
+      ? String(payload.intlDialCode).trim()
+      : null;
   if (payload.mobile !== undefined)
     patch.mobile = payload.mobile ? String(payload.mobile).trim() : null;
   if (payload.fullMobile !== undefined)
-    patch.fullMobile = payload.fullMobile ? String(payload.fullMobile).trim() : null;
+    patch.fullMobile = payload.fullMobile
+      ? String(payload.fullMobile).trim()
+      : null;
   if (payload.landline !== undefined)
     patch.landline = payload.landline ? String(payload.landline).trim() : null;
   if (payload.postalCode !== undefined)
-    patch.postalCode = payload.postalCode ? String(payload.postalCode).trim() : null;
+    patch.postalCode = payload.postalCode
+      ? String(payload.postalCode).trim()
+      : null;
   if (payload.city !== undefined)
     patch.city = payload.city ? String(payload.city).trim() : null;
   if (payload.department !== undefined)
-    patch.department = payload.department ? String(payload.department).trim() : null;
+    patch.department = payload.department
+      ? String(payload.department).trim()
+      : null;
   patch.isActive = false;
   if (payload.dailyCapacity !== undefined)
     patch.dailyCapacity =
@@ -384,9 +421,11 @@ export async function PUT(request: Request) {
     ];
 
     const changedFields: string[] = [];
+
     for (const field of criticalFields) {
       const key = field as keyof typeof packer;
-      const patchValue = patch[key as keyof Partial<typeof packers.$inferInsert>];
+      const patchValue =
+        patch[key as keyof Partial<typeof packers.$inferInsert>];
 
       if (patchValue !== undefined && packer[key] !== patchValue) {
         changedFields.push(field);
@@ -416,7 +455,9 @@ export async function PUT(request: Request) {
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo actualizar empaque", { status: 500 });
   }
 }

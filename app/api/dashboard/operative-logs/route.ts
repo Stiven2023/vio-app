@@ -5,7 +5,6 @@ import {
   ORDER_ITEM_STATUS_VALUES,
   ORDER_STATUS,
 } from "@/src/utils/order-status";
-
 import { db } from "@/src/db";
 import {
   operativeDashboardLogs,
@@ -25,7 +24,12 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-const ROLE_AREAS = ["OPERARIOS", "CONFECCIONISTAS", "MENSAJERIA", "EMPAQUE"] as const;
+const ROLE_AREAS = [
+  "OPERARIOS",
+  "CONFECCIONISTAS",
+  "MENSAJERIA",
+  "EMPAQUE",
+] as const;
 const OPERATION_TYPES = [
   "MONTAJE",
   "PLOTTER",
@@ -92,52 +96,72 @@ const DASHBOARD_ROLES = new Set([
 ]);
 
 function normalizeRoleArea(v: unknown) {
-  const raw = String(v ?? "").trim().toUpperCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
   if (ROLE_AREAS.includes(raw as (typeof ROLE_AREAS)[number])) {
     return raw as (typeof ROLE_AREAS)[number];
   }
+
   return null;
 }
 
 function normalizeOperationType(v: unknown) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
-  const raw = String(v ?? "").trim().toUpperCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
   if (OPERATION_TYPES.includes(raw as (typeof OPERATION_TYPES)[number])) {
     return raw as (typeof OPERATION_TYPES)[number];
   }
+
   return null;
 }
 
 function normalizeProcessCode(v: unknown) {
-  const raw = String(v ?? "").trim().toUpperCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
   if (PROCESS_CODES.includes(raw as (typeof PROCESS_CODES)[number])) {
     return raw as (typeof PROCESS_CODES)[number];
   }
+
   return null;
 }
 
 function parseNonNegativeInt(v: unknown) {
   const n = Number(String(v ?? "0").trim());
+
   if (!Number.isFinite(n)) return null;
+
   return Math.max(0, Math.floor(n));
 }
 
 function parseDateTime(v: unknown) {
   if (v === null || v === undefined || String(v).trim() === "") return null;
   const date = new Date(String(v));
+
   if (Number.isNaN(date.getTime())) return null;
+
   return date;
 }
 
 function toOptionalText(v: unknown) {
   if (v === null || v === undefined) return null;
   const text = String(v).trim();
+
   return text ? text : null;
 }
 
 function toBoolean(v: unknown) {
   if (typeof v === "boolean") return v;
-  const raw = String(v ?? "").trim().toLowerCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toLowerCase();
+
   return raw === "true" || raw === "1" || raw === "si" || raw === "sí";
 }
 
@@ -150,8 +174,12 @@ function normalizeMatchText(v: unknown) {
 function shouldMoveForward(current: string | null, next: OrderItemStatusType) {
   if (!current) return true;
 
-  const currentIndex = ORDER_ITEM_STATUS_FLOW.indexOf(current as (typeof ORDER_ITEM_STATUS_FLOW)[number]);
-  const nextIndex = ORDER_ITEM_STATUS_FLOW.indexOf(next as (typeof ORDER_ITEM_STATUS_FLOW)[number]);
+  const currentIndex = ORDER_ITEM_STATUS_FLOW.indexOf(
+    current as (typeof ORDER_ITEM_STATUS_FLOW)[number],
+  );
+  const nextIndex = ORDER_ITEM_STATUS_FLOW.indexOf(
+    next as (typeof ORDER_ITEM_STATUS_FLOW)[number],
+  );
 
   if (nextIndex < 0) return false;
   if (currentIndex < 0) return true;
@@ -208,7 +236,9 @@ async function resolveOrderItemByDesignAndSize(args: {
     return candidates[0] ?? null;
   }
 
-  const candidateIds = candidates.map((candidate: { id: string }) => candidate.id);
+  const candidateIds = candidates.map(
+    (candidate: { id: string }) => candidate.id,
+  );
   const packagingMatches = await args.tx
     .select({ orderItemId: orderItemPackaging.orderItemId })
     .from(orderItemPackaging)
@@ -238,7 +268,9 @@ async function resolveOrderItemByDesignAndSize(args: {
   if (!allowedIds.size) return null;
 
   return (
-    candidates.find((candidate: { id: string }) => allowedIds.has(String(candidate.id))) ?? null
+    candidates.find((candidate: { id: string }) =>
+      allowedIds.has(String(candidate.id)),
+    ) ?? null
   );
 }
 
@@ -317,6 +349,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !DASHBOARD_ROLES.has(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -325,13 +358,18 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
     const rawRoleArea = String(searchParams.get("roleArea") ?? "").trim();
-    const rawOperationType = String(searchParams.get("operationType") ?? "").trim();
-    const includeAssignments = String(searchParams.get("includeAssignments") ?? "").trim() === "1";
+    const rawOperationType = String(
+      searchParams.get("operationType") ?? "",
+    ).trim();
+    const includeAssignments =
+      String(searchParams.get("includeAssignments") ?? "").trim() === "1";
     const assignmentType = String(searchParams.get("assignmentType") ?? "")
       .trim()
       .toUpperCase();
     const roleArea = normalizeRoleArea(searchParams.get("roleArea"));
-    const operationType = normalizeOperationType(searchParams.get("operationType"));
+    const operationType = normalizeOperationType(
+      searchParams.get("operationType"),
+    );
 
     if (rawRoleArea && !roleArea) {
       return new Response("roleArea inválido", { status: 400 });
@@ -347,7 +385,9 @@ export async function GET(request: Request) {
 
     const filters = [
       roleArea ? eq(operativeDashboardLogs.roleArea, roleArea) : undefined,
-      operationType ? eq(operativeDashboardLogs.operationType, operationType) : undefined,
+      operationType
+        ? eq(operativeDashboardLogs.operationType, operationType)
+        : undefined,
       assignmentType === "TAKE_ORDER"
         ? eq(operativeDashboardLogs.details, MONTAJE_TAKE_ORDER_MARKER)
         : undefined,
@@ -400,8 +440,12 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo consultar dashboard operativo", { status: 500 });
+
+    return new Response("No se pudo consultar dashboard operativo", {
+      status: 500,
+    });
   }
 }
 
@@ -415,6 +459,7 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !DASHBOARD_ROLES.has(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -422,23 +467,33 @@ export async function POST(request: Request) {
   const body = (await request.json()) as Record<string, unknown>;
 
   const roleArea = normalizeRoleArea(body.roleArea);
+
   if (!roleArea) return new Response("roleArea inválido", { status: 400 });
 
   const operationType = normalizeOperationType(body.operationType);
   const processCode = normalizeProcessCode(body.processCode);
   const takeOrder = toBoolean(body.takeOrder);
-  if (!processCode) return new Response("processCode inválido", { status: 400 });
+
+  if (!processCode)
+    return new Response("processCode inválido", { status: 400 });
 
   const orderCode = String(body.orderCode ?? "").trim();
-  if (!orderCode) return new Response("orderCode es requerido", { status: 400 });
+
+  if (!orderCode)
+    return new Response("orderCode es requerido", { status: 400 });
 
   const designName = String(body.designName ?? "").trim();
-  if (!designName) return new Response("designName es requerido", { status: 400 });
+
+  if (!designName)
+    return new Response("designName es requerido", { status: 400 });
 
   const quantityOp = parseNonNegativeInt(body.quantityOp);
-  if (quantityOp === null) return new Response("quantityOp inválido", { status: 400 });
+
+  if (quantityOp === null)
+    return new Response("quantityOp inválido", { status: 400 });
 
   const producedQuantity = parseNonNegativeInt(body.producedQuantity);
+
   if (producedQuantity === null) {
     return new Response("producedQuantity inválido", { status: 400 });
   }
@@ -462,7 +517,10 @@ export async function POST(request: Request) {
   try {
     const result = await db.transaction(async (tx) => {
       if (operationType === "MONTAJE") {
-        const activeTakeOrder = await resolveActiveMontajeTakeOrder({ tx, orderCode });
+        const activeTakeOrder = await resolveActiveMontajeTakeOrder({
+          tx,
+          orderCode,
+        });
 
         if (takeOrder) {
           if (
@@ -525,7 +583,8 @@ export async function POST(request: Request) {
         if (!activeTakeOrder?.id) {
           return {
             conflict: true,
-            message: "Debes tomar el pedido en montaje antes de registrar producción.",
+            message:
+              "Debes tomar el pedido en montaje antes de registrar producción.",
           };
         }
 
@@ -581,6 +640,7 @@ export async function POST(request: Request) {
 
         if (isComplete && operationType) {
           const nextStatus = NEXT_STATUS_BY_OPERATION[operationType];
+
           if (shouldMoveForward(linkedItem.status, nextStatus)) {
             await updateOrderItemStatus({
               tx,
@@ -617,7 +677,9 @@ export async function POST(request: Request) {
     return Response.json(result, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear registro operativo", { status: 500 });
   }
 }

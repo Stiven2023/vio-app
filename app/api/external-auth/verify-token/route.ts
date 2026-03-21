@@ -22,8 +22,12 @@ export async function POST(request: Request) {
     token?: string;
   };
 
-  const clientCode = String(body.clientCode ?? "").trim().toUpperCase();
-  const audience = String(body.audience ?? "").trim().toUpperCase();
+  const clientCode = String(body.clientCode ?? "")
+    .trim()
+    .toUpperCase();
+  const audience = String(body.audience ?? "")
+    .trim()
+    .toUpperCase();
   const token = String(body.token ?? "").trim();
 
   if (!clientCode || !token) {

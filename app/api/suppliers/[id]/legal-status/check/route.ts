@@ -1,14 +1,19 @@
+import { and, desc, eq } from "drizzle-orm";
+
 import { db } from "@/src/db";
 import { legalStatusRecords } from "@/src/db/schema";
-import { and, desc, eq } from "drizzle-orm";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_PROVEEDOR");
+    const forbidden = await requirePermission(
+      request,
+      "VER_ESTADO_JURIDICO_PROVEEDOR",
+    );
+
     if (forbidden) return forbidden;
 
     const { id: supplierId } = await params;
@@ -52,13 +57,14 @@ export async function GET(
     });
   } catch (error) {
     console.error("❌ Error al verificar estado jurídico:", error);
+
     return Response.json(
       {
         status: null,
         canOperate: false,
         reason: "Error al verificar el estado jurídico",
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

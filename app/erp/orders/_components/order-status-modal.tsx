@@ -15,6 +15,7 @@ import {
 import { Select, SelectItem } from "@heroui/select";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
+
 import { getAllowedNextOrderStatuses } from "@/src/utils/order-workflow";
 
 const statusOptions: Array<{ value: OrderStatus; label: string }> = [
@@ -63,6 +64,7 @@ export function OrderStatusModal({
 
     if (order.status === status) {
       onOpenChange(false);
+
       return;
     }
 
@@ -89,10 +91,12 @@ export function OrderStatusModal({
         <ModalBody>
           <div className="text-sm text-default-600">
             <div>
-              <span className="font-medium">Codigo:</span> {order?.orderCode ?? "-"}
+              <span className="font-medium">Codigo:</span>{" "}
+              {order?.orderCode ?? "-"}
             </div>
             <div>
-              <span className="font-medium">Cliente:</span> {order?.clientName ?? "-"}
+              <span className="font-medium">Cliente:</span>{" "}
+              {order?.clientName ?? "-"}
             </div>
             <div>
               <span className="font-medium">Tipo:</span> {order?.type ?? "-"}
@@ -105,12 +109,15 @@ export function OrderStatusModal({
             selectedKeys={[status]}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0] as OrderStatus | undefined;
+
               setStatus(first ?? "PENDIENTE");
             }}
           >
-            {statusOptions.filter((opt) => allowedStatuses.includes(opt.value)).map((opt) => (
-              <SelectItem key={opt.value}>{opt.label}</SelectItem>
-            ))}
+            {statusOptions
+              .filter((opt) => allowedStatuses.includes(opt.value))
+              .map((opt) => (
+                <SelectItem key={opt.value}>{opt.label}</SelectItem>
+              ))}
           </Select>
         </ModalBody>
         <ModalFooter>

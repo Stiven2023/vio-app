@@ -86,7 +86,7 @@ export const purchaseOrderRouteStatusValues = [
 ] as const;
 
 export const PurchaseOrderRouteStatusEnum = z.enum(
-  purchaseOrderRouteStatusValues
+  purchaseOrderRouteStatusValues,
 );
 Object.defineProperty(PurchaseOrderRouteStatusEnum, "enumValues", {
   value: purchaseOrderRouteStatusValues,
@@ -102,11 +102,7 @@ export const ClientType = {
   EMPLEADO: "EMPLEADO",
 } as const;
 
-export const clientTypeValues = [
-  "NACIONAL",
-  "EXTRANJERO",
-  "EMPLEADO",
-] as const;
+export const clientTypeValues = ["NACIONAL", "EXTRANJERO", "EMPLEADO"] as const;
 
 export const ClientTypeEnum = z.enum(clientTypeValues);
 Object.defineProperty(ClientTypeEnum, "enumValues", {
@@ -157,11 +153,7 @@ export const ClientStatus = {
   SUSPENDIDO: "SUSPENDIDO",
 } as const;
 
-export const clientStatusValues = [
-  "ACTIVO",
-  "INACTIVO",
-  "SUSPENDIDO",
-] as const;
+export const clientStatusValues = ["ACTIVO", "INACTIVO", "SUSPENDIDO"] as const;
 
 export const ClientStatusEnum = z.enum(clientStatusValues);
 Object.defineProperty(ClientStatusEnum, "enumValues", {
@@ -328,9 +320,7 @@ export const reconciliationItemTypeValues = [
   "BANK_ERROR",
 ] as const;
 
-export const ReconciliationItemTypeEnum = z.enum(
-  reconciliationItemTypeValues
-);
+export const ReconciliationItemTypeEnum = z.enum(reconciliationItemTypeValues);
 Object.defineProperty(ReconciliationItemTypeEnum, "enumValues", {
   value: reconciliationItemTypeValues,
 });
@@ -341,11 +331,7 @@ export const FactoringStatus = {
   VOIDED: "VOIDED",
 } as const;
 
-export const factoringStatusValues = [
-  "ACTIVE",
-  "COLLECTED",
-  "VOIDED",
-] as const;
+export const factoringStatusValues = ["ACTIVE", "COLLECTED", "VOIDED"] as const;
 
 export const FactoringStatusEnum = z.enum(factoringStatusValues);
 Object.defineProperty(FactoringStatusEnum, "enumValues", {
@@ -649,6 +635,12 @@ export const permissionValues = [
   "ANULAR_RECIBO_CAJA",
   "VER_CARTERA",
   "EXPORTAR_CARTERA",
+  // Caja Menor
+  "VER_CAJA_MENOR",
+  "CREAR_CAJA_MENOR",
+  "GESTIONAR_CAJA_MENOR",
+  // Estado de Resultados
+  "VER_ESTADO_RESULTADOS",
   // RH - new modules
   "VER_PROVISIONES_NOMINA",
   "CREAR_PROVISIONES_NOMINA",
@@ -694,11 +686,7 @@ export const OrderKind = {
   REFERENTE: "REFERENTE",
 } as const;
 
-export const orderKindValues = [
-  "NUEVO",
-  "COMPLETACION",
-  "REFERENTE",
-] as const;
+export const orderKindValues = ["NUEVO", "COMPLETACION", "REFERENTE"] as const;
 
 export const OrderKindEnum = z.enum(orderKindValues);
 Object.defineProperty(OrderKindEnum, "enumValues", {
@@ -832,10 +820,7 @@ export const InventoryLocation = {
   TIENDA: "TIENDA",
 } as const;
 
-export const inventoryLocationValues = [
-  "BODEGA_PRINCIPAL",
-  "TIENDA",
-] as const;
+export const inventoryLocationValues = ["BODEGA_PRINCIPAL", "TIENDA"] as const;
 
 export const InventoryLocationEnum = z.enum(inventoryLocationValues);
 Object.defineProperty(InventoryLocationEnum, "enumValues", {
@@ -843,7 +828,11 @@ Object.defineProperty(InventoryLocationEnum, "enumValues", {
 });
 
 export const InventoryCategoryType = {
+  MATERIA_PRIMA: "MATERIA_PRIMA",
+  TELAS: "TELAS",
+  EMPAQUES: "EMPAQUES",
   INSUMOS_PRODUCCION: "INSUMOS_PRODUCCION",
+  INSUMOS_VARIOS: "INSUMOS_VARIOS",
   PAPELERIA: "PAPELERIA",
   ASEO: "ASEO",
   REPUESTOS: "REPUESTOS",
@@ -851,18 +840,60 @@ export const InventoryCategoryType = {
 } as const;
 
 export const inventoryCategoryTypeValues = [
+  "MATERIA_PRIMA",
+  "TELAS",
+  "EMPAQUES",
   "INSUMOS_PRODUCCION",
+  "INSUMOS_VARIOS",
   "PAPELERIA",
   "ASEO",
   "REPUESTOS",
   "REVENTA",
 ] as const;
 
-export const InventoryCategoryTypeEnum = z.enum(
-  inventoryCategoryTypeValues
-);
+export const InventoryCategoryTypeEnum = z.enum(inventoryCategoryTypeValues);
 Object.defineProperty(InventoryCategoryTypeEnum, "enumValues", {
   value: inventoryCategoryTypeValues,
+});
+
+export const WarehousePurpose = {
+  GENERAL: "GENERAL",
+  MATERIA_PRIMA: "MATERIA_PRIMA",
+  PRODUCCION: "PRODUCCION",
+  PRODUCTO_TERMINADO: "PRODUCTO_TERMINADO",
+  TRANSITO: "TRANSITO",
+} as const;
+
+export const warehousePurposeValues = [
+  "GENERAL",
+  "MATERIA_PRIMA",
+  "PRODUCCION",
+  "PRODUCTO_TERMINADO",
+  "TRANSITO",
+] as const;
+
+export const WarehousePurposeEnum = z.enum(warehousePurposeValues);
+Object.defineProperty(WarehousePurposeEnum, "enumValues", {
+  value: warehousePurposeValues,
+});
+
+export const WarehouseTransferStatus = {
+  PENDIENTE: "PENDIENTE",
+  APROBADA: "APROBADA",
+  RECHAZADA: "RECHAZADA",
+} as const;
+
+export const warehouseTransferStatusValues = [
+  "PENDIENTE",
+  "APROBADA",
+  "RECHAZADA",
+] as const;
+
+export const WarehouseTransferStatusEnum = z.enum(
+  warehouseTransferStatusValues,
+);
+Object.defineProperty(WarehouseTransferStatusEnum, "enumValues", {
+  value: warehouseTransferStatusValues,
 });
 
 export const StockMovementType = {
@@ -938,7 +969,7 @@ export const stockMovementReferenceTypeValues = [
 ] as const;
 
 export const StockMovementReferenceTypeEnum = z.enum(
-  stockMovementReferenceTypeValues
+  stockMovementReferenceTypeValues,
 );
 Object.defineProperty(StockMovementReferenceTypeEnum, "enumValues", {
   value: stockMovementReferenceTypeValues,
@@ -994,10 +1025,7 @@ export const ShipmentDocumentRef = {
   PREFACTURA: "PREFACTURA",
 } as const;
 
-export const shipmentDocumentRefValues = [
-  "RECIBO_CAJA",
-  "PREFACTURA",
-] as const;
+export const shipmentDocumentRefValues = ["RECIBO_CAJA", "PREFACTURA"] as const;
 
 export const ShipmentDocumentRefEnum = z.enum(shipmentDocumentRefValues);
 Object.defineProperty(ShipmentDocumentRefEnum, "enumValues", {
@@ -1069,7 +1097,11 @@ export const MesQueueStatus = {
   COMPLETADO: "COMPLETADO",
 } as const;
 
-export const mesQueueStatusValues = ["EN_COLA", "EN_PROCESO", "COMPLETADO"] as const;
+export const mesQueueStatusValues = [
+  "EN_COLA",
+  "EN_PROCESO",
+  "COMPLETADO",
+] as const;
 
 export const MesQueueStatusEnum = z.enum(mesQueueStatusValues);
 Object.defineProperty(MesQueueStatusEnum, "enumValues", {
@@ -1112,6 +1144,28 @@ export const MesRepoReason = {
   DAÑO: "DAÑO",
   INCORRECTO: "INCORRECTO",
 } as const;
+
+export const pettyCashTransactionTypeValues = [
+  "EXPENSE",
+  "REPLENISHMENT",
+  "OPENING",
+  "ADJUSTMENT",
+] as const;
+export type PettyCashTransactionType =
+  (typeof pettyCashTransactionTypeValues)[number];
+export const PettyCashTransactionTypeEnum = z.enum(
+  pettyCashTransactionTypeValues,
+);
+Object.defineProperty(PettyCashTransactionTypeEnum, "enumValues", {
+  value: pettyCashTransactionTypeValues,
+});
+
+export const pettyCashFundStatusValues = ["ACTIVE", "INACTIVE"] as const;
+export type PettyCashFundStatus = (typeof pettyCashFundStatusValues)[number];
+export const PettyCashFundStatusEnum = z.enum(pettyCashFundStatusValues);
+Object.defineProperty(PettyCashFundStatusEnum, "enumValues", {
+  value: pettyCashFundStatusValues,
+});
 
 export const mesRepoReasonValues = ["FALTANTE", "DAÑO", "INCORRECTO"] as const;
 

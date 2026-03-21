@@ -1,5 +1,6 @@
-import { apiJson } from "@/app/erp/admin/_lib/api";
 import { z } from "zod";
+
+import { apiJson } from "@/app/erp/admin/_lib/api";
 
 const legalStatusSchema = z.object({
   status: z.enum(["VIGENTE", "EN_REVISION", "BLOQUEADO"], {
@@ -28,18 +29,19 @@ export type EmployeeLegalStatusCheck = {
  * - Sin estado: debe estar inactivo
  */
 export function shouldEmployeeBeActive(
-  status?: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null
+  status?: "VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null,
 ): boolean {
   if (!status) return false;
+
   return status === "VIGENTE";
 }
 
 export async function updateEmployeeLegalStatus(
   employeeId: string,
-  data: LegalStatusUpdate
+  data: LegalStatusUpdate,
 ) {
   const validated = legalStatusSchema.safeParse(data);
-  
+
   if (!validated.success) {
     throw new Error(validated.error.issues[0]?.message || "Datos inválidos");
   }
@@ -49,7 +51,7 @@ export async function updateEmployeeLegalStatus(
     {
       method: "POST",
       body: JSON.stringify(validated.data),
-    }
+    },
   );
 
   return response;
@@ -57,8 +59,9 @@ export async function updateEmployeeLegalStatus(
 
 export async function getEmployeeLegalStatusHistory(employeeId: string) {
   const response = await apiJson<any>(
-    `/api/employees/${employeeId}/legal-status-history`
+    `/api/employees/${employeeId}/legal-status-history`,
   );
+
   return response;
 }
 
@@ -67,15 +70,17 @@ export async function getEmployeeLegalStatusHistory(employeeId: string) {
  * Útil para validar si el empleado puede operar en otros módulos
  */
 export async function checkEmployeeLegalStatus(
-  employeeId: string
+  employeeId: string,
 ): Promise<EmployeeLegalStatusCheck> {
   try {
     const response = await apiJson<EmployeeLegalStatusCheck>(
-      `/api/employees/${employeeId}/legal-status/check`
+      `/api/employees/${employeeId}/legal-status/check`,
     );
+
     return response;
   } catch (error) {
     console.error("Error verificando estado jurídico del empleado:", error);
+
     return {
       status: null,
       canOperate: false,

@@ -60,6 +60,10 @@ export {
   InventoryLocationEnum,
   InventoryCategoryType,
   InventoryCategoryTypeEnum,
+  WarehousePurpose,
+  WarehousePurposeEnum,
+  WarehouseTransferStatus,
+  WarehouseTransferStatusEnum,
   StockMovementType,
   StockMovementTypeEnum,
   StockMovementReason,
@@ -119,6 +123,8 @@ export {
   paymentStatusValues,
   inventoryLocationValues,
   inventoryCategoryTypeValues,
+  warehousePurposeValues,
+  warehouseTransferStatusValues,
   stockMovementTypeValues,
   stockMovementReasonValues,
   stockMovementReferenceTypeValues,
@@ -133,7 +139,24 @@ export {
   mesAssignmentStatusValues,
   mesRepoItemTypeValues,
   mesRepoReasonValues,
+  pettyCashTransactionTypeValues,
+  pettyCashFundStatusValues,
 } from "./enums";
+
+import {
+  boolean,
+  date,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  uniqueIndex,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 import {
   purchaseOrderStatusValues,
@@ -164,6 +187,8 @@ import {
   paymentStatusValues,
   inventoryLocationValues,
   inventoryCategoryTypeValues,
+  warehousePurposeValues,
+  warehouseTransferStatusValues,
   stockMovementTypeValues,
   stockMovementReasonValues,
   stockMovementReferenceTypeValues,
@@ -178,22 +203,9 @@ import {
   mesAssignmentStatusValues,
   mesRepoItemTypeValues,
   mesRepoReasonValues,
+  pettyCashTransactionTypeValues,
+  pettyCashFundStatusValues,
 } from "./enums";
-
-import {
-  boolean,
-  date,
-  integer,
-  numeric,
-  pgEnum,
-  pgTable,
-  primaryKey,
-  uniqueIndex,
-  text,
-  timestamp,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
 
 /* ========================= */
 /* Create pgEnum from values */
@@ -201,57 +213,57 @@ import {
 
 export const purchaseOrderStatusPgEnum = pgEnum(
   "purchase_order_status",
-  purchaseOrderStatusValues
+  purchaseOrderStatusValues,
 );
 export const purchaseOrderRouteTypePgEnum = pgEnum(
   "purchase_order_route_type",
-  purchaseOrderRouteTypeValues
+  purchaseOrderRouteTypeValues,
 );
 export const purchaseOrderPartyTypePgEnum = pgEnum(
   "purchase_order_party_type",
-  purchaseOrderPartyTypeValues
+  purchaseOrderPartyTypeValues,
 );
 export const purchaseOrderRouteStatusPgEnum = pgEnum(
   "purchase_order_route_status",
-  purchaseOrderRouteStatusValues
+  purchaseOrderRouteStatusValues,
 );
 export const clientTypePgEnum = pgEnum("client_type", clientTypeValues);
 export const identificationTypePgEnum = pgEnum(
   "identification_type",
-  identificationTypeValues
+  identificationTypeValues,
 );
 export const taxRegimePgEnum = pgEnum("tax_regime", taxRegimeValues);
 export const clientStatusPgEnum = pgEnum("client_status", clientStatusValues);
 export const clientPriceTypePgEnum = pgEnum(
   "client_price_type",
-  clientPriceTypeValues
+  clientPriceTypeValues,
 );
 export const thirdPartyTypePgEnum = pgEnum(
   "third_party_type",
-  thirdPartyTypeValues
+  thirdPartyTypeValues,
 );
 export const legalStatusPgEnum = pgEnum(
   "legal_status_status",
-  legalStatusValues
+  legalStatusValues,
 );
 export const documentTypePgEnum = pgEnum("document_type", documentTypeValues);
 export const taxZonePgEnum = pgEnum("tax_zone", taxZoneValues);
 export const paymentTypePgEnum = pgEnum("payment_type", paymentTypeValues);
 export const creditBackingTypePgEnum = pgEnum(
   "credit_backing_type",
-  creditBackingTypeValues
+  creditBackingTypeValues,
 );
 export const cashReceiptStatusPgEnum = pgEnum(
   "cash_receipt_status",
-  cashReceiptStatusValues
+  cashReceiptStatusValues,
 );
 export const reconciliationItemTypePgEnum = pgEnum(
   "reconciliation_item_type",
-  reconciliationItemTypeValues
+  reconciliationItemTypeValues,
 );
 export const factoringStatusPgEnum = pgEnum(
   "factoring_status",
-  factoringStatusValues
+  factoringStatusValues,
 );
 export const contractTypePgEnum = pgEnum("contract_type", contractTypeValues);
 export const leaveTypePgEnum = pgEnum("leave_type", leaveTypeValues);
@@ -260,56 +272,82 @@ export const orderKindPgEnum = pgEnum("order_kind", orderKindValues);
 export const orderStatusPgEnum = pgEnum("order_status", orderStatusValues);
 export const orderItemStatusPgEnum = pgEnum(
   "order_item_status",
-  orderItemStatusValues
+  orderItemStatusValues,
 );
-export const paymentMethodPgEnum = pgEnum("payment_method", paymentMethodValues);
-export const paymentStatusPgEnum = pgEnum("payment_status", paymentStatusValues);
+export const paymentMethodPgEnum = pgEnum(
+  "payment_method",
+  paymentMethodValues,
+);
+export const paymentStatusPgEnum = pgEnum(
+  "payment_status",
+  paymentStatusValues,
+);
 export const inventoryLocationPgEnum = pgEnum(
   "inventory_location",
-  inventoryLocationValues
+  inventoryLocationValues,
 );
 export const inventoryCategoryTypePgEnum = pgEnum(
   "inventory_category_type",
-  inventoryCategoryTypeValues
+  inventoryCategoryTypeValues,
 );
 export const stockMovementTypePgEnum = pgEnum(
   "stock_movement_type",
-  stockMovementTypeValues
+  stockMovementTypeValues,
 );
 export const stockMovementReasonPgEnum = pgEnum(
   "stock_movement_reason",
-  stockMovementReasonValues
+  stockMovementReasonValues,
 );
 export const stockMovementReferenceTypePgEnum = pgEnum(
   "stock_movement_reference_type",
-  stockMovementReferenceTypeValues
+  stockMovementReferenceTypeValues,
 );
 export const shipmentModePgEnum = pgEnum("shipment_mode", shipmentModeValues);
 export const shipmentPaymentStatusPgEnum = pgEnum(
   "shipment_payment_status",
-  shipmentPaymentStatusValues
+  shipmentPaymentStatusValues,
 );
 export const shipmentDocumentTypePgEnum = pgEnum(
   "shipment_document_type",
-  shipmentDocumentTypeValues
+  shipmentDocumentTypeValues,
 );
 export const shipmentDocumentRefPgEnum = pgEnum(
   "shipment_document_ref",
-  shipmentDocumentRefValues
+  shipmentDocumentRefValues,
 );
 export const shipmentEmailModePgEnum = pgEnum(
   "shipment_email_mode",
-  shipmentEmailModeValues
+  shipmentEmailModeValues,
 );
 export const moldingInsumoStatusPgEnum = pgEnum(
   "molding_insumo_status",
-  moldingInsumoStatusValues
+  moldingInsumoStatusValues,
 );
 export const mesPriorityPgEnum = pgEnum("mes_priority", mesPriorityValues);
-export const mesQueueStatusPgEnum = pgEnum("mes_queue_status", mesQueueStatusValues);
-export const mesAssignmentStatusPgEnum = pgEnum("mes_assignment_status", mesAssignmentStatusValues);
-export const mesRepoItemTypePgEnum = pgEnum("mes_repo_item_type", mesRepoItemTypeValues);
-export const mesRepoReasonPgEnum = pgEnum("mes_repo_reason", mesRepoReasonValues);
+export const mesQueueStatusPgEnum = pgEnum(
+  "mes_queue_status",
+  mesQueueStatusValues,
+);
+export const mesAssignmentStatusPgEnum = pgEnum(
+  "mes_assignment_status",
+  mesAssignmentStatusValues,
+);
+export const mesRepoItemTypePgEnum = pgEnum(
+  "mes_repo_item_type",
+  mesRepoItemTypeValues,
+);
+export const mesRepoReasonPgEnum = pgEnum(
+  "mes_repo_reason",
+  mesRepoReasonValues,
+);
+export const pettyCashTransactionTypePgEnum = pgEnum(
+  "petty_cash_transaction_type",
+  pettyCashTransactionTypeValues,
+);
+export const pettyCashFundStatusPgEnum = pgEnum(
+  "petty_cash_fund_status",
+  pettyCashFundStatusValues,
+);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -340,6 +378,8 @@ export const paymentMethodEnum = paymentMethodPgEnum;
 export const paymentStatusEnum = paymentStatusPgEnum;
 export const inventoryLocationEnum = inventoryLocationPgEnum;
 export const inventoryCategoryTypeEnum = inventoryCategoryTypePgEnum;
+export const warehousePurposeEnum = warehousePurposePgEnum;
+export const warehouseTransferStatusEnum = warehouseTransferStatusPgEnum;
 export const stockMovementTypeEnum = stockMovementTypePgEnum;
 export const stockMovementReasonEnum = stockMovementReasonPgEnum;
 export const stockMovementReferenceTypeEnum = stockMovementReferenceTypePgEnum;
@@ -354,6 +394,8 @@ export const mesQueueStatusEnum = mesQueueStatusPgEnum;
 export const mesAssignmentStatusEnum = mesAssignmentStatusPgEnum;
 export const mesRepoItemTypeEnum = mesRepoItemTypePgEnum;
 export const mesRepoReasonEnum = mesRepoReasonPgEnum;
+export const pettyCashTransactionTypeEnum = pettyCashTransactionTypePgEnum;
+export const pettyCashFundStatusEnum = pettyCashFundStatusPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -548,8 +590,8 @@ export const clients = pgTable("clients", {
 
   // --- ESTADO Y CRÉDITO ---
   status: clientStatusEnum("status").default("ACTIVO"), // ACTIVO, INACTIVO, SUSPENDIDO
-    creditLimit: numeric("credit_limit", { precision: 14, scale: 2 }), // Monto tope de crédito (solo si hasCredit)
-    isActive: boolean("is_active").default(true), // "Estado" (mantener por compatibilidad)
+  creditLimit: numeric("credit_limit", { precision: 14, scale: 2 }), // Monto tope de crédito (solo si hasCredit)
+  isActive: boolean("is_active").default(true), // "Estado" (mantener por compatibilidad)
   hasCredit: boolean("has_credit").default(false), // "CREDITO"
   municipalityFiscal: varchar("municipality_fiscal", { length: 100 }),
   taxZone: taxZoneEnum("tax_zone").default("CONTINENTAL"),
@@ -1216,6 +1258,7 @@ export const warehouses = pgTable("warehouses", {
   code: varchar("code", { length: 30 }).unique().notNull(),
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
+  purpose: warehousePurposeEnum("purpose").default("GENERAL"),
   isVirtual: boolean("is_virtual").default(false),
   isExternal: boolean("is_external").default(false),
   mirroredWarehouseId: uuid("mirrored_warehouse_id"),
@@ -1252,6 +1295,8 @@ export const inventoryItemVariants = pgTable("inventory_item_variants", {
   color: varchar("color", { length: 80 }),
   size: varchar("size", { length: 50 }),
   description: varchar("description", { length: 255 }),
+  supplierId: uuid("supplier_id").references(() => suppliers.id),
+  unitPrice: numeric("unit_price", { precision: 14, scale: 2 }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -1279,7 +1324,13 @@ export const warehouseStock = pgTable(
     lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  () => ({}),
+  (t) => ({
+    uniq: uniqueIndex("warehouse_stock_unique").on(
+      t.warehouseId,
+      t.inventoryItemId,
+      t.variantId,
+    ),
+  }),
 );
 
 /* =========================
@@ -1385,6 +1436,7 @@ export const stockMovements = pgTable("stock_movements", {
   unitCost: numeric("unit_cost", { precision: 14, scale: 2 }),
   referenceType: stockMovementReferenceTypeEnum("reference_type"),
   referenceId: uuid("reference_id"),
+  transferStatus: warehouseTransferStatusEnum("transfer_status"),
   requestedBy: uuid("requested_by").references(() => employees.id),
   requestedAt: timestamp("requested_at", { withTimezone: true }),
   createdBy: uuid("created_by").references(() => employees.id),
@@ -1468,16 +1520,23 @@ export const orderPayments = pgTable("order_payments", {
 export const cashReceipts = pgTable("cash_receipts", {
   id: uuid("id").defaultRandom().primaryKey(),
   receiptCode: varchar("receipt_code", { length: 20 }).unique().notNull(),
-  clientId: uuid("client_id").notNull().references(() => clients.id),
+  clientId: uuid("client_id")
+    .notNull()
+    .references(() => clients.id),
   prefacturaId: uuid("prefactura_id").references(() => prefacturas.id),
   orderId: uuid("order_id").references(() => orders.id),
   receiptDate: date("receipt_date").notNull(),
-  amountReceived: numeric("amount_received", { precision: 14, scale: 2 }).notNull(),
+  amountReceived: numeric("amount_received", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   paymentMethod: paymentMethodEnum("payment_method").notNull(),
   includesIva: boolean("includes_iva").default(false),
   originBank: varchar("origin_bank", { length: 120 }),
   referenceNumber: varchar("reference_number", { length: 120 }),
-  creditBalance: numeric("credit_balance", { precision: 14, scale: 2 }).default("0"),
+  creditBalance: numeric("credit_balance", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
   status: cashReceiptStatusEnum("status").default("PENDING"),
   notes: text("notes"),
   createdBy: uuid("created_by").references(() => employees.id),
@@ -1490,7 +1549,10 @@ export const cashReceiptApplications = pgTable("cash_receipt_applications", {
     .notNull()
     .references(() => cashReceipts.id, { onDelete: "cascade" }),
   prefacturaId: uuid("prefactura_id").references(() => prefacturas.id),
-  appliedAmount: numeric("applied_amount", { precision: 14, scale: 2 }).notNull(),
+  appliedAmount: numeric("applied_amount", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -1507,7 +1569,10 @@ export const factoringRecords = pgTable("factoring_records", {
   assignmentDate: date("assignment_date").notNull(),
   discountRate: numeric("discount_rate", { precision: 5, scale: 2 }).notNull(),
   invoiceValue: numeric("invoice_value", { precision: 14, scale: 2 }).notNull(),
-  netAmountReceived: numeric("net_amount_received", { precision: 14, scale: 2 }).notNull(),
+  netAmountReceived: numeric("net_amount_received", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   status: factoringStatusEnum("status").default("ACTIVE"),
   notes: text("notes"),
   createdBy: uuid("created_by").references(() => employees.id),
@@ -1516,10 +1581,18 @@ export const factoringRecords = pgTable("factoring_records", {
 
 export const bankReconciliations = pgTable("bank_reconciliations", {
   id: uuid("id").defaultRandom().primaryKey(),
-  bankId: uuid("bank_id").notNull().references(() => banks.id),
+  bankId: uuid("bank_id")
+    .notNull()
+    .references(() => banks.id),
   period: varchar("period", { length: 7 }).notNull(),
-  balancePerBank: numeric("balance_per_bank", { precision: 14, scale: 2 }).notNull(),
-  balancePerBooks: numeric("balance_per_books", { precision: 14, scale: 2 }).notNull(),
+  balancePerBank: numeric("balance_per_bank", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
+  balancePerBooks: numeric("balance_per_books", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   difference: numeric("difference", { precision: 14, scale: 2 }).notNull(),
   isClosed: boolean("is_closed").default(false),
   closedBy: uuid("closed_by").references(() => employees.id),
@@ -1575,15 +1648,36 @@ export const payrollProvisions = pgTable("payroll_provisions", {
     .references(() => employees.id),
   period: varchar("period", { length: 7 }).notNull(),
   baseSalary: numeric("base_salary", { precision: 14, scale: 2 }).notNull(),
-  transportAllowance: numeric("transport_allowance", { precision: 14, scale: 2 }).default("0"),
+  transportAllowance: numeric("transport_allowance", {
+    precision: 14,
+    scale: 2,
+  }).default("0"),
   severancePay: numeric("severance_pay", { precision: 14, scale: 2 }).notNull(),
-  severanceInterests: numeric("severance_interests", { precision: 14, scale: 2 }).notNull(),
+  severanceInterests: numeric("severance_interests", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   serviceBonus: numeric("service_bonus", { precision: 14, scale: 2 }).notNull(),
-  vacationProvision: numeric("vacation_provision", { precision: 14, scale: 2 }).notNull(),
-  healthContribution: numeric("health_contribution", { precision: 14, scale: 2 }).notNull(),
-  pensionContribution: numeric("pension_contribution", { precision: 14, scale: 2 }).notNull(),
-  arlContribution: numeric("arl_contribution", { precision: 14, scale: 2 }).notNull(),
-  compensationBoxContribution: numeric("compensation_box_contribution", { precision: 14, scale: 2 }).notNull(),
+  vacationProvision: numeric("vacation_provision", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
+  healthContribution: numeric("health_contribution", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
+  pensionContribution: numeric("pension_contribution", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
+  arlContribution: numeric("arl_contribution", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
+  compensationBoxContribution: numeric("compensation_box_contribution", {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -1920,9 +2014,7 @@ export const orderItemMoldingInsumos = pgTable(
       .notNull()
       .default("0"),
     unit: varchar("unit", { length: 50 }).notNull(),
-    status: moldingInsumoStatusEnum("status")
-      .notNull()
-      .default("PENDIENTE"),
+    status: moldingInsumoStatusEnum("status").notNull().default("PENDIENTE"),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
@@ -2000,5 +2092,68 @@ export const clientLegalStatus = pgTable("client_legal_status", {
   disabledAt: timestamp("disabled_at", { withTimezone: true }),
   updatedBy: uuid("updated_by").references(() => employees.id),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+/* =========================
+   CAJA MENOR (PETTY CASH)
+========================= */
+
+export const pettyCashFunds = pgTable("petty_cash_funds", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 120 }).notNull(),
+  description: text("description"),
+  responsibleEmployeeId: uuid("responsible_employee_id").references(
+    () => employees.id,
+  ),
+  initialBalance: numeric("initial_balance", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  currentBalance: numeric("current_balance", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  maxBalance: numeric("max_balance", { precision: 14, scale: 2 }).default("0"),
+  currency: varchar("currency", { length: 5 }).notNull().default("COP"),
+  status: pettyCashFundStatusEnum("status").notNull().default("ACTIVE"),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const pettyCashTransactions = pgTable("petty_cash_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  transactionCode: varchar("transaction_code", { length: 30 })
+    .unique()
+    .notNull(),
+  fundId: uuid("fund_id")
+    .notNull()
+    .references(() => pettyCashFunds.id),
+  transactionDate: date("transaction_date").notNull(),
+  transactionType: pettyCashTransactionTypeEnum("transaction_type").notNull(),
+  category: varchar("category", { length: 100 }),
+  description: text("description").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  balanceBefore: numeric("balance_before", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  balanceAfter: numeric("balance_after", {
+    precision: 14,
+    scale: 2,
+  })
+    .notNull()
+    .default("0"),
+  referenceCode: varchar("reference_code", { length: 120 }),
+  attachmentUrl: text("attachment_url"),
+  notes: text("notes"),
+  createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });

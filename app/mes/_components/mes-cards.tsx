@@ -1,3 +1,5 @@
+import type { DisenoGroup, MontajeAssignment, PedidoGroup } from "./mes-types";
+
 import React from "react";
 import {
   Card,
@@ -17,7 +19,6 @@ import { MdExpandLess, MdExpandMore, MdTag } from "react-icons/md";
 
 import { ESTADO_CONFIG, PEDIDO_ESTADO_CONFIG } from "./mes-config";
 import { formatDate } from "./mes-utils";
-import type { DisenoGroup, MontajeAssignment, PedidoGroup } from "./mes-types";
 
 function TicketBadge({ ticket, proceso }: { ticket: string; proceso: string }) {
   const colors: Record<string, string> = {
@@ -69,16 +70,21 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
             {pct}% completed
           </Chip>
         </div>
-        <p className="text-sm font-bold text-foreground mt-0.5">{diseno.detalle}</p>
+        <p className="text-sm font-bold text-foreground mt-0.5">
+          {diseno.detalle}
+        </p>
         <div className="flex gap-3 mt-1">
           <span className="text-xs text-default-400">
-            Fabric: <span className="text-foreground font-medium">{diseno.tela}</span>
+            Fabric:{" "}
+            <span className="text-foreground font-medium">{diseno.tela}</span>
           </span>
           <span className="text-xs text-default-400">
-            Gender: <span className="text-foreground font-medium">{diseno.genero}</span>
+            Gender:{" "}
+            <span className="text-foreground font-medium">{diseno.genero}</span>
           </span>
           <span className="text-xs text-default-400">
-            Total: <span className="text-foreground font-bold">{total} units</span>
+            Total:{" "}
+            <span className="text-foreground font-bold">{total} units</span>
           </span>
         </div>
         <div className="w-full h-1 bg-default-100 rounded-full mt-2 overflow-hidden">
@@ -88,7 +94,12 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
           />
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          <Chip className="text-[10px] h-5 font-bold" color="secondary" size="sm" variant="flat">
+          <Chip
+            className="text-[10px] h-5 font-bold"
+            color="secondary"
+            size="sm"
+            variant="flat"
+          >
             Assembly: {diseno.ticketMontaje}
           </Chip>
         </div>
@@ -121,7 +132,9 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
               return (
                 <TableRow key={ti}>
                   <TableCell>
-                    <span className="font-semibold text-foreground">{talla.talla}</span>
+                    <span className="font-semibold text-foreground">
+                      {talla.talla}
+                    </span>
                   </TableCell>
                   <TableCell>{talla.cantidad}</TableCell>
                   <TableCell>
@@ -136,13 +149,19 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <span className="text-default-500">{talla.responsable ?? "-"}</span>
+                    <span className="text-default-500">
+                      {talla.responsable ?? "-"}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-default-500">{talla.fechaInicio ?? "-"}</span>
+                    <span className="text-default-500">
+                      {talla.fechaInicio ?? "-"}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <span className="text-default-500">{talla.fechaFin ?? "-"}</span>
+                    <span className="text-default-500">
+                      {talla.fechaFin ?? "-"}
+                    </span>
                   </TableCell>
                   <TableCell>
                     {talla.observacion ? (
@@ -165,10 +184,12 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
         </Table>
 
         <div className="flex justify-end mt-2 pr-2">
-          <span className="text-[10px] text-default-400">Single assembly ticket per design</span>
+          <span className="text-[10px] text-default-400">
+            Single assembly ticket per design
+          </span>
         </div>
       </CardBody>
-      <TicketBadge ticket={diseno.ticketMontaje} proceso="Assembly" />
+      <TicketBadge proceso="Assembly" ticket={diseno.ticketMontaje} />
     </Card>
   );
 }
@@ -186,41 +207,69 @@ export function PedidoSection({
     .reduce((s, t) => s + t.cantidad, 0);
 
   return (
-    <Card className="mb-4 border border-divider shadow-sm overflow-visible" radius="md">
+    <Card
+      className="mb-4 border border-divider shadow-sm overflow-visible"
+      radius="md"
+    >
       <CardHeader
         className="flex items-center gap-3 cursor-pointer hover:bg-default-50 dark:hover:bg-default-100 transition-colors px-4 py-3"
         onClick={onToggle}
       >
         <button className="text-default-400 shrink-0">
-          {pedido.expanded ? <MdExpandLess size={20} /> : <MdExpandMore size={20} />}
+          {pedido.expanded ? (
+            <MdExpandLess size={20} />
+          ) : (
+            <MdExpandMore size={20} />
+          )}
         </button>
 
         <div className="flex flex-col">
-          <span className="text-sm font-bold text-foreground leading-tight">{pedido.pedido}</span>
+          <span className="text-sm font-bold text-foreground leading-tight">
+            {pedido.pedido}
+          </span>
           <span className="text-xs text-default-400">{pedido.cliente}</span>
         </div>
 
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <span className="text-xs text-default-400">
-            Seller: <span className="text-foreground font-medium">{pedido.vendedor}</span>
+            Seller:{" "}
+            <span className="text-foreground font-medium">
+              {pedido.vendedor}
+            </span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Lead time: <span className="text-foreground font-medium">{pedido.plazo}d</span>
+            Lead time:{" "}
+            <span className="text-foreground font-medium">{pedido.plazo}d</span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Delivery: <span className="text-foreground font-medium">{pedido.fechaEntrega}</span>
+            Delivery:{" "}
+            <span className="text-foreground font-medium">
+              {pedido.fechaEntrega}
+            </span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Total: <span className="text-foreground font-bold">{totalUds} units</span>
+            Total:{" "}
+            <span className="text-foreground font-bold">{totalUds} units</span>
           </span>
-          <Chip className="text-[10px]" color={cfg.color} size="sm" variant="flat">
+          <Chip
+            className="text-[10px]"
+            color={cfg.color}
+            size="sm"
+            variant="flat"
+          >
             {pedido.estado}
           </Chip>
-          <Chip className="text-[10px] font-mono" color="default" size="sm" variant="bordered">
-            {pedido.disenos.length} design{pedido.disenos.length !== 1 ? "s" : ""}
+          <Chip
+            className="text-[10px] font-mono"
+            color="default"
+            size="sm"
+            variant="bordered"
+          >
+            {pedido.disenos.length} design
+            {pedido.disenos.length !== 1 ? "s" : ""}
           </Chip>
         </div>
       </CardHeader>
@@ -280,7 +329,8 @@ export function MontajeAssignmentHeader({
       ) : null}
       {activeProceso === "montaje" && isTakenByOther ? (
         <div className="mt-2 rounded-medium border border-warning-300 bg-warning-50 px-3 py-2 text-xs text-warning-800">
-          This order is taken by another operator. You cannot register production until it is released.
+          This order is taken by another operator. You cannot register
+          production until it is released.
         </div>
       ) : null}
     </>

@@ -15,6 +15,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 function toPositiveNumber(value: unknown) {
   const n = Number(String(value ?? "").replace(/,/g, "."));
+
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
@@ -27,7 +28,12 @@ type UpdatePurchaseOrderBody = {
   bankId?: string | null;
   bankAccountRef?: string | null;
   notes?: string | null;
-  items?: Array<{ inventoryItemId: string; variantId?: string | null; quantity: unknown; unitPrice: unknown }>;
+  items?: Array<{
+    inventoryItemId: string;
+    variantId?: string | null;
+    quantity: unknown;
+    unitPrice: unknown;
+  }>;
 };
 
 export async function PUT(
@@ -43,11 +49,13 @@ export async function PUT(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   try {
     const { id } = await params;
     const orderId = String(id ?? "").trim();
+
     if (!orderId) return new Response("id required", { status: 400 });
 
     const body = (await request.json()) as UpdatePurchaseOrderBody;
@@ -60,16 +68,23 @@ export async function PUT(
     const employeeId = getEmployeeIdFromRequest(request);
 
     if (!bankId) return new Response("bankId required", { status: 400 });
-    if (rawItems.length === 0) return new Response("items required", { status: 400 });
+    if (rawItems.length === 0)
+      return new Response("items required", { status: 400 });
 
     if (supplierId) {
-      const forbiddenSupplier = await requirePermission(request, "ASOCIAR_PROVEEDOR");
+      const forbiddenSupplier = await requirePermission(
+        request,
+        "ASOCIAR_PROVEEDOR",
+      );
+
       if (forbiddenSupplier) return forbiddenSupplier;
     }
 
     const normalizedItems = rawItems
       .map((it) => {
-        const inventoryItemId = String((it as any)?.inventoryItemId ?? "").trim();
+        const inventoryItemId = String(
+          (it as any)?.inventoryItemId ?? "",
+        ).trim();
         const variantId = String((it as any)?.variantId ?? "").trim() || null;
         const quantity = toPositiveNumber((it as any)?.quantity);
         const unitPrice = toPositiveNumber((it as any)?.unitPrice);
@@ -84,18 +99,23 @@ export async function PUT(
           : null;
       })
       .filter(Boolean) as Array<{
-        inventoryItemId: string;
-        variantId: string | null;
-        quantity: string;
-        unitPrice: string;
-      }>;
+      inventoryItemId: string;
+      variantId: string | null;
+      quantity: string;
+      unitPrice: string;
+    }>;
 
     if (normalizedItems.length !== rawItems.length) {
       return new Response("items invalid", { status: 400 });
     }
 
     const [bankRow] = await db
-      .select({ id: banks.id, name: banks.name, accountRef: banks.accountRef, isActive: banks.isActive })
+      .select({
+        id: banks.id,
+        name: banks.name,
+        accountRef: banks.accountRef,
+        isActive: banks.isActive,
+      })
       .from(banks)
       .where(eq(banks.id, bankId))
       .limit(1);
@@ -104,7 +124,9 @@ export async function PUT(
       return new Response("bank invalid", { status: 400 });
     }
 
-    const itemIds = Array.from(new Set(normalizedItems.map((item) => item.inventoryItemId)));
+    const itemIds = Array.from(
+      new Set(normalizedItems.map((item) => item.inventoryItemId)),
+    );
     const itemRows = await db
       .select({
         id: inventoryItems.id,
@@ -123,6 +145,7 @@ export async function PUT(
 
     const orderItems = normalizedItems.map((item) => {
       const source = itemMap.get(item.inventoryItemId);
+
       if (!source) {
         throw new Error("items invalid");
       }
@@ -143,7 +166,10 @@ export async function PUT(
       };
     });
 
-    const subtotal = orderItems.reduce((acc, item) => acc + Number(item.lineTotal), 0);
+    const subtotal = orderItems.reduce(
+      (acc, item) => acc + Number(item.lineTotal),
+      0,
+    );
     const subtotalValue = formatDecimal(subtotal);
 
     const updated = await db.transaction(async (tx) => {
@@ -178,7 +204,9 @@ export async function PUT(
         .where(eq(purchaseOrders.id, orderId))
         .returning({ id: purchaseOrders.id, status: purchaseOrders.status });
 
-      await tx.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+      await tx
+        .delete(purchaseOrderItems)
+        .where(eq(purchaseOrderItems.purchaseOrderId, orderId));
 
       await tx.insert(purchaseOrderItems).values(
         orderItems.map((it) => ({
@@ -209,12 +237,17 @@ export async function PUT(
     return Response.json(updated);
   } catch (error) {
     const message = String((error as { message?: string })?.message ?? "");
+
     if (message === "solo pendiente o rechazada puede editarse") {
       return new Response(message, { status: 409 });
     }
 
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo editar la orden de compra", { status: 500 });
+
+    return new Response("No se pudo editar la orden de compra", {
+      status: 500,
+    });
   }
 }

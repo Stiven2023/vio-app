@@ -1,4 +1,5 @@
 import type { PedidoGroup } from "./mes-types";
+
 import { generateTicket } from "./mes-utils";
 
 export const MOCK_DATA: PedidoGroup[] = [
