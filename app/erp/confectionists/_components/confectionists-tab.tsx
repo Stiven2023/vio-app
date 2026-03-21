@@ -23,7 +23,17 @@ import {
   TableHeader,
   TableRow,
 } from "@heroui/table";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsPersonPlus, BsEyeFill, BsShieldCheck } from "react-icons/bs";
+import {
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+  BsPersonPlus,
+  BsEyeFill,
+  BsShieldCheck,
+} from "react-icons/bs";
+
+import { ConfectionistModal } from "./confectionist-modal";
+import { ConfectionistDetailsModal } from "./confectionist-details-modal";
 
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
 import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
@@ -33,9 +43,6 @@ import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
-
-import { ConfectionistModal } from "./confectionist-modal";
-import { ConfectionistDetailsModal } from "./confectionist-details-modal";
 import { ConfectionistLegalStatusModal } from "@/app/erp/admin/_components/confectionists/confectionist-legal-status-modal";
 
 export type Confectionist = AdminConfectionist & {
@@ -72,19 +79,22 @@ export function ConfectionistsTab({
   const [editing, setEditing] = useState<Confectionist | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
-  const [modalPrefill, setModalPrefill] = useState<ConfectionistFormPrefill | null>(
-    null,
-  );
+  const [modalPrefill, setModalPrefill] =
+    useState<ConfectionistFormPrefill | null>(null);
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Confectionist | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [viewingDocuments, setViewingDocuments] = useState<Confectionist | null>(null);
+  const [viewingDocuments, setViewingDocuments] =
+    useState<Confectionist | null>(null);
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Confectionist | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] =
+    useState<Confectionist | null>(null);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Confectionist | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -112,7 +122,8 @@ export function ConfectionistsTab({
       const mobile = c.mobile ?? "";
       const type = c.type ?? "";
       const specialty = c.specialty ?? "";
-      const dailyCapacity = c.dailyCapacity === null ? "" : String(c.dailyCapacity);
+      const dailyCapacity =
+        c.dailyCapacity === null ? "" : String(c.dailyCapacity);
 
       return (
         c.name.toLowerCase().includes(q) ||
@@ -226,7 +237,10 @@ export function ConfectionistsTab({
 
   const createAsEmployee = async (confectionist: Confectionist) => {
     if (!confectionist.email) {
-      toast.error("Para crear como empleado, el confeccionista debe tener email.");
+      toast.error(
+        "Para crear como empleado, el confeccionista debe tener email.",
+      );
+
       return;
     }
 
@@ -258,7 +272,10 @@ export function ConfectionistsTab({
 
   const createAsSupplier = async (confectionist: Confectionist) => {
     if (!confectionist.email) {
-      toast.error("Para crear como proveedor, el confeccionista debe tener email.");
+      toast.error(
+        "Para crear como proveedor, el confeccionista debe tener email.",
+      );
+
       return;
     }
 
@@ -324,7 +341,9 @@ export function ConfectionistsTab({
           isActive: Boolean(confectionist.isActive ?? true),
           specialty: confectionist.specialty ?? "",
           dailyCapacity:
-            confectionist.dailyCapacity === null ? null : confectionist.dailyCapacity,
+            confectionist.dailyCapacity === null
+              ? null
+              : confectionist.dailyCapacity,
         }),
       });
 
@@ -433,12 +452,18 @@ export function ConfectionistsTab({
                 <TableCell className="text-default-500">
                   {c.identificationType}
                 </TableCell>
-                <TableCell className="text-default-500">{c.email ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.email ?? "-"}
+                </TableCell>
                 <TableCell className="text-default-500">
                   {c.fullMobile ?? c.mobile ?? "-"}
                 </TableCell>
-                <TableCell className="text-default-500">{c.type ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{c.specialty ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {c.type ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {c.specialty ?? "-"}
+                </TableCell>
                 <TableCell className="text-default-500">
                   {c.dailyCapacity === null ? "-" : c.dailyCapacity}
                 </TableCell>
@@ -606,8 +631,8 @@ export function ConfectionistsTab({
 
       <ConfectionistModal
         confectionist={editing}
-        prefill={modalPrefill}
         isOpen={modalOpen}
+        prefill={modalPrefill}
         onOpenChange={(open) => {
           setModalOpen(open);
           if (!open) {
@@ -662,11 +687,11 @@ export function ConfectionistsTab({
         onRequestCreateEmployee={
           legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
         }
-        onRequestCreateSupplier={
-          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
-        }
         onRequestCreatePacker={
           legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
         }
       />
 
@@ -677,26 +702,41 @@ export function ConfectionistsTab({
       />
 
       <ThirdPartyDocumentsModal
-        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
+        documents={
+          viewingDocuments
+            ? [
+                {
+                  label: "Documento de identidad",
+                  url: viewingDocuments.identityDocumentUrl,
+                },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                {
+                  label: "Cámara de comercio",
+                  url: viewingDocuments.commerceChamberDocumentUrl,
+                },
+                {
+                  label: "Pasaporte",
+                  url: viewingDocuments.passportDocumentUrl,
+                },
+                {
+                  label: "Certificado tributario",
+                  url: viewingDocuments.taxCertificateDocumentUrl,
+                },
+                {
+                  label: "Documento empresa",
+                  url: viewingDocuments.companyIdDocumentUrl,
+                },
+              ]
+            : []
+        }
+        emptyMessage="Este confeccionista no tiene documentos cargados."
+        isOpen={documentsOpen}
         subtitle={
           viewingDocuments
             ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
             : undefined
         }
-        emptyMessage="Este confeccionista no tiene documentos cargados."
-        documents={
-          viewingDocuments
-            ? [
-                { label: "Documento de identidad", url: viewingDocuments.identityDocumentUrl },
-                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
-                { label: "Cámara de comercio", url: viewingDocuments.commerceChamberDocumentUrl },
-                { label: "Pasaporte", url: viewingDocuments.passportDocumentUrl },
-                { label: "Certificado tributario", url: viewingDocuments.taxCertificateDocumentUrl },
-                { label: "Documento empresa", url: viewingDocuments.companyIdDocumentUrl },
-              ]
-            : []
-        }
-        isOpen={documentsOpen}
+        title={`Documentos de ${viewingDocuments?.name ?? ""}`}
         onOpenChange={(open) => {
           setDocumentsOpen(open);
           if (!open) setViewingDocuments(null);

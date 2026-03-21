@@ -19,9 +19,13 @@ function toMonthRange(year?: number, month?: number) {
 function buildDays(year: number, month: number) {
   const days: string[] = [];
   const count = new Date(year, month, 0).getDate();
+
   for (let d = 1; d <= count; d += 1) {
-    days.push(`${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+    days.push(
+      `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    );
   }
+
   return days;
 }
 
@@ -35,6 +39,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role) return new Response("Unauthorized", { status: 401 });
   if (role !== "ADMINISTRADOR" && role !== "LIDER_OPERACIONAL") {
     return new Response("Forbidden", { status: 403 });
@@ -57,7 +62,10 @@ export async function GET(request: Request) {
       })
       .from(orders)
       .where(
-        and(gte(orders.createdAt, range.start), lte(orders.createdAt, range.end)),
+        and(
+          gte(orders.createdAt, range.start),
+          lte(orders.createdAt, range.end),
+        ),
       )
       .groupBy(sql`date_trunc('day', ${orders.createdAt})`)
       .orderBy(sql`date_trunc('day', ${orders.createdAt})`);
@@ -99,7 +107,9 @@ export async function GET(request: Request) {
     return Response.json({ year: range.year, month: range.month, series });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar graficos", { status: 500 });
   }
 }

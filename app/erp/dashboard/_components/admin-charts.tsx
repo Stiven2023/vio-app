@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
+
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -23,7 +24,8 @@ import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 
 const AreaChartBase = AreaChart as unknown as ComponentType<any>;
 const ComposedChartBase = ComposedChart as unknown as ComponentType<any>;
-const ResponsiveContainerBase = ResponsiveContainer as unknown as ComponentType<any>;
+const ResponsiveContainerBase =
+  ResponsiveContainer as unknown as ComponentType<any>;
 const CartesianGridBase = CartesianGrid as unknown as ComponentType<any>;
 const XAxisBase = XAxis as unknown as ComponentType<any>;
 const YAxisBase = YAxis as unknown as ComponentType<any>;
@@ -66,10 +68,12 @@ function ChartViewport({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const node = containerRef.current;
+
     if (!node) return;
 
     const update = () => {
       const rect = node.getBoundingClientRect();
+
       setCanRenderChart(rect.width > 0 && rect.height > 0);
     };
 
@@ -99,7 +103,9 @@ export function AdminCharts() {
   const now = new Date();
   const currentYear = now.getFullYear();
   const [year, setYear] = useState(String(currentYear));
-  const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, "0"));
+  const [month, setMonth] = useState(
+    String(now.getMonth() + 1).padStart(2, "0"),
+  );
 
   const monthOptions = [
     { value: "01", label: "Ene" },
@@ -119,6 +125,7 @@ export function AdminCharts() {
   const yearOptions = useMemo(() => {
     return Array.from({ length: 6 }, (_, index) => {
       const value = String(currentYear - index);
+
       return { value, label: value };
     });
   }, [currentYear]);
@@ -129,7 +136,10 @@ export function AdminCharts() {
     const points = data?.series ?? [];
     const sold = points.reduce((acc, row) => acc + Number(row.sold ?? 0), 0);
     const paid = points.reduce((acc, row) => acc + Number(row.paid ?? 0), 0);
-    const orders = points.reduce((acc, row) => acc + Number(row.orders ?? 0), 0);
+    const orders = points.reduce(
+      (acc, row) => acc + Number(row.orders ?? 0),
+      0,
+    );
     const collectionRate = sold > 0 ? (paid / sold) * 100 : 0;
     const avgTicket = orders > 0 ? sold / orders : 0;
 
@@ -138,6 +148,7 @@ export function AdminCharts() {
 
   const bestOrderDay = useMemo(() => {
     const points = data?.series ?? [];
+
     if (points.length === 0) return null;
 
     return points.reduce((best, current) =>
@@ -147,6 +158,7 @@ export function AdminCharts() {
 
   useEffect(() => {
     let active = true;
+
     setLoading(true);
 
     apiJson<ChartResponse>(
@@ -208,7 +220,9 @@ export function AdminCharts() {
         <Card className="border border-default-200">
           <CardBody className="gap-1 py-4">
             <div className="text-xs uppercase text-default-500">Pedidos</div>
-            <div className="text-xl font-semibold">{numberFmt(metrics.orders)}</div>
+            <div className="text-xl font-semibold">
+              {numberFmt(metrics.orders)}
+            </div>
             <div className="text-xs text-default-400">
               Ticket prom.: {money(metrics.avgTicket)}
             </div>
@@ -221,138 +235,212 @@ export function AdminCharts() {
               {bestOrderDay ? bestOrderDay.day.slice(-2) : "-"}
             </div>
             <div className="text-xs text-default-400">
-              {bestOrderDay ? `${numberFmt(bestOrderDay.orders)} pedidos` : "Sin datos"}
+              {bestOrderDay
+                ? `${numberFmt(bestOrderDay.orders)} pedidos`
+                : "Sin datos"}
             </div>
           </CardBody>
         </Card>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-      <Card className="min-w-0 border border-default-200">
-        <CardHeader className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold">Tendencia financiera</div>
-            <div className="text-xs text-default-500">Ventas y recaudo acumulado diario · {label}</div>
-          </div>
-          {loading ? <Spinner size="sm" /> : null}
-        </CardHeader>
-        <CardBody className="h-72 min-h-[18rem] min-w-0">
-          <ChartViewport>
-          <ResponsiveContainerBase width="100%" height="100%" minWidth={280} minHeight={220}>
-            <AreaChartBase data={data?.series ?? []} margin={{ left: 8, right: 8 }}>
-              <defs>
-                <linearGradient id="soldGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--viomar-primary)" stopOpacity={0.28} />
-                  <stop offset="95%" stopColor="var(--viomar-primary)" stopOpacity={0.02} />
-                </linearGradient>
-                <linearGradient id="paidGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--viomar-primary-dark)" stopOpacity={0.28} />
-                  <stop offset="95%" stopColor="var(--viomar-primary-dark)" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
-              <XAxisBase
-                dataKey="day"
-                tickFormatter={(v: string) => v.slice(-2)}
-                axisLine={{ stroke: "var(--viomar-fg)" }}
-                tick={{ fill: "var(--viomar-fg)" }}
-                tickLine={{ stroke: "var(--viomar-fg)" }}
-              />
-              <YAxisBase
-                axisLine={{ stroke: "var(--viomar-fg)" }}
-                tick={{ fill: "var(--viomar-fg)" }}
-                tickLine={{ stroke: "var(--viomar-fg)" }}
-                tickFormatter={(v: number) => numberFmt(v)}
-              />
-              <TooltipBase formatter={(value: number) => money(Number(value ?? 0))} />
-              <LegendBase />
-              <AreaBase
-                type="monotone"
-                dataKey="sold"
-                name="Vendido"
-                stroke="var(--viomar-primary)"
-                fill="url(#soldGradient)"
-                strokeWidth={2}
-              />
-              <AreaBase
-                type="monotone"
-                dataKey="paid"
-                name="Recaudado"
-                stroke="var(--viomar-primary-dark)"
-                fill="url(#paidGradient)"
-                strokeWidth={2}
-              />
-              <LineBase
-                type="monotone"
-                dataKey="sold"
-                name="Vendido (línea)"
-                stroke="var(--viomar-primary)"
-                strokeWidth={1.5}
-                dot={false}
-              />
-              <LineBase
-                type="monotone"
-                dataKey="paid"
-                name="Recaudado (línea)"
-                stroke="var(--viomar-primary-dark)"
-                strokeWidth={1.5}
-                dot={false}
-              />
-            </AreaChartBase>
-          </ResponsiveContainerBase>
-          </ChartViewport>
-        </CardBody>
-      </Card>
-      <Card className="min-w-0 border border-default-200">
-        <CardHeader className="flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold">Volumen vs facturación</div>
-            <div className="text-xs text-default-500">Pedidos y vendido por día</div>
-          </div>
-          {loading ? <Spinner size="sm" /> : null}
-        </CardHeader>
-        <CardBody className="h-72 min-h-[18rem] min-w-0">
-          <ChartViewport>
-          <ResponsiveContainerBase width="100%" height="100%" minWidth={280} minHeight={220}>
-            <ComposedChartBase data={data?.series ?? []} margin={{ left: 8, right: 8 }}>
-              <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
-              <XAxisBase
-                dataKey="day"
-                tickFormatter={(v: string) => v.slice(-2)}
-                axisLine={{ stroke: "var(--viomar-fg)" }}
-                tick={{ fill: "var(--viomar-fg)" }}
-                tickLine={{ stroke: "var(--viomar-fg)" }}
-              />
-              <YAxisBase
-                yAxisId="left"
-                allowDecimals={false}
-                axisLine={{ stroke: "var(--viomar-fg)" }}
-                tick={{ fill: "var(--viomar-fg)" }}
-                tickLine={{ stroke: "var(--viomar-fg)" }}
-              />
-              <YAxisBase
-                yAxisId="right"
-                orientation="right"
-                axisLine={{ stroke: "var(--viomar-fg)" }}
-                tick={{ fill: "var(--viomar-fg)" }}
-                tickLine={{ stroke: "var(--viomar-fg)" }}
-                tickFormatter={(v: number) => numberFmt(v)}
-              />
-              <TooltipBase
-                formatter={(value: number, name: string) =>
-                  name === "Vendido"
-                    ? money(Number(value ?? 0))
-                    : numberFmt(Number(value ?? 0))
-                }
-              />
-              <LegendBase />
-              <BarBase yAxisId="left" dataKey="orders" name="Pedidos" fill="var(--viomar-primary-light)" radius={[6, 6, 0, 0]} />
-              <LineBase yAxisId="right" type="monotone" dataKey="sold" name="Vendido" stroke="var(--viomar-primary)" strokeWidth={2.5} dot={false} />
-            </ComposedChartBase>
-          </ResponsiveContainerBase>
-          </ChartViewport>
-        </CardBody>
-      </Card>
+        <Card className="min-w-0 border border-default-200">
+          <CardHeader className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold">Tendencia financiera</div>
+              <div className="text-xs text-default-500">
+                Ventas y recaudo acumulado diario · {label}
+              </div>
+            </div>
+            {loading ? <Spinner size="sm" /> : null}
+          </CardHeader>
+          <CardBody className="h-72 min-h-[18rem] min-w-0">
+            <ChartViewport>
+              <ResponsiveContainerBase
+                height="100%"
+                minHeight={220}
+                minWidth={280}
+                width="100%"
+              >
+                <AreaChartBase
+                  data={data?.series ?? []}
+                  margin={{ left: 8, right: 8 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="soldGradient"
+                      x1="0"
+                      x2="0"
+                      y1="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="var(--viomar-primary)"
+                        stopOpacity={0.28}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="var(--viomar-primary)"
+                        stopOpacity={0.02}
+                      />
+                    </linearGradient>
+                    <linearGradient
+                      id="paidGradient"
+                      x1="0"
+                      x2="0"
+                      y1="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="var(--viomar-primary-dark)"
+                        stopOpacity={0.28}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="var(--viomar-primary-dark)"
+                        stopOpacity={0.02}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGridBase
+                    stroke="var(--viomar-primary-light)"
+                    strokeDasharray="3 3"
+                  />
+                  <XAxisBase
+                    axisLine={{ stroke: "var(--viomar-fg)" }}
+                    dataKey="day"
+                    tick={{ fill: "var(--viomar-fg)" }}
+                    tickFormatter={(v: string) => v.slice(-2)}
+                    tickLine={{ stroke: "var(--viomar-fg)" }}
+                  />
+                  <YAxisBase
+                    axisLine={{ stroke: "var(--viomar-fg)" }}
+                    tick={{ fill: "var(--viomar-fg)" }}
+                    tickFormatter={(v: number) => numberFmt(v)}
+                    tickLine={{ stroke: "var(--viomar-fg)" }}
+                  />
+                  <TooltipBase
+                    formatter={(value: number) => money(Number(value ?? 0))}
+                  />
+                  <LegendBase />
+                  <AreaBase
+                    dataKey="sold"
+                    fill="url(#soldGradient)"
+                    name="Vendido"
+                    stroke="var(--viomar-primary)"
+                    strokeWidth={2}
+                    type="monotone"
+                  />
+                  <AreaBase
+                    dataKey="paid"
+                    fill="url(#paidGradient)"
+                    name="Recaudado"
+                    stroke="var(--viomar-primary-dark)"
+                    strokeWidth={2}
+                    type="monotone"
+                  />
+                  <LineBase
+                    dataKey="sold"
+                    dot={false}
+                    name="Vendido (línea)"
+                    stroke="var(--viomar-primary)"
+                    strokeWidth={1.5}
+                    type="monotone"
+                  />
+                  <LineBase
+                    dataKey="paid"
+                    dot={false}
+                    name="Recaudado (línea)"
+                    stroke="var(--viomar-primary-dark)"
+                    strokeWidth={1.5}
+                    type="monotone"
+                  />
+                </AreaChartBase>
+              </ResponsiveContainerBase>
+            </ChartViewport>
+          </CardBody>
+        </Card>
+        <Card className="min-w-0 border border-default-200">
+          <CardHeader className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-semibold">
+                Volumen vs facturación
+              </div>
+              <div className="text-xs text-default-500">
+                Pedidos y vendido por día
+              </div>
+            </div>
+            {loading ? <Spinner size="sm" /> : null}
+          </CardHeader>
+          <CardBody className="h-72 min-h-[18rem] min-w-0">
+            <ChartViewport>
+              <ResponsiveContainerBase
+                height="100%"
+                minHeight={220}
+                minWidth={280}
+                width="100%"
+              >
+                <ComposedChartBase
+                  data={data?.series ?? []}
+                  margin={{ left: 8, right: 8 }}
+                >
+                  <CartesianGridBase
+                    stroke="var(--viomar-primary-light)"
+                    strokeDasharray="3 3"
+                  />
+                  <XAxisBase
+                    axisLine={{ stroke: "var(--viomar-fg)" }}
+                    dataKey="day"
+                    tick={{ fill: "var(--viomar-fg)" }}
+                    tickFormatter={(v: string) => v.slice(-2)}
+                    tickLine={{ stroke: "var(--viomar-fg)" }}
+                  />
+                  <YAxisBase
+                    allowDecimals={false}
+                    axisLine={{ stroke: "var(--viomar-fg)" }}
+                    tick={{ fill: "var(--viomar-fg)" }}
+                    tickLine={{ stroke: "var(--viomar-fg)" }}
+                    yAxisId="left"
+                  />
+                  <YAxisBase
+                    axisLine={{ stroke: "var(--viomar-fg)" }}
+                    orientation="right"
+                    tick={{ fill: "var(--viomar-fg)" }}
+                    tickFormatter={(v: number) => numberFmt(v)}
+                    tickLine={{ stroke: "var(--viomar-fg)" }}
+                    yAxisId="right"
+                  />
+                  <TooltipBase
+                    formatter={(value: number, name: string) =>
+                      name === "Vendido"
+                        ? money(Number(value ?? 0))
+                        : numberFmt(Number(value ?? 0))
+                    }
+                  />
+                  <LegendBase />
+                  <BarBase
+                    dataKey="orders"
+                    fill="var(--viomar-primary-light)"
+                    name="Pedidos"
+                    radius={[6, 6, 0, 0]}
+                    yAxisId="left"
+                  />
+                  <LineBase
+                    dataKey="sold"
+                    dot={false}
+                    name="Vendido"
+                    stroke="var(--viomar-primary)"
+                    strokeWidth={2.5}
+                    type="monotone"
+                    yAxisId="right"
+                  />
+                </ComposedChartBase>
+              </ResponsiveContainerBase>
+            </ChartViewport>
+          </CardBody>
+        </Card>
       </div>
     </div>
   );

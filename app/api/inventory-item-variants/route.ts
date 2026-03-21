@@ -13,7 +13,11 @@ import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function sanitizeSku(value: string) {
-  return value.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "-").slice(0, 50);
+  return value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, "-")
+    .slice(0, 50);
 }
 
 async function nextVariantSku(itemCode: string) {
@@ -39,15 +43,20 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_ITEM_INVENTARIO");
+
   if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
   const { page, pageSize, offset } = parsePagination(searchParams);
   const q = String(searchParams.get("q") ?? "").trim();
-  const inventoryItemId = String(searchParams.get("inventoryItemId") ?? "").trim();
+  const inventoryItemId = String(
+    searchParams.get("inventoryItemId") ?? "",
+  ).trim();
 
   const where = and(
-    inventoryItemId ? eq(inventoryItemVariants.inventoryItemId, inventoryItemId) : undefined,
+    inventoryItemId
+      ? eq(inventoryItemVariants.inventoryItemId, inventoryItemId)
+      : undefined,
     q
       ? sql`${inventoryItemVariants.sku} ilike ${`%${q}%`} or ${inventoryItemVariants.color} ilike ${`%${q}%`} or ${inventoryItemVariants.size} ilike ${`%${q}%`}`
       : undefined,
@@ -66,12 +75,17 @@ export async function GET(request: Request) {
       color: inventoryItemVariants.color,
       size: inventoryItemVariants.size,
       description: inventoryItemVariants.description,
+      supplierId: inventoryItemVariants.supplierId,
+      unitPrice: inventoryItemVariants.unitPrice,
       isActive: inventoryItemVariants.isActive,
       createdAt: inventoryItemVariants.createdAt,
       currentStock: sql<string>`coalesce(sum(${warehouseStock.availableQty}), 0)::text`,
     })
     .from(inventoryItemVariants)
-    .leftJoin(warehouseStock, eq(warehouseStock.variantId, inventoryItemVariants.id))
+    .leftJoin(
+      warehouseStock,
+      eq(warehouseStock.variantId, inventoryItemVariants.id),
+    )
     .where(where)
     .groupBy(
       inventoryItemVariants.id,
@@ -80,6 +94,8 @@ export async function GET(request: Request) {
       inventoryItemVariants.color,
       inventoryItemVariants.size,
       inventoryItemVariants.description,
+      inventoryItemVariants.supplierId,
+      inventoryItemVariants.unitPrice,
       inventoryItemVariants.isActive,
       inventoryItemVariants.createdAt,
     )
@@ -102,18 +118,34 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "EDITAR_ITEM_INVENTARIO");
+
   if (forbidden) return forbidden;
 
-  const { inventoryItemId, sku, color, size, description, isActive } = await request.json();
+  const {
+    inventoryItemId,
+    sku,
+    color,
+    size,
+    description,
+    supplierId,
+    unitPrice,
+    isActive,
+  } = await request.json();
 
   const itemId = String(inventoryItemId ?? "").trim();
   const providedSku = sanitizeSku(String(sku ?? "").trim());
   const c = String(color ?? "").trim();
   const s = String(size ?? "").trim();
   const d = String(description ?? "").trim();
+  const sId = String(supplierId ?? "").trim() || null;
+  const uPrice =
+    unitPrice !== undefined ? String(unitPrice ?? "").trim() : undefined;
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!providedSku) return new Response("sku required", { status: 400 });
+  if (uPrice && Number.isNaN(Number(uPrice))) {
+    return new Response("unitPrice invalid", { status: 400 });
+  }
 
   const [item] = await db
     .select({ id: inventoryItems.id, itemCode: inventoryItems.itemCode })
@@ -141,6 +173,8 @@ export async function POST(request: Request) {
       color: c || null,
       size: s || null,
       description: d || null,
+      supplierId: sId,
+      unitPrice: uPrice ? uPrice : null,
       isActive: isActive !== undefined ? Boolean(isActive) : true,
     })
     .returning();
@@ -158,15 +192,26 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "EDITAR_ITEM_INVENTARIO");
+
   if (forbidden) return forbidden;
 
-  const { id, sku, color, size, description, isActive } = await request.json();
+  const { id, sku, color, size, description, supplierId, unitPrice, isActive } =
+    await request.json();
 
   const variantId = String(id ?? "").trim();
   const providedSku =
     sku !== undefined ? sanitizeSku(String(sku ?? "").trim()) : undefined;
+
   if (!variantId) return new Response("id required", { status: 400 });
-  if (sku !== undefined && !providedSku) return new Response("sku required", { status: 400 });
+  if (sku !== undefined && !providedSku)
+    return new Response("sku required", { status: 400 });
+
+  const uPrice =
+    unitPrice !== undefined ? String(unitPrice ?? "").trim() : undefined;
+
+  if (uPrice && Number.isNaN(Number(uPrice))) {
+    return new Response("unitPrice invalid", { status: 400 });
+  }
 
   if (providedSku) {
     const [existingSku] = await db
@@ -189,12 +234,18 @@ export async function PUT(request: Request) {
     .update(inventoryItemVariants)
     .set({
       sku: providedSku,
-      color: color !== undefined ? (String(color ?? "").trim() || null) : undefined,
-      size: size !== undefined ? (String(size ?? "").trim() || null) : undefined,
+      color:
+        color !== undefined ? String(color ?? "").trim() || null : undefined,
+      size: size !== undefined ? String(size ?? "").trim() || null : undefined,
       description:
         description !== undefined
-          ? (String(description ?? "").trim() || null)
+          ? String(description ?? "").trim() || null
           : undefined,
+      supplierId:
+        supplierId !== undefined
+          ? String(supplierId ?? "").trim() || null
+          : undefined,
+      unitPrice: uPrice !== undefined ? uPrice || null : undefined,
       isActive: isActive !== undefined ? Boolean(isActive) : undefined,
     })
     .where(eq(inventoryItemVariants.id, variantId))
@@ -216,7 +267,11 @@ export async function DELETE(request: Request) {
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "ELIMINAR_ITEM_INVENTARIO");
+  const forbidden = await requirePermission(
+    request,
+    "ELIMINAR_ITEM_INVENTARIO",
+  );
+
   if (forbidden) return forbidden;
 
   const { id } = await request.json();
@@ -231,7 +286,9 @@ export async function DELETE(request: Request) {
     .limit(1);
 
   if (hasStock) {
-    return new Response("No se puede eliminar: variante con stock", { status: 409 });
+    return new Response("No se puede eliminar: variante con stock", {
+      status: 409,
+    });
   }
 
   const [hasMovements] = await db
@@ -241,7 +298,9 @@ export async function DELETE(request: Request) {
     .limit(1);
 
   if (hasMovements) {
-    return new Response("No se puede eliminar: variante con movimientos", { status: 409 });
+    return new Response("No se puede eliminar: variante con movimientos", {
+      status: 409,
+    });
   }
 
   const deleted = await db

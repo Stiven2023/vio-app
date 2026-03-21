@@ -12,7 +12,9 @@ export default async function OrdersPage() {
 
   const payload = verifyAuthToken(token);
   const role =
-    payload && typeof payload === "object" ? (payload as { role?: unknown }).role : null;
+    payload && typeof payload === "object"
+      ? (payload as { role?: unknown }).role
+      : null;
   const employeeId =
     payload && typeof payload === "object"
       ? (payload as { employeeId?: unknown }).employeeId
@@ -46,12 +48,12 @@ export default async function OrdersPage() {
       <p className="text-default-600 mt-1">View and manage orders.</p>
       <div className="mt-6">
         <OrdersTab
+          advisorEmployeeId={typeof employeeId === "string" ? employeeId : null}
           canChangeStatus={canChangeStatus}
           canCreate={canCreate}
           canDelete={canDelete}
           canEdit={canEdit}
           canSeeHistory={canSeeHistory}
-          advisorEmployeeId={typeof employeeId === "string" ? employeeId : null}
           isAdvisor={isAdvisor}
         />
       </div>

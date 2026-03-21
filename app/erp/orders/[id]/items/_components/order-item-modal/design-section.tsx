@@ -42,7 +42,9 @@ const NECK_OPTIONS: Array<{ id: string; label: string; src: string }> = [
 
 function getPastedImageFile(ev: React.ClipboardEvent) {
   const items = Array.from(ev.clipboardData?.items ?? []);
-  const img = items.find((it) => it.kind === "file" && it.type.startsWith("image/"));
+  const img = items.find(
+    (it) => it.kind === "file" && it.type.startsWith("image/"),
+  );
 
   return (img?.getAsFile() as File | null) ?? null;
 }
@@ -76,12 +78,14 @@ function ImageDropZone({
     if (dragging) {
       return {
         borderColor: "var(--viomar-primary)",
-        backgroundColor: "color-mix(in srgb, var(--viomar-primary) 10%, transparent)",
+        backgroundColor:
+          "color-mix(in srgb, var(--viomar-primary) 10%, transparent)",
       };
     }
 
     return {
-      borderColor: "color-mix(in srgb, var(--viomar-primary) 45%, var(--viomar-fg) 55%)",
+      borderColor:
+        "color-mix(in srgb, var(--viomar-primary) 45%, var(--viomar-fg) 55%)",
     };
   }, [disabled, dragging]);
 
@@ -98,18 +102,21 @@ function ImageDropZone({
     <div
       className={
         "group relative border border-dashed p-3 transition-colors " +
-        (disabled
-          ? "border-default-200 opacity-60"
-          : "border-default-300")
+        (disabled ? "border-default-200 opacity-60" : "border-default-300")
       }
-      style={accentStyle}
       role="button"
+      style={accentStyle}
+      tabIndex={disabled ? -1 : 0}
+      onClick={() => {
+        if (disabled) return;
+        inputRef.current?.click();
+      }}
+      onDragLeave={() => setDragging(false)}
       onDragOver={(e) => {
         if (disabled) return;
         e.preventDefault();
         setDragging(true);
       }}
-      onDragLeave={() => setDragging(false)}
       onDrop={(e) => {
         if (disabled) return;
         e.preventDefault();
@@ -119,15 +126,11 @@ function ImageDropZone({
       onPaste={(e) => {
         if (disabled) return;
         const file = getPastedImageFile(e);
+
         if (file) {
           e.preventDefault();
           processFile(file);
         }
-      }}
-      tabIndex={disabled ? -1 : 0}
-      onClick={() => {
-        if (disabled) return;
-        inputRef.current?.click();
       }}
     >
       <div className="mb-2 flex items-center justify-between">
@@ -151,7 +154,9 @@ function ImageDropZone({
         Click, arrastra o pega imagen (Ctrl+V)
       </div>
 
-      {subtitle ? <div className="text-[11px] text-default-500 mt-1">{subtitle}</div> : null}
+      {subtitle ? (
+        <div className="text-[11px] text-default-500 mt-1">{subtitle}</div>
+      ) : null}
 
       <div className="mt-2">
         <input
@@ -200,7 +205,9 @@ function ImageDropZone({
         >
           <div className="text-center text-default-500 text-xs">
             <div className="uppercase tracking-[0.15em]">{title}</div>
-            {subtitle ? <div className="mt-1 text-[10px]">{subtitle}</div> : null}
+            {subtitle ? (
+              <div className="mt-1 text-[10px]">{subtitle}</div>
+            ) : null}
           </div>
         </div>
       )}
@@ -240,16 +247,19 @@ export function DesignSection({
 
   const imageOnePreview = React.useMemo(() => {
     if (!imageOneFile) return null;
+
     return URL.createObjectURL(imageOneFile);
   }, [imageOneFile]);
 
   const imageTwoPreview = React.useMemo(() => {
     if (!imageTwoFile) return null;
+
     return URL.createObjectURL(imageTwoFile);
   }, [imageTwoFile]);
 
   const logoPreview = React.useMemo(() => {
     if (!logoFile) return null;
+
     return URL.createObjectURL(logoFile);
   }, [logoFile]);
 
@@ -261,9 +271,14 @@ export function DesignSection({
     };
   }, [imageOnePreview, imageTwoPreview, logoPreview]);
 
-  const resolvedImageOne = imageOnePreview ?? (value.clothingImageOneUrl ? String(value.clothingImageOneUrl) : "");
-  const resolvedImageTwo = imageTwoPreview ?? (value.clothingImageTwoUrl ? String(value.clothingImageTwoUrl) : "");
-  const resolvedLogo = logoPreview ?? (value.logoImageUrl ? String(value.logoImageUrl) : "");
+  const resolvedImageOne =
+    imageOnePreview ??
+    (value.clothingImageOneUrl ? String(value.clothingImageOneUrl) : "");
+  const resolvedImageTwo =
+    imageTwoPreview ??
+    (value.clothingImageTwoUrl ? String(value.clothingImageTwoUrl) : "");
+  const resolvedLogo =
+    logoPreview ?? (value.logoImageUrl ? String(value.logoImageUrl) : "");
 
   function setNeck(id: string) {
     onChange({ ...value, neckType: value.neckType === id ? null : id });
@@ -282,10 +297,16 @@ export function DesignSection({
       <Select
         isDisabled={locked}
         label="Tipo de prenda / posición"
-        selectedKeys={value.garmentType ? [String(value.garmentType)] : ["JUGADOR"]}
+        selectedKeys={
+          value.garmentType ? [String(value.garmentType)] : ["JUGADOR"]
+        }
         onSelectionChange={(keys: any) => {
           const k = Array.from(keys as any)[0];
-          onChange({ ...value, garmentType: k ? String(k) as any : "JUGADOR" });
+
+          onChange({
+            ...value,
+            garmentType: k ? (String(k) as any) : "JUGADOR",
+          });
         }}
       >
         <SelectItem key="JUGADOR">Jugador</SelectItem>
@@ -348,7 +369,9 @@ export function DesignSection({
         minRows={2}
         placeholder="Describe la adición aplicada a este diseño"
         value={String(value.additionEvidence ?? "")}
-        onValueChange={(v: string) => onChange({ ...value, additionEvidence: v })}
+        onValueChange={(v: string) =>
+          onChange({ ...value, additionEvidence: v })
+        }
       />
 
       <Textarea
@@ -434,9 +457,7 @@ export function DesignSection({
               );
             })}
           </div>
-          <div className="text-xs text-default-500 mt-1">
-            Selección única.
-          </div>
+          <div className="text-xs text-default-500 mt-1">Selección única.</div>
         </div>
 
         <Select
@@ -473,7 +494,9 @@ export function DesignSection({
         <Switch
           isDisabled={locked}
           isSelected={Boolean(value.requiresSocks)}
-          onValueChange={(v: boolean) => onChange({ ...value, requiresSocks: v })}
+          onValueChange={(v: boolean) =>
+            onChange({ ...value, requiresSocks: v })
+          }
         >
           Requiere medias
         </Switch>
@@ -509,11 +532,11 @@ export function DesignSection({
               <div className="border border-default-200 bg-content1 p-0">
                 <ImageDropZone
                   compact
+                  required
                   disabled={dropDisabled}
                   imageFitClass="object-contain"
                   minHeightClass="min-h-[96px]"
                   previewSrc={resolvedLogo}
-                  required
                   subtitle="Obligatorio"
                   title="Logo"
                   onSelectFile={onSelectLogoFile}

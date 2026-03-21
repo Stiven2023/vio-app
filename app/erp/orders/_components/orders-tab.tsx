@@ -30,6 +30,13 @@ import {
   BsTrash,
   BsWindowStack,
 } from "react-icons/bs";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from "@heroui/modal";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
 import { usePaginatedApi } from "../_hooks/use-paginated-api";
@@ -41,13 +48,6 @@ import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "@heroui/modal";
 
 const statusOptions: Array<{ value: string; label: string }> = [
   { value: "all", label: "All" },
@@ -86,9 +86,13 @@ export function OrdersTab({
   isAdvisor: boolean;
   advisorEmployeeId: string | null;
 }) {
-  const formatCurrency = (value: string | number | null | undefined, currency: string | null | undefined) => {
+  const formatCurrency = (
+    value: string | number | null | undefined,
+    currency: string | null | undefined,
+  ) => {
     const amount = Number(value ?? 0);
-    const code = String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
+    const code =
+      String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
 
     if (!Number.isFinite(amount)) return code === "USD" ? "$0.00" : "$0";
 
@@ -108,6 +112,7 @@ export function OrdersTab({
     const sp = new URLSearchParams();
 
     const query = q.trim();
+
     if (query) sp.set("q", query);
 
     if (status !== "all") sp.set("status", status);
@@ -131,12 +136,19 @@ export function OrdersTab({
   const [editing, setEditing] = useState<OrderListItem | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<
-    Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
+    Array<{
+      id: string;
+      status: string | null;
+      changedByName: string | null;
+      createdAt: string | null;
+    }>
   >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<OrderListItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<OrderListItem | null>(
+    null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [readyOpen, setReadyOpen] = useState(false);
@@ -147,10 +159,21 @@ export function OrdersTab({
     order: OrderListItem,
     paidPercent: number,
   ): { targetStatus: "APROBACION" | "PROGRAMACION" | null; reason: string } => {
-    const currentStatus = String(order.status ?? "").trim().toUpperCase();
+    const currentStatus = String(order.status ?? "")
+      .trim()
+      .toUpperCase();
     const isPaidAtLeast50 = paidPercent >= 50;
 
-    if (["PROGRAMACION", "PRODUCCION", "ATRASADO", "FINALIZADO", "ENTREGADO", "CANCELADO"].includes(currentStatus)) {
+    if (
+      [
+        "PROGRAMACION",
+        "PRODUCCION",
+        "ATRASADO",
+        "FINALIZADO",
+        "ENTREGADO",
+        "CANCELADO",
+      ].includes(currentStatus)
+    ) {
       return {
         targetStatus: null,
         reason: `The order is already in ${currentStatus} and does not require this manual dispatch.`,
@@ -161,32 +184,37 @@ export function OrdersTab({
       if (currentStatus === "APROBACION") {
         return {
           targetStatus: "PROGRAMACION",
-          reason: "Confirmed advance is 50% or more; it will be sent to Scheduling.",
+          reason:
+            "Confirmed advance is 50% or more; it will be sent to Scheduling.",
         };
       }
 
       return {
         targetStatus: "APROBACION",
-        reason: "Although the advance is 50% or more, workflow requires passing through Approval before Scheduling.",
+        reason:
+          "Although the advance is 50% or more, workflow requires passing through Approval before Scheduling.",
       };
     }
 
     if (currentStatus === "APROBACION") {
       return {
         targetStatus: null,
-        reason: "The order is already in Approval. When it meets the rules you can send it to Scheduling.",
+        reason:
+          "The order is already in Approval. When it meets the rules you can send it to Scheduling.",
       };
     }
 
     return {
       targetStatus: "APROBACION",
-      reason: "With confirmed advance below 50%, the order should be sent to Approval.",
+      reason:
+        "With confirmed advance below 50%, the order should be sent to Approval.",
     };
   };
 
   const canAccessOrder = (order: OrderListItem) => {
     if (!isAdvisor) return true;
     if (!advisorEmployeeId) return false;
+
     return order.createdBy === advisorEmployeeId;
   };
 
@@ -210,7 +238,8 @@ export function OrdersTab({
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (q.trim() !== "" || status !== "all" || type !== "all") return "No results";
+    if (q.trim() !== "" || status !== "all" || type !== "all")
+      return "No results";
 
     return "No orders";
   }, [loading, q, status, type]);
@@ -253,6 +282,7 @@ export function OrdersTab({
       }>(
         `/api/status-history/orders?orderId=${encodeURIComponent(order.id)}&page=1&pageSize=50`,
       );
+
       setHistoryItems(res.items ?? []);
     } catch {
       setHistoryItems([]);
@@ -273,11 +303,13 @@ export function OrdersTab({
     const shipping = Number(readyOrder.shippingFee ?? 0);
     const paid = Number(readyOrder.paidTotal ?? 0);
     const denominator = Math.max(0, total) + Math.max(0, shipping);
-    const paidPercent = denominator > 0 ? Math.max(0, (paid / denominator) * 100) : 0;
+    const paidPercent =
+      denominator > 0 ? Math.max(0, (paid / denominator) * 100) : 0;
     const target = resolveTargetStatus(readyOrder, paidPercent);
 
     if (!target.targetStatus) {
       toast.error(target.reason);
+
       return;
     }
 
@@ -285,7 +317,10 @@ export function OrdersTab({
       setReadySubmitting(true);
       await apiJson("/api/orders", {
         method: "PUT",
-        body: JSON.stringify({ id: readyOrder.id, status: target.targetStatus }),
+        body: JSON.stringify({
+          id: readyOrder.id,
+          status: target.targetStatus,
+        }),
       });
 
       toast.success(
@@ -402,11 +437,15 @@ export function OrdersTab({
                     const paid = Number(o.paidTotal ?? 0);
 
                     if (!Number.isFinite(denom) || denom <= 0) {
-                      return <span className="font-semibold text-danger">0%</span>;
+                      return (
+                        <span className="font-semibold text-danger">0%</span>
+                      );
                     }
 
                     if (!Number.isFinite(paid) || paid <= 0) {
-                      return <span className="font-semibold text-danger">0%</span>;
+                      return (
+                        <span className="font-semibold text-danger">0%</span>
+                      );
                     }
 
                     const pct = Math.min(
@@ -421,7 +460,11 @@ export function OrdersTab({
                           ? "text-warning"
                           : "text-danger";
 
-                    return <span className={`font-semibold ${toneClass}`}>{pct.toFixed(0)}%</span>;
+                    return (
+                      <span className={`font-semibold ${toneClass}`}>
+                        {pct.toFixed(0)}%
+                      </span>
+                    );
                   })()}
                 </TableCell>
                 <TableCell>
@@ -447,10 +490,10 @@ export function OrdersTab({
 
                       {canAccessOrder(o) ? (
                         <DropdownItem
-                        key="detail"
-                        as={NextLink}
-                        href={`/orders/${o.id}/detail`}
-                        startContent={<BsEye />}
+                          key="detail"
+                          as={NextLink}
+                          href={`/orders/${o.id}/detail`}
+                          startContent={<BsEye />}
                         >
                           View details
                         </DropdownItem>
@@ -458,10 +501,10 @@ export function OrdersTab({
 
                       {canAccessOrder(o) ? (
                         <DropdownItem
-                        key="prefactura"
-                        as={NextLink}
-                        href={`/orders/${o.id}/prefactura`}
-                        startContent={<BsReceipt />}
+                          key="prefactura"
+                          as={NextLink}
+                          href={`/orders/${o.id}/prefactura`}
+                          startContent={<BsReceipt />}
                         >
                           Pre-invoice
                         </DropdownItem>
@@ -469,12 +512,12 @@ export function OrdersTab({
 
                       {canAccessOrder(o) ? (
                         <DropdownItem
-                        key="history"
-                        as={NextLink}
-                        href={`/status-history?tab=orders&orderId=${encodeURIComponent(
-                          o.id,
-                        )}`}
-                        startContent={<BsClockHistory />}
+                          key="history"
+                          as={NextLink}
+                          href={`/status-history?tab=orders&orderId=${encodeURIComponent(
+                            o.id,
+                          )}`}
+                          startContent={<BsClockHistory />}
                         >
                           History
                         </DropdownItem>
@@ -563,7 +606,10 @@ export function OrdersTab({
             ) : (
               <div className="space-y-2 text-sm">
                 {historyItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between"
+                  >
                     <div>
                       <div className="font-medium">{item.status ?? "-"}</div>
                       <div className="text-xs text-default-500">
@@ -596,7 +642,9 @@ export function OrdersTab({
             {(() => {
               if (!readyOrder) {
                 return (
-                  <div className="text-sm text-default-500">Select an order to continue.</div>
+                  <div className="text-sm text-default-500">
+                    Select an order to continue.
+                  </div>
                 );
               }
 
@@ -604,7 +652,8 @@ export function OrdersTab({
               const shipping = Number(readyOrder.shippingFee ?? 0);
               const paid = Number(readyOrder.paidTotal ?? 0);
               const orderTotal = Math.max(0, total) + Math.max(0, shipping);
-              const paidPercent = orderTotal > 0 ? Math.max(0, (paid / orderTotal) * 100) : 0;
+              const paidPercent =
+                orderTotal > 0 ? Math.max(0, (paid / orderTotal) * 100) : 0;
               const target = resolveTargetStatus(readyOrder, paidPercent);
 
               return (
@@ -623,11 +672,15 @@ export function OrdersTab({
                   </div>
                   <div>
                     <span className="text-default-500">Order total:</span>{" "}
-                    <strong>{formatCurrency(orderTotal, readyOrder.currency)}</strong>
+                    <strong>
+                      {formatCurrency(orderTotal, readyOrder.currency)}
+                    </strong>
                   </div>
                   <div>
                     <span className="text-default-500">Confirmed paid:</span>{" "}
-                    <strong>{formatCurrency(Math.max(0, paid), readyOrder.currency)}</strong>
+                    <strong>
+                      {formatCurrency(Math.max(0, paid), readyOrder.currency)}
+                    </strong>
                   </div>
                   <div>
                     <span className="text-default-500">Paid percentage:</span>{" "}

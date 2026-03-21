@@ -319,11 +319,9 @@ export function DepositsTab({
                   <TableCell>{row.clientCode ?? "-"}</TableCell>
                   <TableCell>{row.method ?? "-"}</TableCell>
                   <TableCell>
-                    {row.method === "TRANSFERENCIA" ? (
-                      (row.bankCode ?? row.transferBank ?? "-")
-                    ) : (
-                      "-"
-                    )}
+                    {row.method === "TRANSFERENCIA"
+                      ? (row.bankCode ?? row.transferBank ?? "-")
+                      : "-"}
                   </TableCell>
                   <TableCell>
                     {normalizePaymentStatusLabel(row.status)}
@@ -367,14 +365,18 @@ export function DepositsTab({
                         </DropdownItem>
                         <DropdownItem
                           key="approve"
-                          isDisabled={!canApprovePayments || row.status === "PAGADO"}
+                          isDisabled={
+                            !canApprovePayments || row.status === "PAGADO"
+                          }
                           onPress={() => updateStatus(row.id, "PAGADO")}
                         >
                           Aprobar transferencia
                         </DropdownItem>
                         <DropdownItem
                           key="reject"
-                          isDisabled={!canApprovePayments || row.status === "PAGADO"}
+                          isDisabled={
+                            !canApprovePayments || row.status === "PAGADO"
+                          }
                           onPress={() => updateStatus(row.id, "ANULADO")}
                         >
                           Rechazar pago
@@ -411,12 +413,15 @@ export function DepositsTab({
                 </div>
                 <div>
                   <div className="text-xs text-default-500">Pedido</div>
-                  <div className="font-medium">{detailRow.orderCode ?? "-"}</div>
+                  <div className="font-medium">
+                    {detailRow.orderCode ?? "-"}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-default-500">Cliente</div>
                   <div className="font-medium">
-                    {detailRow.clientCode ?? "-"} {detailRow.clientName ? `- ${detailRow.clientName}` : ""}
+                    {detailRow.clientCode ?? "-"}{" "}
+                    {detailRow.clientName ? `- ${detailRow.clientName}` : ""}
                   </div>
                 </div>
                 <div>
@@ -428,15 +433,21 @@ export function DepositsTab({
                   <div className="font-medium">
                     {[detailRow.bankCode, detailRow.bankName]
                       .filter(Boolean)
-                      .join(" - ") || detailRow.transferBank || "-"}
+                      .join(" - ") ||
+                      detailRow.transferBank ||
+                      "-"}
                   </div>
                   <div className="text-xs text-default-500">
-                    {detailRow.bankAccountRef ? `Cuenta: ${detailRow.bankAccountRef}` : "Cuenta: -"}
+                    {detailRow.bankAccountRef
+                      ? `Cuenta: ${detailRow.bankAccountRef}`
+                      : "Cuenta: -"}
                   </div>
                 </div>
                 <div>
                   <div className="text-xs text-default-500">Referencia</div>
-                  <div className="font-medium">{detailRow.referenceCode ?? "-"}</div>
+                  <div className="font-medium">
+                    {detailRow.referenceCode ?? "-"}
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-default-500">Estado</div>

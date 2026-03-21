@@ -83,7 +83,10 @@ export function EmployeeDetailsModal({
               <DetailField label="Ciudad" value={employee.city} />
               <DetailField label="Departamento" value={employee.department} />
               <DetailField label="Role ID" value={employee.roleId} />
-              <DetailField label="Activo" value={employee.isActive ? "Sí" : "No"} />
+              <DetailField
+                label="Activo"
+                value={employee.isActive ? "Sí" : "No"}
+              />
             </div>
           </div>
 
@@ -117,22 +120,42 @@ export function EmployeeDetailsModal({
         </ModalBody>
         <ModalFooter className="flex flex-wrap gap-2">
           {onRequestCreateClient && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateClient}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateClient}
+            >
               Crear como cliente
             </Button>
           )}
           {onRequestCreateSupplier && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateSupplier}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateSupplier}
+            >
               Crear como proveedor
             </Button>
           )}
           {onRequestCreateConfectionist && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateConfectionist}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateConfectionist}
+            >
               Crear como confeccionista
             </Button>
           )}
           {onRequestCreatePacker && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreatePacker}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreatePacker}
+            >
               Crear como empaque
             </Button>
           )}

@@ -10,6 +10,7 @@ export async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
+
     throw new Error(text || `Request failed (${res.status})`);
   }
 
@@ -18,5 +19,6 @@ export async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function getErrorMessage(err: unknown) {
   const msg = (err as { message?: unknown })?.message;
+
   return typeof msg === "string" && msg.trim() ? msg : "An error occurred";
 }

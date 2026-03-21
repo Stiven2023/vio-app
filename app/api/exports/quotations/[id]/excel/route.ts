@@ -18,11 +18,13 @@ import { workbookToXlsxResponse } from "@/src/utils/exceljs-export";
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
+
   return Number.isFinite(n) ? n : 0;
 }
 
 function formatDate(value: unknown) {
   const d = new Date(String(value ?? ""));
+
   if (Number.isNaN(d.getTime())) return "-";
 
   const y = d.getFullYear();
@@ -71,9 +73,11 @@ function styleHeaderRow(
   toCol: number,
 ) {
   const row = worksheet.getRow(rowNumber);
+
   row.font = { bold: true };
   for (let col = fromCol; col <= toCol; col += 1) {
     const cell = worksheet.getCell(rowNumber, col);
+
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -86,6 +90,7 @@ function styleHeaderRow(
 
 function hasVisibleValue(value: unknown) {
   const text = String(value ?? "").trim();
+
   return text.length > 0 && text !== "-";
 }
 
@@ -104,9 +109,11 @@ export async function GET(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "DESCARGAR_COTIZACION");
+
   if (forbidden) return forbidden;
 
   const quotationId = String(params.id ?? "").trim();
+
   if (!quotationId) return new Response("id required", { status: 400 });
 
   const [header] = await db
@@ -172,14 +179,19 @@ export async function GET(
           additionName: additions.name,
         })
         .from(quotationItemAdditions)
-        .leftJoin(additions, eq(quotationItemAdditions.additionId, additions.id))
+        .leftJoin(
+          additions,
+          eq(quotationItemAdditions.additionId, additions.id),
+        )
         .where(inArray(quotationItemAdditions.quotationItemId, itemIds))
     : [];
 
   const additionsByItem = new Map<string, typeof itemAdditions>();
+
   for (const add of itemAdditions) {
     const key = String(add.quotationItemId);
     const current = additionsByItem.get(key) ?? [];
+
     current.push(add);
     additionsByItem.set(key, current);
   }
@@ -203,6 +215,7 @@ export async function GET(
   const infoPairs: Array<{ label: string; value: string }> = [];
   const pushPair = (label: string, value: unknown) => {
     const safe = String(value ?? "").trim();
+
     if (!hasVisibleValue(safe)) return;
     infoPairs.push({ label, value: safe });
   };
@@ -227,6 +240,7 @@ export async function GET(
   }
 
   let rowPointer = 3;
+
   for (const [leftPair, rightPair] of infoRows) {
     sheet.getCell(rowPointer, 1).value = leftPair.label;
     sheet.getCell(rowPointer, 1).font = { bold: true };
@@ -254,7 +268,15 @@ export async function GET(
   applyRowBorder(sheet, rowPointer, 1, 7);
   rowPointer += 1;
 
-  sheet.addRow(["Diseño", "Producto", "Tipo", "Cant.", "Unit.", "Total", "Adiciones"]);
+  sheet.addRow([
+    "Diseño",
+    "Producto",
+    "Tipo",
+    "Cant.",
+    "Unit.",
+    "Total",
+    "Adiciones",
+  ]);
   styleHeaderRow(sheet, rowPointer, 1, 7);
   rowPointer += 1;
 
@@ -263,6 +285,7 @@ export async function GET(
       .map((add) => {
         const qty = asNumber(add.quantity);
         const unit = asNumber(add.unitPrice);
+
         return `${add.additionCode ?? "-"} ${add.additionName ?? ""} (${qty} x ${formatMoney(unit, String(header.currency ?? "COP"))})`;
       })
       .join("; ");
@@ -281,6 +304,7 @@ export async function GET(
       formatMoney(lineTotal, String(header.currency ?? "COP")),
       additionsLabel || "-",
     ]);
+
     applyRowBorder(sheet, row.number, 1, 7);
   }
 
@@ -304,6 +328,7 @@ export async function GET(
     "",
     "",
   ]);
+
   applyRowBorder(sheet, packagingNoteRow.number, 1, 7);
 
   rowPointer = (sheet.lastRow ? sheet.lastRow.number : rowPointer) + 2;
@@ -328,11 +353,15 @@ export async function GET(
     sheet.getCell(rowPointer, 1).font = { bold: true };
     sheet.mergeCells(rowPointer, 2, rowPointer, 7);
     sheet.getCell(rowPointer, 2).value = value;
-    sheet.getCell(rowPointer, 2).alignment = { vertical: "middle", horizontal: "right" };
+    sheet.getCell(rowPointer, 2).alignment = {
+      vertical: "middle",
+      horizontal: "right",
+    };
     applyRowBorder(sheet, rowPointer, 1, 7);
     rowPointer += 1;
   }
 
   const filename = `cotizacion-${header.quoteCode ?? quotationId}.xlsx`;
+
   return workbookToXlsxResponse(workbook, filename);
 }

@@ -27,6 +27,7 @@ import { Tab, Tabs } from "@heroui/tabs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createEmployeeSchema } from "../../_lib/schemas";
+
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import {
   ContactIcon,
@@ -131,9 +132,8 @@ export function EmployeeModal({
   const [submitting, setSubmitting] = useState(false);
   const canPickUser = useMemo(() => !employee, [employee]);
   const [importPromptOpen, setImportPromptOpen] = useState(false);
-  const [importCandidate, setImportCandidate] = useState<ClientImportData | null>(
-    null,
-  );
+  const [importCandidate, setImportCandidate] =
+    useState<ClientImportData | null>(null);
 
   useEffect(() => {
     setErrors({});
@@ -168,6 +168,7 @@ export function EmployeeModal({
 
   const checkIdentification = async () => {
     const identification = form.identification.trim();
+
     if (!identification) return;
 
     try {
@@ -185,10 +186,12 @@ export function EmployeeModal({
 
       if (result.sameModule) {
         const sameModuleMessage = result.sameModule.message;
+
         setErrors((prev) => ({
           ...prev,
           identification: sameModuleMessage,
         }));
+
         return;
       }
 
@@ -214,7 +217,8 @@ export function EmployeeModal({
     setForm((s) => ({
       ...s,
       name: importCandidate.name ?? s.name,
-      identificationType: importCandidate.identificationType ?? s.identificationType,
+      identificationType:
+        importCandidate.identificationType ?? s.identificationType,
       identification: importCandidate.identification ?? s.identification,
       dv: importCandidate.dv ?? s.dv,
       email: importCandidate.email ?? s.email,
@@ -282,6 +286,7 @@ export function EmployeeModal({
 
       if (Object.keys(nextErrors).length > 0) {
         setErrors((prev) => ({ ...prev, ...nextErrors }));
+
         return;
       }
     }
@@ -335,7 +340,12 @@ export function EmployeeModal({
           <Tabs aria-label="Formulario de empleado" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identificación" />}
+              title={
+                <FormTabTitle
+                  icon={<IdentificationIcon />}
+                  label="Identificación"
+                />
+              }
             >
               <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
@@ -353,14 +363,20 @@ export function EmployeeModal({
                   selectedKeys={[form.identificationType]}
                   onSelectionChange={(keys) => {
                     const first = Array.from(keys)[0];
-                    setForm((s) => ({ ...s, identificationType: String(first ?? "CC") }));
+
+                    setForm((s) => ({
+                      ...s,
+                      identificationType: String(first ?? "CC"),
+                    }));
                   }}
                 >
                   <SelectItem key="CC">Cédula de ciudadanía (CC)</SelectItem>
                   <SelectItem key="NIT">NIT</SelectItem>
                   <SelectItem key="CE">Cédula de extranjería (CE)</SelectItem>
                   <SelectItem key="PAS">Pasaporte (PAS)</SelectItem>
-                  <SelectItem key="EMPRESA_EXTERIOR">Empresa exterior</SelectItem>
+                  <SelectItem key="EMPRESA_EXTERIOR">
+                    Empresa exterior
+                  </SelectItem>
                 </Select>
 
                 <Input
@@ -391,12 +407,12 @@ export function EmployeeModal({
             >
               <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
                 <Input
+                  autoComplete="email"
                   errorMessage={errors.email}
+                  inputMode="email"
                   isInvalid={Boolean(errors.email)}
                   label="Correo"
                   type="text"
-                  inputMode="email"
-                  autoComplete="email"
                   value={form.email}
                   onValueChange={(v) =>
                     setForm((s) => ({
@@ -436,7 +452,9 @@ export function EmployeeModal({
                   isInvalid={Boolean(errors.extension)}
                   label="Extensión"
                   value={form.extension}
-                  onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
+                  onValueChange={(v) =>
+                    setForm((s) => ({ ...s, extension: v }))
+                  }
                 />
 
                 <Input
@@ -500,7 +518,9 @@ export function EmployeeModal({
 
             <Tab
               key="usuario-rol"
-              title={<FormTabTitle icon={<UserRoleIcon />} label="Usuario y rol" />}
+              title={
+                <FormTabTitle icon={<UserRoleIcon />} label="Usuario y rol" />
+              }
             >
               <div className="space-y-4 pt-3">
                 <div className="flex items-end gap-2">
@@ -523,21 +543,30 @@ export function EmployeeModal({
 
                   <Dropdown>
                     <DropdownTrigger>
-                      <Button isDisabled={!canPickUser || Boolean(form.userId)} variant="flat">
+                      <Button
+                        isDisabled={!canPickUser || Boolean(form.userId)}
+                        variant="flat"
+                      >
                         Crear usuario
                       </Button>
                     </DropdownTrigger>
-                    <DropdownMenu aria-label="Creador de usuario" closeOnSelect={false}>
-                      <DropdownItem key="creator" textValue="Creador de usuario">
+                    <DropdownMenu
+                      aria-label="Creador de usuario"
+                      closeOnSelect={false}
+                    >
+                      <DropdownItem
+                        key="creator"
+                        textValue="Creador de usuario"
+                      >
                         <div className="w-[280px] space-y-2 py-1">
                           <Input
+                            autoComplete="email"
                             errorMessage={errors.createUserEmail}
+                            inputMode="email"
                             isInvalid={Boolean(errors.createUserEmail)}
                             label="Email usuario"
                             placeholder="usuario@dominio.com"
                             type="text"
-                            inputMode="email"
-                            autoComplete="email"
                             value={form.createUserEmail}
                             onValueChange={(v) =>
                               setForm((s) => ({ ...s, createUserEmail: v }))
@@ -555,8 +584,8 @@ export function EmployeeModal({
                             }
                           />
                           <p className="text-xs text-default-500">
-                            Opcional. Si completas estos campos, se crea y asocia el
-                            usuario sin exigir verificación de email.
+                            Opcional. Si completas estos campos, se crea y
+                            asocia el usuario sin exigir verificación de email.
                           </p>
                         </div>
                       </DropdownItem>
@@ -584,7 +613,9 @@ export function EmployeeModal({
                   <span className="text-sm text-default-500">Activo</span>
                   <Switch
                     isSelected={form.isActive}
-                    onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
+                    onValueChange={(v) =>
+                      setForm((s) => ({ ...s, isActive: v }))
+                    }
                   />
                 </div>
               </div>

@@ -82,7 +82,10 @@ export default function LoginUser() {
     e.preventDefault();
 
     if (!form.email || !form.password) {
-      setToast({ message: "Username and password are required.", type: "error" });
+      setToast({
+        message: "Username and password are required.",
+        type: "error",
+      });
 
       return;
     }
@@ -92,7 +95,8 @@ export default function LoginUser() {
       const identifier = form.email.trim();
       const normalized = identifier.includes("@")
         ? identifier
-        : identifier.toLowerCase().replace(/\s+/g, "") + "@terceros.viomar.local";
+        : identifier.toLowerCase().replace(/\s+/g, "") +
+          "@terceros.viomar.local";
 
       const ok = await login(normalized, form.password);
 
@@ -121,9 +125,9 @@ export default function LoginUser() {
 
       <div className="grid min-h-screen lg:grid-cols-[42%_58%]">
         <motion.aside
+          animate={{ opacity: 1, x: 0 }}
           className="relative hidden overflow-hidden border-r border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_92%,black_8%)] p-10 lg:flex lg:flex-col lg:justify-between"
           initial={{ opacity: 0, x: -24 }}
-          animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_30%_60%,color-mix(in_srgb,var(--viomar-primary)_12%,transparent)_0%,transparent_70%)]" />
@@ -146,23 +150,32 @@ export default function LoginUser() {
               <h2 className="text-4xl font-black leading-[1.02] tracking-tight text-[var(--viomar-fg)]">
                 Your business.
                 <br />
-                <span className="text-[var(--viomar-primary)]">All in one place.</span>
+                <span className="text-[var(--viomar-primary)]">
+                  All in one place.
+                </span>
               </h2>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-default-500">
-                Integrated ERP, MES and CRM for ops, production and commercial management.
+                Integrated ERP, MES and CRM for ops, production and commercial
+                management.
               </p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
                 <div className="flex flex-col items-center gap-2">
                   <ModuleLogo active module="erp" size={78} />
-                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">ERP</span>
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">
+                    ERP
+                  </span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <ModuleLogo active module="mes" size={78} />
-                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">MES</span>
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">
+                    MES
+                  </span>
                 </div>
                 <div className="flex flex-col items-center gap-2">
                   <ModuleLogo active module="crm" size={78} />
-                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">CRM</span>
+                  <span className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-default-500">
+                    CRM
+                  </span>
                 </div>
               </div>
             </div>
@@ -175,31 +188,35 @@ export default function LoginUser() {
 
         <div className="flex items-center justify-center p-4 sm:p-6 lg:p-10">
           <motion.div
+            animate={{ opacity: 1, y: 0 }}
             className="w-full max-w-[580px]"
             initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
           >
             <Card className="border border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_88%,black_12%)] p-4 sm:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <h2 className="text-3xl font-black tracking-tight text-[var(--viomar-fg)]">Sign in</h2>
-                  <p className="text-sm text-default-500">Select your access type.</p>
+                  <h2 className="text-3xl font-black tracking-tight text-[var(--viomar-fg)]">
+                    Sign in
+                  </h2>
+                  <p className="text-sm text-default-500">
+                    Select your access type.
+                  </p>
                 </div>
 
                 <LoginAccessTabs
                   form={form}
                   loading={loading}
-                  onFormChange={handleChange}
-                  onOpenResetRequest={() => setResetRequestOpen(true)}
-                  onSubmitThirdParty={handleThirdPartySubmit}
-                  onSubmitViomar={handleSubmit}
                   selected={selected}
                   setLoading={setLoading}
                   setSelected={setSelected}
                   setToast={setToast}
                   showPassword={showPassword}
                   toggleShowPassword={() => setShowPassword((v) => !v)}
+                  onFormChange={handleChange}
+                  onOpenResetRequest={() => setResetRequestOpen(true)}
+                  onSubmitThirdParty={handleThirdPartySubmit}
+                  onSubmitViomar={handleSubmit}
                 />
               </div>
             </Card>

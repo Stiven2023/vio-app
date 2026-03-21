@@ -14,6 +14,7 @@ export function RouteLoader() {
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
+
       return;
     }
 

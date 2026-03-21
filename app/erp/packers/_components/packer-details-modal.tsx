@@ -1,8 +1,8 @@
 "use client";
 
 import type { Packer } from "./packers-tab";
-import { useState } from "react";
 
+import { useState } from "react";
 import {
   Modal,
   ModalBody,
@@ -11,11 +11,13 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Button } from "@heroui/button";
+
 import { ClientDocumentsPreviewModal } from "@/app/erp/admin/_components/clients/client-documents-preview-modal";
 
 function showValue(value: string | number | boolean | null | undefined) {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") return value ? "Sí" : "No";
+
   return String(value);
 }
 
@@ -49,7 +51,12 @@ export function PackerDetailsModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="3xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      scrollBehavior="inside"
+      size="3xl"
+      onOpenChange={onOpenChange}
+    >
       <ModalContent>
         <ModalHeader>Información completa de empaque</ModalHeader>
         <ModalBody className="space-y-4">
@@ -58,34 +65,91 @@ export function PackerDetailsModal({
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div><span className="font-semibold">Código:</span> {showValue(packer.packerCode)}</div>
-                <div><span className="font-semibold">Nombre:</span> {showValue(packer.name)}</div>
-                <div><span className="font-semibold">Tipo ID:</span> {showValue(packer.identificationType)}</div>
-                <div><span className="font-semibold">Identificación:</span> {showValue(packer.identification)}</div>
-                <div><span className="font-semibold">DV:</span> {showValue(packer.dv)}</div>
-                <div><span className="font-semibold">Activo:</span> {showValue(packer.isActive)}</div>
+                <div>
+                  <span className="font-semibold">Código:</span>{" "}
+                  {showValue(packer.packerCode)}
+                </div>
+                <div>
+                  <span className="font-semibold">Nombre:</span>{" "}
+                  {showValue(packer.name)}
+                </div>
+                <div>
+                  <span className="font-semibold">Tipo ID:</span>{" "}
+                  {showValue(packer.identificationType)}
+                </div>
+                <div>
+                  <span className="font-semibold">Identificación:</span>{" "}
+                  {showValue(packer.identification)}
+                </div>
+                <div>
+                  <span className="font-semibold">DV:</span>{" "}
+                  {showValue(packer.dv)}
+                </div>
+                <div>
+                  <span className="font-semibold">Activo:</span>{" "}
+                  {showValue(packer.isActive)}
+                </div>
               </div>
 
               <div className="border-t pt-3 grid grid-cols-2 gap-3">
-                <div><span className="font-semibold">Tipo de empaque:</span> {showValue(packer.packerType)}</div>
-                <div><span className="font-semibold">Nombre del taller:</span> {showValue(packer.specialty)}</div>
-                <div><span className="font-semibold">Capacidad diaria:</span> {showValue(packer.dailyCapacity)}</div>
+                <div>
+                  <span className="font-semibold">Tipo de empaque:</span>{" "}
+                  {showValue(packer.packerType)}
+                </div>
+                <div>
+                  <span className="font-semibold">Nombre del taller:</span>{" "}
+                  {showValue(packer.specialty)}
+                </div>
+                <div>
+                  <span className="font-semibold">Capacidad diaria:</span>{" "}
+                  {showValue(packer.dailyCapacity)}
+                </div>
               </div>
 
               <div className="border-t pt-3 grid grid-cols-2 gap-3">
-                <div><span className="font-semibold">Contacto:</span> {showValue(packer.contactName)}</div>
-                <div><span className="font-semibold">Email:</span> {showValue(packer.email)}</div>
-                <div><span className="font-semibold">Código int.:</span> {showValue(packer.intlDialCode)}</div>
-                <div><span className="font-semibold">Móvil:</span> {showValue(packer.mobile)}</div>
-                <div><span className="font-semibold">Móvil completo:</span> {showValue(packer.fullMobile)}</div>
-                <div><span className="font-semibold">Fijo:</span> {showValue(packer.landline)}</div>
+                <div>
+                  <span className="font-semibold">Contacto:</span>{" "}
+                  {showValue(packer.contactName)}
+                </div>
+                <div>
+                  <span className="font-semibold">Email:</span>{" "}
+                  {showValue(packer.email)}
+                </div>
+                <div>
+                  <span className="font-semibold">Código int.:</span>{" "}
+                  {showValue(packer.intlDialCode)}
+                </div>
+                <div>
+                  <span className="font-semibold">Móvil:</span>{" "}
+                  {showValue(packer.mobile)}
+                </div>
+                <div>
+                  <span className="font-semibold">Móvil completo:</span>{" "}
+                  {showValue(packer.fullMobile)}
+                </div>
+                <div>
+                  <span className="font-semibold">Fijo:</span>{" "}
+                  {showValue(packer.landline)}
+                </div>
               </div>
 
               <div className="border-t pt-3 grid grid-cols-2 gap-3">
-                <div><span className="font-semibold">Dirección:</span> {showValue(packer.address)}</div>
-                <div><span className="font-semibold">Código postal:</span> {showValue(packer.postalCode)}</div>
-                <div><span className="font-semibold">Ciudad:</span> {showValue(packer.city)}</div>
-                <div><span className="font-semibold">Departamento:</span> {showValue(packer.department)}</div>
+                <div>
+                  <span className="font-semibold">Dirección:</span>{" "}
+                  {showValue(packer.address)}
+                </div>
+                <div>
+                  <span className="font-semibold">Código postal:</span>{" "}
+                  {showValue(packer.postalCode)}
+                </div>
+                <div>
+                  <span className="font-semibold">Ciudad:</span>{" "}
+                  {showValue(packer.city)}
+                </div>
+                <div>
+                  <span className="font-semibold">Departamento:</span>{" "}
+                  {showValue(packer.department)}
+                </div>
               </div>
 
               <div className="border-t pt-3 space-y-2">
@@ -95,7 +159,12 @@ export function PackerDetailsModal({
                     isDisabled={!packer.identityDocumentUrl}
                     size="sm"
                     variant="flat"
-                    onPress={() => openDocument("Documento de identidad", packer.identityDocumentUrl)}
+                    onPress={() =>
+                      openDocument(
+                        "Documento de identidad",
+                        packer.identityDocumentUrl,
+                      )
+                    }
                   >
                     Ver documento de identidad
                   </Button>
@@ -112,7 +181,10 @@ export function PackerDetailsModal({
                     size="sm"
                     variant="flat"
                     onPress={() =>
-                      openDocument("Cámara de comercio", packer.commerceChamberDocumentUrl)
+                      openDocument(
+                        "Cámara de comercio",
+                        packer.commerceChamberDocumentUrl,
+                      )
                     }
                   >
                     Ver cámara de comercio
@@ -121,7 +193,9 @@ export function PackerDetailsModal({
                     isDisabled={!packer.passportDocumentUrl}
                     size="sm"
                     variant="flat"
-                    onPress={() => openDocument("Pasaporte", packer.passportDocumentUrl)}
+                    onPress={() =>
+                      openDocument("Pasaporte", packer.passportDocumentUrl)
+                    }
                   >
                     Ver pasaporte
                   </Button>
@@ -130,7 +204,10 @@ export function PackerDetailsModal({
                     size="sm"
                     variant="flat"
                     onPress={() =>
-                      openDocument("Certificado tributario", packer.taxCertificateDocumentUrl)
+                      openDocument(
+                        "Certificado tributario",
+                        packer.taxCertificateDocumentUrl,
+                      )
                     }
                   >
                     Ver certificado tributario
@@ -139,7 +216,9 @@ export function PackerDetailsModal({
                     isDisabled={!packer.companyIdDocumentUrl}
                     size="sm"
                     variant="flat"
-                    onPress={() => openDocument("ID de empresa", packer.companyIdDocumentUrl)}
+                    onPress={() =>
+                      openDocument("ID de empresa", packer.companyIdDocumentUrl)
+                    }
                   >
                     Ver ID empresa
                   </Button>
@@ -150,22 +229,42 @@ export function PackerDetailsModal({
         </ModalBody>
         <ModalFooter className="flex flex-wrap gap-2">
           {onRequestCreateClient && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateClient}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateClient}
+            >
               Crear como cliente
             </Button>
           )}
           {onRequestCreateEmployee && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateEmployee}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateEmployee}
+            >
               Crear como empleado
             </Button>
           )}
           {onRequestCreateSupplier && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateSupplier}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateSupplier}
+            >
               Crear como proveedor
             </Button>
           )}
           {onRequestCreateConfectionist && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateConfectionist}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateConfectionist}
+            >
               Crear como confeccionista
             </Button>
           )}

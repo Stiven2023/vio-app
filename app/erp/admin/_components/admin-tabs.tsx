@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Tabs, Tab } from "@heroui/tabs";
 import type { ClientFormPrefill } from "./clients/client-modal.types";
 import type { EmployeeFormPrefill } from "./employees/employee-modal.types";
 import type { ConfectionistFormPrefill } from "@/app/erp/confectionists/_components/confectionist-modal.types";
+
+import { Tabs, Tab } from "@heroui/tabs";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { UsersTab } from "./users/users-tab";
@@ -13,6 +14,7 @@ import { ClientsTab } from "./clients/clients-tab";
 import { RolesTab } from "./roles/roles-tab";
 import { PermissionsTab } from "./permissions/permissions-tab";
 import { RolePermissionsTab } from "./role-permissions/role-permissions-tab";
+
 import { ConfectionistsTab } from "@/app/erp/confectionists/_components/confectionists-tab";
 
 type AdminTabKey =
@@ -75,17 +77,17 @@ export function AdminTabs() {
         ) : null}
         {activeTab === "clients" ? (
           <ClientsTab
-            onRequestCreateEmployee={openEmployeeFromClient}
-            onRequestCreateConfectionist={openConfectionistFromClient}
             prefillCreate={clientPrefill}
             onPrefillConsumed={() => setClientPrefill(null)}
+            onRequestCreateConfectionist={openConfectionistFromClient}
+            onRequestCreateEmployee={openEmployeeFromClient}
           />
         ) : null}
         {activeTab === "confectionists" ? (
           <ConfectionistsTab
             canCreate={true}
-            canEdit={true}
             canDelete={true}
+            canEdit={true}
             prefillCreate={confectionistPrefill}
             onPrefillConsumed={() => setConfectionistPrefill(null)}
             onRequestCreateClient={openClientFromConfectionist}

@@ -66,7 +66,9 @@ export function useOrderItemModalState(options: {
 }) {
   const { isOpen, orderId, initialValue } = options;
 
-  const [inventoryItems, setInventoryItems] = React.useState<InventoryItem[]>([]);
+  const [inventoryItems, setInventoryItems] = React.useState<InventoryItem[]>(
+    [],
+  );
   const [imageFile, setImageFile] = React.useState<File | null>(null);
 
   const [packagingMode, setPackagingMode] = React.useState<PackagingMode>(
@@ -88,8 +90,10 @@ export function useOrderItemModalState(options: {
     observations: initialValue?.item?.observations ?? "",
     fabric: initialValue?.item?.fabric ?? "",
     imageUrl: initialValue?.item?.imageUrl ?? null,
-    clothingImageOneUrl: (initialValue?.item as any)?.clothingImageOneUrl ?? null,
-    clothingImageTwoUrl: (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
+    clothingImageOneUrl:
+      (initialValue?.item as any)?.clothingImageOneUrl ?? null,
+    clothingImageTwoUrl:
+      (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
     logoImageUrl: (initialValue?.item as any)?.logoImageUrl ?? null,
     gender: initialValue?.item?.gender ?? null,
     process: normalizeOperationalProcess(initialValue?.item?.process),
@@ -109,7 +113,9 @@ export function useOrderItemModalState(options: {
     () => {
       const p = initialValue?.packaging;
 
-      return Array.isArray(p) && p.length > 0 ? p : defaultPackaging(packagingMode);
+      return Array.isArray(p) && p.length > 0
+        ? p
+        : defaultPackaging(packagingMode);
     },
   );
 
@@ -155,7 +161,9 @@ export function useOrderItemModalState(options: {
       productId: (initialValue?.item as any)?.productId ?? null,
       productPriceId: (initialValue?.item as any)?.productPriceId ?? null,
       name: initialValue?.item?.name ?? "",
-      garmentType: normalizeGarmentType((initialValue?.item as any)?.garmentType),
+      garmentType: normalizeGarmentType(
+        (initialValue?.item as any)?.garmentType,
+      ),
       quantity: initialValue?.item?.quantity ?? 1,
       unitPrice: initialValue?.item?.unitPrice ?? "0",
       totalPrice: initialValue?.item?.totalPrice ?? "0",
@@ -164,8 +172,10 @@ export function useOrderItemModalState(options: {
       observations: initialValue?.item?.observations ?? "",
       fabric: initialValue?.item?.fabric ?? "",
       imageUrl: initialValue?.item?.imageUrl ?? null,
-      clothingImageOneUrl: (initialValue?.item as any)?.clothingImageOneUrl ?? null,
-      clothingImageTwoUrl: (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
+      clothingImageOneUrl:
+        (initialValue?.item as any)?.clothingImageOneUrl ?? null,
+      clothingImageTwoUrl:
+        (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
       logoImageUrl: (initialValue?.item as any)?.logoImageUrl ?? null,
       gender: initialValue?.item?.gender ?? null,
       process: normalizeOperationalProcess(initialValue?.item?.process),
@@ -184,7 +194,9 @@ export function useOrderItemModalState(options: {
     {
       const p = initialValue?.packaging;
 
-      setPackaging(Array.isArray(p) && p.length > 0 ? p : defaultPackaging(nextMode));
+      setPackaging(
+        Array.isArray(p) && p.length > 0 ? p : defaultPackaging(nextMode),
+      );
     }
     setSocks(initialValue?.socks ?? []);
     setMaterials(initialValue?.materials ?? []);

@@ -56,13 +56,11 @@ export function UsersTab() {
   const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState<string | null>(null);
-  const [detail, setDetail] = useState<
-    {
-      user: AdminUser;
-      employee: Employee | null;
-      role: { id: string; name: string } | null;
-    } | null
-  >(null);
+  const [detail, setDetail] = useState<{
+    user: AdminUser;
+    employee: Employee | null;
+    role: { id: string; name: string } | null;
+  } | null>(null);
 
   const deleteUser = async () => {
     const u = pendingDelete;

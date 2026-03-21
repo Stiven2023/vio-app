@@ -1,19 +1,24 @@
-import { db } from "@/src/db";
-import { clientLegalStatusHistory, clients } from "@/src/db/schema";
 import { eq } from "drizzle-orm";
 import { desc } from "drizzle-orm";
+
+import { db } from "@/src/db";
+import { clientLegalStatusHistory, clients } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_CLIENTE");
+    const forbidden = await requirePermission(
+      request,
+      "VER_ESTADO_JURIDICO_CLIENTE",
+    );
+
     if (forbidden) return forbidden;
 
     const { id: clientId } = await params;
-    
+
     // Verificar que el cliente existe
     const client = await db.query.clients.findFirst({
       where: eq(clients.id, clientId),
@@ -33,9 +38,10 @@ export async function GET(
     return Response.json(history);
   } catch (error) {
     console.error("❌ Error al obtener historial:", error);
+
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Error desconocido"}`,
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

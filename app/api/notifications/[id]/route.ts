@@ -44,7 +44,9 @@ export async function PATCH(
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo actualizar notificacion", {
       status: 500,
     });

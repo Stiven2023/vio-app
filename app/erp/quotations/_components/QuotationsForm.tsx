@@ -1,11 +1,12 @@
 "use client";
 
+import type { ClientOption, QuoteForm } from "../_lib/types";
+
 import { Input } from "@heroui/input";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Select, SelectItem } from "@heroui/select";
 import { Skeleton } from "@heroui/skeleton";
 
-import type { ClientOption, QuoteForm } from "../_lib/types";
 import { useClientOnly } from "../_hooks/useClientOnly";
 
 type QuotationsFormProps = {
@@ -22,11 +23,16 @@ export function QuotationsForm({
   onFormChange,
 }: QuotationsFormProps) {
   const isMounted = useClientOnly();
-  const clientsWithCode = clients.filter((client) => Boolean(client.clientCode));
-  const selectedClient = clients.find((client) => client.id === form.clientId) ?? null;
+  const clientsWithCode = clients.filter((client) =>
+    Boolean(client.clientCode),
+  );
+  const selectedClient =
+    clients.find((client) => client.id === form.clientId) ?? null;
   const requiresCreditValidation = form.paymentTerms === "CREDITO";
   const hasActiveCredit = Boolean(selectedClient?.hasCredit);
-  const clientPromissoryNumber = String(selectedClient?.promissoryNoteNumber ?? "").trim();
+  const clientPromissoryNumber = String(
+    selectedClient?.promissoryNoteNumber ?? "",
+  ).trim();
   const creditInvalid =
     requiresCreditValidation && (!hasActiveCredit || !clientPromissoryNumber);
 
@@ -36,6 +42,7 @@ export function QuotationsForm({
     const isInternational = ["CE", "PAS", "EMPRESA_EXTERIOR"].includes(
       String(selected?.identificationType ?? ""),
     );
+
     onFormChange({
       clientId,
       documentType: "F", // Default to F (Factura) on client change
@@ -59,15 +66,15 @@ export function QuotationsForm({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {isMounted ? (
           <Autocomplete
-            isLoading={loadingClients}
-            label="Client Code"
-            selectedKey={form.clientId || null}
-            variant="bordered"
             classNames={{
               base: "min-h-12",
               selectorButton: "min-h-12",
             }}
             defaultItems={clientsWithCode}
+            isLoading={loadingClients}
+            label="Client Code"
+            selectedKey={form.clientId || null}
+            variant="bordered"
             onSelectionChange={(key) => {
               handleClientSelect(String(key ?? ""));
             }}
@@ -86,12 +93,13 @@ export function QuotationsForm({
         )}
         {isMounted ? (
           <Select
+            classNames={{ trigger: "min-h-12" }}
             label="Document Type"
             selectedKeys={[form.documentType]}
             variant="bordered"
-            classNames={{ trigger: "min-h-12" }}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               onFormChange({
                 documentType: String(first) === "R" ? "R" : "F",
               });
@@ -111,68 +119,64 @@ export function QuotationsForm({
           onValueChange={(v) => onFormChange({ customerEmail: v })}
         />
         <Input
+          isReadOnly
           label="NIT / CC"
           value={form.documentNumber}
           variant="bordered"
-          isReadOnly
         />
         <Input
+          isReadOnly
           label="DV"
           value={form.documentVerificationDigit}
           variant="bordered"
-          isReadOnly
         />
         <Input
+          isReadOnly
           label="Contact Name"
           value={form.contactName}
           variant="bordered"
-          isReadOnly
         />
         <Input
+          isReadOnly
           label="Contact Phone"
           type="tel"
           value={form.contactPhone}
           variant="bordered"
-          isReadOnly
         />
         <Input
+          isReadOnly
           label="Address"
           value={form.address}
           variant="bordered"
-          isReadOnly
         />
         <Input
+          isReadOnly
           label="Country"
           value={form.country}
           variant="bordered"
-          isReadOnly
         />
+        <Input isReadOnly label="City" value={form.city} variant="bordered" />
         <Input
-          label="City"
-          value={form.city}
-          variant="bordered"
           isReadOnly
-        />
-        <Input
           label="Postal Code"
           value={form.postalCode}
           variant="bordered"
-          isReadOnly
         />
         <Input
+          isReadOnly
           label="Vendedor"
           value={form.seller}
           variant="bordered"
-          isReadOnly
         />
         {isMounted ? (
           <Select
+            classNames={{ trigger: "min-h-12" }}
             label="Moneda"
             selectedKeys={[form.currency]}
             variant="bordered"
-            classNames={{ trigger: "min-h-12" }}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               onFormChange({
                 currency: String(first) === "USD" ? "USD" : "COP",
               });
@@ -185,18 +189,15 @@ export function QuotationsForm({
           <Skeleton className="rounded-lg h-12" />
         )}
         <Input
+          isReadOnly
           label="Expiration Date"
           type="date"
           value={form.expiryDate}
           variant="bordered"
-          isReadOnly
         />
         {isMounted ? (
           <Select
-            label="Payment Terms"
-            selectedKeys={form.paymentTerms ? [form.paymentTerms] : []}
-            variant="bordered"
-            isInvalid={creditInvalid}
+            classNames={{ trigger: "min-h-12" }}
             errorMessage={
               creditInvalid
                 ? !hasActiveCredit
@@ -204,9 +205,13 @@ export function QuotationsForm({
                   : "Client has no promissory note number. Cannot save with credit payment."
                 : undefined
             }
-            classNames={{ trigger: "min-h-12" }}
+            isInvalid={creditInvalid}
+            label="Payment Terms"
+            selectedKeys={form.paymentTerms ? [form.paymentTerms] : []}
+            variant="bordered"
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               onFormChange({ paymentTerms: String(first ?? "") });
             }}
           >
@@ -222,12 +227,16 @@ export function QuotationsForm({
         )}
         {form.paymentTerms === "CREDITO" && (
           <Input
+            isReadOnly
+            errorMessage={
+              !clientPromissoryNumber
+                ? "The client has no promissory note number registered."
+                : undefined
+            }
+            isInvalid={!clientPromissoryNumber}
             label="Promissory Note Number"
             value={clientPromissoryNumber || form.promissoryNoteNumber}
             variant="bordered"
-            isReadOnly
-            isInvalid={!clientPromissoryNumber}
-            errorMessage={!clientPromissoryNumber ? "The client has no promissory note number registered." : undefined}
           />
         )}
       </div>

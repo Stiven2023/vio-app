@@ -14,11 +14,7 @@ import {
 import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
 import { Card, CardBody } from "@heroui/card";
-import {
-  BsFileEarmarkPdf,
-  BsEye,
-  BsExclamationCircle,
-} from "react-icons/bs";
+import { BsFileEarmarkPdf, BsEye, BsExclamationCircle } from "react-icons/bs";
 
 import { ClientDocumentsPreviewModal } from "./client-documents-preview-modal";
 
@@ -34,7 +30,7 @@ export function ClientDocumentsModal({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLabel, setPreviewLabel] = useState("");
-  
+
   if (!client) return null;
 
   // Matriz de documentos según identificationType
@@ -47,8 +43,12 @@ export function ClientDocumentsModal({
   // CC - Persona Natural Nacional
   if (client.identificationType === "CC") {
     documents.push(
-      { label: "Cédula del titular", url: client.identityDocumentUrl, required: true },
-      { label: "RUT", url: client.rutDocumentUrl, required: true }
+      {
+        label: "Cédula del titular",
+        url: client.identityDocumentUrl,
+        required: true,
+      },
+      { label: "RUT", url: client.rutDocumentUrl, required: true },
     );
   }
 
@@ -56,33 +56,61 @@ export function ClientDocumentsModal({
   if (client.identificationType === "NIT") {
     documents.push(
       { label: "RUT empresa", url: client.rutDocumentUrl, required: true },
-      { label: "Cámara de Comercio", url: client.commerceChamberDocumentUrl, required: true },
-      { label: "Cédula representante legal", url: client.identityDocumentUrl, required: true }
+      {
+        label: "Cámara de Comercio",
+        url: client.commerceChamberDocumentUrl,
+        required: true,
+      },
+      {
+        label: "Cédula representante legal",
+        url: client.identityDocumentUrl,
+        required: true,
+      },
     );
   }
 
   // CE - Persona Natural Extranjera (Cédula de Extranjería)
   if (client.identificationType === "CE") {
     documents.push(
-      { label: "Cédula de extranjería", url: client.identityDocumentUrl, required: true },
-      { label: "Pasaporte", url: client.passportDocumentUrl, required: true }
+      {
+        label: "Cédula de extranjería",
+        url: client.identityDocumentUrl,
+        required: true,
+      },
+      { label: "Pasaporte", url: client.passportDocumentUrl, required: true },
     );
   }
 
   // PAS - Persona Natural Extranjera (Pasaporte)
   if (client.identificationType === "PAS") {
     documents.push(
-      { label: "Documento de identidad", url: client.identityDocumentUrl, required: true },
-      { label: "Pasaporte", url: client.passportDocumentUrl, required: true }
+      {
+        label: "Documento de identidad",
+        url: client.identityDocumentUrl,
+        required: true,
+      },
+      { label: "Pasaporte", url: client.passportDocumentUrl, required: true },
     );
   }
 
   // EMPRESA_EXTERIOR - Empresa Extranjera
   if (client.identificationType === "EMPRESA_EXTERIOR") {
     documents.push(
-      { label: "Pasaporte del representante", url: client.passportDocumentUrl, required: true },
-      { label: "Certificado tributario", url: client.taxCertificateDocumentUrl, required: true },
-      { label: "ID de la empresa", url: client.companyIdDocumentUrl, required: true }
+      {
+        label: "Pasaporte del representante",
+        url: client.passportDocumentUrl,
+        required: true,
+      },
+      {
+        label: "Certificado tributario",
+        url: client.taxCertificateDocumentUrl,
+        required: true,
+      },
+      {
+        label: "ID de la empresa",
+        url: client.companyIdDocumentUrl,
+        required: true,
+      },
     );
   }
 
@@ -91,9 +119,10 @@ export function ClientDocumentsModal({
   const handlePreview = (url: string | null | undefined, label: string) => {
     if (!url) {
       toast.error("El documento no tiene URL válida");
+
       return;
     }
-    
+
     setPreviewUrl(url);
     setPreviewLabel(label);
     setPreviewOpen(true);
@@ -162,11 +191,15 @@ export function ClientDocumentsModal({
                     <div className="flex items-center gap-3">
                       <BsFileEarmarkPdf
                         className={
-                          doc.url ? "text-success text-xl" : "text-danger text-xl"
+                          doc.url
+                            ? "text-success text-xl"
+                            : "text-danger text-xl"
                         }
                       />
                       <div className="flex flex-col gap-1">
-                        <p className="font-medium text-foreground">{doc.label}</p>
+                        <p className="font-medium text-foreground">
+                          {doc.label}
+                        </p>
                         <p className="text-xs text-default-500">
                           {doc.required && (
                             <span className="text-danger">Requerido</span>
@@ -186,11 +219,11 @@ export function ClientDocumentsModal({
                     {doc.url ? (
                       <Button
                         isIconOnly
-                        size="sm"
-                        variant="flat"
                         color="success"
-                        onPress={() => handlePreview(doc.url, doc.label)}
+                        size="sm"
                         title="Ver documento"
+                        variant="flat"
+                        onPress={() => handlePreview(doc.url, doc.label)}
                       >
                         <BsEye />
                       </Button>
@@ -210,8 +243,8 @@ export function ClientDocumentsModal({
       </ModalContent>
 
       <ClientDocumentsPreviewModal
-        documentUrl={previewUrl}
         documentLabel={previewLabel}
+        documentUrl={previewUrl}
         isOpen={previewOpen}
         onOpenChange={setPreviewOpen}
       />

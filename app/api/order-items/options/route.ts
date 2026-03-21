@@ -1,4 +1,4 @@
-import { desc, eq, notInArray, sql } from "drizzle-orm";
+import { desc, eq, notInArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { orderItems, orders } from "@/src/db/schema";
@@ -21,7 +21,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const pageSize = Math.min(400, Math.max(20, Number(searchParams.get("pageSize") ?? 200)));
+    const pageSize = Math.min(
+      400,
+      Math.max(20, Number(searchParams.get("pageSize") ?? 200)),
+    );
 
     const items = await db
       .select({
@@ -41,7 +44,9 @@ export async function GET(request: Request) {
     return Response.json({ items });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron cargar diseños", { status: 500 });
   }
 }

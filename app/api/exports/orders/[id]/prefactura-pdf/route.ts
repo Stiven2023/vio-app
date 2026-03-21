@@ -1,16 +1,27 @@
-import { eq, sql } from "drizzle-orm";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { eq, sql } from "drizzle-orm";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+
 import { db } from "@/src/db";
-import { clients, employees, orderItems, orderPayments, orders } from "@/src/db/schema";
-import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  clients,
+  employees,
+  orderItems,
+  orderPayments,
+  orders,
+} from "@/src/db/schema";
+import {
+  getEmployeeIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function asNumber(value: unknown) {
   const n = Number(String(value ?? "0"));
+
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -21,12 +32,15 @@ function roundMoney(v: number) {
 function formatDate(value: unknown) {
   if (!value) return "-";
   const d = new Date(String(value));
+
   if (Number.isNaN(d.getTime())) return "-";
+
   return new Intl.DateTimeFormat("es-CO").format(d);
 }
 
 function formatMoney(value: unknown, currency: string) {
   const cur = currency === "USD" ? "USD" : "COP";
+
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: cur,
@@ -41,24 +55,32 @@ function sanitizeWinAnsi(value: unknown) {
 
 function truncateText(value: unknown, max = 40) {
   const text = String(value ?? "-");
+
   if (text.length <= max) return text;
+
   return `${text.slice(0, Math.max(0, max - 3))}...`;
 }
 
-async function readImageSourceBytes(source: string): Promise<Uint8Array | null> {
+async function readImageSourceBytes(
+  source: string,
+): Promise<Uint8Array | null> {
   const value = String(source ?? "").trim();
+
   if (!value) return null;
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     const response = await fetch(value);
+
     if (!response.ok) return null;
     const buffer = await response.arrayBuffer();
+
     return new Uint8Array(buffer);
   }
 
   const normalized = value.startsWith("/") ? value.slice(1) : value;
   const diskPath = join(process.cwd(), "public", normalized);
   const bytes = await readFile(diskPath);
+
   return new Uint8Array(bytes);
 }
 
@@ -67,6 +89,7 @@ async function embedImageFromSource(
   source: string,
 ): Promise<Awaited<ReturnType<PDFDocument["embedPng"]>> | null> {
   const bytes = await readImageSourceBytes(source);
+
   if (!bytes) return null;
 
   try {
@@ -93,10 +116,12 @@ export async function GET(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_PEDIDO");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
   const orderId = String(id ?? "").trim();
+
   if (!orderId) return new Response("id required", { status: 400 });
 
   const [header] = await db
@@ -157,12 +182,15 @@ export async function GET(
   const rawSubtotal = lines.reduce((acc, l) => {
     const qty = Number(l.quantity ?? 0);
     const unit = asNumber(l.unitPrice);
+
     return acc + unit * qty;
   }, 0);
 
   const subtotalRounded = roundMoney(subtotal);
   const rawSubtotalRounded = roundMoney(rawSubtotal);
-  const discountAmount = roundMoney(Math.max(0, rawSubtotalRounded - subtotalRounded));
+  const discountAmount = roundMoney(
+    Math.max(0, rawSubtotalRounded - subtotalRounded),
+  );
   const discountPercent =
     rawSubtotalRounded > 0
       ? Math.min(100, Math.max(0, (discountAmount / rawSubtotalRounded) * 100))
@@ -176,7 +204,9 @@ export async function GET(
       paidTotal: sql<string>`coalesce(sum(${orderPayments.amount}), 0)::text`,
     })
     .from(orderPayments)
-    .where(sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} = 'PAGADO'`)
+    .where(
+      sql`${orderPayments.orderId} = ${orderId} and ${orderPayments.status} = 'PAGADO'`,
+    )
     .limit(1);
 
   const paidTotal = roundMoney(Math.max(0, asNumber(paidRow?.paidTotal)));
@@ -197,8 +227,10 @@ export async function GET(
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const headerImage =
-    (await embedImageFromSource(pdf, String(header.sellerCompanyImageUrl ?? ""))) ||
-    (await embedImageFromSource(pdf, "/image.png"));
+    (await embedImageFromSource(
+      pdf,
+      String(header.sellerCompanyImageUrl ?? ""),
+    )) || (await embedImageFromSource(pdf, "/image.png"));
   const footerSignatureImage = await embedImageFromSource(
     pdf,
     String(header.sellerSignatureImageUrl ?? ""),
@@ -247,7 +279,14 @@ export async function GET(
       });
     }
 
-    drawText("Documento generado automáticamente por Viomar", margin, 10, 8, false, mutedColor);
+    drawText(
+      "Documento generado automáticamente por Viomar",
+      margin,
+      10,
+      8,
+      false,
+      mutedColor,
+    );
   };
 
   if (headerImage) {
@@ -266,17 +305,25 @@ export async function GET(
     y -= logoHeight + 12;
   }
 
-  drawText(`PREFACTURA ${String(header.orderCode ?? "-")}`, margin, y, 14, true);
+  drawText(
+    `PREFACTURA ${String(header.orderCode ?? "-")}`,
+    margin,
+    y,
+    14,
+    true,
+  );
   y -= 20;
 
   const isPresentValue = (value: unknown) => {
     const text = String(value ?? "").trim();
+
     return text.length > 0 && text !== "-";
   };
 
   const infoPairs: Array<{ label: string; value: string }> = [];
   const pushPair = (label: string, value: unknown) => {
     const safeValue = String(value ?? "").trim();
+
     if (!isPresentValue(safeValue)) return;
     infoPairs.push({ label, value: safeValue });
   };
@@ -303,6 +350,7 @@ export async function GET(
 
   infoRows.forEach((row, idx) => {
     const top = y - idx * rowH;
+
     page.drawRectangle({
       x: margin,
       y: top - rowH,
@@ -325,11 +373,30 @@ export async function GET(
     }
 
     drawText(leftPair.label, margin + 6, top - 9, 8, false, mutedColor);
-    drawText(truncateText(leftPair.value, rightPair ? 28 : 70), margin + 6, top - 19, 9, true);
+    drawText(
+      truncateText(leftPair.value, rightPair ? 28 : 70),
+      margin + 6,
+      top - 19,
+      9,
+      true,
+    );
 
     if (rightPair) {
-      drawText(rightPair.label, margin + colW + 6, top - 9, 8, false, mutedColor);
-      drawText(truncateText(rightPair.value, 28), margin + colW + 6, top - 19, 9, true);
+      drawText(
+        rightPair.label,
+        margin + colW + 6,
+        top - 9,
+        8,
+        false,
+        mutedColor,
+      );
+      drawText(
+        truncateText(rightPair.value, 28),
+        margin + colW + 6,
+        top - 19,
+        9,
+        true,
+      );
     }
   });
 
@@ -357,6 +424,7 @@ export async function GET(
   });
 
   let x = margin;
+
   columns.forEach((col) => {
     drawText(col.label, x + 4, y - 14, 8.5, true);
     x += col.width;
@@ -399,6 +467,7 @@ export async function GET(
     ];
 
     let colX = margin;
+
     values.forEach((value, idx) => {
       drawText(String(value), colX + 4, y - 12, 8.2, idx === 0);
       colX += columns[idx].width;
@@ -421,7 +490,10 @@ export async function GET(
 
   const summary: Array<[string, string]> = [
     ["Subtotal", formatMoney(subtotalRounded, currency)],
-    ["Descuento", `${discountPercent.toFixed(2)}% (${formatMoney(discountAmount, currency)})`],
+    [
+      "Descuento",
+      `${discountPercent.toFixed(2)}% (${formatMoney(discountAmount, currency)})`,
+    ],
     ["Flete", formatMoney(shippingFee, currency)],
     ["Total", formatMoney(grandTotal, currency)],
     ["Abonado", formatMoney(paidTotal, currency)],
@@ -440,6 +512,7 @@ export async function GET(
 
   for (const payment of payments.slice(0, 8)) {
     const paymentLine = `${formatDate(payment.createdAt)} · ${String(payment.method ?? "-")} · ${String(payment.status ?? "-")} · ${formatMoney(payment.amount ?? 0, currency)}`;
+
     drawText(truncateText(paymentLine, 95), margin, y, 8.5, false);
     y -= 12;
     if (y < 120) break;

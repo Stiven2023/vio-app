@@ -25,7 +25,8 @@ export default async function JuridicaPage() {
     <div className="container mx-auto max-w-7xl pt-16 px-6 pb-12">
       <h1 className="text-2xl font-bold">Área Jurídica</h1>
       <p className="text-default-600 mt-1">
-        Gestión del estado jurídico de clientes. Solo el área jurídica puede modificar estos estados.
+        Gestión del estado jurídico de clientes. Solo el área jurídica puede
+        modificar estos estados.
       </p>
       <div className="mt-6">
         <JuridicaClient />

@@ -105,8 +105,7 @@ export async function GET(request: Request) {
         withholdingIcaAmount: withholdingIcaExpr,
         withholdingIvaAmount: withholdingIvaExpr,
         totalWithholding: withholdingTotalExpr,
-        totalAfterWithholding:
-          sql`coalesce(${prefacturas.total}, 0)::numeric - (${withholdingTotalExpr})`,
+        totalAfterWithholding: sql`coalesce(${prefacturas.total}, 0)::numeric - (${withholdingTotalExpr})`,
       })
       .from(prefacturas)
       .innerJoin(clients, eq(prefacturas.clientId, clients.id))

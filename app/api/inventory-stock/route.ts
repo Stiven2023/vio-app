@@ -14,7 +14,9 @@ function asNumber(v: unknown) {
 }
 
 function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
-  const location = String(v ?? "BODEGA_PRINCIPAL").trim().toUpperCase();
+  const location = String(v ?? "BODEGA_PRINCIPAL")
+    .trim()
+    .toUpperCase();
 
   return location === "BODEGA_PRINCIPAL" || location === "TIENDA"
     ? (location as "BODEGA_PRINCIPAL" | "TIENDA")
@@ -37,7 +39,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const variantId = String(searchParams.get("variantId") ?? "").trim();
-    const warehouseIdParam = String(searchParams.get("warehouseId") ?? "").trim();
+    const warehouseIdParam = String(
+      searchParams.get("warehouseId") ?? "",
+    ).trim();
     const location = toLocation(searchParams.get("location"));
 
     if (!variantId) {
@@ -75,7 +79,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar stock", { status: 500 });
   }
 }

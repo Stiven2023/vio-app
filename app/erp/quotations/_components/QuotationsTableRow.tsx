@@ -1,9 +1,10 @@
 "use client";
 
+import type { OrderType, QuoteProcess } from "../_lib/types";
+
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Button } from "@heroui/button";
-import { Card, CardBody } from "@heroui/card";
 import {
   Dropdown,
   DropdownTrigger,
@@ -11,8 +12,6 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { TableCell, TableRow } from "@heroui/table";
-
-import type { OrderType, QuoteProcess } from "../_lib/types";
 
 type Addition = {
   id: string;
@@ -75,142 +74,153 @@ export function QuotationsTableRow({
 
   return (
     <TableRow>
-        {/* Tipo Diseño */}
-        <TableCell>
-          <Select
-            size="sm"
-            variant="flat"
-            selectedKeys={row.orderType ? [row.orderType] : []}
-            onSelectionChange={(keys) => {
-              const first = Array.from(keys)[0];
-              onUpdateItem(row.id, { orderType: String(first ?? "NORMAL") as OrderType });
-            }}
-            classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
-          >
-            <SelectItem key="NORMAL">New</SelectItem>
-            <SelectItem key="COMPLETACION">Completion</SelectItem>
-            <SelectItem key="REFERENTE">Referent</SelectItem>
-            <SelectItem key="REPOSICION">Reposition</SelectItem>
-            <SelectItem key="MUESTRA">Sample</SelectItem>
-            <SelectItem key="OBSEQUIO">Gift</SelectItem>
-          </Select>
-        </TableCell>
-        {/* Proceso */}
-        <TableCell>
-          <Select
-            size="sm"
-            variant="flat"
-            selectedKeys={row.process ? [row.process] : []}
-            onSelectionChange={(keys) => {
-              const first = Array.from(keys)[0];
-              onUpdateItem(row.id, { process: String(first ?? "PRODUCCION") as QuoteProcess });
-            }}
-            classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
-          >
-            <SelectItem key="PRODUCCION">Production</SelectItem>
-            <SelectItem key="BODEGA">Warehouse</SelectItem>
-            <SelectItem key="COMPRAS">Purchases</SelectItem>
-          </Select>
-        </TableCell>
-        {/* Producto */}
-        <TableCell>
-          <Select
-            size="sm"
-            variant="flat"
-            isLoading={loadingProducts}
-            aria-label="Select product"
-            selectedKeys={row.productId ? [row.productId] : []}
-            onSelectionChange={(keys) => {
-              const first = Array.from(keys)[0];
-              onUpdateItem(row.id, { productId: String(first ?? "") });
-            }}
-            classNames={{ trigger: "min-h-12 text-sm font-medium w-64" }}
-          >
-            {products.map((product) => (
-              <SelectItem key={product.id}>
-                {`${product.productCode ?? "-"} - ${product.name}`}
-              </SelectItem>
-            ))}
-          </Select>
-        </TableCell>
-        {/* Description */}
-        <TableCell>
-          <Input
-            size="sm"
-            variant="flat"
-            isReadOnly
-            value={row.description}
-            classNames={{ input: "text-xs" }}
-          />
-        </TableCell>
-        {/* Quantity */}
-        <TableCell>
-          <Input
-            size="sm"
-            type="number"
-            variant="flat"
-            value={String(row.quantity)}
-            classNames={{ input: "w-16 text-center" }}
-            onValueChange={(v) =>
-              onUpdateItem(row.id, { quantity: Math.max(0, Number(v || 0)) })
-            }
-          />
-        </TableCell>
-        {/* Vr. Unitario */}
-        <TableCell>
-          <Input
-            size="sm"
-            type="number"
-            variant="flat"
-            isReadOnly
-            value={String(row.unitPrice)}
-            classNames={{ input: "text-xs" }}
-          />
-        </TableCell>
-        {/* Descuento % */}
-        <TableCell>
-          <Input
-            size="sm"
-            type="number"
-            variant="flat"
-            placeholder="0"
-            value={String(row.discount)}
-            classNames={{ input: "w-16 text-center" }}
-            onValueChange={(v) =>
-              onUpdateItem(row.id, { discount: Math.max(0, Math.min(100, Number(v || 0))) })
-            }
-          />
-        </TableCell>
-        {/* Total Value */}
-        <TableCell className="font-semibold">{asMoney(lineTotal)}</TableCell>
-        {/* Acción */}
-        <TableCell>
-          <Dropdown>
-            <DropdownTrigger>
-              <Button isIconOnly size="sm" variant="light">
-                ⋮
-              </Button>
-            </DropdownTrigger>
-            <DropdownMenu>
-              <DropdownItem
-                key="expansiones"
-                onPress={() =>
-                  onExpandedChange(expandedItemId === row.id ? null : row.id)
-                }
-              >
-                {expandedItemId === row.id ? "− Hide Additions" : "+ Add Additions"}
-              </DropdownItem>
-              <DropdownItem
-                key="remove"
-                className="text-danger"
-                color="danger"
-                onPress={() => onRemoveItem(row.id)}
-              >
-                Remove Product
-              </DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-        </TableCell>
-      </TableRow>
-    );
-  }
+      {/* Tipo Diseño */}
+      <TableCell>
+        <Select
+          classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
+          selectedKeys={row.orderType ? [row.orderType] : []}
+          size="sm"
+          variant="flat"
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+
+            onUpdateItem(row.id, {
+              orderType: String(first ?? "NORMAL") as OrderType,
+            });
+          }}
+        >
+          <SelectItem key="NORMAL">New</SelectItem>
+          <SelectItem key="COMPLETACION">Completion</SelectItem>
+          <SelectItem key="REFERENTE">Referent</SelectItem>
+          <SelectItem key="REPOSICION">Reposition</SelectItem>
+          <SelectItem key="MUESTRA">Sample</SelectItem>
+          <SelectItem key="OBSEQUIO">Gift</SelectItem>
+        </Select>
+      </TableCell>
+      {/* Proceso */}
+      <TableCell>
+        <Select
+          classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
+          selectedKeys={row.process ? [row.process] : []}
+          size="sm"
+          variant="flat"
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+
+            onUpdateItem(row.id, {
+              process: String(first ?? "PRODUCCION") as QuoteProcess,
+            });
+          }}
+        >
+          <SelectItem key="PRODUCCION">Production</SelectItem>
+          <SelectItem key="BODEGA">Warehouse</SelectItem>
+          <SelectItem key="COMPRAS">Purchases</SelectItem>
+        </Select>
+      </TableCell>
+      {/* Producto */}
+      <TableCell>
+        <Select
+          aria-label="Select product"
+          classNames={{ trigger: "min-h-12 text-sm font-medium w-64" }}
+          isLoading={loadingProducts}
+          selectedKeys={row.productId ? [row.productId] : []}
+          size="sm"
+          variant="flat"
+          onSelectionChange={(keys) => {
+            const first = Array.from(keys)[0];
+
+            onUpdateItem(row.id, { productId: String(first ?? "") });
+          }}
+        >
+          {products.map((product) => (
+            <SelectItem key={product.id}>
+              {`${product.productCode ?? "-"} - ${product.name}`}
+            </SelectItem>
+          ))}
+        </Select>
+      </TableCell>
+      {/* Description */}
+      <TableCell>
+        <Input
+          isReadOnly
+          classNames={{ input: "text-xs" }}
+          size="sm"
+          value={row.description}
+          variant="flat"
+        />
+      </TableCell>
+      {/* Quantity */}
+      <TableCell>
+        <Input
+          classNames={{ input: "w-16 text-center" }}
+          size="sm"
+          type="number"
+          value={String(row.quantity)}
+          variant="flat"
+          onValueChange={(v) =>
+            onUpdateItem(row.id, { quantity: Math.max(0, Number(v || 0)) })
+          }
+        />
+      </TableCell>
+      {/* Vr. Unitario */}
+      <TableCell>
+        <Input
+          isReadOnly
+          classNames={{ input: "text-xs" }}
+          size="sm"
+          type="number"
+          value={String(row.unitPrice)}
+          variant="flat"
+        />
+      </TableCell>
+      {/* Descuento % */}
+      <TableCell>
+        <Input
+          classNames={{ input: "w-16 text-center" }}
+          placeholder="0"
+          size="sm"
+          type="number"
+          value={String(row.discount)}
+          variant="flat"
+          onValueChange={(v) =>
+            onUpdateItem(row.id, {
+              discount: Math.max(0, Math.min(100, Number(v || 0))),
+            })
+          }
+        />
+      </TableCell>
+      {/* Total Value */}
+      <TableCell className="font-semibold">{asMoney(lineTotal)}</TableCell>
+      {/* Acción */}
+      <TableCell>
+        <Dropdown>
+          <DropdownTrigger>
+            <Button isIconOnly size="sm" variant="light">
+              ⋮
+            </Button>
+          </DropdownTrigger>
+          <DropdownMenu>
+            <DropdownItem
+              key="expansiones"
+              onPress={() =>
+                onExpandedChange(expandedItemId === row.id ? null : row.id)
+              }
+            >
+              {expandedItemId === row.id
+                ? "− Hide Additions"
+                : "+ Add Additions"}
+            </DropdownItem>
+            <DropdownItem
+              key="remove"
+              className="text-danger"
+              color="danger"
+              onPress={() => onRemoveItem(row.id)}
+            >
+              Remove Product
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
+      </TableCell>
+    </TableRow>
+  );
+}

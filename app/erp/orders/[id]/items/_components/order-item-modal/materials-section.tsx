@@ -1,8 +1,6 @@
 "use client";
 
-import type {
-  OrderItemMaterialInput,
-} from "@/app/erp/orders/_lib/order-item-types";
+import type { OrderItemMaterialInput } from "@/app/erp/orders/_lib/order-item-types";
 
 import React from "react";
 import { Button } from "@heroui/button";
@@ -41,10 +39,7 @@ export function MaterialsSection({
           size="sm"
           variant="flat"
           onPress={() =>
-            onChange([
-              ...value,
-              { inventoryItemId: "", quantity: 1, note: "" },
-            ])
+            onChange([...value, { inventoryItemId: "", quantity: 1, note: "" }])
           }
         >
           Agregar
@@ -67,7 +62,9 @@ export function MaterialsSection({
 
                 onChange(
                   value.map((x, i) =>
-                    i === idx ? { ...x, inventoryItemId: k ? String(k) : "" } : x,
+                    i === idx
+                      ? { ...x, inventoryItemId: k ? String(k) : "" }
+                      : x,
                   ),
                 );
               }}
@@ -87,7 +84,9 @@ export function MaterialsSection({
               onValueChange={(v: string) =>
                 onChange(
                   value.map((x, i) =>
-                    i === idx ? { ...x, quantity: Math.max(0, asNumber(v)) } : x,
+                    i === idx
+                      ? { ...x, quantity: Math.max(0, asNumber(v)) }
+                      : x,
                   ),
                 )
               }
@@ -98,7 +97,9 @@ export function MaterialsSection({
               label="Nota"
               value={String(m.note ?? "")}
               onValueChange={(v: string) =>
-                onChange(value.map((x, i) => (i === idx ? { ...x, note: v } : x)))
+                onChange(
+                  value.map((x, i) => (i === idx ? { ...x, note: v } : x)),
+                )
               }
             />
 

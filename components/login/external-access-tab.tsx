@@ -41,6 +41,7 @@ export function ExternalAccessTab({
   const remainingSeconds = useMemo(() => {
     if (!retryAt) return 0;
     const ms = new Date(retryAt).getTime() - nowTick;
+
     return ms > 0 ? Math.ceil(ms / 1000) : 0;
   }, [retryAt, nowTick]);
 
@@ -65,7 +66,11 @@ export function ExternalAccessTab({
       const body = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = typeof body?.message === "string" ? body.message : "Could not send the token.";
+        const msg =
+          typeof body?.message === "string"
+            ? body.message
+            : "Could not send the token.";
+
         if (body?.retryAt) setRetryAt(String(body.retryAt));
         setToast({ message: msg, type: "error" });
 
@@ -76,7 +81,10 @@ export function ExternalAccessTab({
       setTokenSent(true);
       setVerified(false);
       setOtp("");
-      setToast({ message: "Token sent to the client's email.", type: "success" });
+      setToast({
+        message: "Token sent to the client's email.",
+        type: "success",
+      });
     } catch {
       setToast({ message: "Could not send the token.", type: "error" });
     } finally {
@@ -86,7 +94,10 @@ export function ExternalAccessTab({
 
   const verifyToken = async () => {
     if (!clientCode.trim() || otp.length !== 6) {
-      setToast({ message: "Enter client ID and a 6-digit token.", type: "error" });
+      setToast({
+        message: "Enter client ID and a 6-digit token.",
+        type: "error",
+      });
 
       return;
     }
@@ -105,6 +116,7 @@ export function ExternalAccessTab({
 
       if (!res.ok) {
         const text = await res.text();
+
         setToast({ message: text || "Invalid token.", type: "error" });
 
         return;
@@ -136,13 +148,22 @@ export function ExternalAccessTab({
         variant="flat"
         onPress={requestToken}
       >
-        {remainingSeconds > 0 ? `Request token (${remainingSeconds}s)` : "Request token"}
+        {remainingSeconds > 0
+          ? `Request token (${remainingSeconds}s)`
+          : "Request token"}
       </Button>
 
       {tokenSent ? (
         <div className="space-y-2">
-          <p className="text-sm text-default-600">Enter the 6-digit OTP code sent to the client's email.</p>
-          <OtpInput focusOnMount length={6} value={otp} onValueChange={setOtp} />
+          <p className="text-sm text-default-600">
+            Enter the 6-digit OTP code sent to the client's email.
+          </p>
+          <OtpInput
+            focusOnMount
+            length={6}
+            value={otp}
+            onValueChange={setOtp}
+          />
           <Button
             className="w-full"
             color="primary"
@@ -168,7 +189,12 @@ export function ExternalAccessTab({
             color="primary"
             onPress={() => {
               const normalized = orderCode.trim().toUpperCase();
-              router.push(normalized ? `/portal/pedidos?orderCode=${encodeURIComponent(normalized)}` : "/portal/pedidos");
+
+              router.push(
+                normalized
+                  ? `/portal/pedidos?orderCode=${encodeURIComponent(normalized)}`
+                  : "/portal/pedidos",
+              );
             }}
           >
             Enter portal

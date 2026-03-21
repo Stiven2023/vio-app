@@ -42,6 +42,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_PEDIDO");
+
   if (forbidden) return forbidden;
 
   try {
@@ -49,13 +50,25 @@ export async function GET(request: Request) {
     const { page, pageSize, offset } = parsePagination(searchParams);
     const q = String(searchParams.get("q") ?? "").trim();
     const bank = String(searchParams.get("bank") ?? "").trim();
-    const method = String(searchParams.get("method") ?? "").trim().toUpperCase();
-    const currency = String(searchParams.get("currency") ?? "").trim().toUpperCase();
+    const method = String(searchParams.get("method") ?? "")
+      .trim()
+      .toUpperCase();
+    const currency = String(searchParams.get("currency") ?? "")
+      .trim()
+      .toUpperCase();
     const dateFrom = String(searchParams.get("dateFrom") ?? "").trim();
     const dateTo = String(searchParams.get("dateTo") ?? "").trim();
-    const statusParam = String(searchParams.get("status") ?? "").trim().toUpperCase();
+    const statusParam = String(searchParams.get("status") ?? "")
+      .trim()
+      .toUpperCase();
 
-    const validStatuses = new Set(["PENDIENTE", "PARCIAL", "PAGADO", "ANULADO", "CONFIRMADO_CAJA"]);
+    const validStatuses = new Set([
+      "PENDIENTE",
+      "PARCIAL",
+      "PAGADO",
+      "ANULADO",
+      "CONFIRMADO_CAJA",
+    ]);
 
     const filters: Array<any> = [
       q
@@ -77,9 +90,15 @@ export async function GET(request: Request) {
         ? eq(orderPayments.status, statusParam as any)
         : undefined,
       bank ? eq(orderPayments.bankId, bank) : undefined,
-      currency ? eq(sql`coalesce(${orderPayments.transferCurrency}, 'COP')`, currency) : undefined,
-      dateFrom ? sql`date(${orderPayments.createdAt}) >= ${dateFrom}::date` : undefined,
-      dateTo ? sql`date(${orderPayments.createdAt}) <= ${dateTo}::date` : undefined,
+      currency
+        ? eq(sql`coalesce(${orderPayments.transferCurrency}, 'COP')`, currency)
+        : undefined,
+      dateFrom
+        ? sql`date(${orderPayments.createdAt}) >= ${dateFrom}::date`
+        : undefined,
+      dateTo
+        ? sql`date(${orderPayments.createdAt}) <= ${dateTo}::date`
+        : undefined,
     ].filter(Boolean);
 
     const where = filters.length ? and(...filters) : undefined;
@@ -91,7 +110,9 @@ export async function GET(request: Request) {
       .leftJoin(orders, eq(orderPayments.orderId, orders.id))
       .leftJoin(clients, eq(orders.clientId, clients.id));
 
-    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where
+      ? await totalQuery.where(where)
+      : await totalQuery;
 
     const summaryQuery = db
       .select({
@@ -104,7 +125,9 @@ export async function GET(request: Request) {
       .leftJoin(orders, eq(orderPayments.orderId, orders.id))
       .leftJoin(clients, eq(orders.clientId, clients.id));
 
-    const [summary] = where ? await summaryQuery.where(where) : await summaryQuery;
+    const [summary] = where
+      ? await summaryQuery.where(where)
+      : await summaryQuery;
 
     const itemsQuery = db
       .select({
@@ -166,7 +189,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Failed to fetch deposits", { status: 500 });
   }
 }

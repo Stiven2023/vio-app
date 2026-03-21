@@ -3,7 +3,11 @@ import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import { employees, orderPayments, orders } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { getEmployeeIdFromRequest, getUserIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getEmployeeIdFromRequest,
+  getUserIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function toMonthRange(year?: number, month?: number) {
@@ -19,17 +23,23 @@ function toMonthRange(year?: number, month?: number) {
 function buildDays(year: number, month: number) {
   const days: string[] = [];
   const count = new Date(year, month, 0).getDate();
+
   for (let d = 1; d <= count; d += 1) {
-    days.push(`${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
+    days.push(
+      `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    );
   }
+
   return days;
 }
 
 async function resolveEmployeeId(request: Request) {
   const direct = getEmployeeIdFromRequest(request);
+
   if (direct) return direct;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) return null;
 
   const [row] = await db
@@ -51,6 +61,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role) return new Response("Unauthorized", { status: 401 });
   if (role !== "ASESOR" && role !== "ADMINISTRADOR") {
     return new Response("Forbidden", { status: 403 });
@@ -58,6 +69,7 @@ export async function GET(request: Request) {
 
   try {
     const employeeId = await resolveEmployeeId(request);
+
     if (!employeeId) return new Response("Forbidden", { status: 403 });
 
     const { searchParams } = new URL(request.url);
@@ -141,10 +153,17 @@ export async function GET(request: Request) {
       count: Number(row.count ?? 0),
     }));
 
-    return Response.json({ year: range.year, month: range.month, series, status });
+    return Response.json({
+      year: range.year,
+      month: range.month,
+      series,
+      status,
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar graficos del asesor", {
       status: 500,
     });

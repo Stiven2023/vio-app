@@ -19,6 +19,7 @@ const ADULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
 
 function parseCount(value: string) {
   const digits = String(value ?? "").replace(/[^\d]/g, "");
+
   if (!digits) return 0;
 
   const n = Number(digits);
@@ -54,14 +55,21 @@ export function PackagingSection({
   onError?: (message: string) => void;
 }) {
   const [curveExceeded, setCurveExceeded] = React.useState(false);
-  const groupedRows = (packaging ?? []).filter((p) => String(p.mode ?? "").toUpperCase() === "AGRUPADO");
-  const individualRows = (packaging ?? []).filter((p) => String(p.mode ?? "").toUpperCase() !== "AGRUPADO");
+  const groupedRows = (packaging ?? []).filter(
+    (p) => String(p.mode ?? "").toUpperCase() === "AGRUPADO",
+  );
+  const individualRows = (packaging ?? []).filter(
+    (p) => String(p.mode ?? "").toUpperCase() !== "AGRUPADO",
+  );
 
   const groupedMap = React.useMemo(() => {
     const map = new Map<string, number>();
 
     for (const row of groupedRows) {
-      const size = String(row.size ?? "").trim().toUpperCase();
+      const size = String(row.size ?? "")
+        .trim()
+        .toUpperCase();
+
       if (!size) continue;
       const qty = Number(row.quantity ?? 0);
       const safeQty = Number.isFinite(qty) ? Math.max(0, Math.floor(qty)) : 0;
@@ -73,16 +81,24 @@ export function PackagingSection({
     return map;
   }, [groupedRows]);
 
-  const getGroupedQty = (size: string) => groupedMap.get(String(size).toUpperCase()) ?? 0;
+  const getGroupedQty = (size: string) =>
+    groupedMap.get(String(size).toUpperCase()) ?? 0;
 
-  const kidsTotal = KIDS_SIZES.reduce((acc, size) => acc + getGroupedQty(size), 0);
-  const adultsTotal = ADULT_SIZES.reduce((acc, size) => acc + getGroupedQty(size), 0);
+  const kidsTotal = KIDS_SIZES.reduce(
+    (acc, size) => acc + getGroupedQty(size),
+    0,
+  );
+  const adultsTotal = ADULT_SIZES.reduce(
+    (acc, size) => acc + getGroupedQty(size),
+    0,
+  );
   const groupedTotal = kidsTotal + adultsTotal;
   const maxAllowedCurve = Number.isFinite(Number(maxCurveQuantity))
     ? Math.max(0, Math.floor(Number(maxCurveQuantity)))
     : null;
   const isCurveOverLimit =
-    (maxAllowedCurve !== null && groupedTotal > maxAllowedCurve) || curveExceeded;
+    (maxAllowedCurve !== null && groupedTotal > maxAllowedCurve) ||
+    curveExceeded;
 
   const setGroupedQty = (size: string, raw: string) => {
     const qty = parseCount(raw);
@@ -95,7 +111,10 @@ export function PackagingSection({
     );
 
     const nextGrouped = currentGrouped.filter(
-      (row) => String(row.size ?? "").trim().toUpperCase() !== normalized,
+      (row) =>
+        String(row.size ?? "")
+          .trim()
+          .toUpperCase() !== normalized,
     );
 
     if (qty > 0) {
@@ -105,12 +124,18 @@ export function PackagingSection({
     if (maxAllowedCurve !== null) {
       const nextGroupedTotal = nextGrouped.reduce((acc, row) => {
         const rowQty = Number(row.quantity ?? 0);
-        return acc + (Number.isFinite(rowQty) ? Math.max(0, Math.floor(rowQty)) : 0);
+
+        return (
+          acc + (Number.isFinite(rowQty) ? Math.max(0, Math.floor(rowQty)) : 0)
+        );
       }, 0);
 
       if (nextGroupedTotal > maxAllowedCurve) {
         setCurveExceeded(true);
-        onError?.(`La curva no puede superar la cantidad del diseño (${formatCount(maxAllowedCurve)}).`);
+        onError?.(
+          `La curva no puede superar la cantidad del diseño (${formatCount(maxAllowedCurve)}).`,
+        );
+
         return;
       }
     }
@@ -140,7 +165,9 @@ export function PackagingSection({
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-semibold">Empaque · {String(garmentType ?? "JUGADOR")}</div>
+      <div className="text-sm font-semibold">
+        Empaque · {String(garmentType ?? "JUGADOR")}
+      </div>
 
       <div className="space-y-2">
         <div className="text-xs text-default-500">
@@ -150,9 +177,13 @@ export function PackagingSection({
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-b border-default-200 bg-content2 px-2 py-2 text-xs font-semibold uppercase text-default-600">
             <div>Niño</div>
             {KIDS_SIZES.map((size) => (
-              <div key={`head-kid-${size}`} className="text-center">{size}</div>
+              <div key={`head-kid-${size}`} className="text-center">
+                {size}
+              </div>
             ))}
-            <div className="text-center rounded-small bg-primary text-primary-foreground">Total</div>
+            <div className="text-center rounded-small bg-primary text-primary-foreground">
+              Total
+            </div>
           </div>
 
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 px-2 py-2 items-center">
@@ -168,7 +199,9 @@ export function PackagingSection({
             ))}
             <div
               className={`text-center font-semibold rounded-small py-2 px-1 ${
-                isCurveOverLimit ? "bg-danger text-danger-foreground" : "bg-primary text-primary-foreground"
+                isCurveOverLimit
+                  ? "bg-danger text-danger-foreground"
+                  : "bg-primary text-primary-foreground"
               }`}
             >
               {formatCount(kidsTotal) || "0"}
@@ -178,9 +211,13 @@ export function PackagingSection({
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 border-y border-default-200 bg-content2 px-2 py-2 text-xs font-semibold uppercase text-default-600">
             <div>Adulto</div>
             {ADULT_SIZES.map((size) => (
-              <div key={`head-adult-${size}`} className="text-center">{size}</div>
+              <div key={`head-adult-${size}`} className="text-center">
+                {size}
+              </div>
             ))}
-            <div className="text-center rounded-small bg-primary text-primary-foreground">Total</div>
+            <div className="text-center rounded-small bg-primary text-primary-foreground">
+              Total
+            </div>
           </div>
 
           <div className="grid min-w-[900px] grid-cols-[100px_repeat(8,minmax(70px,1fr))_90px] gap-1 px-2 py-2 items-center">
@@ -196,7 +233,9 @@ export function PackagingSection({
             ))}
             <div
               className={`text-center font-semibold rounded-small py-2 px-1 ${
-                isCurveOverLimit ? "bg-danger text-danger-foreground" : "bg-primary text-primary-foreground"
+                isCurveOverLimit
+                  ? "bg-danger text-danger-foreground"
+                  : "bg-primary text-primary-foreground"
               }`}
             >
               {formatCount(adultsTotal) || "0"}
@@ -205,9 +244,13 @@ export function PackagingSection({
         </div>
 
         <div className="flex items-center justify-between">
-          <div className={`text-sm ${isCurveOverLimit ? "text-danger" : "text-default-600"}`}>
+          <div
+            className={`text-sm ${isCurveOverLimit ? "text-danger" : "text-default-600"}`}
+          >
             Total curva:{" "}
-            <span className="font-semibold">{formatCount(kidsTotal + adultsTotal) || "0"}</span>
+            <span className="font-semibold">
+              {formatCount(kidsTotal + adultsTotal) || "0"}
+            </span>
           </div>
           <Button
             isDisabled={disabled}
@@ -223,7 +266,9 @@ export function PackagingSection({
         </div>
 
         {maxAllowedCurve !== null ? (
-          <div className={`text-xs ${isCurveOverLimit ? "text-danger" : "text-default-500"}`}>
+          <div
+            className={`text-xs ${isCurveOverLimit ? "text-danger" : "text-default-500"}`}
+          >
             Máximo permitido por diseño: {formatCount(maxAllowedCurve) || "0"}
           </div>
         ) : null}
@@ -282,7 +327,7 @@ export function PackagingSection({
               <div>Nombre</div>
               <div>Talla</div>
               <div>Cantidad</div>
-              <div></div>
+              <div />
             </div>
 
             {individualRows.map((p, idx) => (
@@ -296,7 +341,12 @@ export function PackagingSection({
                   value={String(p.personNumber ?? "")}
                   onValueChange={(v: string) => {
                     const next = [...individualRows];
-                    next[idx] = { ...next[idx], mode: "INDIVIDUAL", personNumber: v };
+
+                    next[idx] = {
+                      ...next[idx],
+                      mode: "INDIVIDUAL",
+                      personNumber: v,
+                    };
                     onPackagingChange([...groupedRows, ...next]);
                   }}
                 />
@@ -306,7 +356,12 @@ export function PackagingSection({
                   value={String(p.personName ?? "")}
                   onValueChange={(v: string) => {
                     const next = [...individualRows];
-                    next[idx] = { ...next[idx], mode: "INDIVIDUAL", personName: v };
+
+                    next[idx] = {
+                      ...next[idx],
+                      mode: "INDIVIDUAL",
+                      personName: v,
+                    };
                     onPackagingChange([...groupedRows, ...next]);
                   }}
                 />
@@ -316,17 +371,19 @@ export function PackagingSection({
                   value={String(p.size ?? "")}
                   onValueChange={(v: string) => {
                     const next = [...individualRows];
+
                     next[idx] = { ...next[idx], mode: "INDIVIDUAL", size: v };
                     onPackagingChange([...groupedRows, ...next]);
                   }}
                 />
                 <Input
                   isDisabled={disabled}
-                  size="sm"
                   placeholder="0"
+                  size="sm"
                   value={formatCount(Number(p.quantity ?? 0))}
                   onValueChange={(v: string) => {
                     const next = [...individualRows];
+
                     next[idx] = {
                       ...next[idx],
                       mode: "INDIVIDUAL",
@@ -342,6 +399,7 @@ export function PackagingSection({
                   variant="flat"
                   onPress={() => {
                     const next = individualRows.filter((_, i) => i !== idx);
+
                     onPackagingChange([...groupedRows, ...next]);
                   }}
                 >

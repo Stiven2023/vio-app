@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -26,15 +26,6 @@ function toPositiveNumber(v: unknown) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-const REQUEST_PENDING_PREFIX = "[SOLICITUD PENDIENTE]";
-const REQUEST_APPROVED_PREFIX = "[SOLICITUD APROBADA]";
-const REQUEST_REJECTED_PREFIX = "[SOLICITUD RECHAZADA]";
-
-function buildRequestNote(prefix: string, note: string) {
-  const trimmed = String(note ?? "").trim();
-  return trimmed ? `${prefix} ${trimmed}` : prefix;
-}
-
 function ensureWarehouseRole(request: Request) {
   const role = getRoleFromRequest(request);
   const allowed = role === "ADMINISTRADOR" || role === "LIDER_SUMINISTROS";
@@ -52,9 +43,11 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
+
   if (forbidden) return forbidden;
 
   const {
@@ -75,14 +68,18 @@ export async function POST(request: Request) {
   const qty = toPositiveNumber(quantity);
   const transferNotes = String(notes ?? "").trim();
   const asRequest = Boolean(isRequest);
-  const requesterCodeValue = String(requesterCode ?? "").trim().toUpperCase();
+  const requesterCodeValue = String(requesterCode ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!itemId) return new Response("inventoryItemId required", { status: 400 });
   if (!vId) return new Response("variantId required", { status: 400 });
   if (!fromId) return new Response("fromWarehouseId required", { status: 400 });
   if (!toId) return new Response("toWarehouseId required", { status: 400 });
   if (fromId === toId) {
-    return new Response("source and destination must be different", { status: 400 });
+    return new Response("source and destination must be different", {
+      status: 400,
+    });
   }
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
@@ -150,9 +147,7 @@ export async function POST(request: Request) {
       .values({
         movementType: "TRASLADO",
         reason: "TRASLADO_INTERNO",
-        notes: asRequest
-          ? buildRequestNote(REQUEST_PENDING_PREFIX, transferNotes)
-          : (transferNotes || null),
+        notes: transferNotes || null,
         inventoryItemId: itemId,
         variantId: vId,
         fromWarehouseId: fromId,
@@ -160,6 +155,7 @@ export async function POST(request: Request) {
         quantity: String(qty),
         referenceType: "MANUAL",
         referenceId: null,
+        transferStatus: asRequest ? "PENDIENTE" : null,
         requestedBy: asRequest ? actorEmployeeId : null,
         requestedAt: asRequest ? new Date() : null,
         createdBy: asRequest ? null : actorEmployeeId,
@@ -187,9 +183,11 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "VER_INVENTARIO");
+
   if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
@@ -201,7 +199,8 @@ export async function GET(request: Request) {
     .trim()
     .toLowerCase();
 
-  if (!warehouseId) return new Response("warehouseId required", { status: 400 });
+  if (!warehouseId)
+    return new Response("warehouseId required", { status: 400 });
 
   const scopeWhere =
     scope === "outgoing"
@@ -210,19 +209,12 @@ export async function GET(request: Request) {
 
   const pendingWhere = and(
     scopeWhere,
-    isNotNull(stockMovements.requestedAt),
-    sql`(
-      ${stockMovements.notes} is null
-      or ${stockMovements.notes} ilike ${`${REQUEST_PENDING_PREFIX}%`}
-    )`,
+    eq(stockMovements.transferStatus, "PENDIENTE"),
   );
 
   const resolvedWhere = and(
     scopeWhere,
-    sql`(
-      ${stockMovements.notes} ilike ${`${REQUEST_APPROVED_PREFIX}%`}
-      or ${stockMovements.notes} ilike ${`${REQUEST_REJECTED_PREFIX}%`}
-    )`,
+    sql`${stockMovements.transferStatus} in ('APROBADA', 'RECHAZADA')`,
   );
 
   const where = status === "resolved" ? resolvedWhere : pendingWhere;
@@ -237,13 +229,7 @@ export async function GET(request: Request) {
       variantSku: inventoryItemVariants.sku,
       quantity: stockMovements.quantity,
       notes: stockMovements.notes,
-      status: sql<"PENDIENTE" | "APROBADA" | "RECHAZADA">`
-        case
-          when ${stockMovements.notes} ilike ${`${REQUEST_APPROVED_PREFIX}%`} then 'APROBADA'
-          when ${stockMovements.notes} ilike ${`${REQUEST_REJECTED_PREFIX}%`} then 'RECHAZADA'
-          else 'PENDIENTE'
-        end
-      `,
+      transferStatus: stockMovements.transferStatus,
       fromWarehouseId: stockMovements.fromWarehouseId,
       toWarehouseId: stockMovements.toWarehouseId,
       requestedAt: stockMovements.requestedAt,
@@ -273,8 +259,14 @@ export async function GET(request: Request) {
       )`,
     })
     .from(stockMovements)
-    .leftJoin(inventoryItems, eq(stockMovements.inventoryItemId, inventoryItems.id))
-    .leftJoin(inventoryItemVariants, eq(stockMovements.variantId, inventoryItemVariants.id))
+    .leftJoin(
+      inventoryItems,
+      eq(stockMovements.inventoryItemId, inventoryItems.id),
+    )
+    .leftJoin(
+      inventoryItemVariants,
+      eq(stockMovements.variantId, inventoryItemVariants.id),
+    )
     .where(where)
     .orderBy(desc(stockMovements.requestedAt));
 
@@ -291,9 +283,11 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
+
   if (forbidden) return forbidden;
 
   const { id, notes } = await request.json();
@@ -314,16 +308,13 @@ export async function PUT(request: Request) {
     .where(
       and(
         eq(stockMovements.id, requestId),
-        isNotNull(stockMovements.requestedAt),
-        sql`(
-          ${stockMovements.notes} is null
-          or ${stockMovements.notes} ilike ${`${REQUEST_PENDING_PREFIX}%`}
-        )`,
+        eq(stockMovements.transferStatus, "PENDIENTE"),
       ),
     )
     .limit(1);
 
-  if (!pending) return new Response("transfer request not found", { status: 404 });
+  if (!pending)
+    return new Response("transfer request not found", { status: 404 });
   if (!pending.inventoryItemId || !pending.fromWarehouseId) {
     return new Response("invalid transfer request", { status: 400 });
   }
@@ -332,6 +323,7 @@ export async function PUT(request: Request) {
   const pendingFromWarehouseId = pending.fromWarehouseId;
 
   const qty = toPositiveNumber(pending.quantity);
+
   if (!qty) return new Response("invalid quantity", { status: 400 });
 
   if (!pending.variantId) {
@@ -353,7 +345,9 @@ export async function PUT(request: Request) {
   }
 
   const employeeId = getEmployeeIdFromRequest(request);
-  if (!employeeId) return new Response("requester not resolved", { status: 401 });
+
+  if (!employeeId)
+    return new Response("requester not resolved", { status: 401 });
 
   const updated = await db.transaction(async (tx) => {
     const rows = await tx
@@ -361,16 +355,13 @@ export async function PUT(request: Request) {
       .set({
         requestedAt: null,
         createdBy: employeeId,
-        notes: buildRequestNote(REQUEST_APPROVED_PREFIX, approvalNotes),
+        transferStatus: "APROBADA",
+        notes: approvalNotes || null,
       })
       .where(
         and(
           eq(stockMovements.id, requestId),
-          isNotNull(stockMovements.requestedAt),
-          sql`(
-            ${stockMovements.notes} is null
-            or ${stockMovements.notes} ilike ${`${REQUEST_PENDING_PREFIX}%`}
-          )`,
+          eq(stockMovements.transferStatus, "PENDIENTE"),
         ),
       )
       .returning();
@@ -394,9 +385,11 @@ export async function PATCH(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
+
   if (forbidden) return forbidden;
 
   const { id, notes } = await request.json();
@@ -406,18 +399,21 @@ export async function PATCH(request: Request) {
   if (!requestId) return new Response("id required", { status: 400 });
 
   const employeeId = getEmployeeIdFromRequest(request);
-  if (!employeeId) return new Response("requester not resolved", { status: 401 });
+
+  if (!employeeId)
+    return new Response("requester not resolved", { status: 401 });
 
   const rejected = await db
     .update(stockMovements)
     .set({
       createdBy: employeeId,
-      notes: buildRequestNote(REQUEST_REJECTED_PREFIX, rejectionNotes),
+      transferStatus: "RECHAZADA",
+      notes: rejectionNotes || null,
     })
     .where(
       and(
         eq(stockMovements.id, requestId),
-        isNotNull(stockMovements.requestedAt),
+        eq(stockMovements.transferStatus, "PENDIENTE"),
       ),
     )
     .returning();
@@ -439,9 +435,11 @@ export async function DELETE(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
+
   if (forbidden) return forbidden;
 
   const { id } = await request.json();
@@ -454,12 +452,13 @@ export async function DELETE(request: Request) {
     .where(
       and(
         eq(stockMovements.id, requestId),
-        isNotNull(stockMovements.requestedAt),
+        eq(stockMovements.transferStatus, "PENDIENTE"),
       ),
     )
     .returning();
 
-  if (!deleted.length) return new Response("transfer request not found", { status: 404 });
+  if (!deleted.length)
+    return new Response("transfer request not found", { status: 404 });
 
   return Response.json(deleted);
 }

@@ -19,7 +19,9 @@ type DespachoLegalStatusAlertProps = {
  * Checks the client's legal status before allowing dispatch actions.
  * Shows a blocking alert if the client is legally disabled.
  */
-export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertProps) {
+export function DespachoLegalStatusAlert({
+  clientId,
+}: DespachoLegalStatusAlertProps) {
   const [status, setStatus] = useState<LegalStatusResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,6 +29,7 @@ export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertP
     if (!clientId) return;
 
     let active = true;
+
     setLoading(true);
 
     fetch(`/api/mes/client-legal-status/${clientId}`)
@@ -35,6 +38,7 @@ export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertP
           // If 403 (not authorized to see legal status), treat as enabled
           return { clientId, isLegallyEnabled: true, legalNotes: null };
         }
+
         return res.json();
       })
       .then((data: LegalStatusResult) => {
@@ -44,7 +48,11 @@ export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertP
       .catch(() => {
         if (!active) return;
         // On error, treat as enabled (don't block)
-        setStatus({ clientId: clientId ?? "", isLegallyEnabled: true, legalNotes: null });
+        setStatus({
+          clientId: clientId ?? "",
+          isLegallyEnabled: true,
+          legalNotes: null,
+        });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -65,7 +73,11 @@ export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertP
 
   if (!status.isLegallyEnabled) {
     return (
-      <Card className="border border-danger-300 bg-danger-50" radius="sm" shadow="none">
+      <Card
+        className="border border-danger-300 bg-danger-50"
+        radius="sm"
+        shadow="none"
+      >
         <CardBody className="gap-2 py-3 px-4">
           <div className="flex items-center gap-2">
             <MdBlock className="text-danger shrink-0" size={20} />
@@ -82,7 +94,7 @@ export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertP
               <strong>Nota:</strong> {status.legalNotes}
             </p>
           )}
-          <Chip color="danger" size="sm" variant="flat" className="mt-1">
+          <Chip className="mt-1" color="danger" size="sm" variant="flat">
             BLOQUEADO_JURIDICO
           </Chip>
         </CardBody>
@@ -91,10 +103,16 @@ export function DespachoLegalStatusAlert({ clientId }: DespachoLegalStatusAlertP
   }
 
   return (
-    <Card className="border border-success-200 bg-success-50" radius="sm" shadow="none">
+    <Card
+      className="border border-success-200 bg-success-50"
+      radius="sm"
+      shadow="none"
+    >
       <CardBody className="flex flex-row items-center gap-2 py-2 px-4">
         <MdCheckCircle className="text-success shrink-0" size={16} />
-        <p className="text-xs text-success-700">Cliente habilitado jurídicamente para despacho.</p>
+        <p className="text-xs text-success-700">
+          Cliente habilitado jurídicamente para despacho.
+        </p>
       </CardBody>
     </Card>
   );
@@ -110,15 +128,18 @@ export function useClientLegalStatus(clientId: string | null) {
   useEffect(() => {
     if (!clientId) {
       setIsEnabled(true);
+
       return;
     }
 
     let active = true;
+
     setLoading(true);
 
     fetch(`/api/mes/client-legal-status/${clientId}`)
       .then((res) => {
         if (!res.ok) return { isLegallyEnabled: true };
+
         return res.json();
       })
       .then((data: { isLegallyEnabled: boolean }) => {

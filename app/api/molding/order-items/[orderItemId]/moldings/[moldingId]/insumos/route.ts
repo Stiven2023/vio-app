@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -23,9 +23,11 @@ export async function GET(
     limit: 150,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { moldingId } = await params;
@@ -35,7 +37,8 @@ export async function GET(
       .select({
         id: orderItemMoldingInsumos.id,
         orderItemMoldingId: orderItemMoldingInsumos.orderItemMoldingId,
-        moldingTemplateInsumoId: orderItemMoldingInsumos.moldingTemplateInsumoId,
+        moldingTemplateInsumoId:
+          orderItemMoldingInsumos.moldingTemplateInsumoId,
         inventoryItemId: orderItemMoldingInsumos.inventoryItemId,
         inventoryItemName: inventoryItems.name,
         variantId: orderItemMoldingInsumos.variantId,
@@ -66,7 +69,9 @@ export async function GET(
     return Response.json({ items: insumos });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not retrieve molding insumos", { status: 500 });
   }
 }
@@ -85,9 +90,11 @@ export async function POST(
     limit: 30,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "EDITAR_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { moldingId } = await params;
@@ -107,28 +114,34 @@ export async function POST(
   }
 
   if (!molding.moldingTemplateId) {
-    return new Response("This molding has no associated template", { status: 400 });
+    return new Response("This molding has no associated template", {
+      status: 400,
+    });
   }
 
   let body: { sizes?: string[] } = {};
+
   try {
     body = (await request.json()) as { sizes?: string[] };
   } catch {
     body = {};
   }
 
-  const sizes: string[] = Array.isArray(body.sizes) && body.sizes.length > 0
-    ? body.sizes
-    : ["UNICO"];
+  const sizes: string[] =
+    Array.isArray(body.sizes) && body.sizes.length > 0 ? body.sizes : ["UNICO"];
 
   // Get template insumos
   const templateInsumos = await db
     .select()
     .from(moldingTemplateInsumos)
-    .where(eq(moldingTemplateInsumos.moldingTemplateId, molding.moldingTemplateId));
+    .where(
+      eq(moldingTemplateInsumos.moldingTemplateId, molding.moldingTemplateId),
+    );
 
   if (templateInsumos.length === 0) {
-    return new Response("No insumos defined for this template", { status: 400 });
+    return new Response("No insumos defined for this template", {
+      status: 400,
+    });
   }
 
   try {
@@ -153,7 +166,10 @@ export async function POST(
               .from(moldingTemplateSizeAdjustments)
               .where(
                 and(
-                  eq(moldingTemplateSizeAdjustments.moldingTemplateInsumoId, ti.id),
+                  eq(
+                    moldingTemplateSizeAdjustments.moldingTemplateInsumoId,
+                    ti.id,
+                  ),
                   eq(moldingTemplateSizeAdjustments.size, size),
                 ),
               )
@@ -217,7 +233,9 @@ export async function POST(
     return Response.json({ items: inserted }, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not calculate molding insumos", { status: 500 });
   }
 }
@@ -237,14 +255,17 @@ export async function PATCH(
     limit: 60,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "EDITAR_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const { moldingId } = await params;
 
   let body: { insumoId?: string; status?: string; notes?: string };
+
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -264,10 +285,9 @@ export async function PATCH(
   }
 
   if (!body.status || !validStatuses.includes(body.status)) {
-    return new Response(
-      `status must be one of: ${validStatuses.join(", ")}`,
-      { status: 400 },
-    );
+    return new Response(`status must be one of: ${validStatuses.join(", ")}`, {
+      status: 400,
+    });
   }
 
   try {
@@ -298,7 +318,9 @@ export async function PATCH(
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not update insumo status", { status: 500 });
   }
 }

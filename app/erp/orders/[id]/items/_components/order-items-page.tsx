@@ -1,6 +1,10 @@
 "use client";
 
-import type { OrderKind, OrderListItem, Paginated } from "@/app/erp/orders/_lib/types";
+import type {
+  OrderKind,
+  OrderListItem,
+  Paginated,
+} from "@/app/erp/orders/_lib/types";
 
 import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
@@ -8,12 +12,7 @@ import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Select, SelectItem } from "@heroui/select";
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalHeader,
-} from "@heroui/modal";
+import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
 import {
   Dropdown,
   DropdownItem,
@@ -36,6 +35,7 @@ import {
   BsThreeDotsVertical,
   BsTrash,
 } from "react-icons/bs";
+
 import { ConfectionAssignModal } from "./confection-assign-modal";
 
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
@@ -85,7 +85,9 @@ export function OrderItemsPage({
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [reloadKey, setReloadKey] = useState(0);
-  const [additionsFilter, setAdditionsFilter] = useState<"ALL" | "WITH" | "WITHOUT">("ALL");
+  const [additionsFilter, setAdditionsFilter] = useState<
+    "ALL" | "WITH" | "WITHOUT"
+  >("ALL");
 
   const [itemsData, setItemsData] = useState<Paginated<OrderItemRow> | null>(
     null,
@@ -96,7 +98,12 @@ export function OrderItemsPage({
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<
-    Array<{ id: string; status: string | null; changedByName: string | null; createdAt: string | null }>
+    Array<{
+      id: string;
+      status: string | null;
+      changedByName: string | null;
+      createdAt: string | null;
+    }>
   >([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -168,7 +175,13 @@ export function OrderItemsPage({
   const effectiveCanAssign = canAssign && canAccessOrder;
 
   // Bloquear modificaciones desde PRODUCCION (montaje) en adelante
-  const MONTAJE_LOCKED: Array<string> = ["PRODUCCION", "ATRASADO", "FINALIZADO", "ENTREGADO", "CANCELADO"];
+  const MONTAJE_LOCKED: Array<string> = [
+    "PRODUCCION",
+    "ATRASADO",
+    "FINALIZADO",
+    "ENTREGADO",
+    "CANCELADO",
+  ];
   const isOrderLocked = MONTAJE_LOCKED.includes(order?.status ?? "");
   const canCreate = effectiveCanEdit && orderKind === "NUEVO" && !isOrderLocked;
   const canModify = effectiveCanEdit && !isOrderLocked;
@@ -198,10 +211,12 @@ export function OrderItemsPage({
     if (!canModify) return;
 
     const ok = window.confirm("¿Eliminar este diseño?");
+
     if (!ok) return;
 
     try {
       const res = await fetch(`/api/orders/items/${id}`, { method: "DELETE" });
+
       if (!res.ok) throw new Error(await res.text());
       refresh();
     } catch (e) {
@@ -231,6 +246,7 @@ export function OrderItemsPage({
       }>(
         `/api/status-history/order-items?orderItemId=${encodeURIComponent(itemId)}&page=1&pageSize=50`,
       );
+
       setHistoryItems(res.items ?? []);
     } catch (e) {
       toast.error(getErrorMessage(e));
@@ -284,8 +300,13 @@ export function OrderItemsPage({
                 label="Filtro adiciones"
                 selectedKeys={[additionsFilter]}
                 onSelectionChange={(keys) => {
-                  const first = Array.from(keys)[0] as "ALL" | "WITH" | "WITHOUT" | undefined;
+                  const first = Array.from(keys)[0] as
+                    | "ALL"
+                    | "WITH"
+                    | "WITHOUT"
+                    | undefined;
                   const next = first ?? "ALL";
+
                   setAdditionsFilter(next);
                   setPage(1);
                 }}
@@ -310,12 +331,14 @@ export function OrderItemsPage({
         <CardBody>
           {orderKind === "COMPLETACION" ? (
             <div className="text-sm text-default-500">
-              En COMPLETACIÓN el backend solo permite ajustar cantidad y empaque.
+              En COMPLETACIÓN el backend solo permite ajustar cantidad y
+              empaque.
             </div>
           ) : null}
           {isOrderLocked ? (
             <div className="text-sm text-warning">
-              El pedido está en montaje o superior. No se permiten modificaciones de diseño.
+              El pedido está en montaje o superior. No se permiten
+              modificaciones de diseño.
             </div>
           ) : null}
         </CardBody>
@@ -370,7 +393,9 @@ export function OrderItemsPage({
 
                               <DropdownItem
                                 key="assign"
-                                isDisabled={!effectiveCanAssign || isOrderLocked}
+                                isDisabled={
+                                  !effectiveCanAssign || isOrderLocked
+                                }
                                 startContent={<BsPersonPlus />}
                                 onPress={() => openAssign(row.id)}
                               >
@@ -457,14 +482,17 @@ export function OrderItemsPage({
                       return (
                         <TableCell>
                           {row.hasAdditions
-                            ? String(row.additionEvidence ?? "Sí").trim() || "Sí"
+                            ? String(row.additionEvidence ?? "Sí").trim() ||
+                              "Sí"
                             : "No"}
                         </TableCell>
                       );
                     }
 
                     return (
-                      <TableCell>{String((row as any)[columnKey] ?? "-")}</TableCell>
+                      <TableCell>
+                        {String((row as any)[columnKey] ?? "-")}
+                      </TableCell>
                     );
                   }}
                 </TableRow>
@@ -524,7 +552,10 @@ export function OrderItemsPage({
             ) : (
               <div className="space-y-2 text-sm">
                 {historyItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between"
+                  >
                     <div>
                       <div className="font-medium">{item.status ?? "-"}</div>
                       <div className="text-xs text-default-500">

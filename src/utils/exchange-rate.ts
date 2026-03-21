@@ -53,6 +53,7 @@ function toNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
   const input = String(value ?? "").trim();
+
   if (!input) return null;
 
   const cleaned = input.replace(/[^0-9,.-]/g, "");
@@ -105,7 +106,9 @@ async function fetchOfficialUsdCopRate() {
   });
 
   if (!response.ok) {
-    throw new Error(`No se pudo consultar TRM oficial: HTTP ${response.status}`);
+    throw new Error(
+      `No se pudo consultar TRM oficial: HTTP ${response.status}`,
+    );
   }
 
   const payload = (await response.json()) as Array<Record<string, unknown>>;
@@ -132,7 +135,8 @@ async function fetchOfficialUsdCopRate() {
 
   return {
     sourceRate,
-    sourceDate: sourceDate && !Number.isNaN(sourceDate.getTime()) ? sourceDate : null,
+    sourceDate:
+      sourceDate && !Number.isNaN(sourceDate.getTime()) ? sourceDate : null,
     rawPayload: JSON.stringify(row),
   };
 }
@@ -168,7 +172,9 @@ export async function updateUsdCopRateDaily(args?: { floorRate?: number }) {
     effectiveRate: floored.effectiveRate,
     adjustmentApplied: floored.adjustmentApplied,
     sourceDate: fetched.sourceDate ? fetched.sourceDate.toISOString() : null,
-    createdAt: inserted?.createdAt ? new Date(inserted.createdAt).toISOString() : null,
+    createdAt: inserted?.createdAt
+      ? new Date(inserted.createdAt).toISOString()
+      : null,
     macroConversion,
   } satisfies ExchangeRateUpdate;
 }
@@ -177,9 +183,7 @@ export async function getLatestUsdCopRate() {
   const [latest] = await db
     .select()
     .from(exchangeRates)
-    .where(
-      eq(exchangeRates.baseCurrency, "USD"),
-    )
+    .where(eq(exchangeRates.baseCurrency, "USD"))
     .orderBy(desc(exchangeRates.createdAt))
     .limit(1);
 
@@ -191,8 +195,12 @@ export async function getLatestUsdCopRate() {
     floorRate: Number(latest.floorRate ?? 0),
     effectiveRate: Number(latest.effectiveRate ?? 0),
     adjustmentApplied: Number(latest.adjustmentApplied ?? 0),
-    sourceDate: latest.sourceDate ? new Date(latest.sourceDate).toISOString() : null,
-    createdAt: latest.createdAt ? new Date(latest.createdAt).toISOString() : null,
+    sourceDate: latest.sourceDate
+      ? new Date(latest.sourceDate).toISOString()
+      : null,
+    createdAt: latest.createdAt
+      ? new Date(latest.createdAt).toISOString()
+      : null,
   } satisfies ExchangeRateUpdate;
 }
 
@@ -220,8 +228,12 @@ export async function getLatestUsdCopRatePair() {
       floorRate: Number(latest.floorRate ?? 0),
       effectiveRate: Number(latest.effectiveRate ?? 0),
       adjustmentApplied: Number(latest.adjustmentApplied ?? 0),
-      sourceDate: latest.sourceDate ? new Date(latest.sourceDate).toISOString() : null,
-      createdAt: latest.createdAt ? new Date(latest.createdAt).toISOString() : null,
+      sourceDate: latest.sourceDate
+        ? new Date(latest.sourceDate).toISOString()
+        : null,
+      createdAt: latest.createdAt
+        ? new Date(latest.createdAt).toISOString()
+        : null,
     } satisfies ExchangeRateUpdate,
     previous: previous
       ? ({
@@ -230,15 +242,21 @@ export async function getLatestUsdCopRatePair() {
           floorRate: Number(previous.floorRate ?? 0),
           effectiveRate: Number(previous.effectiveRate ?? 0),
           adjustmentApplied: Number(previous.adjustmentApplied ?? 0),
-          sourceDate: previous.sourceDate ? new Date(previous.sourceDate).toISOString() : null,
-          createdAt: previous.createdAt ? new Date(previous.createdAt).toISOString() : null,
+          sourceDate: previous.sourceDate
+            ? new Date(previous.sourceDate).toISOString()
+            : null,
+          createdAt: previous.createdAt
+            ? new Date(previous.createdAt).toISOString()
+            : null,
         } satisfies ExchangeRateUpdate)
       : null,
   };
 }
 
 export async function getUsdCopRateHistory(limit = 14) {
-  const safeLimit = Number.isFinite(limit) ? Math.max(2, Math.min(60, Math.floor(limit))) : 14;
+  const safeLimit = Number.isFinite(limit)
+    ? Math.max(2, Math.min(60, Math.floor(limit)))
+    : 14;
 
   const rows = await db
     .select({

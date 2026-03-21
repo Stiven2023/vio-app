@@ -100,6 +100,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
       if (!res.ok) return;
 
       const json = await res.json();
+
       setUnreadCount(Number(json.unreadCount ?? 0));
     } catch {
       // ignore
@@ -182,10 +183,10 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
     <>
       <Button
         isIconOnly
-        variant="light"
-        onPress={() => setOpen(true)}
         aria-label="Notificaciones"
         className="relative h-11 w-11 min-w-11"
+        variant="light"
+        onPress={() => setOpen(true)}
       >
         <BsBell className="text-lg" />
         {unreadCount > 0 ? (
@@ -218,6 +219,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
                 selectedKeys={roleFilter ? [roleFilter] : []}
                 onSelectionChange={(keys) => {
                   const first = Array.from(keys)[0];
+
                   setRoleFilter(first ? String(first) : "");
                 }}
               >
@@ -239,7 +241,9 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
             <div className="space-y-2">
               {loading ? <div>Cargando...</div> : null}
               {!loading && items.length === 0 ? (
-                <div className="text-sm text-default-500">Sin notificaciones</div>
+                <div className="text-sm text-default-500">
+                  Sin notificaciones
+                </div>
               ) : null}
               {items.map((n) => (
                 <div
@@ -254,7 +258,9 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
                       <div className="text-sm font-semibold">
                         {n.title ?? "Notificacion"}
                       </div>
-                      <div className="text-sm text-default-600">{n.message}</div>
+                      <div className="text-sm text-default-600">
+                        {n.message}
+                      </div>
                       <div className="mt-1 text-xs text-default-500">
                         {formatDate(n.createdAt)}
                       </div>
@@ -266,7 +272,11 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
                         </Chip>
                       ) : null}
                       {!n.isRead ? (
-                        <Button size="sm" variant="flat" onPress={() => markRead(n.id)}>
+                        <Button
+                          size="sm"
+                          variant="flat"
+                          onPress={() => markRead(n.id)}
+                        >
                           Marcar leido
                         </Button>
                       ) : null}

@@ -2,7 +2,6 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
-  clients,
   employees,
   inventoryItems,
   orderItemMaterials,
@@ -97,9 +96,13 @@ function sumGroupedPackagingQuantity(packagingInput: unknown) {
   if (!Array.isArray(packagingInput)) return 0;
 
   return packagingInput.reduce((acc, row: any) => {
-    const mode = String(row?.mode ?? "AGRUPADO").trim().toUpperCase();
+    const mode = String(row?.mode ?? "AGRUPADO")
+      .trim()
+      .toUpperCase();
+
     if (mode !== "AGRUPADO") return acc;
     const qty = toPositiveInt(row?.quantity);
+
     return acc + (qty ?? 0);
   }, 0);
 }
@@ -140,7 +143,8 @@ function pickCopScaleByQuantity(
   quantity: number,
 ) {
   if (quantity <= 499) return row.priceCopR1 || row.priceCopBase;
-  if (quantity <= 1000) return row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
+  if (quantity <= 1000)
+    return row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 
   return row.priceCopR3 || row.priceCopR2 || row.priceCopR1 || row.priceCopBase;
 }
@@ -172,7 +176,11 @@ function resolveUnitPriceByRule(args: {
   if (currencyCode === "USD") {
     if (row.priceUSD) return row.priceUSD;
 
-    if (row.priceCopInternational && usdCopEffectiveRate && usdCopEffectiveRate > 0) {
+    if (
+      row.priceCopInternational &&
+      usdCopEffectiveRate &&
+      usdCopEffectiveRate > 0
+    ) {
       return String(asNumber(row.priceCopInternational) / usdCopEffectiveRate);
     }
 
@@ -180,15 +188,30 @@ function resolveUnitPriceByRule(args: {
   }
 
   if (clientPriceType === "VIOMAR") {
-    return row.priceViomar || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+    return (
+      row.priceViomar ||
+      row.priceCopBase ||
+      row.priceCopR1 ||
+      pickCopScaleByQuantity(row, quantity)
+    );
   }
 
   if (clientPriceType === "COLANTA") {
-    return row.priceColanta || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+    return (
+      row.priceColanta ||
+      row.priceCopBase ||
+      row.priceCopR1 ||
+      pickCopScaleByQuantity(row, quantity)
+    );
   }
 
   if (clientPriceType === "MAYORISTA") {
-    return row.priceMayorista || row.priceCopBase || row.priceCopR1 || pickCopScaleByQuantity(row, quantity);
+    return (
+      row.priceMayorista ||
+      row.priceCopBase ||
+      row.priceCopR1 ||
+      pickCopScaleByQuantity(row, quantity)
+    );
   }
 
   const copByScale = pickCopScaleByQuantity(row, quantity);
@@ -262,7 +285,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const { page, pageSize, offset } = parsePagination(searchParams);
   const orderId = String(searchParams.get("orderId") ?? "").trim();
-  const hasAdditionsFilter = String(searchParams.get("hasAdditions") ?? "").trim().toLowerCase();
+  const hasAdditionsFilter = String(searchParams.get("hasAdditions") ?? "")
+    .trim()
+    .toLowerCase();
 
   if (!orderId) {
     return new Response("orderId required", { status: 400 });
@@ -281,9 +306,7 @@ export async function GET(request: Request) {
   }
 
   const where =
-    whereClauses.length > 1
-      ? and(...whereClauses)
-      : whereClauses[0];
+    whereClauses.length > 1 ? and(...whereClauses) : whereClauses[0];
 
   const [{ total }] = await db
     .select({ total: sql<number>`count(*)::int` })
@@ -367,6 +390,7 @@ export async function POST(request: Request) {
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
   const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
+
   if (groupedPackagingTotal > qty) {
     return new Response(
       `La curva no puede superar la cantidad del diseño (${qty}).`,
@@ -394,174 +418,176 @@ export async function POST(request: Request) {
 
   try {
     created = await db.transaction(async (tx) => {
-    const [orderRow] = await tx
-      .select({
-        kind: orders.kind,
-        currency: orders.currency,
-        clientPriceType:
-          sql<string>`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
-      })
-      .from(orders)
-      .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
-      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
-      .where(eq(orders.id, orderId))
-      .limit(1);
+      const [orderRow] = await tx
+        .select({
+          kind: orders.kind,
+          currency: orders.currency,
+          clientPriceType: sql<string>`coalesce(cast(${prefacturas.clientPriceType} as text), cast(${quotations.clientPriceType} as text), 'VIOMAR')`,
+        })
+        .from(orders)
+        .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
+        .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+        .where(eq(orders.id, orderId))
+        .limit(1);
 
-    if (!orderRow) throw new Error("order not found");
+      if (!orderRow) throw new Error("order not found");
 
-    // COMPLETACION: no se permite agregar nuevos diseños
-    if (orderRow.kind === "COMPLETACION") {
-      throw new Error(
-        "No se pueden agregar diseños en pedidos de completación",
-      );
-    }
+      // COMPLETACION: no se permite agregar nuevos diseños
+      if (orderRow.kind === "COMPLETACION") {
+        throw new Error(
+          "No se pueden agregar diseños en pedidos de completación",
+        );
+      }
 
-    const productId = toNullableString(body.productId);
+      const productId = toNullableString(body.productId);
 
-    if (!productId) {
-      throw new Error("productId required");
-    }
+      if (!productId) {
+        throw new Error("productId required");
+      }
 
-    const [productRow] = await tx
-      .select()
-      .from(products)
-      .where(eq(products.id, productId))
-      .limit(1);
+      const [productRow] = await tx
+        .select()
+        .from(products)
+        .where(eq(products.id, productId))
+        .limit(1);
 
-    if (!productRow || productRow.isActive === false) {
-      throw new Error("producto requerido");
-    }
+      if (!productRow || productRow.isActive === false) {
+        throw new Error("producto requerido");
+      }
 
-    const resolvedUnitPrice = resolveUnitPriceByRule({
-      currency: orderRow.currency,
-      clientPriceType: orderRow.clientPriceType,
-      quantity: qty,
-      row: productRow,
-      manualUnitPrice: body.unitPrice,
-      usdCopEffectiveRate: latestUsdCopRate?.effectiveRate ?? null,
-    });
-
-    if (!resolvedUnitPrice) {
-      throw new Error("No hay precio aplicable para este cliente y cantidad");
-    }
-
-    const unitPrice = Math.max(0, asNumber(resolvedUnitPrice));
-    const additionEvidence = toNullableString(body.additionEvidence);
-    const hasAdditions = Boolean(body.hasAdditions) || Boolean(additionEvidence);
-    const normalizedProcess = normalizeOperationalProcess(body.process);
-    const estimatedLeadDays = getItemLeadDays({
-      orderType: resolveOrderTypeFromKind(orderRow.kind),
-      process: normalizedProcess,
-      additions: hasAdditions ? [{}] : [],
-    });
-
-    const [oi] = await tx
-      .insert(orderItems)
-      .values({
-        orderId,
-        productId,
-        name: toNullableString(body.name),
-        garmentType,
+      const resolvedUnitPrice = resolveUnitPriceByRule({
+        currency: orderRow.currency,
+        clientPriceType: orderRow.clientPriceType,
         quantity: qty,
-        unitPrice: String(unitPrice),
-        totalPrice: String(unitPrice * qty),
-        hasAdditions,
-        additionEvidence: hasAdditions ? additionEvidence : null,
-        observations: toNullableString(body.observations),
-        fabric: toNullableString(body.fabric),
-        imageUrl: clothingImageOneUrl ?? toNullableString(body.imageUrl),
-        clothingImageOneUrl,
-        clothingImageTwoUrl,
-        logoImageUrl,
-        screenPrint: Boolean(body.screenPrint ?? false),
-        embroidery: Boolean(body.embroidery ?? false),
-        buttonhole: Boolean(body.buttonhole ?? false),
-        snap: Boolean(body.snap ?? false),
-        tag: Boolean(body.tag ?? false),
-        flag: Boolean(body.flag ?? false),
-        gender: toNullableString(body.gender),
+        row: productRow,
+        manualUnitPrice: body.unitPrice,
+        usdCopEffectiveRate: latestUsdCopRate?.effectiveRate ?? null,
+      });
+
+      if (!resolvedUnitPrice) {
+        throw new Error("No hay precio aplicable para este cliente y cantidad");
+      }
+
+      const unitPrice = Math.max(0, asNumber(resolvedUnitPrice));
+      const additionEvidence = toNullableString(body.additionEvidence);
+      const hasAdditions =
+        Boolean(body.hasAdditions) || Boolean(additionEvidence);
+      const normalizedProcess = normalizeOperationalProcess(body.process);
+      const estimatedLeadDays = getItemLeadDays({
+        orderType: resolveOrderTypeFromKind(orderRow.kind),
         process: normalizedProcess,
-        estimatedLeadDays,
-        neckType: toNullableString(body.neckType),
-        sleeve: toNullableString(body.sleeve),
-        color: toNullableString(body.color),
-        requiresSocks: Boolean(body.requiresSocks ?? false),
-        isActive: body.isActive === undefined ? true : Boolean(body.isActive),
-        manufacturingId: toNullableString(body.manufacturingId),
-        status: "PENDIENTE" as any,
-        requiresRevision: false,
-      } as any)
-      .returning();
+        additions: hasAdditions ? [{}] : [],
+      });
 
-    const orderItemId = oi!.id;
+      const [oi] = await tx
+        .insert(orderItems)
+        .values({
+          orderId,
+          productId,
+          name: toNullableString(body.name),
+          garmentType,
+          quantity: qty,
+          unitPrice: String(unitPrice),
+          totalPrice: String(unitPrice * qty),
+          hasAdditions,
+          additionEvidence: hasAdditions ? additionEvidence : null,
+          observations: toNullableString(body.observations),
+          fabric: toNullableString(body.fabric),
+          imageUrl: clothingImageOneUrl ?? toNullableString(body.imageUrl),
+          clothingImageOneUrl,
+          clothingImageTwoUrl,
+          logoImageUrl,
+          screenPrint: Boolean(body.screenPrint ?? false),
+          embroidery: Boolean(body.embroidery ?? false),
+          buttonhole: Boolean(body.buttonhole ?? false),
+          snap: Boolean(body.snap ?? false),
+          tag: Boolean(body.tag ?? false),
+          flag: Boolean(body.flag ?? false),
+          gender: toNullableString(body.gender),
+          process: normalizedProcess,
+          estimatedLeadDays,
+          neckType: toNullableString(body.neckType),
+          sleeve: toNullableString(body.sleeve),
+          color: toNullableString(body.color),
+          requiresSocks: Boolean(body.requiresSocks ?? false),
+          isActive: body.isActive === undefined ? true : Boolean(body.isActive),
+          manufacturingId: toNullableString(body.manufacturingId),
+          status: "PENDIENTE" as any,
+          requiresRevision: false,
+        } as any)
+        .returning();
 
-    await tx.insert(orderItemStatusHistory).values({
-      orderItemId,
-      status: (oi as any)?.status ?? "PENDIENTE",
-      changedBy: employeeId,
-    });
+      const orderItemId = oi!.id;
 
-    const packaging = Array.isArray(body.packaging) ? body.packaging : [];
+      await tx.insert(orderItemStatusHistory).values({
+        orderItemId,
+        status: (oi as any)?.status ?? "PENDIENTE",
+        changedBy: employeeId,
+      });
 
-    if (packaging.length > 0) {
-      await tx.insert(orderItemPackaging).values(
-        packaging.map((p: any) => ({
-          orderItemId,
-          mode: String(p.mode ?? "AGRUPADO"),
-          size: String(p.size ?? ""),
-          quantity: p.quantity === undefined ? null : toPositiveInt(p.quantity),
-          personName: toNullableString(p.personName),
-          personNumber: toNullableString(p.personNumber),
-        })) as any,
-      );
-    }
+      const packaging = Array.isArray(body.packaging) ? body.packaging : [];
 
-    const socks = Array.isArray(body.socks) ? body.socks : [];
-
-    if (socks.length > 0) {
-      await tx.insert(orderItemSocks).values(
-        socks.map((s: any) => ({
-          orderItemId,
-          size: String(s.size ?? ""),
-          quantity: s.quantity === undefined ? null : toPositiveInt(s.quantity),
-          description: toNullableString(s.description),
-          imageUrl: toNullableString(s.imageUrl),
-        })) as any,
-      );
-    }
-
-    const materials = Array.isArray(body.materials) ? body.materials : [];
-
-    if (materials.length > 0) {
-      const inventoryIds = materials
-        .map((m: any) => String(m.inventoryItemId ?? "").trim())
-        .filter(Boolean);
-
-      const existingInv = inventoryIds.length
-        ? await tx
-            .select({ id: inventoryItems.id })
-            .from(inventoryItems)
-            .where(inArray(inventoryItems.id, inventoryIds))
-        : [];
-
-      const existingSet = new Set(existingInv.map((r) => r.id));
-
-      await tx.insert(orderItemMaterials).values(
-        materials
-          .map((m: any) => ({
+      if (packaging.length > 0) {
+        await tx.insert(orderItemPackaging).values(
+          packaging.map((p: any) => ({
             orderItemId,
-            inventoryItemId: String(m.inventoryItemId ?? "").trim(),
-            quantity: toNullableNumericString(m.quantity),
-            note: toNullableString(m.note),
-          }))
-          .filter((m: any) => existingSet.has(m.inventoryItemId)) as any,
-      );
-    }
+            mode: String(p.mode ?? "AGRUPADO"),
+            size: String(p.size ?? ""),
+            quantity:
+              p.quantity === undefined ? null : toPositiveInt(p.quantity),
+            personName: toNullableString(p.personName),
+            personNumber: toNullableString(p.personNumber),
+          })) as any,
+        );
+      }
 
-    await recalcOrderTotal(tx, orderId);
+      const socks = Array.isArray(body.socks) ? body.socks : [];
 
-    return oi;
-  });
+      if (socks.length > 0) {
+        await tx.insert(orderItemSocks).values(
+          socks.map((s: any) => ({
+            orderItemId,
+            size: String(s.size ?? ""),
+            quantity:
+              s.quantity === undefined ? null : toPositiveInt(s.quantity),
+            description: toNullableString(s.description),
+            imageUrl: toNullableString(s.imageUrl),
+          })) as any,
+        );
+      }
+
+      const materials = Array.isArray(body.materials) ? body.materials : [];
+
+      if (materials.length > 0) {
+        const inventoryIds = materials
+          .map((m: any) => String(m.inventoryItemId ?? "").trim())
+          .filter(Boolean);
+
+        const existingInv = inventoryIds.length
+          ? await tx
+              .select({ id: inventoryItems.id })
+              .from(inventoryItems)
+              .where(inArray(inventoryItems.id, inventoryIds))
+          : [];
+
+        const existingSet = new Set(existingInv.map((r) => r.id));
+
+        await tx.insert(orderItemMaterials).values(
+          materials
+            .map((m: any) => ({
+              orderItemId,
+              inventoryItemId: String(m.inventoryItemId ?? "").trim(),
+              quantity: toNullableNumericString(m.quantity),
+              note: toNullableString(m.note),
+            }))
+            .filter((m: any) => existingSet.has(m.inventoryItemId)) as any,
+        );
+      }
+
+      await recalcOrderTotal(tx, orderId);
+
+      return oi;
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "No se pudo crear el diseño";

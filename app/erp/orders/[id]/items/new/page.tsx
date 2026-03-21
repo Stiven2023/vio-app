@@ -1,6 +1,5 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-
 import { eq } from "drizzle-orm";
 
 import { OrderItemCreatePage } from "./_components/order-item-create-page";
@@ -65,9 +64,9 @@ export default async function NewOrderItemRoute({
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <OrderItemCreatePage
+        orderCurrency={(order.currency ?? "COP") as any}
         orderId={orderId}
         orderKind={order.kind ?? "NUEVO"}
-        orderCurrency={(order.currency ?? "COP") as any}
       />
     </div>
   );

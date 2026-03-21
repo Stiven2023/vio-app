@@ -14,25 +14,28 @@ export default async function ProgramacionActualizacionBodegaPage() {
   });
 
   const forbidden = await requirePermission(req, "VER_PEDIDO");
+
   if (forbidden) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Warehouse Scheduling - Update</h1>
-      <p className="text-default-600 mt-1">Orders grouped by order with changes in WAREHOUSE process.</p>
+      <p className="text-default-600 mt-1">
+        Orders grouped by order with changes in WAREHOUSE process.
+      </p>
       <div className="mt-6">
         <ProgramacionItemsTable
-          process="BODEGA"
-          orderStatus="PRODUCCION"
-          basePath="/erp/programacion/actualizacion"
-          view="ACTUALIZACION"
           actualizacionQueue="PROGRAMACION"
+          basePath="/erp/programacion/actualizacion"
           groupByOrder={false}
           labels={{
             principal: "Main Scheduling",
             bodega: "Warehouse Scheduling",
             compras: "Purchasing Scheduling",
           }}
+          orderStatus="PRODUCCION"
+          process="BODEGA"
+          view="ACTUALIZACION"
         />
       </div>
     </div>

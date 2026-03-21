@@ -9,7 +9,10 @@ function ensureAuth(request: Request) {
   const userId = getUserIdFromRequest(request);
 
   if (!userId) {
-    return { userId: null, response: new Response("Unauthorized", { status: 401 }) } as const;
+    return {
+      userId: null,
+      response: new Response("Unauthorized", { status: 401 }),
+    } as const;
   }
 
   return { userId, response: null } as const;
@@ -29,6 +32,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const auth = ensureAuth(request);
+
   if (auth.response) return auth.response;
 
   const { searchParams } = new URL(request.url);
@@ -41,9 +45,7 @@ export async function GET(request: Request) {
 
   const where = and(
     eq(confectionists.isActive, true),
-    q
-      ? ilike(confectionists.name, `%${q}%`)
-      : undefined,
+    q ? ilike(confectionists.name, `%${q}%`) : undefined,
   );
 
   const items = await db

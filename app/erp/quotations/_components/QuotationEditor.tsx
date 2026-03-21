@@ -1,5 +1,7 @@
 "use client";
 
+import type { ClientPriceType, QuoteForm, TaxZone } from "../_lib/types";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@heroui/card";
@@ -9,15 +11,6 @@ import { Button } from "@heroui/button";
 import { Select, SelectItem } from "@heroui/select";
 import { toast } from "react-hot-toast";
 
-import { useSessionStore } from "@/store/session";
-import { FileUpload } from "@/components/file-upload";
-import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
-import {
-  buildExpiryDateFromDelivery,
-} from "@/src/utils/quotation-delivery";
-import { QuotationsForm } from "./QuotationsForm";
-import { QuotationsProductsTable } from "./QuotationsProductsTable";
-import type { ClientPriceType, QuoteForm, TaxZone } from "../_lib/types";
 import {
   useClientsData,
   useProductsData,
@@ -26,6 +19,14 @@ import {
   useQuoteCalculations,
   useSaveQuotation,
 } from "../_hooks";
+
+import { QuotationsForm } from "./QuotationsForm";
+import { QuotationsProductsTable } from "./QuotationsProductsTable";
+
+import { useSessionStore } from "@/store/session";
+import { FileUpload } from "@/components/file-upload";
+import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
+import { buildExpiryDateFromDelivery } from "@/src/utils/quotation-delivery";
 
 type QuotationEditorProps = {
   quoteId?: string;
@@ -36,16 +37,38 @@ type PrefacturaOrderType = "VN" | "VI" | "VT" | "VW";
 
 const TAX_ZONE_DEFAULT_RATES: Record<
   TaxZone,
-  { withholdingTaxRate: number; withholdingIcaRate: number; withholdingIvaRate: number }
+  {
+    withholdingTaxRate: number;
+    withholdingIcaRate: number;
+    withholdingIvaRate: number;
+  }
 > = {
-  CONTINENTAL: { withholdingTaxRate: 2.5, withholdingIcaRate: 0.966, withholdingIvaRate: 15 },
-  FREE_ZONE: { withholdingTaxRate: 0, withholdingIcaRate: 0, withholdingIvaRate: 0 },
-  SAN_ANDRES: { withholdingTaxRate: 0, withholdingIcaRate: 0.5, withholdingIvaRate: 0 },
-  SPECIAL_REGIME: { withholdingTaxRate: 1, withholdingIcaRate: 0.7, withholdingIvaRate: 0 },
+  CONTINENTAL: {
+    withholdingTaxRate: 2.5,
+    withholdingIcaRate: 0.966,
+    withholdingIvaRate: 15,
+  },
+  FREE_ZONE: {
+    withholdingTaxRate: 0,
+    withholdingIcaRate: 0,
+    withholdingIvaRate: 0,
+  },
+  SAN_ANDRES: {
+    withholdingTaxRate: 0,
+    withholdingIcaRate: 0.5,
+    withholdingIvaRate: 0,
+  },
+  SPECIAL_REGIME: {
+    withholdingTaxRate: 1,
+    withholdingIcaRate: 0.7,
+    withholdingIvaRate: 0,
+  },
 };
 
 function normalizeTaxZone(value: unknown): TaxZone {
-  const raw = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  const raw = String(value ?? "CONTINENTAL")
+    .trim()
+    .toUpperCase();
 
   if (raw === "FREE_ZONE" || raw === "SAN_ANDRES" || raw === "SPECIAL_REGIME") {
     return raw;
@@ -56,7 +79,9 @@ function normalizeTaxZone(value: unknown): TaxZone {
 
 function safeRate(value: unknown, fallback: number): number {
   const parsed = Number(value);
+
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+
   return parsed;
 }
 
@@ -106,7 +131,10 @@ type QuotationDetailResponse = {
   }>;
 };
 
-export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditorProps) {
+export function QuotationEditor({
+  quoteId,
+  mode = "quotation",
+}: QuotationEditorProps) {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
 
@@ -140,7 +168,9 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
   const [shippingFee, setShippingFee] = useState(0);
   const [insuranceFee, setInsuranceFee] = useState(0);
-  const [initialItems, setInitialItems] = useState<QuotationDetailResponse["items"] | null>(null);
+  const [initialItems, setInitialItems] = useState<
+    QuotationDetailResponse["items"] | null
+  >(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadedQuoteCode, setLoadedQuoteCode] = useState("");
   const [prefacturaOrderType, setPrefacturaOrderType] =
@@ -155,17 +185,18 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   const [withholdingIvaRate, setWithholdingIvaRate] = useState(0);
 
   const { products, loading: loadingProducts } = useProductsData(form.currency);
-  const { additions, loading: loadingAdditions } = useAdditionsData(form.currency);
+  const { additions, loading: loadingAdditions } = useAdditionsData(
+    form.currency,
+  );
 
   const selectedClient = useMemo(
     () => clients.find((client) => client.id === form.clientId) ?? null,
     [clients, form.clientId],
   );
 
-  const isInternationalClient =
-    ["CE", "PAS", "EMPRESA_EXTERIOR"].includes(
-      String(selectedClient?.identificationType ?? ""),
-    );
+  const isInternationalClient = ["CE", "PAS", "EMPRESA_EXTERIOR"].includes(
+    String(selectedClient?.identificationType ?? ""),
+  );
   const selectedClientPriceType: ClientPriceType =
     selectedClient?.priceClientType ?? "VIOMAR";
   const clientPriceTypeForQuote: ClientPriceType | null = isInternationalClient
@@ -187,9 +218,11 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
     try {
       const raw = localStorage.getItem(draftCacheKey);
+
       if (!raw) return;
 
       const parsed = JSON.parse(raw);
+
       if (!Array.isArray(parsed) || parsed.length === 0) return;
 
       setItems(parsed);
@@ -214,7 +247,8 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
     setItems(
       initialItems.map((item) => {
         const product = products.find((p) => p.id === item.productId);
-        const normalizedOrderType = item.orderType === "BODEGA" ? "REPOSICION" : item.orderType;
+        const normalizedOrderType =
+          item.orderType === "BODEGA" ? "REPOSICION" : item.orderType;
 
         return {
           id: item.id,
@@ -236,13 +270,18 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   }, [initialItems, products, setItems]);
 
   useEffect(() => {
-    setForm((s) => ({ ...s, seller: user?.name ?? "", sellerId: user?.id ?? "" }));
+    setForm((s) => ({
+      ...s,
+      seller: user?.name ?? "",
+      sellerId: user?.id ?? "",
+    }));
   }, [user?.id, user?.name]);
 
   useEffect(() => {
     if (!quoteId) return;
 
     let active = true;
+
     setLoadingQuote(true);
 
     apiJson<QuotationDetailResponse>(`/api/quotations/${quoteId}`)
@@ -264,9 +303,16 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
         const snapshotZone = normalizeTaxZone(quote.taxZoneSnapshot);
         const fallbackRates = TAX_ZONE_DEFAULT_RATES[snapshotZone];
-        setWithholdingTaxRate(safeRate(quote.withholdingTaxRate, fallbackRates.withholdingTaxRate));
-        setWithholdingIcaRate(safeRate(quote.withholdingIcaRate, fallbackRates.withholdingIcaRate));
-        setWithholdingIvaRate(safeRate(quote.withholdingIvaRate, fallbackRates.withholdingIvaRate));
+
+        setWithholdingTaxRate(
+          safeRate(quote.withholdingTaxRate, fallbackRates.withholdingTaxRate),
+        );
+        setWithholdingIcaRate(
+          safeRate(quote.withholdingIcaRate, fallbackRates.withholdingIcaRate),
+        );
+        setWithholdingIvaRate(
+          safeRate(quote.withholdingIvaRate, fallbackRates.withholdingIvaRate),
+        );
 
         setShippingEnabled(Boolean(quote.shippingEnabled));
         setInsuranceEnabled(Boolean(quote.insuranceEnabled));
@@ -296,9 +342,24 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       municipalityFiscalSnapshot: selectedClient.municipalityFiscal ?? "",
       taxZoneSnapshot: zone,
     }));
-    setWithholdingTaxRate(safeRate(selectedClient.withholdingTaxRate, fallbackRates.withholdingTaxRate));
-    setWithholdingIcaRate(safeRate(selectedClient.withholdingIcaRate, fallbackRates.withholdingIcaRate));
-    setWithholdingIvaRate(safeRate(selectedClient.withholdingIvaRate, fallbackRates.withholdingIvaRate));
+    setWithholdingTaxRate(
+      safeRate(
+        selectedClient.withholdingTaxRate,
+        fallbackRates.withholdingTaxRate,
+      ),
+    );
+    setWithholdingIcaRate(
+      safeRate(
+        selectedClient.withholdingIcaRate,
+        fallbackRates.withholdingIcaRate,
+      ),
+    );
+    setWithholdingIvaRate(
+      safeRate(
+        selectedClient.withholdingIvaRate,
+        fallbackRates.withholdingIvaRate,
+      ),
+    );
   }, [quoteId, selectedClient]);
 
   useEffect(() => {
@@ -327,6 +388,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       baseDate.toISOString().split("T")[0] ?? null,
       30,
     );
+
     if (!nextExpiry) return;
 
     setForm((s) => ({ ...s, expiryDate: nextExpiry }));
@@ -373,6 +435,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
   const onFormChange = (updates: Partial<QuoteForm>) => {
     setForm((s) => {
       const next = { ...s, ...updates };
+
       return next;
     });
   };
@@ -381,7 +444,11 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
     if (form.paymentTerms === "CREDITO") {
       const hasActiveCredit = Boolean(selectedClient?.hasCredit);
       const hasPromissoryNumber = Boolean(
-        String(selectedClient?.promissoryNoteNumber ?? form.promissoryNoteNumber ?? "").trim(),
+        String(
+          selectedClient?.promissoryNoteNumber ??
+            form.promissoryNoteNumber ??
+            "",
+        ).trim(),
       );
 
       if (!hasActiveCredit || !hasPromissoryNumber) {
@@ -390,6 +457,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
             ? "The client has no active credit."
             : "The client has no promissory note number registered.",
         );
+
         return;
       }
     }
@@ -399,6 +467,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
       if (!form.clientId) {
         toast.error("Select an active client");
+
         return;
       }
 
@@ -408,11 +477,15 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
       if (validItems.length === 0) {
         toast.error("Add at least one valid item");
+
         return;
       }
 
       if (hasClientApproval && !clientApprovalImageUrl.trim()) {
-        toast.error("You must attach the screenshot/evidence of the client's approval");
+        toast.error(
+          "You must attach the screenshot/evidence of the client's approval",
+        );
+
         return;
       }
 
@@ -424,50 +497,53 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
 
       try {
         setCreatingPrefactura(true);
-        const created = await apiJson<{ prefactura?: { id: string } }>("/api/prefacturas", {
-          method: "POST",
-          body: JSON.stringify({
-            clientId: form.clientId,
-            documentType: form.documentType,
-            currency: form.currency,
-            shippingEnabled,
-            shippingFee,
-            subtotal: computed.subtotal,
-            total: computed.total,
-            municipalityFiscalSnapshot: form.municipalityFiscalSnapshot,
-            taxZoneSnapshot: form.taxZoneSnapshot,
-            withholdingTaxRate,
-            withholdingIcaRate,
-            withholdingIvaRate,
-            withholdingTaxAmount,
-            withholdingIcaAmount,
-            withholdingIvaAmount,
-            totalAfterWithholdings,
-            orderName,
-            orderType: prefacturaOrderType,
-            advanceRequired: hasAdvance ? computed.advancePayment : 0,
-            hasConvenio: false,
-            hasClientApproval,
-            clientApprovalImageUrl: hasClientApproval
-              ? clientApprovalImageUrl.trim() || null
-              : null,
-            items: validItems.map((item) => ({
-              productId: item.productId,
-              orderType: item.orderType,
-              process: item.process,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              discount: item.discount,
-              orderCodeReference: item.referenceOrderCode ?? null,
-              designNumber: item.referenceDesign ?? null,
-              additions: item.additions.map((add) => ({
-                id: add.id,
-                quantity: add.quantity,
-                unitPrice: add.unitPrice,
+        const created = await apiJson<{ prefactura?: { id: string } }>(
+          "/api/prefacturas",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              clientId: form.clientId,
+              documentType: form.documentType,
+              currency: form.currency,
+              shippingEnabled,
+              shippingFee,
+              subtotal: computed.subtotal,
+              total: computed.total,
+              municipalityFiscalSnapshot: form.municipalityFiscalSnapshot,
+              taxZoneSnapshot: form.taxZoneSnapshot,
+              withholdingTaxRate,
+              withholdingIcaRate,
+              withholdingIvaRate,
+              withholdingTaxAmount,
+              withholdingIcaAmount,
+              withholdingIvaAmount,
+              totalAfterWithholdings,
+              orderName,
+              orderType: prefacturaOrderType,
+              advanceRequired: hasAdvance ? computed.advancePayment : 0,
+              hasConvenio: false,
+              hasClientApproval,
+              clientApprovalImageUrl: hasClientApproval
+                ? clientApprovalImageUrl.trim() || null
+                : null,
+              items: validItems.map((item) => ({
+                productId: item.productId,
+                orderType: item.orderType,
+                process: item.process,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                discount: item.discount,
+                orderCodeReference: item.referenceOrderCode ?? null,
+                designNumber: item.referenceDesign ?? null,
+                additions: item.additions.map((add) => ({
+                  id: add.id,
+                  quantity: add.quantity,
+                  unitPrice: add.unitPrice,
+                })),
               })),
-            })),
-          }),
-        });
+            }),
+          },
+        );
 
         toast.success("Prefacture created");
 
@@ -482,14 +558,17 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
         if (created?.prefactura?.id) {
           router.push("/erp/pre-invoices");
           router.refresh();
+
           return;
         }
 
         router.push("/erp/pre-invoices");
         router.refresh();
+
         return;
       } catch (error) {
         toast.error(getErrorMessage(error));
+
         return;
       } finally {
         setCreatingPrefactura(false);
@@ -549,13 +628,19 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
           </h1>
           <p className="text-default-600">
             Code: {loadedQuoteCode || quoteCode}
-            {mode === "prefactura" && !quoteId ? " (will be created as direct prefacture)" : ""}
+            {mode === "prefactura" && !quoteId
+              ? " (will be created as direct prefacture)"
+              : ""}
           </p>
         </div>
         <Button
           variant="flat"
           onPress={() =>
-            router.push(mode === "prefactura" && !quoteId ? "/erp/pre-invoices" : "/quotations")
+            router.push(
+              mode === "prefactura" && !quoteId
+                ? "/erp/pre-invoices"
+                : "/quotations",
+            )
           }
         >
           Back
@@ -563,7 +648,7 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       </div>
 
       {mode === "prefactura" && !quoteId ? (
-        <Card radius="md" shadow="none" className="border border-default-200">
+        <Card className="border border-default-200" radius="md" shadow="none">
           <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input
               label="Order name"
@@ -576,8 +661,11 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
               selectedKeys={[prefacturaOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
+
                 setPrefacturaOrderType(
-                  first === "VI" || first === "VT" || first === "VW" ? first : "VN",
+                  first === "VI" || first === "VT" || first === "VW"
+                    ? first
+                    : "VN",
                 );
               }}
             >
@@ -591,9 +679,14 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold">Client approval</p>
-                  <p className="text-xs text-default-500">Client's commercial confirmation.</p>
+                  <p className="text-xs text-default-500">
+                    Client's commercial confirmation.
+                  </p>
                 </div>
-                <Switch isSelected={hasClientApproval} onValueChange={setHasClientApproval} />
+                <Switch
+                  isSelected={hasClientApproval}
+                  onValueChange={setHasClientApproval}
+                />
               </div>
             </div>
 
@@ -609,22 +702,23 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
                 />
               </div>
             ) : null}
-
           </CardBody>
         </Card>
       ) : null}
 
-      <Card radius="md" shadow="none" className="border border-default-200">
-        <CardHeader className="text-sm font-semibold">General Information</CardHeader>
+      <Card className="border border-default-200" radius="md" shadow="none">
+        <CardHeader className="text-sm font-semibold">
+          General Information
+        </CardHeader>
         <CardBody className="space-y-4">
           <QuotationsForm
-            form={form}
             clients={clients}
+            form={form}
             loadingClients={loadingClients || loadingQuote}
             onFormChange={onFormChange}
           />
 
-          <Card radius="md" shadow="none" className="border border-default-200">
+          <Card className="border border-default-200" radius="md" shadow="none">
             <CardBody className="py-3">
               <p className="text-xs text-default-500">Client type (COP)</p>
               <p className="text-sm font-semibold">{selectedClientPriceType}</p>
@@ -634,27 +728,34 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
       </Card>
 
       <QuotationsProductsTable
-        items={items}
-        products={products}
         additions={additions}
-        currency={form.currency}
+        asMoney={asMoney}
         clientPriceType={selectedClientPriceType}
-        loadingProducts={loadingProducts || loadingQuote}
+        currency={form.currency}
+        items={items}
         loadingAdditions={loadingAdditions || loadingQuote}
-        onAddItem={addItem}
-        onUpdateItem={updateItem}
-        onRemoveItem={removeItem}
+        loadingProducts={loadingProducts || loadingQuote}
+        products={products}
         onAddAddition={(itemId, addition) => {
           updateItem(itemId, {
-            additions: [...(items.find((i) => i.id === itemId)?.additions ?? []), addition],
+            additions: [
+              ...(items.find((i) => i.id === itemId)?.additions ?? []),
+              addition,
+            ],
           });
         }}
-        asMoney={asMoney}
+        onAddItem={addItem}
+        onRemoveItem={removeItem}
+        onUpdateItem={updateItem}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2" />
-        <Card radius="md" shadow="none" className="border border-default-200 lg:col-span-1">
+        <Card
+          className="border border-default-200 lg:col-span-1"
+          radius="md"
+          shadow="none"
+        >
           <CardHeader className="text-sm font-semibold">Totals</CardHeader>
           <CardBody className="space-y-3">
             <div className="flex justify-between text-sm">
@@ -669,7 +770,10 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
             <div className="space-y-2 border-t border-default-200 pt-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Shipping</span>
-                <Switch isSelected={shippingEnabled} onValueChange={setShippingEnabled} />
+                <Switch
+                  isSelected={shippingEnabled}
+                  onValueChange={setShippingEnabled}
+                />
               </div>
               <Input
                 isDisabled={!shippingEnabled}
@@ -677,14 +781,19 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
                 type="number"
                 value={String(shippingFee)}
                 variant="flat"
-                onValueChange={(v) => setShippingFee(Math.max(0, Number(v || 0)))}
+                onValueChange={(v) =>
+                  setShippingFee(Math.max(0, Number(v || 0)))
+                }
               />
             </div>
 
             <div className="space-y-2 border-t border-default-200 pt-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Insurance</span>
-                <Switch isSelected={insuranceEnabled} onValueChange={setInsuranceEnabled} />
+                <Switch
+                  isSelected={insuranceEnabled}
+                  onValueChange={setInsuranceEnabled}
+                />
               </div>
               <Input
                 isDisabled={!insuranceEnabled}
@@ -692,7 +801,9 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
                 type="number"
                 value={String(insuranceFee)}
                 variant="flat"
-                onValueChange={(v) => setInsuranceFee(Math.max(0, Number(v || 0)))}
+                onValueChange={(v) =>
+                  setInsuranceFee(Math.max(0, Number(v || 0)))
+                }
               />
             </div>
 
@@ -701,13 +812,22 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm">Advance</span>
-                    <p className="text-xs text-default-500">Commercial control at 50% for the prefacture.</p>
+                    <p className="text-xs text-default-500">
+                      Commercial control at 50% for the prefacture.
+                    </p>
                   </div>
-                  <Switch isSelected={hasAdvance} onValueChange={setHasAdvance} />
+                  <Switch
+                    isSelected={hasAdvance}
+                    onValueChange={setHasAdvance}
+                  />
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Advance (50%)</span>
-                  <span>{hasAdvance ? asMoney(computed.advancePayment) : "Not applicable"}</span>
+                  <span>
+                    {hasAdvance
+                      ? asMoney(computed.advancePayment)
+                      : "Not applicable"}
+                  </span>
                 </div>
               </div>
             ) : null}
@@ -725,26 +845,33 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
                   type="number"
                   value={String(withholdingTaxRate)}
                   variant="flat"
-                  onValueChange={(v) => setWithholdingTaxRate(Math.max(0, Number(v || 0)))}
+                  onValueChange={(v) =>
+                    setWithholdingTaxRate(Math.max(0, Number(v || 0)))
+                  }
                 />
                 <Input
                   label="ICA withholding (%)"
                   type="number"
                   value={String(withholdingIcaRate)}
                   variant="flat"
-                  onValueChange={(v) => setWithholdingIcaRate(Math.max(0, Number(v || 0)))}
+                  onValueChange={(v) =>
+                    setWithholdingIcaRate(Math.max(0, Number(v || 0)))
+                  }
                 />
                 <Input
                   label="IVA withholding (%)"
                   type="number"
                   value={String(withholdingIvaRate)}
                   variant="flat"
-                  onValueChange={(v) => setWithholdingIvaRate(Math.max(0, Number(v || 0)))}
+                  onValueChange={(v) =>
+                    setWithholdingIvaRate(Math.max(0, Number(v || 0)))
+                  }
                 />
               </div>
               <div className="rounded-medium border border-default-200 p-3 text-xs text-default-600">
                 <p>
-                  Fiscal snapshot: {form.municipalityFiscalSnapshot || "No municipality"} /{" "}
+                  Fiscal snapshot:{" "}
+                  {form.municipalityFiscalSnapshot || "No municipality"} /{" "}
                   {form.taxZoneSnapshot}
                 </p>
               </div>
@@ -775,7 +902,11 @@ export function QuotationEditor({ quoteId, mode = "quotation" }: QuotationEditor
               isLoading={submitting || creatingPrefactura}
               onPress={handleSaveQuotation}
             >
-              {quoteId ? "Save changes" : mode === "prefactura" ? "Save prefacture" : "Save quotation"}
+              {quoteId
+                ? "Save changes"
+                : mode === "prefactura"
+                  ? "Save prefacture"
+                  : "Save quotation"}
             </Button>
           </CardBody>
         </Card>

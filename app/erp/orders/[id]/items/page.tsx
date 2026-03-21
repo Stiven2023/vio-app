@@ -17,7 +17,9 @@ export default async function OrderItemsRoute({
 
   const payload = verifyAuthToken(token);
   const role =
-    payload && typeof payload === "object" ? (payload as { role?: unknown }).role : null;
+    payload && typeof payload === "object"
+      ? (payload as { role?: unknown }).role
+      : null;
   const employeeId =
     payload && typeof payload === "object"
       ? (payload as { employeeId?: unknown }).employeeId
@@ -45,13 +47,13 @@ export default async function OrderItemsRoute({
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <OrderItemsPage
+        advisorEmployeeId={typeof employeeId === "string" ? employeeId : null}
         canAssign={canAssign}
         canChangeStatus={canChangeStatus}
         canEdit={canEdit}
         canSeeHistory={canSeeHistory}
-        orderId={id}
-        advisorEmployeeId={typeof employeeId === "string" ? employeeId : null}
         isAdvisor={isAdvisor}
+        orderId={id}
       />
     </div>
   );

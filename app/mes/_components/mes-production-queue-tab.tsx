@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   CardBody,
-  CardHeader,
   Chip,
   Divider,
   Table,
@@ -62,8 +61,10 @@ export function MesProductionQueueTab() {
     setLoading(true);
     try {
       const res = await fetch("/api/mes/production-queue");
+
       if (!res.ok) throw new Error("No se pudo cargar la cola");
       const data = await res.json();
+
       setItems(data.items ?? []);
     } catch {
       toast.error("No se pudo cargar la cola de producción");
@@ -85,6 +86,7 @@ export function MesProductionQueueTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ priority: "URGENTE" }),
       });
+
       if (!res.ok) throw new Error("No se pudo actualizar la prioridad");
       toast.success("Marcado como URGENTE");
       await load();
@@ -99,6 +101,7 @@ export function MesProductionQueueTab() {
     if (confirming) return;
     if (items.length === 0) {
       toast.error("La cola está vacía");
+
       return;
     }
     setConfirming(true);
@@ -106,9 +109,13 @@ export function MesProductionQueueTab() {
       const res = await fetch("/api/mes/production-queue/confirm", {
         method: "POST",
       });
+
       if (!res.ok) throw new Error("No se pudo confirmar la cola");
       const data = await res.json();
-      toast.success(`Cola confirmada. ${data.confirmed} tickets activados para Montaje.`);
+
+      toast.success(
+        `Cola confirmada. ${data.confirmed} tickets activados para Montaje.`,
+      );
       await load();
     } catch {
       toast.error("No se pudo confirmar la cola de producción");
@@ -120,8 +127,14 @@ export function MesProductionQueueTab() {
   const formatDate = (value: string | null) => {
     if (!value) return "-";
     const d = new Date(value);
+
     if (Number.isNaN(d.getTime())) return "-";
-    return d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+    return d.toLocaleDateString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   };
 
   return (
@@ -130,7 +143,8 @@ export function MesProductionQueueTab() {
         <div>
           <h2 className="text-base font-semibold">Cola de Producción</h2>
           <p className="text-xs text-default-500">
-            Define el orden de los pedidos antes de activar el proceso de Montaje.
+            Define el orden de los pedidos antes de activar el proceso de
+            Montaje.
           </p>
         </div>
         <div className="flex gap-2">
@@ -157,21 +171,30 @@ export function MesProductionQueueTab() {
       </div>
 
       {isConfirmed ? (
-        <Card className="border border-success-200 bg-success-50" radius="sm" shadow="none">
+        <Card
+          className="border border-success-200 bg-success-50"
+          radius="sm"
+          shadow="none"
+        >
           <CardBody className="flex flex-row items-center gap-2 py-2 px-3">
             <MdCheckCircle className="text-success shrink-0" size={16} />
             <p className="text-xs text-success-700">
-              La cola fue confirmada. Los tickets de Montaje están activos.
-              Los URGENTES siempre aparecen primero.
+              La cola fue confirmada. Los tickets de Montaje están activos. Los
+              URGENTES siempre aparecen primero.
             </p>
           </CardBody>
         </Card>
       ) : (
-        <Card className="border border-warning-200 bg-warning-50" radius="sm" shadow="none">
+        <Card
+          className="border border-warning-200 bg-warning-50"
+          radius="sm"
+          shadow="none"
+        >
           <CardBody className="flex flex-row items-center gap-2 py-2 px-3">
             <MdWarning className="text-warning shrink-0" size={16} />
             <p className="text-xs text-warning-700">
-              La cola no ha sido confirmada. Ningún proceso puede iniciar tickets hasta que confirmes.
+              La cola no ha sido confirmada. Ningún proceso puede iniciar
+              tickets hasta que confirmes.
             </p>
           </CardBody>
         </Card>
@@ -180,7 +203,11 @@ export function MesProductionQueueTab() {
       <Divider className="opacity-60" />
 
       {loading ? (
-        <Card className="border border-dashed border-divider" radius="md" shadow="none">
+        <Card
+          className="border border-dashed border-divider"
+          radius="md"
+          shadow="none"
+        >
           <CardBody className="py-12 flex items-center justify-center">
             <div className="text-center text-default-400">
               <MdSchedule className="mx-auto mb-2 animate-spin" size={36} />
@@ -189,7 +216,11 @@ export function MesProductionQueueTab() {
           </CardBody>
         </Card>
       ) : items.length === 0 ? (
-        <Card className="border border-dashed border-divider" radius="md" shadow="none">
+        <Card
+          className="border border-dashed border-divider"
+          radius="md"
+          shadow="none"
+        >
           <CardBody className="py-12 flex items-center justify-center">
             <div className="text-center text-default-400">
               <MdError className="mx-auto mb-2 opacity-40" size={36} />
@@ -221,7 +252,9 @@ export function MesProductionQueueTab() {
                   <TableCell>
                     <div className="space-y-0.5">
                       <p className="text-xs font-medium">{item.orderCode}</p>
-                      <p className="text-xs text-default-400">{item.clientName ?? "-"}</p>
+                      <p className="text-xs text-default-400">
+                        {item.clientName ?? "-"}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>

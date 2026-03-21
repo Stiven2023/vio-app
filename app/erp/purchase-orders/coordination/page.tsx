@@ -7,6 +7,7 @@ import { requirePermission } from "@/src/utils/permission-middleware";
 
 export default async function PurchaseOrdersCoordinationPage() {
   const token = (await cookies()).get("auth_token")?.value;
+
   if (!token) redirect("/login");
 
   const req = new Request("http://localhost", {
@@ -14,6 +15,7 @@ export default async function PurchaseOrdersCoordinationPage() {
   });
 
   const forbidden = await requirePermission(req, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) redirect("/unauthorized");
 
   return (

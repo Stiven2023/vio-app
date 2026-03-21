@@ -44,6 +44,7 @@ export function validateLogin({
 }): string {
   if (!email) return "El usuario/correo es obligatorio.";
   const value = String(email ?? "").trim();
+
   if (value.includes("@") && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
     return "Correo inválido.";
   }

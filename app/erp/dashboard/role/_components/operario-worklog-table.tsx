@@ -136,15 +136,18 @@ const initialDraft: DraftRow = {
 function asDateTimeInput(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
+
   if (Number.isNaN(date.getTime())) return "";
 
   const offset = date.getTimezoneOffset();
   const local = new Date(date.getTime() - offset * 60_000);
+
   return local.toISOString().slice(0, 16);
 }
 
 function asDateTimeIso(value: string) {
   const raw = String(value ?? "").trim();
+
   if (!raw) return null;
 
   if (/^\d{2}:\d{2}$/.test(raw)) {
@@ -163,11 +166,14 @@ function asDateTimeIso(value: string) {
     }
 
     now.setHours(hours, minutes, 0, 0);
+
     return now.toISOString();
   }
 
   const date = new Date(raw);
+
   if (Number.isNaN(date.getTime())) return null;
+
   return date.toISOString();
 }
 
@@ -175,6 +181,7 @@ function normalizeRoleAreaByRole(role: string): RoleArea {
   if (role === "CONFECCIONISTA") return "CONFECCIONISTAS";
   if (role === "MENSAJERO") return "MENSAJERIA";
   if (role === "EMPAQUE") return "EMPAQUE";
+
   return "OPERARIOS";
 }
 
@@ -188,6 +195,7 @@ function normalizeOperationByRole(role: string): OperationType {
   if (role === "EMPAQUE") return "EMPAQUE";
   if (role === "OPERARIO_INTEGRACION_CALIDAD") return "INTEGRACION";
   if (role === "OPERARIO_DESPACHO") return "DESPACHO";
+
   return "MONTAJE";
 }
 
@@ -253,7 +261,8 @@ export function OperarioWorklogTable({
 
     const firstTalla = tallaOptions[0];
     const initialSize =
-      String(prefill.size ?? "").trim() || String(firstTalla?.talla ?? "").trim();
+      String(prefill.size ?? "").trim() ||
+      String(firstTalla?.talla ?? "").trim();
     const initialQty =
       firstTalla && String(firstTalla.talla).trim() === initialSize
         ? Math.max(0, Math.floor(Number(firstTalla.cantidad) || 0))
@@ -269,9 +278,10 @@ export function OperarioWorklogTable({
       quantityOp:
         typeof initialQty === "number"
           ? String(initialQty)
-          : typeof prefill.quantityOp === "number" && Number.isFinite(prefill.quantityOp)
-          ? String(Math.max(0, Math.floor(prefill.quantityOp)))
-          : prev.quantityOp,
+          : typeof prefill.quantityOp === "number" &&
+              Number.isFinite(prefill.quantityOp)
+            ? String(Math.max(0, Math.floor(prefill.quantityOp)))
+            : prev.quantityOp,
     }));
   }, [prefill, roleAreaFilter, operationFilter, tallaOptions]);
 
@@ -285,6 +295,7 @@ export function OperarioWorklogTable({
     if (!selected) return;
 
     const qty = String(Math.max(0, Math.floor(Number(selected.cantidad) || 0)));
+
     if (qty === draft.quantityOp) return;
 
     setDraft((prev) => ({ ...prev, quantityOp: qty }));
@@ -292,6 +303,7 @@ export function OperarioWorklogTable({
 
   useEffect(() => {
     let active = true;
+
     setLoading(true);
 
     apiJson<Paginated<WorklogItem>>(
@@ -303,7 +315,13 @@ export function OperarioWorklogTable({
       })
       .catch((error) => {
         if (!active) return;
-        setData({ items: [], page: 1, pageSize: 10, total: 0, hasNextPage: false });
+        setData({
+          items: [],
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          hasNextPage: false,
+        });
         toast.error(getErrorMessage(error));
       })
       .finally(() => {
@@ -331,17 +349,20 @@ export function OperarioWorklogTable({
 
     if (!draft.orderCode.trim()) {
       toast.error("El pedido es obligatorio");
+
       return;
     }
 
     if (!draft.designName.trim()) {
       toast.error("El diseño es obligatorio");
+
       return;
     }
 
     if (draft.isPartial && !repoReason.trim()) {
       toast.error("Debes indicar el motivo de la reposición interna");
       setShowPartialModal(true);
+
       return;
     }
 
@@ -351,7 +372,9 @@ export function OperarioWorklogTable({
           `Motivo: ${repoReason.trim() || "N/A"}`,
           `Reporta: ${reporterId}`,
           `Observaciones repo: ${repoNotes.trim() || "N/A"}`,
-          draft.observations.trim() ? `Observaciones operativas: ${draft.observations.trim()}` : null,
+          draft.observations.trim()
+            ? `Observaciones operativas: ${draft.observations.trim()}`
+            : null,
         ]
           .filter(Boolean)
           .join(" | ")
@@ -434,23 +457,29 @@ export function OperarioWorklogTable({
   return (
     <div className="space-y-3">
       <div className="text-sm text-default-500">
-        Registra producción por rol y operación: pedido, diseño, talla y cantidades; si marcas parcial + repo o creas reposición desde una fila parcial, se vincula con Programación por pedido/diseño/talla.
+        Registra producción por rol y operación: pedido, diseño, talla y
+        cantidades; si marcas parcial + repo o creas reposición desde una fila
+        parcial, se vincula con Programación por pedido/diseño/talla.
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <Input
-          label="Pedido"
           isReadOnly={isPrefilledMode}
+          label="Pedido"
           size="sm"
           value={draft.orderCode}
-          onValueChange={(value) => setDraft((s) => ({ ...s, orderCode: value }))}
+          onValueChange={(value) =>
+            setDraft((s) => ({ ...s, orderCode: value }))
+          }
         />
         <Input
-          label="Diseño"
           isReadOnly={isPrefilledMode}
+          label="Diseño"
           size="sm"
           value={draft.designName}
-          onValueChange={(value) => setDraft((s) => ({ ...s, designName: value }))}
+          onValueChange={(value) =>
+            setDraft((s) => ({ ...s, designName: value }))
+          }
         />
         <Input
           label="Detalles"
@@ -460,12 +489,13 @@ export function OperarioWorklogTable({
         />
         {tallaOptions.length > 0 ? (
           <Select
-            label="Talla"
             disallowEmptySelection
+            label="Talla"
             selectedKeys={[draft.size || String(tallaOptions[0]?.talla ?? "")]}
             size="sm"
             onSelectionChange={(keys) => {
               const first = String(Array.from(keys)[0] ?? "").trim();
+
               setDraft((s) => ({ ...s, size: first }));
             }}
           >
@@ -484,19 +514,23 @@ export function OperarioWorklogTable({
           />
         )}
         <Input
-          label="Cantidad OP"
           isReadOnly={isPrefilledMode}
+          label="Cantidad OP"
           size="sm"
           type="number"
           value={draft.quantityOp}
-          onValueChange={(value) => setDraft((s) => ({ ...s, quantityOp: value }))}
+          onValueChange={(value) =>
+            setDraft((s) => ({ ...s, quantityOp: value }))
+          }
         />
         <Input
           label="Cantidad producida"
           size="sm"
           type="number"
           value={draft.producedQuantity}
-          onValueChange={(value) => setDraft((s) => ({ ...s, producedQuantity: value }))}
+          onValueChange={(value) =>
+            setDraft((s) => ({ ...s, producedQuantity: value }))
+          }
         />
         <Input
           label="Hora inicio"
@@ -516,18 +550,21 @@ export function OperarioWorklogTable({
           label="Observaciones"
           size="sm"
           value={draft.observations}
-          onValueChange={(value) => setDraft((s) => ({ ...s, observations: value }))}
+          onValueChange={(value) =>
+            setDraft((s) => ({ ...s, observations: value }))
+          }
         />
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
         <Select
-          label="Proceso"
           disallowEmptySelection
+          label="Proceso"
           selectedKeys={[draft.processCode]}
           size="sm"
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0] as ProcessCode | undefined;
+
             setDraft((s) => ({ ...s, processCode: first ?? "P" }));
           }}
         >
@@ -537,14 +574,18 @@ export function OperarioWorklogTable({
         </Select>
 
         <Select
-          label="Operación"
           disallowEmptySelection
-          selectedKeys={[draft.operationType]}
           isDisabled={isOperationFixed}
+          label="Operación"
+          selectedKeys={[draft.operationType]}
           size="sm"
           onSelectionChange={(keys) => {
             const first = Array.from(keys)[0] as OperationType | undefined;
-            setDraft((s) => ({ ...s, operationType: first ?? operationFilter }));
+
+            setDraft((s) => ({
+              ...s,
+              operationType: first ?? operationFilter,
+            }));
           }}
         >
           {operationOptions.map((option) => (
@@ -572,8 +613,14 @@ export function OperarioWorklogTable({
             isSelected={draft.isPartial}
             onValueChange={(value) => {
               if (value) {
-                setDraft((s) => ({ ...s, isPartial: true, isComplete: false, repoCheck: true }));
+                setDraft((s) => ({
+                  ...s,
+                  isPartial: true,
+                  isComplete: false,
+                  repoCheck: true,
+                }));
                 setShowPartialModal(true);
+
                 return;
               }
 
@@ -585,7 +632,6 @@ export function OperarioWorklogTable({
             Parcial
           </Checkbox>
         </div>
-
       </div>
 
       <div className="flex justify-end">
@@ -597,13 +643,16 @@ export function OperarioWorklogTable({
       {loading ? (
         <div className="space-y-2 rounded-medium border border-default-200 p-3">
           {Array.from({ length: 5 }).map((_, index) => (
-            <Skeleton key={`worklog-loading-${index}`} className="h-7 w-full rounded-small" />
+            <Skeleton
+              key={`worklog-loading-${index}`}
+              className="h-7 w-full rounded-small"
+            />
           ))}
         </div>
       ) : null}
 
       <div className="rounded-medium border border-default-200 overflow-x-auto">
-        <Table aria-label="Dashboard operativo" removeWrapper>
+        <Table removeWrapper aria-label="Dashboard operativo">
           <TableHeader>
             <TableColumn>PEDIDO</TableColumn>
             <TableColumn>DISEÑO</TableColumn>
@@ -621,54 +670,57 @@ export function OperarioWorklogTable({
             <TableColumn>ESTADO PROG.</TableColumn>
             <TableColumn>ACCIONES</TableColumn>
           </TableHeader>
-          <TableBody emptyContent={loading ? "Cargando..." : "Sin registros"} items={data?.items ?? []}>
+          <TableBody
+            emptyContent={loading ? "Cargando..." : "Sin registros"}
+            items={data?.items ?? []}
+          >
             {(item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.orderCode}</TableCell>
-                    <TableCell>{item.designName}</TableCell>
-                    <TableCell>{item.details ?? "-"}</TableCell>
-                    <TableCell>{item.size ?? "-"}</TableCell>
-                    <TableCell>{item.quantityOp}</TableCell>
-                    <TableCell>{item.producedQuantity}</TableCell>
-                    <TableCell>{asDateTimeInput(item.startAt) || "-"}</TableCell>
-                    <TableCell>{asDateTimeInput(item.endAt) || "-"}</TableCell>
-                    <TableCell>{item.isComplete ? "✓" : "-"}</TableCell>
-                    <TableCell>{item.isPartial ? "✓" : "-"}</TableCell>
-                    <TableCell>{item.observations ?? "-"}</TableCell>
-                    <TableCell>{item.processCode}</TableCell>
-                    <TableCell>{item.operationType ?? "-"}</TableCell>
-                    <TableCell>
-                      <span className="inline-flex rounded-full bg-default-100 px-2 py-0.5 text-xs font-medium">
-                        {item.linkedOrderItemStatus ?? "-"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {item.isPartial ? (
-                          <Button
-                            color="primary"
-                            isDisabled={saving || deletingId === item.id}
-                            size="sm"
-                            variant="flat"
-                            onPress={() => createRepositionFromRow(item.id)}
-                          >
-                            Reposición
-                          </Button>
-                        ) : null}
-                        <Button
-                          color="danger"
-                          isDisabled={deletingId === item.id || saving}
-                          isLoading={deletingId === item.id}
-                          size="sm"
-                          variant="flat"
-                          onPress={() => removeRecord(item.id)}
-                        >
-                          <BsTrash />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
+              <TableRow key={item.id}>
+                <TableCell>{item.orderCode}</TableCell>
+                <TableCell>{item.designName}</TableCell>
+                <TableCell>{item.details ?? "-"}</TableCell>
+                <TableCell>{item.size ?? "-"}</TableCell>
+                <TableCell>{item.quantityOp}</TableCell>
+                <TableCell>{item.producedQuantity}</TableCell>
+                <TableCell>{asDateTimeInput(item.startAt) || "-"}</TableCell>
+                <TableCell>{asDateTimeInput(item.endAt) || "-"}</TableCell>
+                <TableCell>{item.isComplete ? "✓" : "-"}</TableCell>
+                <TableCell>{item.isPartial ? "✓" : "-"}</TableCell>
+                <TableCell>{item.observations ?? "-"}</TableCell>
+                <TableCell>{item.processCode}</TableCell>
+                <TableCell>{item.operationType ?? "-"}</TableCell>
+                <TableCell>
+                  <span className="inline-flex rounded-full bg-default-100 px-2 py-0.5 text-xs font-medium">
+                    {item.linkedOrderItemStatus ?? "-"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {item.isPartial ? (
+                      <Button
+                        color="primary"
+                        isDisabled={saving || deletingId === item.id}
+                        size="sm"
+                        variant="flat"
+                        onPress={() => createRepositionFromRow(item.id)}
+                      >
+                        Reposición
+                      </Button>
+                    ) : null}
+                    <Button
+                      color="danger"
+                      isDisabled={deletingId === item.id || saving}
+                      isLoading={deletingId === item.id}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => removeRecord(item.id)}
+                    >
+                      <BsTrash />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
@@ -682,11 +734,12 @@ export function OperarioWorklogTable({
               <ModalHeader>Reposición interna por parcial</ModalHeader>
               <ModalBody>
                 <p className="text-sm text-default-500">
-                  Al marcar parcial se generará reposición interna y se enviará a Programación (actualización).
+                  Al marcar parcial se generará reposición interna y se enviará
+                  a Programación (actualización).
                 </p>
                 <Input
-                  label="Motivo"
                   isRequired
+                  label="Motivo"
                   value={repoReason}
                   onValueChange={setRepoReason}
                 />
@@ -704,7 +757,11 @@ export function OperarioWorklogTable({
                 <Button
                   variant="flat"
                   onPress={() => {
-                    setDraft((s) => ({ ...s, isPartial: false, repoCheck: false }));
+                    setDraft((s) => ({
+                      ...s,
+                      isPartial: false,
+                      repoCheck: false,
+                    }));
                     setRepoReason("");
                     setRepoNotes("");
                     onClose();
@@ -717,10 +774,16 @@ export function OperarioWorklogTable({
                   onPress={() => {
                     if (!repoReason.trim()) {
                       toast.error("Debes indicar el motivo");
+
                       return;
                     }
 
-                    setDraft((s) => ({ ...s, isPartial: true, isComplete: false, repoCheck: true }));
+                    setDraft((s) => ({
+                      ...s,
+                      isPartial: true,
+                      isComplete: false,
+                      repoCheck: true,
+                    }));
                     onClose();
                   }}
                 >

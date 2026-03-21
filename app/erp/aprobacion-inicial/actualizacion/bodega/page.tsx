@@ -21,8 +21,8 @@ export default async function AprobacionInicialActualizacionBodegaPage() {
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Approval Update — Warehouse</h1>
       <p className="text-default-600 mt-1">
-        Approve design changes in WAREHOUSE process and send them to Scheduling -
-        Update.
+        Approve design changes in WAREHOUSE process and send them to Scheduling
+        - Update.
       </p>
       <div className="mt-6">
         <ProgramacionItemsTable

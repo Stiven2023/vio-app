@@ -1,22 +1,32 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 import { Tab, Tabs } from "@heroui/tabs";
-import { Dropdown, DropdownItem, DropdownMenu, DropdownTrigger } from "@heroui/dropdown";
-import { BsPersonFill, BsTrash, BsPlusCircle, BsEnvelope, BsKey, BsFillPersonBadgeFill } from "react-icons/bs";
+import {
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
+} from "@heroui/dropdown";
+import {
+  BsTrash,
+  BsPlusCircle,
+  BsEnvelope,
+  BsKey,
+  BsFillPersonBadgeFill,
+} from "react-icons/bs";
 import { Skeleton } from "@heroui/skeleton";
+
 import { AlertToast } from "@/components/alert-toast";
 import { FileUpload, uploadFileToCldinary } from "@/components/file-upload";
 
 type RoleOption = { id: string; name: string };
 
 export type InitialUser = { id: string; email: string };
-
 
 type Beneficiary = {
   name: string;
@@ -119,7 +129,9 @@ export function EmployeeRegisterForm({
   const [identificationError, setIdentificationError] = useState<string>("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [pendingFiles, setPendingFiles] = useState<Record<string, File>>({});
-  const [pendingBeneficiaryFiles, setPendingBeneficiaryFiles] = useState<Record<string, File>>({});
+  const [pendingBeneficiaryFiles, setPendingBeneficiaryFiles] = useState<
+    Record<string, File>
+  >({});
 
   useEffect(() => {
     setForm((s) => ({
@@ -143,12 +155,14 @@ export function EmployeeRegisterForm({
 
         if (!res.ok) {
           const text = await res.text();
+
           if (!cancelled) {
             setToast({
               message: text || "Could not load the employee.",
               type: "error",
             });
           }
+
           return;
         }
 
@@ -250,10 +264,15 @@ export function EmployeeRegisterForm({
   }, []);
 
   // Validaciones
-  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValidEmail = (email: string) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const isValidPassword = (pw: string) => pw.length >= 7 && /[A-Z]/.test(pw);
-  const isIdentificationValidByType = (identificationType: string, identification: string) => {
+  const isIdentificationValidByType = (
+    identificationType: string,
+    identification: string,
+  ) => {
     const value = identification.trim();
+
     if (!value) return false;
 
     switch (identificationType) {
@@ -274,8 +293,10 @@ export function EmployeeRegisterForm({
 
   const checkIdentificationUniqueness = async () => {
     const identification = form.identification.trim();
+
     if (!identification) {
       setIdentificationError("");
+
       return;
     }
 
@@ -288,12 +309,16 @@ export function EmployeeRegisterForm({
     if (employeeId) params.set("excludeId", employeeId);
 
     try {
-      const res = await fetch(`/api/registry/identification-check?${params.toString()}`, {
-        credentials: "include",
-      });
+      const res = await fetch(
+        `/api/registry/identification-check?${params.toString()}`,
+        {
+          credentials: "include",
+        },
+      );
 
       if (!res.ok) {
         setIdentificationError("");
+
         return;
       }
 
@@ -329,6 +354,7 @@ export function EmployeeRegisterForm({
     file: File,
   ) => {
     const key = getBeneficiaryFileKey(index, fieldName);
+
     setPendingBeneficiaryFiles((prev) => ({ ...prev, [key]: file }));
   };
 
@@ -337,8 +363,10 @@ export function EmployeeRegisterForm({
     fieldName: "identityDocumentUrl" | "birthCertificateUrl",
   ) => {
     const key = getBeneficiaryFileKey(index, fieldName);
+
     setPendingBeneficiaryFiles((prev) => {
       const { [key]: _removed, ...rest } = prev;
+
       return rest;
     });
   };
@@ -351,6 +379,7 @@ export function EmployeeRegisterForm({
 
     setPendingBeneficiaryFiles((prev) => {
       const next: Record<string, File> = {};
+
       Object.entries(prev).forEach(([key, file]) => {
         const [indexPart, fieldName] = key.split(":");
         const currentIndex = Number(indexPart);
@@ -359,9 +388,12 @@ export function EmployeeRegisterForm({
           return;
         }
 
-        const targetIndex = currentIndex > index ? currentIndex - 1 : currentIndex;
+        const targetIndex =
+          currentIndex > index ? currentIndex - 1 : currentIndex;
+
         next[`${targetIndex}:${fieldName}`] = file;
       });
+
       return next;
     });
   };
@@ -369,6 +401,7 @@ export function EmployeeRegisterForm({
   const removePendingFile = (fieldName: string) => {
     setPendingFiles((prev) => {
       const { [fieldName]: _removed, ...rest } = prev;
+
       return rest;
     });
   };
@@ -391,7 +424,12 @@ export function EmployeeRegisterForm({
     for (const [fieldName, file] of Object.entries(pendingFiles)) {
       const abbr = documentAbbreviations[fieldName] || fieldName;
       const customFileName = `${baseIdentification || "employee"}-${abbr}`;
-      const url = await uploadFileToCldinary(file, uploadFolder, customFileName);
+      const url = await uploadFileToCldinary(
+        file,
+        uploadFolder,
+        customFileName,
+      );
+
       uploadedUrls[fieldName] = url;
     }
 
@@ -408,7 +446,9 @@ export function EmployeeRegisterForm({
   ): Promise<Beneficiary[]> => {
     if (Object.keys(pendingBeneficiaryFiles).length === 0) return beneficiaries;
 
-    const updatedBeneficiaries = beneficiaries.map((beneficiary) => ({ ...beneficiary }));
+    const updatedBeneficiaries = beneficiaries.map((beneficiary) => ({
+      ...beneficiary,
+    }));
     const baseIdentification = form.identification.replace(/\s+/g, "").trim();
     const uploadFolder = `employees/${baseIdentification || "documents"}/beneficiaries`;
 
@@ -416,17 +456,28 @@ export function EmployeeRegisterForm({
       const [indexPart, fieldName] = key.split(":");
       const beneficiaryIndex = Number(indexPart);
 
-      if (!Number.isFinite(beneficiaryIndex) || !updatedBeneficiaries[beneficiaryIndex]) {
+      if (
+        !Number.isFinite(beneficiaryIndex) ||
+        !updatedBeneficiaries[beneficiaryIndex]
+      ) {
         continue;
       }
 
-      if (fieldName !== "identityDocumentUrl" && fieldName !== "birthCertificateUrl") {
+      if (
+        fieldName !== "identityDocumentUrl" &&
+        fieldName !== "birthCertificateUrl"
+      ) {
         continue;
       }
 
       const abbr = beneficiaryDocumentAbbreviations[fieldName] || fieldName;
       const customFileName = `${baseIdentification || "employee"}-ben-${beneficiaryIndex + 1}-${abbr}`;
-      const url = await uploadFileToCldinary(file, uploadFolder, customFileName);
+      const url = await uploadFileToCldinary(
+        file,
+        uploadFolder,
+        customFileName,
+      );
+
       updatedBeneficiaries[beneficiaryIndex][fieldName] = url;
     }
 
@@ -435,27 +486,38 @@ export function EmployeeRegisterForm({
 
   const submit = async () => {
     const userId = form.userId?.trim();
+
     if (!userId) {
-      setToast({ message: "You must create a user first (email).", type: "error" });
+      setToast({
+        message: "You must create a user first (email).",
+        type: "error",
+      });
+
       return;
     }
     if (!form.name.trim()) {
       setToast({ message: "Name is required.", type: "error" });
+
       return;
     }
     if (!form.roleId.trim()) {
       setToast({ message: "Role is required.", type: "error" });
+
       return;
     }
     if (!form.identificationType.trim()) {
       setToast({ message: "Identification type is required.", type: "error" });
+
       return;
     }
     if (!form.identification.trim()) {
       setToast({ message: "Identification is required.", type: "error" });
+
       return;
     }
-    if (!isIdentificationValidByType(form.identificationType, form.identification)) {
+    if (
+      !isIdentificationValidByType(form.identificationType, form.identification)
+    ) {
       setToast({
         message:
           form.identificationType === "CC"
@@ -469,17 +531,20 @@ export function EmployeeRegisterForm({
                   : "The identifier does not meet the required format.",
         type: "error",
       });
+
       return;
     }
 
     // Validar que no hay error de identificación duplicada (ya validado con debounce)
     if (identificationError) {
       setToast({ message: identificationError, type: "error" });
+
       return;
     }
 
     if (!isValidEmail(form.email)) {
       setToast({ message: "Email is not valid.", type: "error" });
+
       return;
     }
 
@@ -487,31 +552,40 @@ export function EmployeeRegisterForm({
     try {
       let updatedForm = {
         ...form,
-        beneficiaries: form.beneficiaries.map((beneficiary) => ({ ...beneficiary })),
+        beneficiaries: form.beneficiaries.map((beneficiary) => ({
+          ...beneficiary,
+        })),
       };
 
       if (Object.keys(pendingFiles).length > 0) {
         try {
           const uploadedUrls = await uploadPendingFiles();
+
           updatedForm = {
             ...updatedForm,
             identityDocumentUrl:
-              uploadedUrls.identityDocumentUrl || updatedForm.identityDocumentUrl,
-            hojaDeVidaUrl: uploadedUrls.hojaDeVidaUrl || updatedForm.hojaDeVidaUrl,
+              uploadedUrls.identityDocumentUrl ||
+              updatedForm.identityDocumentUrl,
+            hojaDeVidaUrl:
+              uploadedUrls.hojaDeVidaUrl || updatedForm.hojaDeVidaUrl,
             certificadoLaboralUrl:
-              uploadedUrls.certificadoLaboralUrl || updatedForm.certificadoLaboralUrl,
+              uploadedUrls.certificadoLaboralUrl ||
+              updatedForm.certificadoLaboralUrl,
             certificadoEstudiosUrl:
-              uploadedUrls.certificadoEstudiosUrl || updatedForm.certificadoEstudiosUrl,
+              uploadedUrls.certificadoEstudiosUrl ||
+              updatedForm.certificadoEstudiosUrl,
             epsCertificateUrl:
               uploadedUrls.epsCertificateUrl || updatedForm.epsCertificateUrl,
             pensionCertificateUrl:
-              uploadedUrls.pensionCertificateUrl || updatedForm.pensionCertificateUrl,
+              uploadedUrls.pensionCertificateUrl ||
+              updatedForm.pensionCertificateUrl,
             bankCertificateUrl:
               uploadedUrls.bankCertificateUrl || updatedForm.bankCertificateUrl,
           };
           setPendingFiles({});
         } catch {
           setToast({ message: "Could not upload documents.", type: "error" });
+
           return;
         }
       }
@@ -521,28 +595,45 @@ export function EmployeeRegisterForm({
           const uploadedBeneficiaries = await uploadPendingBeneficiaryFiles(
             updatedForm.beneficiaries,
           );
+
           updatedForm = {
             ...updatedForm,
             beneficiaries: uploadedBeneficiaries,
           };
           setPendingBeneficiaryFiles({});
         } catch {
-          setToast({ message: "Could not upload beneficiary documents.", type: "error" });
+          setToast({
+            message: "Could not upload beneficiary documents.",
+            type: "error",
+          });
+
           return;
         }
       }
 
       for (const b of updatedForm.beneficiaries) {
         if (!b.name.trim()) {
-          setToast({ message: "All beneficiaries must have a name.", type: "error" });
+          setToast({
+            message: "All beneficiaries must have a name.",
+            type: "error",
+          });
+
           return;
         }
         if (!b.identityDocumentUrl) {
-          setToast({ message: "All beneficiaries must have an identity document.", type: "error" });
+          setToast({
+            message: "All beneficiaries must have an identity document.",
+            type: "error",
+          });
+
           return;
         }
         if (b.type === "HIJO" && !b.birthCertificateUrl) {
-          setToast({ message: "Child beneficiary must have a birth certificate.", type: "error" });
+          setToast({
+            message: "Child beneficiary must have a birth certificate.",
+            type: "error",
+          });
+
           return;
         }
       }
@@ -578,12 +669,15 @@ export function EmployeeRegisterForm({
           beneficiaries: updatedForm.beneficiaries,
         }),
       });
+
       if (!res.ok) {
         const text = await res.text();
+
         setToast({
           message: text || "Could not register employee.",
           type: "error",
         });
+
         return;
       }
       setToast({
@@ -630,7 +724,11 @@ export function EmployeeRegisterForm({
                 selectedKeys={[form.identificationType]}
                 onSelectionChange={(keys) => {
                   const first = Array.from(keys)[0];
-                  setForm((s) => ({ ...s, identificationType: String(first ?? "CC") }));
+
+                  setForm((s) => ({
+                    ...s,
+                    identificationType: String(first ?? "CC"),
+                  }));
                 }}
               >
                 <SelectItem key="CC">National ID (CC)</SelectItem>
@@ -640,19 +738,19 @@ export function EmployeeRegisterForm({
                 <SelectItem key="EMPRESA_EXTERIOR">Foreign Company</SelectItem>
               </Select>
               <Input
-                label="Identification"
-                value={form.identification}
                 errorMessage={identificationError}
                 isInvalid={Boolean(identificationError)}
+                label="Identification"
+                value={form.identification}
                 onValueChange={(v) => {
                   setForm((s) => ({ ...s, identification: v }));
                   setIdentificationError("");
-                  
+
                   // Debounce: validar duplicados mientras escribe
                   if (debounceTimerRef.current) {
                     clearTimeout(debounceTimerRef.current);
                   }
-                  
+
                   debounceTimerRef.current = setTimeout(() => {
                     checkIdentificationUniqueness();
                   }, 500);
@@ -666,434 +764,584 @@ export function EmployeeRegisterForm({
               />
             </div>
           </Tab>
-        <Tab key="contacto" title="Contact">
-          <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-            <Input
-              label="International code"
-              value={form.intlDialCode}
-              onValueChange={(v) => setForm((s) => ({ ...s, intlDialCode: v }))}
-            />
-            <Input
-              label="Mobile"
-              value={form.mobile}
-              onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
-            />
-            <Input
-              label="Landline"
-              value={form.landline}
-              onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
-            />
-            <Input
-              label="Extension"
-              value={form.extension}
-              onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
-            />
-          </div>
-        </Tab>
-        <Tab key="ubicacion" title="Location">
-          <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-            <Input
-              label="Address"
-              value={form.address}
-              onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
-            />
-            <Input
-              label="City"
-              value={form.city}
-              onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
-            />
-            <Input
-              label="Department"
-              value={form.department}
-              onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
-            />
-          </div>
-        </Tab>
-        <Tab key="usuario-rol" title="User and role">
-          <div className="space-y-4 pt-3">
-            <Input
-              label="User (email)"
-              value={form.email}
-              isDisabled
-              startContent={<BsEnvelope className="text-xl text-default-500" />}
-            />
-            <p className="text-xs text-default-500">
-              {form.userId
-                ? "User created and assigned. You can now register the employee."
-                : "First create and assign a user to enable employee registration."}
-            </p>
-            <Dropdown isOpen={userDropdownOpen} onOpenChange={setUserDropdownOpen}>
-              <DropdownTrigger>
-                <Button variant="flat">
-                  Create user
-                </Button>
-              </DropdownTrigger>
-              <DropdownMenu aria-label="User creator" closeOnSelect={false}>
-                <DropdownItem key="creator" textValue="User creator">
-                  <div className="w-[280px] space-y-2 py-1">
-                    <Input
-                      label="User email"
-                      placeholder="user@domain.com"
-                      type="text"
-                      inputMode="email"
-                      autoComplete="email"
-                      value={form.createUserEmail}
-                      onValueChange={(v) => setForm((s) => ({ ...s, createUserEmail: v }))}
-                      startContent={<BsEnvelope className="text-xl text-default-500" />}
-                      errorMessage={form.createUserEmail && !isValidEmail(form.createUserEmail) ? "Invalid email" : undefined}
-                      isInvalid={!!form.createUserEmail && !isValidEmail(form.createUserEmail)}
-                    />
-                    <Input
-                      label="Password"
-                      placeholder="Minimum 7, 1 uppercase"
-                      type="password"
-                      value={form.createUserPassword}
-                      onValueChange={(v) => setForm((s) => ({ ...s, createUserPassword: v }))}
-                      startContent={<BsKey className="text-xl text-default-500" />}
-                      errorMessage={form.createUserPassword && !isValidPassword(form.createUserPassword) ? "Must have minimum 7 characters and 1 uppercase" : undefined}
-                      isInvalid={!!form.createUserPassword && !isValidPassword(form.createUserPassword)}
-                    />
-                    <Button
-                      className="w-full mt-2"
-                      color="primary"
-                      isDisabled={!form.createUserEmail || !form.createUserPassword || creatingUser || !!employeeId}
-                      isLoading={creatingUser}
-                      onPress={async () => {
-                        if (!isValidEmail(form.createUserEmail)) {
-                          setToast({ message: "User email is not valid.", type: "error" });
-                          return;
-                        }
-                        if (!isValidPassword(form.createUserPassword)) {
-                          setToast({
-                            message: "Password must have minimum 7 characters and 1 uppercase letter.",
-                            type: "error",
-                          });
-                          return;
-                        }
-
-                        setCreatingUser(true);
-                        try {
-                          const res = await fetch("/api/users", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              email: form.createUserEmail,
-                              password: form.createUserPassword,
-                            }),
-                          });
-                          if (!res.ok) {
-                            throw new Error(await res.text());
-                          }
-                          const data = (await res.json()) as unknown;
-                          const createdUser = Array.isArray(data)
-                            ? (data[0] as { id?: string; email?: string } | undefined)
-                            : (data as { id?: string; email?: string } | undefined);
-
-                          const createdUserId = createdUser?.id?.trim() ?? "";
-                          const createdUserEmail = createdUser?.email?.trim() ?? form.createUserEmail.trim();
-
-                          if (!createdUserId) {
-                            throw new Error("No user ID received from creation.");
-                          }
-
-                          setForm((s) => ({
-                            ...s,
-                            userId: createdUserId,
-                            email: createdUserEmail,
-                            createUserEmail: "",
-                            createUserPassword: "",
-                          }));
-                          setToast({ message: "User created and assigned.", type: "success" });
-                          setUserDropdownOpen(false);
-                        } catch (e: unknown) {
-                          const message = e instanceof Error ? e.message : "Unknown error";
-                          setToast({ message: `Error creating user: ${message}`, type: "error" });
-                        } finally {
-                          setCreatingUser(false);
-                        }
-                      }}
-                    >Create and assign</Button>
-                    <p className="text-xs text-default-500">
-                      Optional. If you fill in these fields, the user will be created and associated without requiring email verification.
-                    </p>
-                  </div>
-                </DropdownItem>
-              </DropdownMenu>
-            </Dropdown>
-            <Select
-              label="Role"
-              selectedKeys={form.roleId ? [form.roleId] : []}
-              onSelectionChange={(keys) => {
-                const first = Array.from(keys)[0];
-                setForm((s) => ({ ...s, roleId: String(first ?? "") }));
-              }}
-              startContent={<BsFillPersonBadgeFill className="text-xl text-default-500" />}
-            >
-              {roles.map((r) => (
-                <SelectItem key={r.id}>{r.name}</SelectItem>
-              ))}
-            </Select>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Active</span>
-              <Switch
-                isDisabled={loading}
-                isSelected={form.isActive}
-                onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
+          <Tab key="contacto" title="Contact">
+            <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+              <Input
+                label="International code"
+                value={form.intlDialCode}
+                onValueChange={(v) =>
+                  setForm((s) => ({ ...s, intlDialCode: v }))
+                }
+              />
+              <Input
+                label="Mobile"
+                value={form.mobile}
+                onValueChange={(v) => setForm((s) => ({ ...s, mobile: v }))}
+              />
+              <Input
+                label="Landline"
+                value={form.landline}
+                onValueChange={(v) => setForm((s) => ({ ...s, landline: v }))}
+              />
+              <Input
+                label="Extension"
+                value={form.extension}
+                onValueChange={(v) => setForm((s) => ({ ...s, extension: v }))}
               />
             </div>
-          </div>
-        </Tab>
-        <Tab key="documentos" title="Documents">
-          {form.identificationType ? (
-            <div className="space-y-4 pt-4">
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="ID"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.identityDocumentUrl}
-                onChange={(url) => setForm((s) => ({ ...s, identityDocumentUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, identityDocumentUrl: "" }));
-                  removePendingFile("identityDocumentUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("identityDocumentUrl", file)}
+          </Tab>
+          <Tab key="ubicacion" title="Location">
+            <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
+              <Input
+                label="Address"
+                value={form.address}
+                onValueChange={(v) => setForm((s) => ({ ...s, address: v }))}
               />
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="CV"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.hojaDeVidaUrl}
-                onChange={(url) => setForm((s) => ({ ...s, hojaDeVidaUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, hojaDeVidaUrl: "" }));
-                  removePendingFile("hojaDeVidaUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("hojaDeVidaUrl", file)}
+              <Input
+                label="City"
+                value={form.city}
+                onValueChange={(v) => setForm((s) => ({ ...s, city: v }))}
               />
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="Work certificate"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.certificadoLaboralUrl}
-                onChange={(url) => setForm((s) => ({ ...s, certificadoLaboralUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, certificadoLaboralUrl: "" }));
-                  removePendingFile("certificadoLaboralUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("certificadoLaboralUrl", file)}
-              />
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="Education certificate"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.certificadoEstudiosUrl}
-                onChange={(url) => setForm((s) => ({ ...s, certificadoEstudiosUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, certificadoEstudiosUrl: "" }));
-                  removePendingFile("certificadoEstudiosUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("certificadoEstudiosUrl", file)}
-              />
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="Health insurance certificate"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.epsCertificateUrl}
-                onChange={(url) => setForm((s) => ({ ...s, epsCertificateUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, epsCertificateUrl: "" }));
-                  removePendingFile("epsCertificateUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("epsCertificateUrl", file)}
-              />
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="Pension certificate"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.pensionCertificateUrl}
-                onChange={(url) => setForm((s) => ({ ...s, pensionCertificateUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, pensionCertificateUrl: "" }));
-                  removePendingFile("pensionCertificateUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("pensionCertificateUrl", file)}
-              />
-              <FileUpload
-                acceptedFileTypes=".pdf"
-                autoUpload={false}
-                isRequired
-                label="Bank certificate"
-                maxSizeMB={10}
-                uploadFolder="employees/documents"
-                value={form.bankCertificateUrl}
-                onChange={(url) => setForm((s) => ({ ...s, bankCertificateUrl: url }))}
-                onClear={() => {
-                  setForm((s) => ({ ...s, bankCertificateUrl: "" }));
-                  removePendingFile("bankCertificateUrl");
-                }}
-                onFileSelect={(file) => handlePendingFileSelect("bankCertificateUrl", file)}
+              <Input
+                label="Department"
+                value={form.department}
+                onValueChange={(v) => setForm((s) => ({ ...s, department: v }))}
               />
             </div>
-          ) : (
-            <div className="rounded-lg border border-warning bg-warning/10 p-4">
-              <p className="text-sm text-warning">
-                Select an identification type to upload documents.
+          </Tab>
+          <Tab key="usuario-rol" title="User and role">
+            <div className="space-y-4 pt-3">
+              <Input
+                isDisabled
+                label="User (email)"
+                startContent={
+                  <BsEnvelope className="text-xl text-default-500" />
+                }
+                value={form.email}
+              />
+              <p className="text-xs text-default-500">
+                {form.userId
+                  ? "User created and assigned. You can now register the employee."
+                  : "First create and assign a user to enable employee registration."}
               </p>
-            </div>
-          )}
-        </Tab>
-        {form.userId.trim() ? (
-        <Tab key="beneficiarios" title="Beneficiaries">
-          <div className="space-y-4 pt-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Beneficiaries</h3>
-              <button
-                type="button"
-                className="flex items-center gap-1 text-primary"
-                onClick={() => setForm((s) => ({
-                  ...s,
-                  beneficiaries: [
-                    ...s.beneficiaries,
-                    { name: "", type: "HIJO", relationship: "", identityDocumentUrl: "", birthCertificateUrl: "" },
-                  ],
-                }))}
+              <Dropdown
+                isOpen={userDropdownOpen}
+                onOpenChange={setUserDropdownOpen}
               >
-                <BsPlusCircle /> Add beneficiary
-              </button>
-            </div>
-            {form.beneficiaries.length === 0 && (
-              <p className="text-xs text-default-500">No beneficiaries added.</p>
-            )}
-            {form.beneficiaries.map((b, idx) => (
-              <div key={idx} className="border rounded p-3 mb-2 relative bg-default-50">
-                <button
-                  type="button"
-                  className="absolute top-2 right-2 text-danger"
-                  title="Delete beneficiary"
-                  onClick={() => removeBeneficiaryAtIndex(idx)}
-                >
-                  <BsTrash />
-                </button>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  <Input
-                    label="Beneficiary name"
-                    value={b.name}
-                    onValueChange={(v) => setForm((s) => {
-                      const beneficiaries = [...s.beneficiaries];
-                      beneficiaries[idx].name = v;
-                      return { ...s, beneficiaries };
-                    })}
-                  />
-                  <Input
-                    label="Relationship"
-                    value={b.relationship}
-                    onValueChange={(v) => setForm((s) => {
-                      const beneficiaries = [...s.beneficiaries];
-                      beneficiaries[idx].relationship = v;
-                      return { ...s, beneficiaries };
-                    })}
-                  />
-                  <Select
-                    label="Beneficiary type"
-                    selectedKeys={[b.type]}
-                    onSelectionChange={(keys) => {
-                      const first = Array.from(keys)[0] as "HIJO" | "CONYUGE" | "PADRE";
-                      setForm((s) => {
-                        const beneficiaries = [...s.beneficiaries];
-                        beneficiaries[idx].type = first;
-                        if (first !== "HIJO") {
-                          beneficiaries[idx].birthCertificateUrl = "";
+                <DropdownTrigger>
+                  <Button variant="flat">Create user</Button>
+                </DropdownTrigger>
+                <DropdownMenu aria-label="User creator" closeOnSelect={false}>
+                  <DropdownItem key="creator" textValue="User creator">
+                    <div className="w-[280px] space-y-2 py-1">
+                      <Input
+                        autoComplete="email"
+                        errorMessage={
+                          form.createUserEmail &&
+                          !isValidEmail(form.createUserEmail)
+                            ? "Invalid email"
+                            : undefined
                         }
-                        return { ...s, beneficiaries };
-                      });
-                      if (first !== "HIJO") {
-                        removePendingBeneficiaryFile(idx, "birthCertificateUrl");
-                      }
-                    }}
-                  >
-                    <SelectItem key="HIJO">Child</SelectItem>
-                    <SelectItem key="CONYUGE">Spouse</SelectItem>
-                    <SelectItem key="PADRE">Parent</SelectItem>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                  <FileUpload
-                    acceptedFileTypes=".pdf"
-                    autoUpload={false}
-                    isRequired
-                    label="Beneficiary identity document"
-                    maxSizeMB={10}
-                    uploadFolder="employees/beneficiaries"
-                    value={b.identityDocumentUrl}
-                    onChange={(url) => setForm((s) => {
-                      const beneficiaries = [...s.beneficiaries];
-                      beneficiaries[idx].identityDocumentUrl = url;
-                      return { ...s, beneficiaries };
-                    })}
-                    onClear={() => {
-                      setForm((s) => {
-                        const beneficiaries = [...s.beneficiaries];
-                        beneficiaries[idx].identityDocumentUrl = "";
-                        return { ...s, beneficiaries };
-                      });
-                      removePendingBeneficiaryFile(idx, "identityDocumentUrl");
-                    }}
-                    onFileSelect={(file) =>
-                      handlePendingBeneficiaryFileSelect(idx, "identityDocumentUrl", file)
-                    }
-                  />
-                  {/* Si es hijo, pedir registro civil */}
-                  {b.type === "HIJO" && (
-                    <FileUpload
-                      acceptedFileTypes=".pdf"
-                      autoUpload={false}
-                      isRequired
-                      label="Birth certificate"
-                      maxSizeMB={10}
-                      uploadFolder="employees/beneficiaries"
-                      value={b.birthCertificateUrl}
-                      onChange={(url) => setForm((s) => {
-                        const beneficiaries = [...s.beneficiaries];
-                        beneficiaries[idx].birthCertificateUrl = url;
-                        return { ...s, beneficiaries };
-                      })}
-                      onClear={() => {
-                        setForm((s) => {
-                          const beneficiaries = [...s.beneficiaries];
-                          beneficiaries[idx].birthCertificateUrl = "";
-                          return { ...s, beneficiaries };
-                        });
-                        removePendingBeneficiaryFile(idx, "birthCertificateUrl");
-                      }}
-                      onFileSelect={(file) =>
-                        handlePendingBeneficiaryFileSelect(idx, "birthCertificateUrl", file)
-                      }
-                    />
-                  )}
-                </div>
+                        inputMode="email"
+                        isInvalid={
+                          !!form.createUserEmail &&
+                          !isValidEmail(form.createUserEmail)
+                        }
+                        label="User email"
+                        placeholder="user@domain.com"
+                        startContent={
+                          <BsEnvelope className="text-xl text-default-500" />
+                        }
+                        type="text"
+                        value={form.createUserEmail}
+                        onValueChange={(v) =>
+                          setForm((s) => ({ ...s, createUserEmail: v }))
+                        }
+                      />
+                      <Input
+                        errorMessage={
+                          form.createUserPassword &&
+                          !isValidPassword(form.createUserPassword)
+                            ? "Must have minimum 7 characters and 1 uppercase"
+                            : undefined
+                        }
+                        isInvalid={
+                          !!form.createUserPassword &&
+                          !isValidPassword(form.createUserPassword)
+                        }
+                        label="Password"
+                        placeholder="Minimum 7, 1 uppercase"
+                        startContent={
+                          <BsKey className="text-xl text-default-500" />
+                        }
+                        type="password"
+                        value={form.createUserPassword}
+                        onValueChange={(v) =>
+                          setForm((s) => ({ ...s, createUserPassword: v }))
+                        }
+                      />
+                      <Button
+                        className="w-full mt-2"
+                        color="primary"
+                        isDisabled={
+                          !form.createUserEmail ||
+                          !form.createUserPassword ||
+                          creatingUser ||
+                          !!employeeId
+                        }
+                        isLoading={creatingUser}
+                        onPress={async () => {
+                          if (!isValidEmail(form.createUserEmail)) {
+                            setToast({
+                              message: "User email is not valid.",
+                              type: "error",
+                            });
+
+                            return;
+                          }
+                          if (!isValidPassword(form.createUserPassword)) {
+                            setToast({
+                              message:
+                                "Password must have minimum 7 characters and 1 uppercase letter.",
+                              type: "error",
+                            });
+
+                            return;
+                          }
+
+                          setCreatingUser(true);
+                          try {
+                            const res = await fetch("/api/users", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                email: form.createUserEmail,
+                                password: form.createUserPassword,
+                              }),
+                            });
+
+                            if (!res.ok) {
+                              throw new Error(await res.text());
+                            }
+                            const data = (await res.json()) as unknown;
+                            const createdUser = Array.isArray(data)
+                              ? (data[0] as
+                                  | { id?: string; email?: string }
+                                  | undefined)
+                              : (data as
+                                  | { id?: string; email?: string }
+                                  | undefined);
+
+                            const createdUserId = createdUser?.id?.trim() ?? "";
+                            const createdUserEmail =
+                              createdUser?.email?.trim() ??
+                              form.createUserEmail.trim();
+
+                            if (!createdUserId) {
+                              throw new Error(
+                                "No user ID received from creation.",
+                              );
+                            }
+
+                            setForm((s) => ({
+                              ...s,
+                              userId: createdUserId,
+                              email: createdUserEmail,
+                              createUserEmail: "",
+                              createUserPassword: "",
+                            }));
+                            setToast({
+                              message: "User created and assigned.",
+                              type: "success",
+                            });
+                            setUserDropdownOpen(false);
+                          } catch (e: unknown) {
+                            const message =
+                              e instanceof Error ? e.message : "Unknown error";
+
+                            setToast({
+                              message: `Error creating user: ${message}`,
+                              type: "error",
+                            });
+                          } finally {
+                            setCreatingUser(false);
+                          }
+                        }}
+                      >
+                        Create and assign
+                      </Button>
+                      <p className="text-xs text-default-500">
+                        Optional. If you fill in these fields, the user will be
+                        created and associated without requiring email
+                        verification.
+                      </p>
+                    </div>
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+              <Select
+                label="Role"
+                selectedKeys={form.roleId ? [form.roleId] : []}
+                startContent={
+                  <BsFillPersonBadgeFill className="text-xl text-default-500" />
+                }
+                onSelectionChange={(keys) => {
+                  const first = Array.from(keys)[0];
+
+                  setForm((s) => ({ ...s, roleId: String(first ?? "") }));
+                }}
+              >
+                {roles.map((r) => (
+                  <SelectItem key={r.id}>{r.name}</SelectItem>
+                ))}
+              </Select>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Active</span>
+                <Switch
+                  isDisabled={loading}
+                  isSelected={form.isActive}
+                  onValueChange={(v) => setForm((s) => ({ ...s, isActive: v }))}
+                />
               </div>
-            ))}
-          </div>
-        </Tab>
-        ) : null}
+            </div>
+          </Tab>
+          <Tab key="documentos" title="Documents">
+            {form.identificationType ? (
+              <div className="space-y-4 pt-4">
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="ID"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.identityDocumentUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, identityDocumentUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, identityDocumentUrl: "" }));
+                    removePendingFile("identityDocumentUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("identityDocumentUrl", file)
+                  }
+                />
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="CV"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.hojaDeVidaUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, hojaDeVidaUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, hojaDeVidaUrl: "" }));
+                    removePendingFile("hojaDeVidaUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("hojaDeVidaUrl", file)
+                  }
+                />
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="Work certificate"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.certificadoLaboralUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, certificadoLaboralUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, certificadoLaboralUrl: "" }));
+                    removePendingFile("certificadoLaboralUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("certificadoLaboralUrl", file)
+                  }
+                />
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="Education certificate"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.certificadoEstudiosUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, certificadoEstudiosUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, certificadoEstudiosUrl: "" }));
+                    removePendingFile("certificadoEstudiosUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("certificadoEstudiosUrl", file)
+                  }
+                />
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="Health insurance certificate"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.epsCertificateUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, epsCertificateUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, epsCertificateUrl: "" }));
+                    removePendingFile("epsCertificateUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("epsCertificateUrl", file)
+                  }
+                />
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="Pension certificate"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.pensionCertificateUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, pensionCertificateUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, pensionCertificateUrl: "" }));
+                    removePendingFile("pensionCertificateUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("pensionCertificateUrl", file)
+                  }
+                />
+                <FileUpload
+                  isRequired
+                  acceptedFileTypes=".pdf"
+                  autoUpload={false}
+                  label="Bank certificate"
+                  maxSizeMB={10}
+                  uploadFolder="employees/documents"
+                  value={form.bankCertificateUrl}
+                  onChange={(url) =>
+                    setForm((s) => ({ ...s, bankCertificateUrl: url }))
+                  }
+                  onClear={() => {
+                    setForm((s) => ({ ...s, bankCertificateUrl: "" }));
+                    removePendingFile("bankCertificateUrl");
+                  }}
+                  onFileSelect={(file) =>
+                    handlePendingFileSelect("bankCertificateUrl", file)
+                  }
+                />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-warning bg-warning/10 p-4">
+                <p className="text-sm text-warning">
+                  Select an identification type to upload documents.
+                </p>
+              </div>
+            )}
+          </Tab>
+          {form.userId.trim() ? (
+            <Tab key="beneficiarios" title="Beneficiaries">
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Beneficiaries
+                  </h3>
+                  <button
+                    className="flex items-center gap-1 text-primary"
+                    type="button"
+                    onClick={() =>
+                      setForm((s) => ({
+                        ...s,
+                        beneficiaries: [
+                          ...s.beneficiaries,
+                          {
+                            name: "",
+                            type: "HIJO",
+                            relationship: "",
+                            identityDocumentUrl: "",
+                            birthCertificateUrl: "",
+                          },
+                        ],
+                      }))
+                    }
+                  >
+                    <BsPlusCircle /> Add beneficiary
+                  </button>
+                </div>
+                {form.beneficiaries.length === 0 && (
+                  <p className="text-xs text-default-500">
+                    No beneficiaries added.
+                  </p>
+                )}
+                {form.beneficiaries.map((b, idx) => (
+                  <div
+                    key={idx}
+                    className="border rounded p-3 mb-2 relative bg-default-50"
+                  >
+                    <button
+                      className="absolute top-2 right-2 text-danger"
+                      title="Delete beneficiary"
+                      type="button"
+                      onClick={() => removeBeneficiaryAtIndex(idx)}
+                    >
+                      <BsTrash />
+                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <Input
+                        label="Beneficiary name"
+                        value={b.name}
+                        onValueChange={(v) =>
+                          setForm((s) => {
+                            const beneficiaries = [...s.beneficiaries];
+
+                            beneficiaries[idx].name = v;
+
+                            return { ...s, beneficiaries };
+                          })
+                        }
+                      />
+                      <Input
+                        label="Relationship"
+                        value={b.relationship}
+                        onValueChange={(v) =>
+                          setForm((s) => {
+                            const beneficiaries = [...s.beneficiaries];
+
+                            beneficiaries[idx].relationship = v;
+
+                            return { ...s, beneficiaries };
+                          })
+                        }
+                      />
+                      <Select
+                        label="Beneficiary type"
+                        selectedKeys={[b.type]}
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0] as
+                            | "HIJO"
+                            | "CONYUGE"
+                            | "PADRE";
+
+                          setForm((s) => {
+                            const beneficiaries = [...s.beneficiaries];
+
+                            beneficiaries[idx].type = first;
+                            if (first !== "HIJO") {
+                              beneficiaries[idx].birthCertificateUrl = "";
+                            }
+
+                            return { ...s, beneficiaries };
+                          });
+                          if (first !== "HIJO") {
+                            removePendingBeneficiaryFile(
+                              idx,
+                              "birthCertificateUrl",
+                            );
+                          }
+                        }}
+                      >
+                        <SelectItem key="HIJO">Child</SelectItem>
+                        <SelectItem key="CONYUGE">Spouse</SelectItem>
+                        <SelectItem key="PADRE">Parent</SelectItem>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                      <FileUpload
+                        isRequired
+                        acceptedFileTypes=".pdf"
+                        autoUpload={false}
+                        label="Beneficiary identity document"
+                        maxSizeMB={10}
+                        uploadFolder="employees/beneficiaries"
+                        value={b.identityDocumentUrl}
+                        onChange={(url) =>
+                          setForm((s) => {
+                            const beneficiaries = [...s.beneficiaries];
+
+                            beneficiaries[idx].identityDocumentUrl = url;
+
+                            return { ...s, beneficiaries };
+                          })
+                        }
+                        onClear={() => {
+                          setForm((s) => {
+                            const beneficiaries = [...s.beneficiaries];
+
+                            beneficiaries[idx].identityDocumentUrl = "";
+
+                            return { ...s, beneficiaries };
+                          });
+                          removePendingBeneficiaryFile(
+                            idx,
+                            "identityDocumentUrl",
+                          );
+                        }}
+                        onFileSelect={(file) =>
+                          handlePendingBeneficiaryFileSelect(
+                            idx,
+                            "identityDocumentUrl",
+                            file,
+                          )
+                        }
+                      />
+                      {/* Si es hijo, pedir registro civil */}
+                      {b.type === "HIJO" && (
+                        <FileUpload
+                          isRequired
+                          acceptedFileTypes=".pdf"
+                          autoUpload={false}
+                          label="Birth certificate"
+                          maxSizeMB={10}
+                          uploadFolder="employees/beneficiaries"
+                          value={b.birthCertificateUrl}
+                          onChange={(url) =>
+                            setForm((s) => {
+                              const beneficiaries = [...s.beneficiaries];
+
+                              beneficiaries[idx].birthCertificateUrl = url;
+
+                              return { ...s, beneficiaries };
+                            })
+                          }
+                          onClear={() => {
+                            setForm((s) => {
+                              const beneficiaries = [...s.beneficiaries];
+
+                              beneficiaries[idx].birthCertificateUrl = "";
+
+                              return { ...s, beneficiaries };
+                            });
+                            removePendingBeneficiaryFile(
+                              idx,
+                              "birthCertificateUrl",
+                            );
+                          }}
+                          onFileSelect={(file) =>
+                            handlePendingBeneficiaryFileSelect(
+                              idx,
+                              "birthCertificateUrl",
+                              file,
+                            )
+                          }
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Tab>
+          ) : null}
         </Tabs>
       )}
       {loadingEmployee || loadingRoles ? (
@@ -1102,7 +1350,9 @@ export function EmployeeRegisterForm({
         <Button
           className="w-full mt-6"
           color="primary"
-          isDisabled={loading || loadingEmployee || creatingUser || !form.userId.trim()}
+          isDisabled={
+            loading || loadingEmployee || creatingUser || !form.userId.trim()
+          }
           isLoading={loading || loadingEmployee}
           onPress={submit}
         >

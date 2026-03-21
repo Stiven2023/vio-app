@@ -1,6 +1,7 @@
+import { desc, eq } from "drizzle-orm";
+
 import { db } from "@/src/db";
 import { clientLegalStatusHistory } from "@/src/db/schema";
-import { desc, eq } from "drizzle-orm";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 /**
@@ -10,10 +11,14 @@ import { requirePermission } from "@/src/utils/permission-middleware";
  */
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const forbidden = await requirePermission(request, "VER_ESTADO_JURIDICO_CLIENTE");
+    const forbidden = await requirePermission(
+      request,
+      "VER_ESTADO_JURIDICO_CLIENTE",
+    );
+
     if (forbidden) return forbidden;
 
     const { id: clientId } = await params;
@@ -58,9 +63,10 @@ export async function GET(
     });
   } catch (error) {
     console.error("❌ Error al obtener estado jurídico:", error);
+
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Error desconocido"}`,
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

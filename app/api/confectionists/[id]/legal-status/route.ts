@@ -1,12 +1,13 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "@/src/db";
 import { legalStatusRecords, confectionists } from "@/src/db/schema";
-import { eq } from "drizzle-orm";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: confectionistId } = await params;
 
@@ -18,7 +19,11 @@ export async function POST(
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA");
+  const forbidden = await requirePermission(
+    request,
+    "CAMBIAR_ESTADO_JURIDICO_CONFECCIONISTA",
+  );
+
   if (forbidden) return forbidden;
 
   try {
@@ -53,7 +58,7 @@ export async function POST(
     });
 
     const shouldBeActive = status === "VIGENTE";
-    
+
     if (shouldBeActive !== confectionist.isActive) {
       await db
         .update(confectionists)
@@ -62,15 +67,16 @@ export async function POST(
     }
 
     console.log(
-      `✅ Estado jurídico actualizado para confeccionista ${confectionistId}: ${status} (isActive: ${shouldBeActive})`
+      `✅ Estado jurídico actualizado para confeccionista ${confectionistId}: ${status} (isActive: ${shouldBeActive})`,
     );
 
     return Response.json({ success: true, isActive: shouldBeActive });
   } catch (error) {
     console.error("❌ Error al actualizar estado jurídico:", error);
+
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Error desconocido"}`,
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

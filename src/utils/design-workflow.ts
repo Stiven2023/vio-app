@@ -12,7 +12,9 @@ export function shouldRouteDesignUpdateToApproval(args: {
   designChanged: boolean;
   tallaChanged: boolean;
 }) {
-  const orderStatus = String(args.orderStatus ?? "").trim().toUpperCase();
+  const orderStatus = String(args.orderStatus ?? "")
+    .trim()
+    .toUpperCase();
 
   if (args.requestedStatusProvided) return false;
   if (args.quantityChanged) return false;

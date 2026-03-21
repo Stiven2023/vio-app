@@ -219,10 +219,7 @@ export const ROLE_PERMISSIONS: Record<string, string[] | "ALL"> = {
     "CAMBIAR_ESTADO_PEDIDO",
     "VER_NOTIFICACION",
   ],
-  MENSAJERO: [
-    "VER_PEDIDO",
-    "VER_NOTIFICACION",
-  ],
+  MENSAJERO: ["VER_PEDIDO", "VER_NOTIFICACION"],
   CONFECCIONISTA: [
     "VER_PEDIDO",
     "VER_DISEÑO",

@@ -23,9 +23,11 @@ export async function GET(request: Request) {
     limit: 200,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !READ_ROLES.has(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -34,7 +36,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
 
-    const search = String(searchParams.get("search") ?? "").trim().toLowerCase();
+    const search = String(searchParams.get("search") ?? "")
+      .trim()
+      .toLowerCase();
 
     const baseQuery = db
       .select({
@@ -52,9 +56,7 @@ export async function GET(request: Request) {
       .innerJoin(clients, eq(clientLegalStatus.clientId, clients.id));
 
     const withFilter = search
-      ? baseQuery.where(
-          sql`lower(${clients.name}) like ${"%" + search + "%"}`,
-        )
+      ? baseQuery.where(sql`lower(${clients.name}) like ${"%" + search + "%"}`)
       : baseQuery;
 
     const [{ total }] = await db
@@ -81,7 +83,11 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al consultar estado jurídico de clientes", { status: 500 });
+
+    return new Response("Error al consultar estado jurídico de clientes", {
+      status: 500,
+    });
   }
 }

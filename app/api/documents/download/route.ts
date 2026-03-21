@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
+
 import { rateLimit } from "@/src/utils/rate-limit";
 
 export async function GET(request: Request) {
@@ -21,14 +22,18 @@ export async function GET(request: Request) {
 
     // Asegurar que la ruta sea relativa y esté dentro de la carpeta documents
     const sanitizedPath = filePath.replace(/\.\./g, "").replace(/^\/+/, "");
-    
+
     if (!sanitizedPath.startsWith("documents/")) {
-      return new Response("Acceso denegado: solo se pueden descargar documentos", {
-        status: 403,
-      });
+      return new Response(
+        "Acceso denegado: solo se pueden descargar documentos",
+        {
+          status: 403,
+        },
+      );
     }
 
     const fullPath = path.join(process.cwd(), "public", sanitizedPath);
+
     console.log("📥 Intentando descargar:", fullPath);
 
     const buffer = await readFile(fullPath);
@@ -45,16 +50,16 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("❌ Error descargando documento:", error);
-    
-    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
-    
+
+    const errorMessage =
+      error instanceof Error ? error.message : "Error desconocido";
+
     if (errorMessage.includes("ENOENT")) {
       return new Response("Documento no encontrado", { status: 404 });
     }
 
-    return new Response(
-      `Error al descargar el documento: ${errorMessage}`,
-      { status: 500 }
-    );
+    return new Response(`Error al descargar el documento: ${errorMessage}`, {
+      status: 500,
+    });
   }
 }

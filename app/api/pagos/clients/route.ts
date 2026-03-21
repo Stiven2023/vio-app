@@ -91,7 +91,13 @@ export async function GET(request: Request) {
     })
     .from(clients)
     .innerJoin(orders, eq(orders.clientId, clients.id))
-    .groupBy(clients.id, clients.clientCode, clients.name, clients.identification, clients.email)
+    .groupBy(
+      clients.id,
+      clients.clientCode,
+      clients.name,
+      clients.identification,
+      clients.email,
+    )
     .orderBy(desc(sql`max(${orders.createdAt})`))
     .limit(limit);
 

@@ -11,7 +11,10 @@ export type RequiredDocumentRule = {
   label: string;
 };
 
-const REQUIRED_DOCUMENTS_BY_IDENTIFICATION_TYPE: Record<string, RequiredDocumentRule[]> = {
+const REQUIRED_DOCUMENTS_BY_IDENTIFICATION_TYPE: Record<
+  string,
+  RequiredDocumentRule[]
+> = {
   CC: [
     { field: "identityDocumentUrl", label: "Cédula del titular" },
     { field: "rutDocumentUrl", label: "RUT" },
@@ -58,12 +61,12 @@ export function getMissingRequiredDocumentMessage(
   identificationType: string,
   payload: Record<string, unknown>,
 ): string | null {
-  const requiredDocuments = getRequiredDocumentsByIdentificationType(
-    identificationType,
-  );
+  const requiredDocuments =
+    getRequiredDocumentsByIdentificationType(identificationType);
 
   for (const doc of requiredDocuments) {
     const value = String(payload[doc.field] ?? "").trim();
+
     if (!value) {
       return `${doc.label} es requerido`;
     }

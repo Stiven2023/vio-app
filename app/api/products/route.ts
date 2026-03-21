@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { categories, products } from "@/src/db/schema";
@@ -39,10 +39,9 @@ async function buildNextProductCode(categoryId: string) {
   const nextSuffix = (row?.maxSuffix ?? 0) + 1;
 
   if (nextSuffix > 99) {
-    return new Response(
-      "Se alcanzó el máximo de códigos para esta categoría",
-      { status: 409 },
-    );
+    return new Response("Se alcanzó el máximo de códigos para esta categoría", {
+      status: 409,
+    });
   }
 
   return `${prefix}${String(nextSuffix).padStart(2, "0")}`;
@@ -74,11 +73,15 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
     const status = String(searchParams.get("status") ?? "active").toLowerCase();
-    const catalogType = String(searchParams.get("catalogType") ?? "").toUpperCase();
+    const catalogType = String(
+      searchParams.get("catalogType") ?? "",
+    ).toUpperCase();
     const categoryId = String(searchParams.get("categoryId") ?? "").trim();
     const sort = String(searchParams.get("sort") ?? "codeAsc").trim();
     const q = String(searchParams.get("q") ?? "").trim();
-    const searchBy = String(searchParams.get("searchBy") ?? "all").toLowerCase();
+    const searchBy = String(
+      searchParams.get("searchBy") ?? "all",
+    ).toLowerCase();
 
     const filters = [] as Array<any>;
 
@@ -159,7 +162,9 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar productos", { status: 500 });
   }
 }
@@ -238,7 +243,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear el producto", { status: 500 });
   }
 }
@@ -284,19 +291,59 @@ export async function PUT(request: Request) {
       .update(products)
       .set({
         name: name ? String(name) : undefined,
-        description: description !== undefined ? (description ? String(description) : null) : undefined,
+        description:
+          description !== undefined
+            ? description
+              ? String(description)
+              : null
+            : undefined,
         categoryId: categoryId ? String(categoryId) : undefined,
-        priceCopBase: priceCopBase !== undefined ? toNullableNumericString(priceCopBase) : undefined,
-        priceCopInternational: priceCopInternational !== undefined ? toNullableNumericString(priceCopInternational) : undefined,
-        priceCopR1: priceCopR1 !== undefined ? toNullableNumericString(priceCopR1) : undefined,
-        priceCopR2: priceCopR2 !== undefined ? toNullableNumericString(priceCopR2) : undefined,
-        priceCopR3: priceCopR3 !== undefined ? toNullableNumericString(priceCopR3) : undefined,
-        priceColanta: priceColanta !== undefined ? toNullableNumericString(priceColanta) : undefined,
-        priceMayorista: priceMayorista !== undefined ? toNullableNumericString(priceMayorista) : undefined,
-        priceUSD: priceUSD !== undefined ? toNullableNumericString(priceUSD) : undefined,
-        trmUsed: trmUsed !== undefined ? toNullableNumericString(trmUsed) : undefined,
-        startDate: startDate !== undefined ? (startDate ? new Date(String(startDate)) : null) : undefined,
-        endDate: endDate !== undefined ? (endDate ? new Date(String(endDate)) : null) : undefined,
+        priceCopBase:
+          priceCopBase !== undefined
+            ? toNullableNumericString(priceCopBase)
+            : undefined,
+        priceCopInternational:
+          priceCopInternational !== undefined
+            ? toNullableNumericString(priceCopInternational)
+            : undefined,
+        priceCopR1:
+          priceCopR1 !== undefined
+            ? toNullableNumericString(priceCopR1)
+            : undefined,
+        priceCopR2:
+          priceCopR2 !== undefined
+            ? toNullableNumericString(priceCopR2)
+            : undefined,
+        priceCopR3:
+          priceCopR3 !== undefined
+            ? toNullableNumericString(priceCopR3)
+            : undefined,
+        priceColanta:
+          priceColanta !== undefined
+            ? toNullableNumericString(priceColanta)
+            : undefined,
+        priceMayorista:
+          priceMayorista !== undefined
+            ? toNullableNumericString(priceMayorista)
+            : undefined,
+        priceUSD:
+          priceUSD !== undefined
+            ? toNullableNumericString(priceUSD)
+            : undefined,
+        trmUsed:
+          trmUsed !== undefined ? toNullableNumericString(trmUsed) : undefined,
+        startDate:
+          startDate !== undefined
+            ? startDate
+              ? new Date(String(startDate))
+              : null
+            : undefined,
+        endDate:
+          endDate !== undefined
+            ? endDate
+              ? new Date(String(endDate))
+              : null
+            : undefined,
         isActive: isActive !== undefined ? isActive : undefined,
       })
       .where(eq(products.id, String(id)))
@@ -309,7 +356,9 @@ export async function PUT(request: Request) {
     return Response.json(updated[0]);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo actualizar el producto", { status: 500 });
   }
 }

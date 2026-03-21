@@ -68,7 +68,10 @@ export function ClientDetailsModal({
               Código y tipo de cliente
             </h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <DetailField label="Código del cliente" value={client.clientCode} />
+              <DetailField
+                label="Código del cliente"
+                value={client.clientCode}
+              />
               <DetailField
                 label="Tipo de cliente"
                 value={
@@ -238,22 +241,42 @@ export function ClientDetailsModal({
         </ModalBody>
         <ModalFooter className="flex flex-wrap gap-2">
           {onRequestCreateEmployee && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateEmployee}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateEmployee}
+            >
               Crear como empleado
             </Button>
           )}
           {onRequestCreateSupplier && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateSupplier}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateSupplier}
+            >
               Crear como proveedor
             </Button>
           )}
           {onRequestCreateConfectionist && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreateConfectionist}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreateConfectionist}
+            >
               Crear como confeccionista
             </Button>
           )}
           {onRequestCreatePacker && (
-            <Button size="sm" color="primary" variant="flat" onPress={onRequestCreatePacker}>
+            <Button
+              color="primary"
+              size="sm"
+              variant="flat"
+              onPress={onRequestCreatePacker}
+            >
               Crear como empaque
             </Button>
           )}
@@ -286,7 +309,9 @@ function DetailField({
         )}
       </dt>
       <dd className="text-sm text-default-700">
-        {value && value.trim() !== "" ? value : (
+        {value && value.trim() !== "" ? (
+          value
+        ) : (
           <span className="text-default-400">Sin información</span>
         )}
       </dd>

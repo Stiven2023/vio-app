@@ -76,7 +76,10 @@ export function UserDetailsModal({
               Empleado asociado
             </h3>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <DetailField label="Código empleado" value={employee?.employeeCode} />
+              <DetailField
+                label="Código empleado"
+                value={employee?.employeeCode}
+              />
               <DetailField label="Empleado ID" value={employee?.id} />
               <DetailField label="Nombre" value={employee?.name} />
               <DetailField
@@ -88,18 +91,15 @@ export function UserDetailsModal({
                 value={employee?.identification}
               />
               <DetailField label="Correo" value={employee?.email} />
-              <DetailField label="Móvil" value={employee?.fullMobile ?? employee?.mobile} />
+              <DetailField
+                label="Móvil"
+                value={employee?.fullMobile ?? employee?.mobile}
+              />
               <DetailField label="Rol ID" value={employee?.roleId} />
               <DetailField label="Rol" value={role?.name} />
               <DetailField
                 label="Activo"
-                value={
-                  employee
-                    ? employee.isActive
-                      ? "Sí"
-                      : "No"
-                    : null
-                }
+                value={employee ? (employee.isActive ? "Sí" : "No") : null}
               />
             </div>
           </div>

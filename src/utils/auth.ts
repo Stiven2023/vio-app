@@ -82,7 +82,9 @@ export function signExternalAccessToken(payload: {
   audience: "CLIENTE" | "TERCERO";
 }) {
   const clientId = String(payload.clientId ?? "").trim();
-  const clientCode = String(payload.clientCode ?? "").trim().toUpperCase();
+  const clientCode = String(payload.clientCode ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!clientId || !clientCode) {
     throw new Error("Datos inválidos para token externo");
@@ -100,7 +102,9 @@ export function signExternalAccessToken(payload: {
   );
 }
 
-export function verifyExternalAccessToken(token: string): ExternalAccessTokenPayload | null {
+export function verifyExternalAccessToken(
+  token: string,
+): ExternalAccessTokenPayload | null {
   try {
     const decoded = jwt.verify(token, requireJwtSecret());
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 import {
   Modal,
@@ -21,6 +22,7 @@ export type WarehouseRow = {
   code: string;
   name: string;
   description: string | null;
+  purpose: string | null;
   isVirtual: boolean;
   isExternal: boolean;
   address: string | null;
@@ -29,6 +31,14 @@ export type WarehouseRow = {
   isActive: boolean;
   createdAt: string | null;
 };
+
+const WAREHOUSE_PURPOSES = [
+  { value: "GENERAL", label: "General" },
+  { value: "MATERIA_PRIMA", label: "Materia Prima" },
+  { value: "PRODUCCION", label: "Producción" },
+  { value: "PRODUCTO_TERMINADO", label: "Producto Terminado" },
+  { value: "TRANSITO", label: "En Tránsito" },
+];
 
 export function WarehouseModal({
   warehouse,
@@ -44,6 +54,7 @@ export function WarehouseModal({
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [purpose, setPurpose] = useState("GENERAL");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("Medellín");
   const [department, setDepartment] = useState("ANTIOQUIA");
@@ -58,6 +69,7 @@ export function WarehouseModal({
     setCode(warehouse?.code ?? "");
     setName(warehouse?.name ?? "");
     setDescription(warehouse?.description ?? "");
+    setPurpose(warehouse?.purpose ?? "GENERAL");
     setAddress(warehouse?.address ?? "");
     setCity(warehouse?.city ?? "Medellín");
     setDepartment(warehouse?.department ?? "ANTIOQUIA");
@@ -74,6 +86,7 @@ export function WarehouseModal({
       code: code.trim().toUpperCase(),
       name: name.trim(),
       description: description.trim() || undefined,
+      purpose,
       address: address.trim() || undefined,
       city: city.trim() || undefined,
       department: department.trim() || undefined,
@@ -83,12 +96,14 @@ export function WarehouseModal({
     };
 
     if (!payload.code) {
-      toast.error("Code required");
+      toast.error("Código requerido");
+
       return;
     }
 
     if (!payload.name) {
-      toast.error("Name required");
+      toast.error("Nombre requerido");
+
       return;
     }
 
@@ -96,10 +111,12 @@ export function WarehouseModal({
       setSubmitting(true);
       await apiJson("/api/warehouses", {
         method: warehouse ? "PUT" : "POST",
-        body: JSON.stringify(warehouse ? { id: warehouse.id, ...payload } : payload),
+        body: JSON.stringify(
+          warehouse ? { id: warehouse.id, ...payload } : payload,
+        ),
       });
 
-      toast.success(warehouse ? "Warehouse updated" : "Warehouse created");
+      toast.success(warehouse ? "Bodega actualizada" : "Bodega creada");
       onOpenChange(false);
       onSaved();
     } catch (error) {
@@ -112,53 +129,70 @@ export function WarehouseModal({
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
-        <ModalHeader>{warehouse ? "Edit warehouse" : "Create warehouse"}</ModalHeader>
+        <ModalHeader>
+          {warehouse ? "Editar bodega" : "Crear bodega"}
+        </ModalHeader>
         <ModalBody>
           <Input
-            label="Code"
+            label="Código"
             startContent={<BsHash className="text-default-400" />}
             value={code}
             onValueChange={setCode}
           />
           <Input
-            label="Name"
+            label="Nombre"
             startContent={<BsBuilding className="text-default-400" />}
             value={name}
             onValueChange={setName}
           />
           <Input
-            label="Description"
+            label="Descripción"
             startContent={<BsInfoCircle className="text-default-400" />}
             value={description}
             onValueChange={setDescription}
           />
+          <Select
+            label="Propósito / Tipo de bodega"
+            selectedKeys={[purpose]}
+            onSelectionChange={(keys) =>
+              setPurpose(Array.from(keys)[0] as string)
+            }
+          >
+            {WAREHOUSE_PURPOSES.map((p) => (
+              <SelectItem key={p.value}>{p.label}</SelectItem>
+            ))}
+          </Select>
           <Input
-            label="Address"
+            label="Dirección"
             startContent={<BsGeoAlt className="text-default-400" />}
             value={address}
             onValueChange={setAddress}
           />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Input label="City" value={city} onValueChange={setCity} />
-            <Input label="Department" value={department} onValueChange={setDepartment} />
+            <Input label="Ciudad" value={city} onValueChange={setCity} />
+            <Input
+              label="Departamento"
+              value={department}
+              onValueChange={setDepartment}
+            />
           </div>
 
           <Switch isSelected={isVirtual} onValueChange={setIsVirtual}>
-            Virtual warehouse
+            Bodega virtual
           </Switch>
           <Switch isSelected={isExternal} onValueChange={setIsExternal}>
-            External warehouse
+            Bodega externa
           </Switch>
           <Switch isSelected={isActive} onValueChange={setIsActive}>
-            Active
+            Activa
           </Switch>
         </ModalBody>
         <ModalFooter>
           <Button variant="flat" onPress={() => onOpenChange(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>
-            {warehouse ? "Save" : "Create"}
+            {warehouse ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

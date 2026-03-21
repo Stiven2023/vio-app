@@ -76,12 +76,23 @@ export function EmployeesTab({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState<string | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [viewingDocuments, setViewingDocuments] = useState<Employee | null>(null);
+  const [viewingDocuments, setViewingDocuments] = useState<Employee | null>(
+    null,
+  );
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Employee | null>(null);
-  const [detail, setDetail] = useState<
-    { employee: Employee; user: { id: string; email: string; emailVerified: boolean | null; isActive: boolean | null; createdAt: string | null } | null } | null
-  >(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Employee | null>(
+    null,
+  );
+  const [detail, setDetail] = useState<{
+    employee: Employee;
+    user: {
+      id: string;
+      email: string;
+      emailVerified: boolean | null;
+      isActive: boolean | null;
+      createdAt: string | null;
+    } | null;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const items = data?.items ?? [];
@@ -239,6 +250,7 @@ export function EmployeesTab({
   const createAsClient = async (employee: Employee) => {
     if (!employee.email) {
       toast.error("Para crear como cliente, el empleado debe tener email.");
+
       return;
     }
 
@@ -282,6 +294,7 @@ export function EmployeesTab({
   const createAsSupplier = async (employee: Employee) => {
     if (!employee.email) {
       toast.error("Para crear como proveedor, el empleado debe tener email.");
+
       return;
     }
 
@@ -323,7 +336,10 @@ export function EmployeesTab({
 
   const createAsConfectionist = async (employee: Employee) => {
     if (!employee.email) {
-      toast.error("Para crear como confeccionista, el empleado debe tener email.");
+      toast.error(
+        "Para crear como confeccionista, el empleado debe tener email.",
+      );
+
       return;
     }
 
@@ -362,6 +378,7 @@ export function EmployeesTab({
   const createAsPacker = async (employee: Employee) => {
     if (!employee.email) {
       toast.error("Para crear como empaque, el empleado debe tener email.");
+
       return;
     }
 
@@ -481,15 +498,21 @@ export function EmployeesTab({
           <TableBody emptyContent={emptyContent} items={filtered}>
             {(e) => (
               <TableRow key={e.id}>
-                <TableCell className="font-mono text-xs text-primary">{e.employeeCode ?? "—"}</TableCell>
+                <TableCell className="font-mono text-xs text-primary">
+                  {e.employeeCode ?? "—"}
+                </TableCell>
                 <TableCell>{e.name}</TableCell>
                 <TableCell>
                   <Chip size="sm" variant="flat">
                     {e.identificationType}
                   </Chip>
                 </TableCell>
-                <TableCell className="text-default-500">{e.email ?? "-"}</TableCell>
-                <TableCell className="text-default-500">{e.fullMobile ?? e.mobile ?? "-"}</TableCell>
+                <TableCell className="text-default-500">
+                  {e.email ?? "-"}
+                </TableCell>
+                <TableCell className="text-default-500">
+                  {e.fullMobile ?? e.mobile ?? "-"}
+                </TableCell>
                 <TableCell>
                   {e.roleId ? (roleNameById.get(e.roleId) ?? e.roleId) : "-"}
                 </TableCell>
@@ -607,10 +630,9 @@ export function EmployeesTab({
           setDetailsOpen(open);
         }}
         onRequestCreateClient={
-          legalOnlyMode ? undefined : () => detail?.employee && createAsClient(detail.employee)
-        }
-        onRequestCreateSupplier={
-          legalOnlyMode ? undefined : () => detail?.employee && createAsSupplier(detail.employee)
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsClient(detail.employee)
         }
         onRequestCreateConfectionist={
           legalOnlyMode
@@ -618,7 +640,14 @@ export function EmployeesTab({
             : () => detail?.employee && createAsConfectionist(detail.employee)
         }
         onRequestCreatePacker={
-          legalOnlyMode ? undefined : () => detail?.employee && createAsPacker(detail.employee)
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsPacker(detail.employee)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode
+            ? undefined
+            : () => detail?.employee && createAsSupplier(detail.employee)
         }
       />
 
