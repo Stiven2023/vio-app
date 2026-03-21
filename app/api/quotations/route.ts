@@ -20,6 +20,7 @@ function toDateOnlyLocal(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
+
   return `${year}-${month}-${day}`;
 }
 
@@ -47,7 +48,10 @@ function toNumericString(value: unknown) {
 }
 
 function normalizeTaxZone(value: unknown) {
-  const normalized = String(value ?? "CONTINENTAL").trim().toUpperCase();
+  const normalized = String(value ?? "CONTINENTAL")
+    .trim()
+    .toUpperCase();
+
   if (
     normalized === "FREE_ZONE" ||
     normalized === "SAN_ANDRES" ||
@@ -68,7 +72,8 @@ function calculateTotalProductsFromItems(items: any[]) {
     if (!Number.isFinite(quantity) || !Number.isFinite(unitPrice)) return acc;
 
     const lineSubtotal = quantity * unitPrice;
-    const discountAmount = lineSubtotal * (Number.isFinite(discount) ? discount / 100 : 0);
+    const discountAmount =
+      lineSubtotal * (Number.isFinite(discount) ? discount / 100 : 0);
     const lineTotal = lineSubtotal - discountAmount;
 
     return acc + (Number.isFinite(lineTotal) ? lineTotal : 0);
@@ -262,7 +267,9 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar cotizaciones", { status: 500 });
   }
 }
@@ -284,7 +291,9 @@ export async function POST(request: Request) {
 
   const clientId = String(body?.clientId ?? "").trim();
   const sellerIdFromBody = String(body?.sellerId ?? "").trim();
-  const sellerIdFromSession = String(getUserIdFromRequest(request) ?? "").trim();
+  const sellerIdFromSession = String(
+    getUserIdFromRequest(request) ?? "",
+  ).trim();
   const sellerId = sellerIdFromBody || sellerIdFromSession;
 
   if (!clientId) {
@@ -298,8 +307,13 @@ export async function POST(request: Request) {
   const items = Array.isArray(body?.items) ? body.items : [];
   const totalProducts = calculateTotalProductsFromItems(items);
   const paymentTerms = String(body?.paymentTerms ?? "").toUpperCase();
-  const autoExpiryDate = buildExpiryDateFromDelivery(toDateOnlyLocal(new Date()), 30);
-  const municipalityFiscalSnapshot = String(body?.municipalityFiscalSnapshot ?? "").trim();
+  const autoExpiryDate = buildExpiryDateFromDelivery(
+    toDateOnlyLocal(new Date()),
+    30,
+  );
+  const municipalityFiscalSnapshot = String(
+    body?.municipalityFiscalSnapshot ?? "",
+  ).trim();
   const taxZoneSnapshot = normalizeTaxZone(body?.taxZoneSnapshot);
 
   if (items.length === 0) {
@@ -307,6 +321,7 @@ export async function POST(request: Request) {
   }
 
   let validatedPromissoryNoteNumber: string | null = null;
+
   if (paymentTerms === "CREDITO") {
     const [client] = await db
       .select({
@@ -322,8 +337,11 @@ export async function POST(request: Request) {
     }
 
     const clientPromissory = String(client.promissoryNoteNumber ?? "").trim();
+
     if (!clientPromissory) {
-      return new Response("client without promissory note number", { status: 400 });
+      return new Response("client without promissory note number", {
+        status: 400,
+      });
     }
 
     validatedPromissoryNoteNumber = clientPromissory;
@@ -350,9 +368,7 @@ export async function POST(request: Request) {
           expiryDate: autoExpiryDate,
           paymentTerms: body?.paymentTerms ? String(body.paymentTerms) : null,
           promissoryNoteNumber:
-            paymentTerms === "CREDITO"
-              ? validatedPromissoryNoteNumber
-              : null,
+            paymentTerms === "CREDITO" ? validatedPromissoryNoteNumber : null,
           totalProducts,
           subtotal: toNumericString(body?.subtotal),
           iva: toNumericString(body?.iva),
@@ -378,12 +394,16 @@ export async function POST(request: Request) {
 
       for (const rawItem of items) {
         const productId = String(rawItem?.productId ?? "").trim();
+
         if (!productId) {
           throw new Error("item productId required");
         }
 
-        const rawOrderType = String(rawItem?.orderType ?? "NORMAL").toUpperCase();
-        const orderType = rawOrderType === "BODEGA" ? "REPOSICION" : rawOrderType;
+        const rawOrderType = String(
+          rawItem?.orderType ?? "NORMAL",
+        ).toUpperCase();
+        const orderType =
+          rawOrderType === "BODEGA" ? "REPOSICION" : rawOrderType;
 
         const [savedItem] = await tx
           .insert(quotationItems)
@@ -395,7 +415,7 @@ export async function POST(request: Request) {
               ? String(rawItem.process)
               : rawItem?.negotiation
                 ? String(rawItem.negotiation)
-              : null,
+                : null,
             quantity: toNumericString(rawItem?.quantity),
             unitPrice: toNumericString(rawItem?.unitPrice),
             discount: toNumericString(rawItem?.discount),
@@ -408,13 +428,16 @@ export async function POST(request: Request) {
           })
           .returning();
 
-        const additions = Array.isArray(rawItem?.additions) ? rawItem.additions : [];
+        const additions = Array.isArray(rawItem?.additions)
+          ? rawItem.additions
+          : [];
 
         if (additions.length > 0) {
           await tx.insert(quotationItemAdditions).values(
             additions
               .map((add: any) => {
                 const additionId = String(add?.id ?? "").trim();
+
                 if (!additionId) return null;
 
                 return {
@@ -437,10 +460,15 @@ export async function POST(request: Request) {
       return header;
     });
 
-    return Response.json({ id: created.id, quoteCode: created.quoteCode }, { status: 201 });
+    return Response.json(
+      { id: created.id, quoteCode: created.quoteCode },
+      { status: 201 },
+    );
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear la cotización", { status: 500 });
   }
 }

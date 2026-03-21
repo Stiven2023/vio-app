@@ -110,6 +110,7 @@ export function OptionsPageClient() {
     fetch("/api/account/options", { credentials: "include" })
       .then(async (res) => {
         if (!res.ok) throw new Error(await res.text());
+
         return (await res.json()) as AccountOptionsResponse;
       })
       .then((data) => {
@@ -132,7 +133,9 @@ export function OptionsPageClient() {
         }
       })
       .catch((error) => {
-        toast.error(error instanceof Error ? error.message : "Error cargando opciones");
+        toast.error(
+          error instanceof Error ? error.message : "Error cargando opciones",
+        );
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -143,7 +146,10 @@ export function OptionsPageClient() {
     };
   }, [setSession]);
 
-  const uploadImage = async (file: File, type: "employee" | "signature" | "company") => {
+  const uploadImage = async (
+    file: File,
+    type: "employee" | "signature" | "company",
+  ) => {
     const setUploading =
       type === "employee"
         ? setUploadingEmployeeImage
@@ -195,36 +201,48 @@ export function OptionsPageClient() {
     }
   };
 
-  const onEmployeeImageSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onEmployeeImageSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
+
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Selecciona una imagen válida");
+
       return;
     }
 
     await uploadImage(file, "employee");
   };
 
-  const onSignatureImageSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onSignatureImageSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
+
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Selecciona una imagen válida");
+
       return;
     }
 
     await uploadImage(file, "signature");
   };
 
-  const onCompanyImageSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onCompanyImageSelected = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
+
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Selecciona una imagen válida");
+
       return;
     }
 
@@ -276,7 +294,9 @@ export function OptionsPageClient() {
 
       toast.success("Información actualizada");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo guardar");
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo guardar",
+      );
     } finally {
       setSavingProfile(false);
     }
@@ -297,7 +317,9 @@ export function OptionsPageClient() {
       if (!res.ok) throw new Error(await res.text());
       toast.success("Idioma actualizado");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo guardar idioma");
+      toast.error(
+        error instanceof Error ? error.message : "No se pudo guardar idioma",
+      );
     } finally {
       setSavingLanguage(false);
     }
@@ -320,14 +342,20 @@ export function OptionsPageClient() {
       setPasswordForm({ currentPassword: "", newPassword: "" });
       toast.success("Contraseña actualizada");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo cambiar contraseña");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cambiar contraseña",
+      );
     } finally {
       setSavingPassword(false);
     }
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-default-500">Cargando opciones...</div>;
+    return (
+      <div className="p-6 text-sm text-default-500">Cargando opciones...</div>
+    );
   }
 
   return (
@@ -350,7 +378,9 @@ export function OptionsPageClient() {
           <Input
             label="Código internacional"
             value={profile.intlDialCode}
-            onValueChange={(v) => setProfile((s) => ({ ...s, intlDialCode: v }))}
+            onValueChange={(v) =>
+              setProfile((s) => ({ ...s, intlDialCode: v }))
+            }
           />
           <Input
             label="Móvil"
@@ -514,6 +544,7 @@ export function OptionsPageClient() {
             selectedKeys={[language]}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setLanguage(String(first ?? "es"));
             }}
           >
@@ -522,7 +553,11 @@ export function OptionsPageClient() {
             <SelectItem key="pt">Português</SelectItem>
           </Select>
         </div>
-        <Button color="primary" isLoading={savingLanguage} onPress={saveLanguage}>
+        <Button
+          color="primary"
+          isLoading={savingLanguage}
+          onPress={saveLanguage}
+        >
           Guardar idioma
         </Button>
       </section>
@@ -542,10 +577,16 @@ export function OptionsPageClient() {
             label="Nueva contraseña"
             type="password"
             value={passwordForm.newPassword}
-            onValueChange={(v) => setPasswordForm((s) => ({ ...s, newPassword: v }))}
+            onValueChange={(v) =>
+              setPasswordForm((s) => ({ ...s, newPassword: v }))
+            }
           />
         </div>
-        <Button color="primary" isLoading={savingPassword} onPress={changePassword}>
+        <Button
+          color="primary"
+          isLoading={savingPassword}
+          onPress={changePassword}
+        >
           Actualizar contraseña
         </Button>
       </section>

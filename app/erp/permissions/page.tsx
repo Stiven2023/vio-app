@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ErpPermissionsPage() {
-	redirect("/erp/admin");
+  redirect("/erp/admin");
 }

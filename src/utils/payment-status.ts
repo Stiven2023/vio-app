@@ -17,16 +17,25 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 export function isConfirmedPaymentStatus(status: unknown) {
-  const s = String(status ?? "").trim().toUpperCase();
+  const s = String(status ?? "")
+    .trim()
+    .toUpperCase();
+
   return s === "PAGADO" || s === "CONFIRMADO_CAJA";
 }
 
 export function canSetPaymentStatusOnApproval(status: unknown) {
-  const normalized = String(status ?? "").trim().toUpperCase();
+  const normalized = String(status ?? "")
+    .trim()
+    .toUpperCase();
+
   return normalized === "PAGADO" || normalized === "ANULADO";
 }
 
 export function normalizePaymentStatusLabel(status: unknown) {
-  const normalized = String(status ?? "").trim().toUpperCase() as PaymentStatus;
+  const normalized = String(status ?? "")
+    .trim()
+    .toUpperCase() as PaymentStatus;
+
   return PAYMENT_STATUS_LABELS[normalized] ?? normalized ?? "-";
 }

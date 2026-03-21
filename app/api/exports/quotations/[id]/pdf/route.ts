@@ -1,7 +1,8 @@
-import { eq, inArray, sql } from "drizzle-orm";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import { eq, inArray, sql } from "drizzle-orm";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 import { db } from "@/src/db";
 import {
@@ -18,11 +19,13 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 function asNumber(value: unknown) {
   const n = Number(String(value ?? "0"));
+
   return Number.isFinite(n) ? n : 0;
 }
 
 function formatMoney(value: unknown, currency: string) {
   const cur = currency === "USD" ? "USD" : "COP";
+
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: cur,
@@ -34,37 +37,44 @@ function formatMoney(value: unknown, currency: string) {
 function formatDate(value: unknown) {
   if (!value) return "-";
   const d = new Date(String(value));
+
   if (Number.isNaN(d.getTime())) return "-";
+
   return new Intl.DateTimeFormat("es-CO").format(d);
 }
 
 function truncateText(value: unknown, max = 42) {
   const text = String(value ?? "-");
+
   if (text.length <= max) return text;
+
   return `${text.slice(0, Math.max(0, max - 3))}...`;
 }
 
 function sanitizeWinAnsi(value: unknown) {
-  return String(value ?? "")
-    .replace(/[^\u0020-\u00FF]/g, "-");
+  return String(value ?? "").replace(/[^\u0020-\u00FF]/g, "-");
 }
 
-async function readImageSourceBytes(source: string): Promise<Uint8Array | null> {
+async function readImageSourceBytes(
+  source: string,
+): Promise<Uint8Array | null> {
   const value = String(source ?? "").trim();
+
   if (!value) return null;
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     const response = await fetch(value);
+
     if (!response.ok) return null;
     const buffer = await response.arrayBuffer();
+
     return new Uint8Array(buffer);
   }
 
-  const normalized = value.startsWith("/")
-    ? value.slice(1)
-    : value;
+  const normalized = value.startsWith("/") ? value.slice(1) : value;
   const diskPath = join(process.cwd(), "public", normalized);
   const bytes = await readFile(diskPath);
+
   return new Uint8Array(bytes);
 }
 
@@ -73,6 +83,7 @@ async function embedImageFromSource(
   source: string,
 ): Promise<Awaited<ReturnType<PDFDocument["embedPng"]>> | null> {
   const bytes = await readImageSourceBytes(source);
+
   if (!bytes) return null;
 
   try {
@@ -92,8 +103,11 @@ export async function GET(
 ) {
   const params = await props.params;
   const { searchParams } = new URL(request.url);
-  const audienceParam = String(searchParams.get("audience") ?? "interno").toLowerCase();
-  const isExternalPdf = audienceParam === "externo" || audienceParam === "external";
+  const audienceParam = String(
+    searchParams.get("audience") ?? "interno",
+  ).toLowerCase();
+  const isExternalPdf =
+    audienceParam === "externo" || audienceParam === "external";
 
   const limited = rateLimit(request, {
     key: "quotations:export:pdf",
@@ -104,9 +118,11 @@ export async function GET(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "DESCARGAR_COTIZACION");
+
   if (forbidden) return forbidden;
 
   const quotationId = String(params.id ?? "").trim();
+
   if (!quotationId) return new Response("id required", { status: 400 });
 
   const [header] = await db
@@ -188,14 +204,19 @@ export async function GET(
           additionName: additions.name,
         })
         .from(quotationItemAdditions)
-        .leftJoin(additions, eq(quotationItemAdditions.additionId, additions.id))
+        .leftJoin(
+          additions,
+          eq(quotationItemAdditions.additionId, additions.id),
+        )
         .where(inArray(quotationItemAdditions.quotationItemId, itemIds))
     : [];
 
   const additionsByItem = new Map<string, typeof itemAdditions>();
+
   for (const add of itemAdditions) {
     const key = String(add.quotationItemId);
     const current = additionsByItem.get(key) ?? [];
+
     current.push(add);
     additionsByItem.set(key, current);
   }
@@ -204,8 +225,10 @@ export async function GET(
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const headerImage =
-    (await embedImageFromSource(pdf, String(header.sellerCompanyImageUrl ?? ""))) ||
-    (await embedImageFromSource(pdf, "/image.png"));
+    (await embedImageFromSource(
+      pdf,
+      String(header.sellerCompanyImageUrl ?? ""),
+    )) || (await embedImageFromSource(pdf, "/image.png"));
   const footerSignatureImage = await embedImageFromSource(
     pdf,
     String(header.sellerSignatureImageUrl ?? ""),
@@ -217,7 +240,11 @@ export async function GET(
   const contentWidth = pageWidth - margin * 2;
   const footerFullWidth = pageWidth;
   const estimatedFooterHeight = footerSignatureImage
-    ? Math.max(56, footerSignatureImage.height * (footerFullWidth / footerSignatureImage.width))
+    ? Math.max(
+        56,
+        footerSignatureImage.height *
+          (footerFullWidth / footerSignatureImage.width),
+      )
     : 0;
   const bottomLimit = 24 + estimatedFooterHeight + 18;
   const textColor = rgb(0.12, 0.12, 0.15);
@@ -238,6 +265,7 @@ export async function GET(
     color = textColor,
   ) => {
     const safeText = sanitizeWinAnsi(text);
+
     page.drawText(safeText, {
       x,
       y: yPos,
@@ -256,6 +284,7 @@ export async function GET(
     isBold = false,
   ) => {
     const safe = truncateText(text, Math.max(4, Math.floor(width / 5.7)));
+
     drawText(safe, x + 4, yPos, size, isBold);
   };
 
@@ -331,12 +360,14 @@ export async function GET(
 
     const isPresentValue = (value: unknown) => {
       const text = String(value ?? "").trim();
+
       return text.length > 0 && text !== "-";
     };
 
     const infoPairs: Array<{ label: string; value: string }> = [];
     const pushPair = (label: string, value: unknown) => {
       const safeValue = String(value ?? "").trim();
+
       if (!isPresentValue(safeValue)) return;
       infoPairs.push({ label, value: safeValue });
     };
@@ -380,7 +411,10 @@ export async function GET(
     );
 
     const groupedRows: Array<
-      [{ label: string; value: string }, { label: string; value: string } | null]
+      [
+        { label: string; value: string },
+        { label: string; value: string } | null,
+      ]
     > = [];
 
     for (let index = 0; index < infoPairs.length; index += 2) {
@@ -389,6 +423,7 @@ export async function GET(
 
     groupedRows.forEach((row, idx) => {
       const rowY = boxTop - idx * rowH;
+
       page.drawRectangle({
         x: margin,
         y: rowY - rowH,
@@ -411,11 +446,30 @@ export async function GET(
       }
 
       drawText(leftPair.label, margin + 6, rowY - 9, 8, false, mutedColor);
-      drawText(truncateText(leftPair.value, rightPair ? 28 : 70), margin + 6, rowY - 19, 9, true);
+      drawText(
+        truncateText(leftPair.value, rightPair ? 28 : 70),
+        margin + 6,
+        rowY - 19,
+        9,
+        true,
+      );
 
       if (rightPair) {
-        drawText(rightPair.label, margin + colW + 6, rowY - 9, 8, false, mutedColor);
-        drawText(truncateText(rightPair.value, 28), margin + colW + 6, rowY - 19, 9, true);
+        drawText(
+          rightPair.label,
+          margin + colW + 6,
+          rowY - 9,
+          8,
+          false,
+          mutedColor,
+        );
+        drawText(
+          truncateText(rightPair.value, 28),
+          margin + colW + 6,
+          rowY - 19,
+          9,
+          true,
+        );
       }
     });
 
@@ -446,6 +500,7 @@ export async function GET(
     });
 
     let x = tableX;
+
     columns.forEach((col) => {
       drawText(col.label, x + 4, y - 14, 8.5, true);
       x += col.width;
@@ -471,6 +526,7 @@ export async function GET(
   };
 
   const rows: PdfRow[] = [];
+
   for (const item of items) {
     const qty = asNumber(item.quantity);
     const unitPrice = asNumber(item.unitPrice);
@@ -500,9 +556,11 @@ export async function GET(
     }
 
     const adds = additionsByItem.get(item.id) ?? [];
+
     for (const add of adds) {
       const addQty = asNumber(add.quantity);
       const addUnit = asNumber(add.unitPrice);
+
       rows.push({
         code: String(add.additionCode ?? "-"),
         detail: `- Adicion: ${add.additionName ?? "Adicion"}`,
@@ -538,10 +596,26 @@ export async function GET(
     });
 
     let x = tableX;
-    const values = [row.code, row.detail, row.qty, row.unit, row.discount, row.total];
+    const values = [
+      row.code,
+      row.detail,
+      row.qty,
+      row.unit,
+      row.discount,
+      row.total,
+    ];
+
     values.forEach((value, idx) => {
       const width = columns[idx].width;
-      drawCellText(String(value), x, y - 12, width, 8.2, !row.isSubRow && idx === 1);
+
+      drawCellText(
+        String(value),
+        x,
+        y - 12,
+        width,
+        8.2,
+        !row.isSubRow && idx === 1,
+      );
       x += width;
       page.drawLine({
         start: { x, y },
@@ -555,8 +629,14 @@ export async function GET(
   }
 
   const summaryRows: Array<[string, string]> = [
-    ["Total Productos", formatMoney(header.totalProducts, String(header.currency ?? "COP"))],
-    ["Subtotal", formatMoney(header.subtotal, String(header.currency ?? "COP"))],
+    [
+      "Total Productos",
+      formatMoney(header.totalProducts, String(header.currency ?? "COP")),
+    ],
+    [
+      "Subtotal",
+      formatMoney(header.subtotal, String(header.currency ?? "COP")),
+    ],
     [
       header.documentType === "R" ? "IVA" : "IVA (19%)",
       header.documentType === "R"
@@ -575,7 +655,10 @@ export async function GET(
         ? formatMoney(header.insuranceFee, String(header.currency ?? "COP"))
         : "No aplica",
     ],
-    ["Total General", formatMoney(header.total, String(header.currency ?? "COP"))],
+    [
+      "Total General",
+      formatMoney(header.total, String(header.currency ?? "COP")),
+    ],
   ];
 
   const summaryRowH = 18;
@@ -592,6 +675,7 @@ export async function GET(
 
   const summaryX = pageWidth - margin - summaryWidth;
   const summaryY = y - 10;
+
   page.drawRectangle({
     x: summaryX,
     y: summaryY - summaryHeight,
@@ -607,11 +691,13 @@ export async function GET(
   summaryRows.forEach(([label, value], idx) => {
     const rowY = summaryY - 28 - idx * summaryRowH;
     const isTotal = label === "Total General";
+
     drawText(label, summaryX + 8, rowY, 8.8, isTotal);
     drawText(value, summaryX + 108, rowY, 8.8, isTotal);
   });
 
   const anticipoY = summaryY - summaryHeight - 10;
+
   page.drawRectangle({
     x: summaryX,
     y: anticipoY - anticipoHeight,

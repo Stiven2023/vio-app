@@ -32,7 +32,7 @@ const sections: SectionConfig[] = [
 
 function SectionSkeleton({ section }: { section: SectionConfig }) {
   return (
-    <article id={section.id} className="scroll-mt-24">
+    <article className="scroll-mt-24" id={section.id}>
       <Card className="border border-default-200 bg-content1/80">
         <CardHeader className="flex flex-col items-start gap-1 pb-1">
           <h2 className="text-base font-semibold">{section.title}</h2>
@@ -41,7 +41,10 @@ function SectionSkeleton({ section }: { section: SectionConfig }) {
         <CardBody className="gap-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }, (_, idx) => (
-              <div key={`${section.id}-metric-${idx}`} className="rounded-large border border-default-100 p-3">
+              <div
+                key={`${section.id}-metric-${idx}`}
+                className="rounded-large border border-default-100 p-3"
+              >
                 <Skeleton className="h-3 w-20 rounded-medium" />
                 <Skeleton className="mt-3 h-7 w-28 rounded-medium" />
                 <Skeleton className="mt-2 h-3 w-24 rounded-medium" />

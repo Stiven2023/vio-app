@@ -49,10 +49,10 @@ export function IdentificationDocumentsSection({
       {requiredDocuments.map((doc) => (
         <FileUpload
           key={doc.field}
+          isRequired
           acceptedFileTypes=".pdf"
           autoUpload={autoUpload}
           errorMessage={errors?.[doc.field]}
-          isRequired
           label={doc.label}
           maxSizeMB={10}
           uploadFolder={uploadFolder}

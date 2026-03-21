@@ -1,12 +1,13 @@
+import { eq } from "drizzle-orm";
+
 import { db } from "@/src/db";
 import { clientLegalStatusHistory, clients } from "@/src/db/schema";
-import { eq } from "drizzle-orm";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: clientId } = await params;
 
@@ -18,7 +19,11 @@ export async function POST(
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "CAMBIAR_ESTADO_JURIDICO_CLIENTE");
+  const forbidden = await requirePermission(
+    request,
+    "CAMBIAR_ESTADO_JURIDICO_CLIENTE",
+  );
+
   if (forbidden) return forbidden;
 
   try {
@@ -54,10 +59,10 @@ export async function POST(
       reviewedBy: reviewedBy || null,
     });
 
-      // Actualizar isActive del cliente basado en el estado jurídico.
-      // EN_REVISION sigue operativo; BLOQUEADO se inactiva.
-      const shouldBeActive = status !== "BLOQUEADO";
-    
+    // Actualizar isActive del cliente basado en el estado jurídico.
+    // EN_REVISION sigue operativo; BLOQUEADO se inactiva.
+    const shouldBeActive = status !== "BLOQUEADO";
+
     if (shouldBeActive !== client.isActive) {
       await db
         .update(clients)
@@ -66,15 +71,16 @@ export async function POST(
     }
 
     console.log(
-      `✅ Estado jurídico actualizado para cliente ${clientId}: ${status} (isActive: ${shouldBeActive})`
+      `✅ Estado jurídico actualizado para cliente ${clientId}: ${status} (isActive: ${shouldBeActive})`,
     );
 
     return Response.json({ success: true, isActive: shouldBeActive });
   } catch (error) {
     console.error("❌ Error al actualizar estado jurídico:", error);
+
     return new Response(
       `Error: ${error instanceof Error ? error.message : "Error desconocido"}`,
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

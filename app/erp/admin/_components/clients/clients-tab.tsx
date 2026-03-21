@@ -83,7 +83,9 @@ export function ClientsTab({
   const [editing, setEditing] = useState<Client | null>(null);
   const [viewing, setViewing] = useState<Client | null>(null);
   const [viewingDocuments, setViewingDocuments] = useState<Client | null>(null);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Client | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Client | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -163,6 +165,7 @@ export function ClientsTab({
   const createAsEmployee = async (client: Client) => {
     if (!client.email) {
       toast.error("Para crear como empleado, el cliente debe tener email.");
+
       return;
     }
 
@@ -195,6 +198,7 @@ export function ClientsTab({
   const createAsSupplier = async (client: Client) => {
     if (!client.email) {
       toast.error("Para crear como proveedor, el cliente debe tener email.");
+
       return;
     }
 
@@ -518,6 +522,7 @@ export function ClientsTab({
                               toast("Disponible desde el módulo Admin", {
                                 icon: "ℹ️",
                               });
+
                               return;
                             }
 
@@ -621,9 +626,9 @@ export function ClientsTab({
         canChangeLegalStatus={canChangeLegalStatus}
         client={editing}
         isOpen={modalOpen}
-        onRequestCreateEmployee={onRequestCreateEmployee}
         prefill={modalPrefill}
         onOpenChange={setModalOpen}
+        onRequestCreateEmployee={onRequestCreateEmployee}
         onSaved={onSaved}
       />
 
@@ -631,17 +636,19 @@ export function ClientsTab({
         client={viewing}
         isOpen={detailsOpen}
         onOpenChange={setDetailsOpen}
+        onRequestCreateConfectionist={
+          legalOnlyMode
+            ? undefined
+            : () => viewing && createAsConfectionist(viewing)
+        }
         onRequestCreateEmployee={
           legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
         }
-        onRequestCreateSupplier={
-          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
-        }
-        onRequestCreateConfectionist={
-          legalOnlyMode ? undefined : () => viewing && createAsConfectionist(viewing)
-        }
         onRequestCreatePacker={
           legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
+        }
+        onRequestCreateSupplier={
+          legalOnlyMode ? undefined : () => viewing && createAsSupplier(viewing)
         }
       />
 

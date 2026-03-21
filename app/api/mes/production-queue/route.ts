@@ -33,9 +33,11 @@ export async function GET(request: Request) {
     limit: 200,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !ALLOWED_ROLES.has(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -78,8 +80,12 @@ export async function GET(request: Request) {
     return Response.json({ items });
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al consultar cola de producción", { status: 500 });
+
+    return new Response("Error al consultar cola de producción", {
+      status: 500,
+    });
   }
 }
 
@@ -89,9 +95,11 @@ export async function POST(request: Request) {
     limit: 60,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !canWrite(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -105,13 +113,19 @@ export async function POST(request: Request) {
     const orderItemId = String(body.orderItemId ?? "").trim();
     const design = String(body.design ?? "").trim();
     const size = body.size ? String(body.size).trim() : null;
-    const quantityTotal = Math.max(0, Math.floor(Number(body.quantityTotal ?? 0)));
-    const priority = PRIORITY_VALUES.includes(body.priority as (typeof PRIORITY_VALUES)[number])
+    const quantityTotal = Math.max(
+      0,
+      Math.floor(Number(body.quantityTotal ?? 0)),
+    );
+    const priority = PRIORITY_VALUES.includes(
+      body.priority as (typeof PRIORITY_VALUES)[number],
+    )
       ? (body.priority as (typeof PRIORITY_VALUES)[number])
       : "NORMAL";
 
     if (!orderId) return new Response("orderId es requerido", { status: 400 });
-    if (!orderItemId) return new Response("orderItemId es requerido", { status: 400 });
+    if (!orderItemId)
+      return new Response("orderItemId es requerido", { status: 400 });
     if (!design) return new Response("design es requerido", { status: 400 });
 
     // Calculate suggested order by delivery date (from quotation via prefactura)
@@ -129,7 +143,9 @@ export async function POST(request: Request) {
     const deliveryStr = orderRow?.deliveryDate ?? null;
     const deliveryTs = deliveryStr
       ? new Date(deliveryStr).getTime()
-      : (orderRow?.createdAt ? new Date(orderRow.createdAt).getTime() : Date.now());
+      : orderRow?.createdAt
+        ? new Date(orderRow.createdAt).getTime()
+        : Date.now();
     const suggestedOrder = Math.floor(deliveryTs / 1000);
 
     // Count urgent items to place URGENTE at top
@@ -143,7 +159,8 @@ export async function POST(request: Request) {
         ),
       );
 
-    const finalOrder = priority === "URGENTE" ? (cnt + 1) : (suggestedOrder + 1_000_000);
+    const finalOrder =
+      priority === "URGENTE" ? cnt + 1 : suggestedOrder + 1_000_000;
 
     const [created] = await db
       .insert(mesProductionQueue)
@@ -165,7 +182,11 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al crear entrada en cola de producción", { status: 500 });
+
+    return new Response("Error al crear entrada en cola de producción", {
+      status: 500,
+    });
   }
 }

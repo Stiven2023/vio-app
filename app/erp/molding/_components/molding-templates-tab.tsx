@@ -1,5 +1,7 @@
 "use client";
 
+import type { MoldingTemplateRow } from "../_lib/types";
+
 import { useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
@@ -27,8 +29,6 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
-
-import type { MoldingTemplateRow } from "../_lib/types";
 
 type Props = {
   canCreate: boolean;
@@ -93,6 +93,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   async function handleSave() {
     if (!form.moldingCode.trim()) {
       toast.error("Molding code is required");
+
       return;
     }
 
@@ -160,7 +161,11 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
           onValueChange={setSearch}
         />
         {canCreate && (
-          <Button color="primary" startContent={<FiPlus />} onPress={openCreate}>
+          <Button
+            color="primary"
+            startContent={<FiPlus />}
+            onPress={openCreate}
+          >
             New template
           </Button>
         )}
@@ -168,10 +173,13 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
       {/* Table */}
       {loading ? (
-        <TableSkeleton ariaLabel="Loading molding templates" headers={headers} />
+        <TableSkeleton
+          ariaLabel="Loading molding templates"
+          headers={headers}
+        />
       ) : (
         <>
-          <Table aria-label="Molding templates" removeWrapper>
+          <Table removeWrapper aria-label="Molding templates">
             <TableHeader>
               {headers.map((h) => (
                 <TableColumn key={h}>{h}</TableColumn>
@@ -180,7 +188,9 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
             <TableBody emptyContent="No molding templates found">
               {(data?.items ?? []).map((row) => (
                 <TableRow key={row.id}>
-                  <TableCell className="font-mono text-sm">{row.moldingCode}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {row.moldingCode}
+                  </TableCell>
                   <TableCell>v{row.version}</TableCell>
                   <TableCell>{row.garmentType ?? "—"}</TableCell>
                   <TableCell>{row.fabric ?? "—"}</TableCell>
@@ -222,7 +232,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       )}
 
       {/* Create Modal */}
-      <Modal isOpen={modalOpen} onClose={closeModal} size="2xl">
+      <Modal isOpen={modalOpen} size="2xl" onClose={closeModal}>
         <ModalContent>
           <ModalHeader>New molding template</ModalHeader>
           <ModalBody>

@@ -1,14 +1,7 @@
-import { and, desc, eq, ilike, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import {
-  additions,
-  employees,
-  inventoryItems,
-  inventoryItemVariants,
-  moldingTemplateInsumos,
-  moldingTemplates,
-} from "@/src/db/schema";
+import { employees, moldingTemplates } from "@/src/db/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
@@ -21,9 +14,11 @@ export async function GET(request: Request) {
     limit: 150,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   try {
@@ -34,6 +29,7 @@ export async function GET(request: Request) {
     const activeOnly = searchParams.get("activeOnly") !== "false";
 
     const conditions = [];
+
     if (activeOnly) conditions.push(eq(moldingTemplates.isActive, true));
     if (search) {
       conditions.push(ilike(moldingTemplates.moldingCode, `%${search}%`));
@@ -78,8 +74,12 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("Could not retrieve molding templates", { status: 500 });
+
+    return new Response("Could not retrieve molding templates", {
+      status: 500,
+    });
   }
 }
 
@@ -140,6 +140,7 @@ type CreateMoldingTemplateBody = {
 
 function parseStr(v: unknown, maxLen = 255): string | null {
   const s = String(v ?? "").trim();
+
   return s.length > 0 ? s.slice(0, maxLen) : null;
 }
 
@@ -149,11 +150,13 @@ function parseBool(v: unknown): boolean {
 
 function parseIntField(v: unknown): number | null {
   const n = Number(v);
+
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 function parseDecimalField(v: unknown): string | null {
   const n = Number(v);
+
   return Number.isFinite(n) && n > 0 ? String(n) : null;
 }
 
@@ -163,14 +166,17 @@ export async function POST(request: Request) {
     limit: 30,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_MOLDERIA");
+
   if (forbidden) return forbidden;
 
   const employeeId = await getEmployeeIdFromRequest(request);
 
   let body: CreateMoldingTemplateBody;
+
   try {
     body = (await request.json()) as CreateMoldingTemplateBody;
   } catch {
@@ -178,6 +184,7 @@ export async function POST(request: Request) {
   }
 
   const moldingCode = parseStr(body.moldingCode, 50);
+
   if (!moldingCode) {
     return new Response("moldingCode is required", { status: 400 });
   }
@@ -267,7 +274,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("Could not create molding template", { status: 500 });
   }
 }

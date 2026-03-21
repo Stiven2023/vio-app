@@ -48,7 +48,10 @@ type ColumnDef = {
   name: string;
 };
 
-const orderStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
+const orderStatusColors: Record<
+  string,
+  "default" | "primary" | "success" | "warning" | "danger"
+> = {
   PENDIENTE: "warning",
   APROBACION: "primary",
   PRODUCCION: "primary",
@@ -58,7 +61,10 @@ const orderStatusColors: Record<string, "default" | "primary" | "success" | "war
   CANCELADO: "default",
 };
 
-const itemStatusColors: Record<string, "default" | "primary" | "success" | "warning" | "danger"> = {
+const itemStatusColors: Record<
+  string,
+  "default" | "primary" | "success" | "warning" | "danger"
+> = {
   PENDIENTE: "warning",
   APROBACION: "primary",
   PENDIENTE_PRODUCCION: "primary",
@@ -88,6 +94,7 @@ function formatStatus(status: string | null | undefined) {
   if (status === "PENDIENTE_PRODUCCION_ACTUALIZACION") {
     return "SCHEDULING UPDATE";
   }
+
   return status.replace(/_/g, " ");
 }
 
@@ -105,6 +112,7 @@ function formatRelative(value: string | null | undefined) {
   if (abs < 60) return rtf.format(diffSec, "second");
   if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
   if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
+
   return rtf.format(Math.round(diffSec / 86400), "day");
 }
 
@@ -117,9 +125,8 @@ export function StatusHistoryClient() {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const [dataOrders, setDataOrders] = useState<Paginated<OrderHistoryRow> | null>(
-    null,
-  );
+  const [dataOrders, setDataOrders] =
+    useState<Paginated<OrderHistoryRow> | null>(null);
   const [dataItems, setDataItems] = useState<Paginated<ItemHistoryRow> | null>(
     null,
   );
@@ -145,10 +152,12 @@ export function StatusHistoryClient() {
 
     if (tab === "orders") {
       if (orderId.trim()) sp.set("orderId", orderId.trim());
+
       return `/api/status-history/orders?${sp.toString()}`;
     }
 
     if (orderItemId.trim()) sp.set("orderItemId", orderItemId.trim());
+
     return `/api/status-history/order-items?${sp.toString()}`;
   }, [orderId, orderItemId, page, tab]);
 
@@ -239,7 +248,9 @@ export function StatusHistoryClient() {
 
       <Table removeWrapper aria-label="History">
         <TableHeader columns={columns}>
-          {(column) => <TableColumn key={column.key}>{column.name}</TableColumn>}
+          {(column) => (
+            <TableColumn key={column.key}>{column.name}</TableColumn>
+          )}
         </TableHeader>
         <TableBody
           emptyContent={loading ? "" : "No history"}
@@ -249,7 +260,9 @@ export function StatusHistoryClient() {
             <TableRow key={row.id}>
               {(columnKey) => {
                 if (columnKey === "order") {
-                  return <TableCell>{row.orderCode ?? row.orderId ?? "-"}</TableCell>;
+                  return (
+                    <TableCell>{row.orderCode ?? row.orderId ?? "-"}</TableCell>
+                  );
                 }
 
                 if (columnKey === "item") {
@@ -262,7 +275,8 @@ export function StatusHistoryClient() {
 
                 if (columnKey === "status") {
                   const raw = String(row.status ?? "-");
-                  const map = tab === "orders" ? orderStatusColors : itemStatusColors;
+                  const map =
+                    tab === "orders" ? orderStatusColors : itemStatusColors;
                   const color = map[raw] ?? "default";
 
                   return (
@@ -285,7 +299,9 @@ export function StatusHistoryClient() {
                         {formatRelative(row.createdAt)}
                       </div>
                       <div className="text-xs text-default-500">
-                        {row.createdAt ? new Date(row.createdAt).toLocaleString() : "-"}
+                        {row.createdAt
+                          ? new Date(row.createdAt).toLocaleString()
+                          : "-"}
                       </div>
                     </TableCell>
                   );

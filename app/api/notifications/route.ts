@@ -69,7 +69,9 @@ export async function GET(request: Request) {
       .select({ total: sql<number>`count(*)::int` })
       .from(notifications);
 
-    const [{ total }] = where ? await totalQuery.where(where) : await totalQuery;
+    const [{ total }] = where
+      ? await totalQuery.where(where)
+      : await totalQuery;
 
     const itemsQuery = db
       .select({
@@ -92,7 +94,9 @@ export async function GET(request: Request) {
     const [{ total: unreadTotal }] = await db
       .select({ total: sql<number>`count(*)::int` })
       .from(notifications)
-      .where(and(eq(notifications.role, role), eq(notifications.isRead, false)));
+      .where(
+        and(eq(notifications.role, role), eq(notifications.isRead, false)),
+      );
 
     const unreadCount = unreadTotal ?? 0;
 
@@ -106,7 +110,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar notificaciones", { status: 500 });
   }
 }

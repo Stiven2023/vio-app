@@ -18,6 +18,7 @@ async function resolveEmployeeId(request: Request) {
   if (direct) return direct;
 
   const userId = getUserIdFromRequest(request);
+
   if (!userId) return null;
 
   const [row] = await db
@@ -42,10 +43,12 @@ export async function GET(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_PEDIDO");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
   const orderItemId = String(id ?? "").trim();
+
   if (!orderItemId) return new Response("id required", { status: 400 });
 
   try {
@@ -65,7 +68,9 @@ export async function GET(
     return Response.json({ items });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron cargar problemas", { status: 500 });
   }
 }
@@ -83,14 +88,17 @@ export async function POST(
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "VER_PEDIDO");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
   const orderItemId = String(id ?? "").trim();
+
   if (!orderItemId) return new Response("id required", { status: 400 });
 
   const body = (await request.json().catch(() => ({}))) as any;
   const message = String(body?.message ?? "").trim();
+
   if (!message) return new Response("message required", { status: 400 });
 
   try {
@@ -98,7 +106,11 @@ export async function POST(
     const employeeId = await resolveEmployeeId(request);
 
     const [row] = await db
-      .select({ status: orderItems.status, orderId: orderItems.orderId, name: orderItems.name })
+      .select({
+        status: orderItems.status,
+        orderId: orderItems.orderId,
+        name: orderItems.name,
+      })
       .from(orderItems)
       .where(eq(orderItems.id, orderItemId))
       .limit(1);
@@ -119,13 +131,17 @@ export async function POST(
     await createNotificationsForPermission("VER_PEDIDO", {
       title: "Problema reportado",
       message: `Problema en diseño: ${row.name ?? "(sin nombre)"}.`,
-      href: row.orderId ? `/orders/${row.orderId}/items/${orderItemId}` : "/orders",
+      href: row.orderId
+        ? `/orders/${row.orderId}/items/${orderItemId}`
+        : "/orders",
     });
 
     return Response.json(created[0] ?? null, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo reportar el problema", { status: 500 });
   }
 }

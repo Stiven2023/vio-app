@@ -18,9 +18,30 @@ const WAREHOUSE_BY_LOCATION: Record<InventoryLocation, string> = {
 
 const BASE_CATEGORIES = [
   {
+    type: "MATERIA_PRIMA" as const,
+    name: "Materia prima",
+    description: "Telas, hilaza, cuero y demás materias primas principales.",
+  },
+  {
+    type: "TELAS" as const,
+    name: "Telas",
+    description: "Telas de distintos proveedores y colores para producción.",
+  },
+  {
+    type: "EMPAQUES" as const,
+    name: "Empaques",
+    description:
+      "Bolsas, cajas y materiales de empaque para producto terminado.",
+  },
+  {
     type: "INSUMOS_PRODUCCION" as const,
     name: "Insumos de produccion",
     description: "Avios, cierres, cordones, cuellos, elasticos y similares.",
+  },
+  {
+    type: "INSUMOS_VARIOS" as const,
+    name: "Insumos varios",
+    description: "Insumos generales no clasificados en otras categorías.",
   },
   {
     type: "PAPELERIA" as const,
@@ -49,13 +70,49 @@ const BASE_WAREHOUSES = [
     code: "BODEGA_PRINCIPAL",
     name: "Bodega principal",
     description: "Bodega principal de suministros.",
+    purpose: "GENERAL" as const,
     isVirtual: false,
+    isExternal: false,
+  },
+  {
+    code: "MATERIA_PRIMA",
+    name: "Materia Prima",
+    description:
+      "Bodega para materia prima (telas, hilaza, insumos de producción).",
+    purpose: "MATERIA_PRIMA" as const,
+    isVirtual: false,
+    isExternal: false,
+  },
+  {
+    code: "PRODUCCION",
+    name: "Producción",
+    description: "Bodega de productos en proceso de producción.",
+    purpose: "PRODUCCION" as const,
+    isVirtual: false,
+    isExternal: false,
+  },
+  {
+    code: "PRODUCTO_TERMINADO",
+    name: "Producto Terminado",
+    description:
+      "Bodega de producto terminado (producción finalizada o importado).",
+    purpose: "PRODUCTO_TERMINADO" as const,
+    isVirtual: false,
+    isExternal: false,
+  },
+  {
+    code: "TRANSITO",
+    name: "En Tránsito",
+    description: "Productos comprados que aún no han llegado a la empresa.",
+    purpose: "TRANSITO" as const,
+    isVirtual: true,
     isExternal: false,
   },
   {
     code: "BODEGA_VIB",
     name: "Bodega VIB",
     description: "Bodega externa para confeccionista VIB.",
+    purpose: "GENERAL" as const,
     isVirtual: false,
     isExternal: true,
   },
@@ -63,6 +120,7 @@ const BASE_WAREHOUSES = [
     code: "TIENDA",
     name: "Tienda",
     description: "Punto de venta fisico.",
+    purpose: "GENERAL" as const,
     isVirtual: false,
     isExternal: false,
   },
@@ -70,6 +128,7 @@ const BASE_WAREHOUSES = [
     code: "WEB",
     name: "Web",
     description: "Bodega virtual para canal online.",
+    purpose: "GENERAL" as const,
     isVirtual: true,
     isExternal: false,
   },
@@ -155,10 +214,15 @@ export async function ensureInventoryBaseData(dbOrTx: any) {
     .values(BASE_CATEGORIES)
     .onConflictDoNothing({ target: inventoryCategories.type });
 
-  await dbOrTx
-    .insert(warehouses)
-    .values(BASE_WAREHOUSES)
-    .onConflictDoNothing({ target: warehouses.code });
+  for (const wh of BASE_WAREHOUSES) {
+    await dbOrTx
+      .insert(warehouses)
+      .values(wh)
+      .onConflictDoUpdate({
+        target: warehouses.code,
+        set: { purpose: wh.purpose },
+      });
+  }
 
   // Repair legacy rows where variant stock existed without direct item linkage.
   await dbOrTx.execute(sql`

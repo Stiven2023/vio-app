@@ -1,6 +1,3 @@
-import { useCallback, useState } from "react";
-import { toast } from "react-hot-toast";
-import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import type {
   ClientPriceType,
   QuoteForm,
@@ -8,6 +5,11 @@ import type {
   TaxZone,
 } from "../_lib/types";
 import type { QuoteCalculations } from "./useQuoteCalculations";
+
+import { useCallback, useState } from "react";
+import { toast } from "react-hot-toast";
+
+import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 
 export function useSaveQuotation(
   quoteId?: string,
@@ -42,11 +44,13 @@ export function useSaveQuotation(
 
       if (!form.clientId) {
         toast.error("Select an active client");
+
         return { ok: false };
       }
 
       if (!form.sellerId) {
         toast.error("Seller from session not found. Reload the page.");
+
         return { ok: false };
       }
 
@@ -56,6 +60,7 @@ export function useSaveQuotation(
 
       if (validItems.length === 0) {
         toast.error("Add at least one valid item");
+
         return { ok: false };
       }
 
@@ -113,11 +118,16 @@ export function useSaveQuotation(
           quoteData.clientPriceType = clientPriceType;
         }
 
-        const endpoint = quoteId ? `/api/quotations/${quoteId}` : "/api/quotations";
-        const created = await apiJson<{ id: string; quoteCode: string }>(endpoint, {
-          method: quoteId ? "PUT" : "POST",
-          body: JSON.stringify(quoteData),
-        });
+        const endpoint = quoteId
+          ? `/api/quotations/${quoteId}`
+          : "/api/quotations";
+        const created = await apiJson<{ id: string; quoteCode: string }>(
+          endpoint,
+          {
+            method: quoteId ? "PUT" : "POST",
+            body: JSON.stringify(quoteData),
+          },
+        );
 
         setQuoteCode(created.quoteCode);
         toast.success(
@@ -125,9 +135,11 @@ export function useSaveQuotation(
             ? `Cotización actualizada: ${created.quoteCode}`
             : `Cotización creada: ${created.quoteCode}`,
         );
+
         return { ok: true, id: created.id, quoteCode: created.quoteCode };
       } catch (error) {
         toast.error(getErrorMessage(error));
+
         return { ok: false };
       } finally {
         setSubmitting(false);

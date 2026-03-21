@@ -16,7 +16,10 @@ function ensureAuth(request: Request) {
   const userId = getUserIdFromRequest(request);
 
   if (!userId) {
-    return { userId: null, response: new Response("Unauthorized", { status: 401 }) } as const;
+    return {
+      userId: null,
+      response: new Response("Unauthorized", { status: 401 }),
+    } as const;
   }
 
   return { userId, response: null } as const;
@@ -33,6 +36,7 @@ function up(value: unknown) {
 function inferDocumentRef(documentType: "F" | "R" | null) {
   if (documentType === "F") return "RECIBO_CAJA" as const;
   if (documentType === "R") return "PREFACTURA" as const;
+
   return null;
 }
 
@@ -88,7 +92,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron consultar envíos", { status: 500 });
   }
 }
@@ -119,14 +125,28 @@ export async function POST(request: Request) {
   const size = up(body.size);
   const routePath = str(body.routePath);
 
-  if (!fromArea || !toArea || !sentBy || !recipientName || !orderCode || !designName || !size || !routePath) {
-    return new Response("Faltan campos obligatorios del envío", { status: 400 });
+  if (
+    !fromArea ||
+    !toArea ||
+    !sentBy ||
+    !recipientName ||
+    !orderCode ||
+    !designName ||
+    !size ||
+    !routePath
+  ) {
+    return new Response("Faltan campos obligatorios del envío", {
+      status: 400,
+    });
   }
 
   if (toArea.toUpperCase() === "CONFECCIONISTA" && !recipientId) {
-    return new Response("recipientId es obligatorio cuando el destino es CONFECCIONISTA", {
-      status: 400,
-    });
+    return new Response(
+      "recipientId es obligatorio cuando el destino es CONFECCIONISTA",
+      {
+        status: 400,
+      },
+    );
   }
 
   let paymentStatus: "PAGADO" | "PENDIENTE" | "NA" = "NA";
@@ -136,7 +156,11 @@ export async function POST(request: Request) {
 
   if (mode === "CLIENT") {
     const [orderRow] = await db
-      .select({ id: orders.id, clientId: orders.clientId, status: orders.status })
+      .select({
+        id: orders.id,
+        clientId: orders.clientId,
+        status: orders.status,
+      })
       .from(orders)
       .where(eq(orders.orderCode, orderCode))
       .limit(1);
@@ -195,7 +219,9 @@ export async function POST(request: Request) {
     paymentStatus = paymentInput === "PAGADO" ? "PAGADO" : "PENDIENTE";
 
     if (documentInput !== "F" && documentInput !== "R") {
-      return new Response("customerDocumentType debe ser F o R", { status: 400 });
+      return new Response("customerDocumentType debe ser F o R", {
+        status: 400,
+      });
     }
 
     customerDocumentType = documentInput as "F" | "R";
@@ -241,7 +267,9 @@ export async function POST(request: Request) {
     return Response.json(created[0], { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear el envío", { status: 500 });
   }
 }
@@ -293,15 +321,20 @@ export async function PUT(request: Request) {
       .returning();
 
     if (!updated) {
-      return new Response("Solo envíos internos pueden marcarse como recibidos", {
-        status: 400,
-      });
+      return new Response(
+        "Solo envíos internos pueden marcarse como recibidos",
+        {
+          status: 400,
+        },
+      );
     }
 
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo actualizar el envío", { status: 500 });
   }
 }

@@ -1,7 +1,6 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
-
 import { db } from "@/src/db";
 import {
   operativeDashboardLogs,
@@ -34,7 +33,12 @@ const DASHBOARD_ROLES = new Set([
   "OPERARIO_SUBLIMACION",
 ]);
 
-const ROLE_AREAS = ["OPERARIOS", "CONFECCIONISTAS", "MENSAJERIA", "EMPAQUE"] as const;
+const ROLE_AREAS = [
+  "OPERARIOS",
+  "CONFECCIONISTAS",
+  "MENSAJERIA",
+  "EMPAQUE",
+] as const;
 const OPERATION_TYPES = [
   "MONTAJE",
   "PLOTTER",
@@ -53,7 +57,10 @@ function normalizeRoleArea(v: unknown) {
   if (v === undefined) return undefined;
   if (v === null || String(v).trim() === "") return null;
 
-  const raw = String(v ?? "").trim().toUpperCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
   if (ROLE_AREAS.includes(raw as (typeof ROLE_AREAS)[number])) {
     return raw as (typeof ROLE_AREAS)[number];
   }
@@ -65,7 +72,10 @@ function normalizeOperationType(v: unknown) {
   if (v === undefined) return undefined;
   if (v === null || String(v).trim() === "") return null;
 
-  const raw = String(v ?? "").trim().toUpperCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
   if (OPERATION_TYPES.includes(raw as (typeof OPERATION_TYPES)[number])) {
     return raw as (typeof OPERATION_TYPES)[number];
   }
@@ -77,7 +87,10 @@ function normalizeProcessCode(v: unknown) {
   if (v === undefined) return undefined;
   if (v === null || String(v).trim() === "") return null;
 
-  const raw = String(v ?? "").trim().toUpperCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
   if (PROCESS_CODES.includes(raw as (typeof PROCESS_CODES)[number])) {
     return raw as (typeof PROCESS_CODES)[number];
   }
@@ -88,7 +101,9 @@ function normalizeProcessCode(v: unknown) {
 function parseNonNegativeInt(v: unknown) {
   if (v === undefined) return undefined;
   const n = Number(String(v ?? "0").trim());
+
   if (!Number.isFinite(n)) return null;
+
   return Math.max(0, Math.floor(n));
 }
 
@@ -96,7 +111,9 @@ function parseDateTime(v: unknown) {
   if (v === undefined) return undefined;
   if (v === null || String(v).trim() === "") return null;
   const date = new Date(String(v));
+
   if (Number.isNaN(date.getTime())) return "INVALID" as const;
+
   return date;
 }
 
@@ -104,13 +121,17 @@ function toOptionalText(v: unknown) {
   if (v === undefined) return undefined;
   if (v === null) return null;
   const text = String(v).trim();
+
   return text ? text : null;
 }
 
 function toBoolean(v: unknown) {
   if (v === undefined) return undefined;
   if (typeof v === "boolean") return v;
-  const raw = String(v ?? "").trim().toLowerCase();
+  const raw = String(v ?? "")
+    .trim()
+    .toLowerCase();
+
   return raw === "true" || raw === "1" || raw === "si" || raw === "sí";
 }
 
@@ -176,11 +197,16 @@ async function resolveOrderItemByDesignAndSize(args: {
 
   if (!allowedIds.size) return null;
 
-  return candidates.find((candidate: { id: string }) => allowedIds.has(String(candidate.id))) ?? null;
+  return (
+    candidates.find((candidate: { id: string }) =>
+      allowedIds.has(String(candidate.id)),
+    ) ?? null
+  );
 }
 
 async function verifyAccess(request: Request, id: string) {
   const role = getRoleFromRequest(request);
+
   if (!role || !DASHBOARD_ROLES.has(role)) {
     return { error: new Response("Forbidden", { status: 403 }) } as const;
   }
@@ -197,7 +223,11 @@ async function verifyAccess(request: Request, id: string) {
 
   const userId = getUserIdFromRequest(request);
 
-  if (role !== "ADMINISTRADOR" && existing.createdByUserId && existing.createdByUserId !== userId) {
+  if (
+    role !== "ADMINISTRADOR" &&
+    existing.createdByUserId &&
+    existing.createdByUserId !== userId
+  ) {
     return { error: new Response("Forbidden", { status: 403 }) } as const;
   }
 
@@ -222,73 +252,96 @@ export async function PUT(
   if (!recordId) return new Response("id requerido", { status: 400 });
 
   const access = await verifyAccess(request, recordId);
+
   if (access.error) return access.error;
 
   const body = (await request.json()) as Record<string, unknown>;
   const patch: Partial<typeof operativeDashboardLogs.$inferInsert> = {};
 
   const roleArea = normalizeRoleArea(body.roleArea);
-  if (roleArea === "INVALID") return new Response("roleArea inválido", { status: 400 });
+
+  if (roleArea === "INVALID")
+    return new Response("roleArea inválido", { status: 400 });
   if (roleArea !== undefined && roleArea !== null) patch.roleArea = roleArea;
 
   const operationType = normalizeOperationType(body.operationType);
+
   if (operationType === "INVALID") {
     return new Response("operationType inválido", { status: 400 });
   }
   if (operationType !== undefined) patch.operationType = operationType;
 
   const processCode = normalizeProcessCode(body.processCode);
-  if (processCode === "INVALID") return new Response("processCode inválido", { status: 400 });
+
+  if (processCode === "INVALID")
+    return new Response("processCode inválido", { status: 400 });
   if (processCode !== undefined && processCode !== null) {
     patch.processCode = processCode;
   }
 
   if (body.orderCode !== undefined) {
     const orderCode = String(body.orderCode ?? "").trim();
-    if (!orderCode) return new Response("orderCode es requerido", { status: 400 });
+
+    if (!orderCode)
+      return new Response("orderCode es requerido", { status: 400 });
     patch.orderCode = orderCode;
   }
 
   if (body.designName !== undefined) {
     const designName = String(body.designName ?? "").trim();
-    if (!designName) return new Response("designName es requerido", { status: 400 });
+
+    if (!designName)
+      return new Response("designName es requerido", { status: 400 });
     patch.designName = designName;
   }
 
   const quantityOp = parseNonNegativeInt(body.quantityOp);
-  if (quantityOp === null) return new Response("quantityOp inválido", { status: 400 });
+
+  if (quantityOp === null)
+    return new Response("quantityOp inválido", { status: 400 });
   if (quantityOp !== undefined) patch.quantityOp = quantityOp;
 
   const producedQuantity = parseNonNegativeInt(body.producedQuantity);
+
   if (producedQuantity === null) {
     return new Response("producedQuantity inválido", { status: 400 });
   }
   if (producedQuantity !== undefined) patch.producedQuantity = producedQuantity;
 
   const startAt = parseDateTime(body.startAt);
-  if (startAt === "INVALID") return new Response("startAt inválido", { status: 400 });
+
+  if (startAt === "INVALID")
+    return new Response("startAt inválido", { status: 400 });
   if (startAt !== undefined) patch.startAt = startAt;
 
   const endAt = parseDateTime(body.endAt);
-  if (endAt === "INVALID") return new Response("endAt inválido", { status: 400 });
+
+  if (endAt === "INVALID")
+    return new Response("endAt inválido", { status: 400 });
   if (endAt !== undefined) patch.endAt = endAt;
 
   const details = toOptionalText(body.details);
+
   if (details !== undefined) patch.details = details;
 
   const size = toOptionalText(body.size);
+
   if (size !== undefined) patch.size = size;
 
   const observations = toOptionalText(body.observations);
+
   if (observations !== undefined) patch.observations = observations;
 
   const isComplete = toBoolean(body.isComplete);
+
   if (isComplete !== undefined) patch.isComplete = isComplete;
 
   const isPartial = toBoolean(body.isPartial);
+
   if (isPartial !== undefined) patch.isPartial = isPartial;
 
   const repoCheck = toBoolean(body.repoCheck);
+
   if (repoCheck !== undefined) patch.repoCheck = repoCheck;
 
   patch.updatedAt = new Date();
@@ -307,8 +360,12 @@ export async function PUT(
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo actualizar registro operativo", { status: 500 });
+
+    return new Response("No se pudo actualizar registro operativo", {
+      status: 500,
+    });
   }
 }
 
@@ -330,6 +387,7 @@ export async function DELETE(
   if (!recordId) return new Response("id requerido", { status: 400 });
 
   const access = await verifyAccess(request, recordId);
+
   if (access.error) return access.error;
 
   try {
@@ -341,8 +399,12 @@ export async function DELETE(
     return Response.json(deleted);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo eliminar registro operativo", { status: 500 });
+
+    return new Response("No se pudo eliminar registro operativo", {
+      status: 500,
+    });
   }
 }
 
@@ -364,17 +426,25 @@ export async function POST(
   if (!recordId) return new Response("id requerido", { status: 400 });
 
   const access = await verifyAccess(request, recordId);
+
   if (access.error) return access.error;
 
   const source = access.existing;
+
   if (!source.isPartial) {
-    return new Response("Solo se puede crear reposición desde un registro parcial", {
-      status: 400,
-    });
+    return new Response(
+      "Solo se puede crear reposición desde un registro parcial",
+      {
+        status: 400,
+      },
+    );
   }
 
   const changedByEmployeeId = await getEmployeeIdFromRequest(request);
-  const remainingQuantity = Math.max(0, Number(source.quantityOp ?? 0) - Number(source.producedQuantity ?? 0));
+  const remainingQuantity = Math.max(
+    0,
+    Number(source.quantityOp ?? 0) - Number(source.producedQuantity ?? 0),
+  );
 
   try {
     const result = await db.transaction(async (tx) => {
@@ -387,7 +457,8 @@ export async function POST(
           designName: source.designName,
           details: source.details,
           size: source.size,
-          quantityOp: remainingQuantity > 0 ? remainingQuantity : source.quantityOp,
+          quantityOp:
+            remainingQuantity > 0 ? remainingQuantity : source.quantityOp,
           producedQuantity: 0,
           startAt: null,
           endAt: null,
@@ -431,7 +502,11 @@ export async function POST(
     return Response.json(result, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
-    return new Response("No se pudo crear reposición automática", { status: 500 });
+
+    return new Response("No se pudo crear reposición automática", {
+      status: 500,
+    });
   }
 }

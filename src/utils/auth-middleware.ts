@@ -33,6 +33,7 @@ export function getRoleFromRequest(request: Request): string | null {
 
   if (process.env.NODE_ENV !== "production" && baseRole === "ADMINISTRADOR") {
     const override = readCookieValue(request, "role_override");
+
     if (override && override.trim() !== "") return override.trim();
   }
 
@@ -42,7 +43,9 @@ export function getRoleFromRequest(request: Request): string | null {
 export function getUserIdFromRequest(request: Request): string | null {
   const auth = getAuthFromRequest(request);
   const userId =
-    auth && typeof auth === "object" ? (auth as { userId?: unknown }).userId : null;
+    auth && typeof auth === "object"
+      ? (auth as { userId?: unknown }).userId
+      : null;
 
   return typeof userId === "string" && userId.trim() !== "" ? userId : null;
 }

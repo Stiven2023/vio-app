@@ -104,6 +104,7 @@ const ADVANCE_STATUS_OPTIONS = [
 function advanceStatusColor(s: string | null | undefined) {
   if (s === "RECIBIDO") return "success";
   if (s === "PARCIAL") return "warning";
+
   return "default";
 }
 
@@ -146,7 +147,6 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
     )
       .then((res) => setPayments(res.items ?? []))
       .catch(() => setPayments([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
   const companyName = useMemo(
@@ -192,6 +192,7 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
 
     if (!pf) {
       toast.error("No hay prefactura asociada a este pedido");
+
       return;
     }
 
@@ -235,6 +236,7 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
 
     if (!pf) {
       toast.error("No hay prefactura asociada a este pedido");
+
       return;
     }
 
@@ -326,7 +328,8 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
                   NIT/ID: {(data.order as any).clientNit ?? "-"}
                 </div>
                 <div className="text-sm text-default-600">
-                  Tipo precio COP: {(data.order as any).clientPriceType === "AUTORIZADO"
+                  Tipo precio COP:{" "}
+                  {(data.order as any).clientPriceType === "AUTORIZADO"
                     ? "Cliente autorizado"
                     : (data.order as any).clientPriceType === "MAYORISTA"
                       ? "Cliente mayorista"
@@ -383,7 +386,9 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
                 </div>
               </div>
               <div>
-                <div className="text-xs text-default-500">Descuento diseños/items (%)</div>
+                <div className="text-xs text-default-500">
+                  Descuento diseños/items (%)
+                </div>
                 <div className="font-medium">
                   {String(data.totals.discountPercent)}
                 </div>
@@ -464,7 +469,9 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
               <div className="text-xs text-default-500">Fecha</div>
               <div className="font-medium text-sm">
                 {data?.prefactura?.advanceDate
-                  ? new Date(data.prefactura.advanceDate).toLocaleDateString("es-CO")
+                  ? new Date(data.prefactura.advanceDate).toLocaleDateString(
+                      "es-CO",
+                    )
                   : "-"}
               </div>
             </div>
@@ -498,7 +505,9 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
                 <div className="text-xs text-default-500">Vence</div>
                 <div className="font-medium text-sm">
                   {data.prefactura.convenioExpiresAt
-                    ? new Date(data.prefactura.convenioExpiresAt).toLocaleDateString("es-CO")
+                    ? new Date(
+                        data.prefactura.convenioExpiresAt,
+                      ).toLocaleDateString("es-CO")
                     : "-"}
                 </div>
               </div>
@@ -510,7 +519,9 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
               </div>
             </div>
           ) : (
-            <div className="text-sm text-default-500">Sin convenio registrado.</div>
+            <div className="text-sm text-default-500">
+              Sin convenio registrado.
+            </div>
           )}
         </CardBody>
       </Card>

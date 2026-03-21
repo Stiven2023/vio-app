@@ -25,6 +25,7 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   try {
@@ -130,8 +131,10 @@ export async function GET(request: Request) {
 
     // Group variants by item
     const variantsByItem = new Map<string, typeof variantRows>();
+
     for (const v of variantRows) {
       const list = variantsByItem.get(v.inventoryItemId) ?? [];
+
       list.push(v);
       variantsByItem.set(v.inventoryItemId, list);
     }
@@ -140,21 +143,28 @@ export async function GET(request: Request) {
       variants: variantsByItem.get(item.id) ?? [],
     }));
 
-    const dispatchers = employeeRows.filter((row) => row.roleName === "OPERARIO_DESPACHO");
+    const dispatchers = employeeRows.filter(
+      (row) => row.roleName === "OPERARIO_DESPACHO",
+    );
     // Merge messengers + drivers (conductors) into a single "envios" list (deduplicated by id)
     const enviosMap = new Map<string, (typeof employeeRows)[number]>();
+
     for (const row of employeeRows) {
       if (
         row.roleName === "MENSAJERO" ||
         row.roleName === "CONDUCTOR" ||
-        String(row.name ?? "").toUpperCase().includes("CONDUCTOR")
+        String(row.name ?? "")
+          .toUpperCase()
+          .includes("CONDUCTOR")
       ) {
         enviosMap.set(row.id, row);
       }
     }
     const envios = Array.from(enviosMap.values());
 
-    const messengers = employeeRows.filter((row) => row.roleName === "MENSAJERO");
+    const messengers = employeeRows.filter(
+      (row) => row.roleName === "MENSAJERO",
+    );
 
     return Response.json({
       suppliers: supplierRows,
@@ -168,7 +178,9 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron cargar opciones", { status: 500 });
   }
 }

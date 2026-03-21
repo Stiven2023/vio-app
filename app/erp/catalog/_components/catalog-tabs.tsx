@@ -1,10 +1,10 @@
 "use client";
 
 import { Tabs, Tab } from "@heroui/tabs";
+import { useState } from "react";
 
 import { CategoriesTab } from "./categories/categories-tab";
 import { ProductManagementTabs } from "./product-management-tabs";
-import { useState } from "react";
 
 type CatalogTabKey = "products" | "categories";
 

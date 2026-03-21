@@ -1,5 +1,7 @@
 "use client";
 
+import type { Employee, LegalStatusRecord } from "../../_lib/types";
+
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
@@ -13,7 +15,7 @@ import { Button } from "@heroui/button";
 import { Divider } from "@heroui/divider";
 import { Card, CardBody } from "@heroui/card";
 import { Select, SelectItem } from "@heroui/select";
-import { Textarea, Input } from "@heroui/input";
+import { Textarea } from "@heroui/input";
 import { Chip } from "@heroui/chip";
 import {
   BsShieldCheck,
@@ -21,8 +23,11 @@ import {
   BsShieldX,
   BsClipboard,
 } from "react-icons/bs";
-import type { Employee, LegalStatusRecord } from "../../_lib/types";
-import { updateEmployeeLegalStatus, getEmployeeLegalStatusHistory, shouldEmployeeBeActive } from "../../_lib/employee-legal-status";
+
+import {
+  updateEmployeeLegalStatus,
+  getEmployeeLegalStatusHistory,
+} from "../../_lib/employee-legal-status";
 
 const statusConfig = {
   VIGENTE: {
@@ -54,7 +59,9 @@ export function EmployeeLegalStatusModal({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [status, setStatus] = useState<"VIGENTE" | "EN_REVISION" | "BLOQUEADO">("VIGENTE");
+  const [status, setStatus] = useState<"VIGENTE" | "EN_REVISION" | "BLOQUEADO">(
+    "VIGENTE",
+  );
   const [notes, setNotes] = useState("");
   const [reviewedBy, setReviewedBy] = useState("");
   const [history, setHistory] = useState<LegalStatusRecord[]>([]);
@@ -68,11 +75,13 @@ export function EmployeeLegalStatusModal({
       setLoading(true);
       try {
         const data = await getEmployeeLegalStatusHistory(employee.id);
+
         setHistory(data || []);
-        
+
         // Pre-llenar con el estado más reciente
         if (data && data.length > 0) {
           const latest = data[0];
+
           setStatus(latest.status);
           setNotes(latest.notes || "");
           setReviewedBy(latest.reviewedBy || "");
@@ -90,7 +99,7 @@ export function EmployeeLegalStatusModal({
 
   const handleSave = async () => {
     if (!employee) return;
-    
+
     setSaving(true);
     try {
       await updateEmployeeLegalStatus(employee.id, {
@@ -100,12 +109,15 @@ export function EmployeeLegalStatusModal({
       });
 
       toast.success("Estado jurídico actualizado");
-      
+
       // Recargar historial
       const data = await getEmployeeLegalStatusHistory(employee.id);
+
       setHistory(data || []);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al actualizar");
+      toast.error(
+        error instanceof Error ? error.message : "Error al actualizar",
+      );
     } finally {
       setSaving(false);
     }
@@ -132,10 +144,7 @@ export function EmployeeLegalStatusModal({
             <CardBody className="gap-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">Estado Actual</span>
-                <Chip
-                  color={currentConfig.color}
-                  variant="flat"
-                >
+                <Chip color={currentConfig.color} variant="flat">
                   {currentConfig.label}
                 </Chip>
               </div>
@@ -148,34 +157,36 @@ export function EmployeeLegalStatusModal({
           {/* Formulario */}
           <div className="space-y-4">
             <Select
+              className="max-w-xs"
               label="Cambiar Estado"
               selectedKeys={[status]}
               onSelectionChange={(keys) => {
-                const selected = Array.from(keys)[0] as "VIGENTE" | "EN_REVISION" | "BLOQUEADO";
+                const selected = Array.from(keys)[0] as
+                  | "VIGENTE"
+                  | "EN_REVISION"
+                  | "BLOQUEADO";
+
                 setStatus(selected);
               }}
-              className="max-w-xs"
             >
               {Object.entries(statusConfig).map(([key, config]) => (
-                <SelectItem key={key}>
-                  {config.label}
-                </SelectItem>
+                <SelectItem key={key}>{config.label}</SelectItem>
               ))}
             </Select>
             <Textarea
               label="Notas / Observaciones"
+              minRows={3}
               placeholder="Detalles del estado, motivo del cambio, etc."
               value={notes}
               onValueChange={setNotes}
-              minRows={3}
             />
 
             <input
-              type="text"
+              className="w-full px-3 py-2 bg-default-100 border border-default-200 rounded-lg text-sm"
               placeholder="Revisado por (usuario/nombre)"
+              type="text"
               value={reviewedBy}
               onChange={(e) => setReviewedBy(e.target.value)}
-              className="w-full px-3 py-2 bg-default-100 border border-default-200 rounded-lg text-sm"
             />
           </div>
 
@@ -207,13 +218,16 @@ export function EmployeeLegalStatusModal({
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <BsClipboard className="text-default-500" />
-                  <span className="font-semibold text-sm">Historial de cambios</span>
+                  <span className="font-semibold text-sm">
+                    Historial de cambios
+                  </span>
                 </div>
 
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {history.map((record) => {
                     const config = statusConfig[record.status];
                     const Icon = config.icon;
+
                     return (
                       <Card key={record.id} className="bg-default-50">
                         <CardBody className="gap-2 p-3">
@@ -226,7 +240,9 @@ export function EmployeeLegalStatusModal({
                             </div>
                             <span className="text-xs text-default-500">
                               {record.createdAt
-                                ? new Date(record.createdAt).toLocaleDateString("es-CO")
+                                ? new Date(record.createdAt).toLocaleDateString(
+                                    "es-CO",
+                                  )
                                 : "Sin fecha"}
                             </span>
                           </div>
@@ -248,7 +264,10 @@ export function EmployeeLegalStatusModal({
                               <div className="flex flex-wrap gap-1">
                                 {(() => {
                                   try {
-                                    const fields = JSON.parse(record.changedFields);
+                                    const fields = JSON.parse(
+                                      record.changedFields,
+                                    );
+
                                     return fields.map((field: string) => (
                                       <span
                                         key={field}
@@ -284,9 +303,9 @@ export function EmployeeLegalStatusModal({
           </Button>
           <Button
             color="primary"
-            onPress={handleSave}
-            isLoading={saving}
             isDisabled={loading}
+            isLoading={saving}
+            onPress={handleSave}
           >
             Guardar Cambio
           </Button>

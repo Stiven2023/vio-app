@@ -1,6 +1,7 @@
+import { eq, desc } from "drizzle-orm";
+
 import { db } from "@/src/db";
 import { clientLegalStatusHistory } from "@/src/db/schema";
-import { eq, desc } from "drizzle-orm";
 
 /**
  * Campos críticos que cuando cambian requieren revisión jurídica
@@ -26,7 +27,7 @@ const CRITICAL_FIELDS_FOR_LEGAL_REVIEW = [
  */
 export function detectCriticalFieldChanges(
   oldData: Record<string, any>,
-  newData: Record<string, any>
+  newData: Record<string, any>,
 ): string[] {
   const changedFields: string[] = [];
 
@@ -48,14 +49,14 @@ export function detectCriticalFieldChanges(
  * - Si está EN_REVISION: isActive = false
  * - Si está BLOQUEADO: isActive = false
  * - Si está VIGENTE: isActive = true (pero respeta la preferencia si se pasa)
- * 
+ *
  * @param clientId ID del cliente
  * @param preferredIsActive valor deseado para isActive (si el estado jurídico lo permite)
  * @returns boolean - el valor final que debe tener isActive
  */
 export async function syncClientLegalStatusWithIsActive(
   clientId: string,
-  preferredIsActive?: boolean
+  preferredIsActive?: boolean,
 ): Promise<boolean> {
   try {
     // Obtener el estado jurídico más reciente
@@ -76,6 +77,7 @@ export async function syncClientLegalStatusWithIsActive(
     return preferredIsActive ?? true;
   } catch (error) {
     console.error("Error sincronizando estado jurídico del cliente:", error);
+
     // En caso de error, ser conservador: desactivar el cliente
     return false;
   }
@@ -85,7 +87,7 @@ export async function syncClientLegalStatusWithIsActive(
  * Obtiene el estado jurídico más reciente de un cliente
  */
 export async function getLatestClientLegalStatus(
-  clientId: string
+  clientId: string,
 ): Promise<"VIGENTE" | "EN_REVISION" | "BLOQUEADO" | null> {
   try {
     const latest = await db.query.clientLegalStatusHistory.findFirst({
@@ -99,6 +101,7 @@ export async function getLatestClientLegalStatus(
     return latest?.status ?? null;
   } catch (error) {
     console.error("Error obteniendo estado jurídico del cliente:", error);
+
     return null;
   }
 }
@@ -109,7 +112,7 @@ export async function getLatestClientLegalStatus(
 export async function registerAutoRevisionOnClientChange(
   clientId: string,
   clientName: string,
-  changedFields: string[]
+  changedFields: string[],
 ): Promise<void> {
   try {
     await db.insert(clientLegalStatusHistory).values({
@@ -122,7 +125,7 @@ export async function registerAutoRevisionOnClientChange(
     });
 
     console.log(
-      `✅ Revisión automática registrada para cliente ${clientId}: ${changedFields.length} campo(s) modificado(s)`
+      `✅ Revisión automática registrada para cliente ${clientId}: ${changedFields.length} campo(s) modificado(s)`,
     );
   } catch (error) {
     console.error("Error registrando revisión automática:", error);

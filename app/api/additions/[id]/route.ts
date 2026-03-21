@@ -30,13 +30,14 @@ export async function GET(
       .where(eq(additions.id, id))
       .limit(1);
 
-    if (!item)
-      return new Response("Addition not found", { status: 404 });
+    if (!item) return new Response("Addition not found", { status: 404 });
 
     return Response.json(item);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar la adición", { status: 500 });
   }
 }
@@ -68,6 +69,7 @@ export async function PUT(
   });
 
   const mainModule = await import("../route");
+
   return mainModule.PUT(mainRequest);
 }
 
@@ -98,5 +100,6 @@ export async function DELETE(
   });
 
   const mainModule = await import("../route");
+
   return mainModule.DELETE(mainRequest);
 }

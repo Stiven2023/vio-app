@@ -19,8 +19,14 @@ import { BsShieldCheck } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createClientSchema } from "../../_lib/schemas";
-import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import { uploadFileToCldinary } from "@/components/file-upload";
+
+import { IdentificationTab } from "./client-modal-tabs/identification-tab";
+import { ContactTab } from "./client-modal-tabs/contact-tab";
+import { LocationTab } from "./client-modal-tabs/location-tab";
+import { PhonesTab } from "./client-modal-tabs/phones-tab";
+import { StatusCreditTab } from "./client-modal-tabs/status-credit-tab";
+import { ClientLegalStatusModal } from "./client-legal-status-modal";
+
 import {
   ContactIcon,
   FinanceIcon,
@@ -29,12 +35,8 @@ import {
   LocationIcon,
   PhoneIcon,
 } from "@/components/form-tab-title";
-import { IdentificationTab } from "./client-modal-tabs/identification-tab";
-import { ContactTab } from "./client-modal-tabs/contact-tab";
-import { LocationTab } from "./client-modal-tabs/location-tab";
-import { PhonesTab } from "./client-modal-tabs/phones-tab";
-import { StatusCreditTab } from "./client-modal-tabs/status-credit-tab";
-import { ClientLegalStatusModal } from "./client-legal-status-modal";
+import { uploadFileToCldinary } from "@/components/file-upload";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 export function ClientModal({
   client,
@@ -219,6 +221,7 @@ export function ClientModal({
         taxCertificateDocumentUrl: client.taxCertificateDocumentUrl ?? "",
         companyIdDocumentUrl: client.companyIdDocumentUrl ?? "",
       });
+
       return;
     }
 
@@ -230,6 +233,7 @@ export function ClientModal({
 
   const checkIdentification = async () => {
     const identification = form.identification.trim();
+
     if (!identification) return;
 
     try {
@@ -247,10 +251,12 @@ export function ClientModal({
 
       if (result.sameModule) {
         const sameModuleMessage = result.sameModule.message;
+
         setErrors((prev) => ({
           ...prev,
           identification: sameModuleMessage,
         }));
+
         return;
       }
 
@@ -339,6 +345,7 @@ export function ClientModal({
           uploadFolder,
           customFileName,
         );
+
         console.log(`✅ Subido ${fieldName} (${customFileName}):`, url);
         console.log(`📁 Guardado en carpeta: ${uploadFolder}`);
         uploadedUrls[fieldName] = url;
@@ -351,6 +358,7 @@ export function ClientModal({
     }
 
     console.log("📦 URLs subidas totales:", uploadedUrls);
+
     return uploadedUrls;
   };
 
@@ -360,6 +368,7 @@ export function ClientModal({
 
     try {
       let updatedForm = { ...form };
+
       console.log("🔄 Iniciando envío de cliente...");
       console.log("📦 Pendientes para subir:", Object.keys(pendingFiles));
 
@@ -369,6 +378,7 @@ export function ClientModal({
         toast.loading("Subiendo documentos...");
         try {
           const uploadedUrls = await uploadPendingFiles();
+
           console.log("✅ Archivos subidos:", uploadedUrls);
 
           // Actualizar formulario con las URLs de los archivos subidos
@@ -416,6 +426,7 @@ export function ClientModal({
                 ? uploadError.message
                 : "Error al subir documentos",
           });
+
           return;
         }
       } else {
@@ -491,6 +502,7 @@ export function ClientModal({
         setErrors(next);
         setSubmitting(false);
         toast.error("Por favor revisa los campos requeridos");
+
         return;
       }
 
@@ -550,10 +562,10 @@ export function ClientModal({
             <Button
               isIconOnly
               color="default"
-              variant="flat"
               size="sm"
-              onPress={() => setLegalStatusModalOpen(true)}
               title="Ver estado jurídico"
+              variant="flat"
+              onPress={() => setLegalStatusModalOpen(true)}
             >
               <BsShieldCheck />
             </Button>
@@ -575,9 +587,9 @@ export function ClientModal({
                 errors={errors}
                 form={form}
                 isEditing={Boolean(client)}
+                setForm={setForm}
                 onFileSelect={handleFileSelect}
                 onIdentificationBlur={checkIdentification}
-                setForm={setForm}
               />
             </Tab>
 

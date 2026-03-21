@@ -8,7 +8,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 
 export async function GET(
   request: Request,
-  props: { params: Promise<{ id: string }> }
+  props: { params: Promise<{ id: string }> },
 ) {
   const params = await props.params;
   const limited = rateLimit(request, {
@@ -37,7 +37,9 @@ export async function GET(
     return Response.json(product);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar el producto", { status: 500 });
   }
 }

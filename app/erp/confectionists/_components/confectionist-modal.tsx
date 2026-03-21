@@ -16,10 +16,6 @@ import {
 import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
-import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
-import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import { FormTabTitle, IdentificationIcon, ContactIcon, PhoneIcon, LocationIcon } from "@/components/form-tab-title";
-import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 import {
   ConfectionistContactSection,
   ConfectionistIdentificationSection,
@@ -27,6 +23,17 @@ import {
   ConfectionistPhoneSection,
   type ConfectionistSectionsFormState,
 } from "./confectionist-modal-sections";
+
+import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  FormTabTitle,
+  IdentificationIcon,
+  ContactIcon,
+  PhoneIcon,
+  LocationIcon,
+} from "@/components/form-tab-title";
+import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 
 const identificationTypes = [
   { value: "CC", label: "National ID" },
@@ -50,7 +57,10 @@ const confectionistSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Invalid email"),
+    .refine(
+      (v) => v === "" || z.string().email().safeParse(v).success,
+      "Invalid email",
+    ),
   intlDialCode: z.string().trim().optional(),
   mobile: z.string().trim().optional(),
   fullMobile: z.string().trim().optional(),
@@ -137,14 +147,13 @@ export function ConfectionistModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [importPromptOpen, setImportPromptOpen] = useState(false);
-  const [importCandidate, setImportCandidate] = useState<ImportData | null>(null);
+  const [importCandidate, setImportCandidate] = useState<ImportData | null>(
+    null,
+  );
   const [importMessage, setImportMessage] = useState("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleStringFieldChange = (
-    field: keyof FormState,
-    value: string,
-  ) => {
+  const handleStringFieldChange = (field: keyof FormState, value: string) => {
     setForm((state) => ({ ...state, [field]: value }));
   };
 
@@ -180,7 +189,9 @@ export function ConfectionistModal({
         email: prefill.email,
         intlDialCode: prefill.intlDialCode,
         mobile: prefill.mobile,
-        fullMobile: prefill.mobile ? `+${prefill.intlDialCode} ${prefill.mobile}` : "",
+        fullMobile: prefill.mobile
+          ? `+${prefill.intlDialCode} ${prefill.mobile}`
+          : "",
         landline: prefill.landline,
         extension: prefill.extension,
         address: prefill.address,
@@ -206,7 +217,8 @@ export function ConfectionistModal({
         type: confectionist?.type ?? "",
         specialty: confectionist?.specialty ?? "",
         dailyCapacity:
-          confectionist?.dailyCapacity === null || confectionist?.dailyCapacity === undefined
+          confectionist?.dailyCapacity === null ||
+          confectionist?.dailyCapacity === undefined
             ? ""
             : String(confectionist.dailyCapacity),
         contactName: confectionist?.contactName ?? "",
@@ -236,6 +248,7 @@ export function ConfectionistModal({
 
   const checkIdentification = async () => {
     const identification = form.identification.trim();
+
     if (!identification) return;
 
     try {
@@ -254,14 +267,17 @@ export function ConfectionistModal({
       if (result.sameModule) {
         setErrors((prev) => ({
           ...prev,
-          identification: result.sameModule?.message ?? "Duplicate identification",
+          identification:
+            result.sameModule?.message ?? "Duplicate identification",
         }));
+
         return;
       }
 
       setErrors((prev) => {
         if (!prev.identification) return prev;
         const { identification: _identification, ...rest } = prev;
+
         return rest;
       });
 
@@ -281,10 +297,12 @@ export function ConfectionistModal({
     setForm((s) => ({
       ...s,
       name: importCandidate.name ?? s.name,
-      identificationType: importCandidate.identificationType ?? s.identificationType,
+      identificationType:
+        importCandidate.identificationType ?? s.identificationType,
       identification: importCandidate.identification ?? s.identification,
       dv: importCandidate.dv ?? s.dv,
-      contactName: importCandidate.contactName ?? importCandidate.name ?? s.contactName,
+      contactName:
+        importCandidate.contactName ?? importCandidate.name ?? s.contactName,
       email: importCandidate.email ?? s.email,
       intlDialCode: importCandidate.intlDialCode ?? s.intlDialCode,
       mobile: importCandidate.mobile ?? s.mobile,
@@ -302,8 +320,12 @@ export function ConfectionistModal({
     toast.success("Data imported from another module");
   };
 
-  const isIdentificationValidByType = (identificationType: string, identification: string) => {
+  const isIdentificationValidByType = (
+    identificationType: string,
+    identification: string,
+  ) => {
     const value = identification.trim();
+
     if (!value) return false;
 
     switch (identificationType) {
@@ -326,8 +348,12 @@ export function ConfectionistModal({
     if (submitting) return;
 
     // Validar formato de identificación por tipo
-    if (!isIdentificationValidByType(form.identificationType, form.identification)) {
-      const typeLabel = identificationTypes.find((t) => t.value === form.identificationType)?.label || form.identificationType;
+    if (
+      !isIdentificationValidByType(form.identificationType, form.identification)
+    ) {
+      const typeLabel =
+        identificationTypes.find((t) => t.value === form.identificationType)
+          ?.label || form.identificationType;
       const formatMessages: Record<string, string> = {
         CC: "National ID must be 6-10 digits",
         NIT: "NIT must be 8-12 digits",
@@ -335,9 +361,13 @@ export function ConfectionistModal({
         PAS: "Passport must be 5-20 alphanumeric characters",
         EMPRESA_EXTERIOR: "Foreign company ID must be at least 3 characters",
       };
-      const message = formatMessages[form.identificationType] || `Invalid format for ${typeLabel}`;
+      const message =
+        formatMessages[form.identificationType] ||
+        `Invalid format for ${typeLabel}`;
+
       setErrors((prev) => ({ ...prev, identification: message }));
       toast.error(message);
+
       return;
     }
 
@@ -363,7 +393,9 @@ export function ConfectionistModal({
       taxRegime: parsed.data.taxRegime,
       type: form.type.trim() || null,
       specialty: form.specialty.trim() || null,
-      dailyCapacity: form.dailyCapacity.trim() ? Number(form.dailyCapacity) : null,
+      dailyCapacity: form.dailyCapacity.trim()
+        ? Number(form.dailyCapacity)
+        : null,
       contactName: form.contactName.trim() || null,
       email: form.email.trim() || null,
       intlDialCode: form.intlDialCode.trim() || "57",
@@ -416,18 +448,27 @@ export function ConfectionistModal({
       onOpenChange={onOpenChange}
     >
       <ModalContent>
-        <ModalHeader>{confectionist ? "Edit confectionist" : "Create confectionist"}</ModalHeader>
+        <ModalHeader>
+          {confectionist ? "Edit confectionist" : "Create confectionist"}
+        </ModalHeader>
         <ModalBody>
           <Tabs aria-label="Confectionist form" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identification" />}
+              title={
+                <FormTabTitle
+                  icon={<IdentificationIcon />}
+                  label="Identification"
+                />
+              }
             >
               <ConfectionistIdentificationSection
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -441,7 +482,9 @@ export function ConfectionistModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -455,7 +498,9 @@ export function ConfectionistModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -469,7 +514,9 @@ export function ConfectionistModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -477,7 +524,9 @@ export function ConfectionistModal({
 
             <Tab
               key="documentos"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Documents" />}
+              title={
+                <FormTabTitle icon={<IdentificationIcon />} label="Documents" />
+              }
             >
               <IdentificationDocumentsSection
                 disabled={!form.identificationType}

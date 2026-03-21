@@ -1,7 +1,9 @@
-import ExcelJS from "exceljs";
 import type { Buffer as NodeBuffer } from "node:buffer";
+
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+import ExcelJS from "exceljs";
 
 type ImageExtension = "png" | "jpeg";
 
@@ -16,6 +18,7 @@ function guessImageType(url: string, contentType?: string | null) {
   if (contentType && IMAGE_TYPES[contentType]) return IMAGE_TYPES[contentType];
 
   const lower = url.toLowerCase();
+
   if (lower.endsWith(".png")) return "png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "jpeg";
   if (lower.endsWith(".webp")) return "png";
@@ -33,7 +36,10 @@ export async function fetchImageBuffer(
 
     if (!normalized) return null;
 
-    if (normalized.startsWith("/") || (!normalized.startsWith("http://") && !normalized.startsWith("https://"))) {
+    if (
+      normalized.startsWith("/") ||
+      (!normalized.startsWith("http://") && !normalized.startsWith("https://"))
+    ) {
       const relativePath = normalized.startsWith("/")
         ? normalized.slice(1)
         : normalized;
@@ -92,6 +98,7 @@ export function addImageToCell(
   );
 
   const cell = worksheet.getCell(rowNumber, colNumber);
+
   cell.alignment = { vertical: "middle", horizontal: "center" };
 
   worksheet.addImage(imageId, {

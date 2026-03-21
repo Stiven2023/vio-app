@@ -39,7 +39,10 @@ type SectionsProps = {
   form: PackerSectionsFormState;
   errors: Record<string, string>;
   identificationTypes: IdentificationTypeOption[];
-  onStringFieldChange: (field: keyof PackerSectionsFormState, value: string) => void;
+  onStringFieldChange: (
+    field: keyof PackerSectionsFormState,
+    value: string,
+  ) => void;
   onActiveChange: (value: boolean) => void;
   onIdentificationInputChange: (value: string) => void;
 };
@@ -53,65 +56,66 @@ export function PackerIdentificationSection({
 }: SectionsProps) {
   return (
     <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-        <Input
-          errorMessage={errors.name}
-          isInvalid={Boolean(errors.name)}
-          label="Nombre"
-          value={form.name}
-          onValueChange={(value) => onStringFieldChange("name", value)}
-        />
+      <Input
+        errorMessage={errors.name}
+        isInvalid={Boolean(errors.name)}
+        label="Nombre"
+        value={form.name}
+        onValueChange={(value) => onStringFieldChange("name", value)}
+      />
 
-        <Select
-          errorMessage={errors.identificationType}
-          isInvalid={Boolean(errors.identificationType)}
-          label="Tipo de identificación"
-          selectedKeys={form.identificationType ? [form.identificationType] : []}
-          onSelectionChange={(keys) => {
-            const selected = Array.from(keys)[0];
-            onStringFieldChange("identificationType", String(selected ?? ""));
-          }}
-        >
-          {identificationTypes.map((type) => (
-            <SelectItem key={type.value}>{type.label}</SelectItem>
-          ))}
-        </Select>
+      <Select
+        errorMessage={errors.identificationType}
+        isInvalid={Boolean(errors.identificationType)}
+        label="Tipo de identificación"
+        selectedKeys={form.identificationType ? [form.identificationType] : []}
+        onSelectionChange={(keys) => {
+          const selected = Array.from(keys)[0];
 
-        <Input
-          errorMessage={errors.identification}
-          isInvalid={Boolean(errors.identification)}
-          label="Identificación"
-          value={form.identification}
-          onValueChange={onIdentificationInputChange}
-        />
+          onStringFieldChange("identificationType", String(selected ?? ""));
+        }}
+      >
+        {identificationTypes.map((type) => (
+          <SelectItem key={type.value}>{type.label}</SelectItem>
+        ))}
+      </Select>
 
-        <Input
-          label="Dígito verificación"
-          maxLength={1}
-          value={form.dv}
-          onValueChange={(value) => onStringFieldChange("dv", value)}
-        />
+      <Input
+        errorMessage={errors.identification}
+        isInvalid={Boolean(errors.identification)}
+        label="Identificación"
+        value={form.identification}
+        onValueChange={onIdentificationInputChange}
+      />
 
-        <Input
-          label="Tipo de empaque"
-          placeholder="Interno, Satélite, Distribuidora"
-          value={form.packerType}
-          onValueChange={(value) => onStringFieldChange("packerType", value)}
-        />
+      <Input
+        label="Dígito verificación"
+        maxLength={1}
+        value={form.dv}
+        onValueChange={(value) => onStringFieldChange("dv", value)}
+      />
 
-        <Input
-          label="Nombre del taller"
-          placeholder="Taller ABC, Taller principal"
-          value={form.specialty}
-          onValueChange={(value) => onStringFieldChange("specialty", value)}
-        />
+      <Input
+        label="Tipo de empaque"
+        placeholder="Interno, Satélite, Distribuidora"
+        value={form.packerType}
+        onValueChange={(value) => onStringFieldChange("packerType", value)}
+      />
 
-        <Input
-          label="Capacidad diaria"
-          placeholder="Unidades por día"
-          type="number"
-          value={form.dailyCapacity}
-          onValueChange={(value) => onStringFieldChange("dailyCapacity", value)}
-        />
+      <Input
+        label="Nombre del taller"
+        placeholder="Taller ABC, Taller principal"
+        value={form.specialty}
+        onValueChange={(value) => onStringFieldChange("specialty", value)}
+      />
+
+      <Input
+        label="Capacidad diaria"
+        placeholder="Unidades por día"
+        type="number"
+        value={form.dailyCapacity}
+        onValueChange={(value) => onStringFieldChange("dailyCapacity", value)}
+      />
     </div>
   );
 }
@@ -123,22 +127,22 @@ export function PackerContactSection({
 }: SectionsProps) {
   return (
     <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-        <Input
-          label="Nombre de contacto"
-          value={form.contactName}
-          onValueChange={(value) => onStringFieldChange("contactName", value)}
-        />
+      <Input
+        label="Nombre de contacto"
+        value={form.contactName}
+        onValueChange={(value) => onStringFieldChange("contactName", value)}
+      />
 
-        <Input
-          errorMessage={errors.email}
-          isInvalid={Boolean(errors.email)}
-          label="Email"
-          type="text"
-          inputMode="email"
-          autoComplete="email"
-          value={form.email}
-          onValueChange={(value) => onStringFieldChange("email", value)}
-        />
+      <Input
+        autoComplete="email"
+        errorMessage={errors.email}
+        inputMode="email"
+        isInvalid={Boolean(errors.email)}
+        label="Email"
+        type="text"
+        value={form.email}
+        onValueChange={(value) => onStringFieldChange("email", value)}
+      />
     </div>
   );
 }
@@ -149,23 +153,23 @@ export function PackerPhoneSection({
 }: SectionsProps) {
   return (
     <div className="grid grid-cols-1 gap-3 pt-3 md:grid-cols-2">
-        <Input
-          label="Código internacional"
-          value={form.intlDialCode}
-          onValueChange={(value) => onStringFieldChange("intlDialCode", value)}
-        />
+      <Input
+        label="Código internacional"
+        value={form.intlDialCode}
+        onValueChange={(value) => onStringFieldChange("intlDialCode", value)}
+      />
 
-        <Input
-          label="Móvil"
-          value={form.mobile}
-          onValueChange={(value) => onStringFieldChange("mobile", value)}
-        />
+      <Input
+        label="Móvil"
+        value={form.mobile}
+        onValueChange={(value) => onStringFieldChange("mobile", value)}
+      />
 
-        <Input
-          label="Teléfono fijo"
-          value={form.landline}
-          onValueChange={(value) => onStringFieldChange("landline", value)}
-        />
+      <Input
+        label="Teléfono fijo"
+        value={form.landline}
+        onValueChange={(value) => onStringFieldChange("landline", value)}
+      />
     </div>
   );
 }

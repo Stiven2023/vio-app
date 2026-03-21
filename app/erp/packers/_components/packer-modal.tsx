@@ -15,10 +15,6 @@ import {
 import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
-import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
-import { ConfirmActionModal } from "@/components/confirm-action-modal";
-import { FormTabTitle, IdentificationIcon, ContactIcon, PhoneIcon, LocationIcon } from "@/components/form-tab-title";
-import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 import {
   PackerContactSection,
   PackerIdentificationSection,
@@ -26,6 +22,17 @@ import {
   PackerPhoneSection,
   type PackerSectionsFormState,
 } from "./packer-modal-sections";
+
+import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
+import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import {
+  FormTabTitle,
+  IdentificationIcon,
+  ContactIcon,
+  PhoneIcon,
+  LocationIcon,
+} from "@/components/form-tab-title";
+import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 
 const identificationTypes = [
   { value: "CC", label: "National ID" },
@@ -43,7 +50,10 @@ const packerSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((v) => v === "" || z.string().email().safeParse(v).success, "Invalid email"),
+    .refine(
+      (v) => v === "" || z.string().email().safeParse(v).success,
+      "Invalid email",
+    ),
   dailyCapacity: z.string().optional(),
 });
 
@@ -115,14 +125,13 @@ export function PackerModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [importPromptOpen, setImportPromptOpen] = useState(false);
-  const [importCandidate, setImportCandidate] = useState<ImportData | null>(null);
+  const [importCandidate, setImportCandidate] = useState<ImportData | null>(
+    null,
+  );
   const [importMessage, setImportMessage] = useState("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleStringFieldChange = (
-    field: keyof FormState,
-    value: string,
-  ) => {
+  const handleStringFieldChange = (field: keyof FormState, value: string) => {
     setForm((state) => ({ ...state, [field]: value }));
   };
 
@@ -174,6 +183,7 @@ export function PackerModal({
 
   const checkIdentification = async () => {
     const identification = form.identification.trim();
+
     if (!identification) return;
 
     try {
@@ -192,14 +202,17 @@ export function PackerModal({
       if (result.sameModule) {
         setErrors((prev) => ({
           ...prev,
-          identification: result.sameModule?.message ?? "Duplicate identification",
+          identification:
+            result.sameModule?.message ?? "Duplicate identification",
         }));
+
         return;
       }
 
       setErrors((prev) => {
         if (!prev.identification) return prev;
         const { identification: _identification, ...rest } = prev;
+
         return rest;
       });
 
@@ -219,10 +232,12 @@ export function PackerModal({
     setForm((s) => ({
       ...s,
       name: importCandidate.name ?? s.name,
-      identificationType: importCandidate.identificationType ?? s.identificationType,
+      identificationType:
+        importCandidate.identificationType ?? s.identificationType,
       identification: importCandidate.identification ?? s.identification,
       dv: importCandidate.dv ?? s.dv,
-      contactName: importCandidate.contactName ?? importCandidate.name ?? s.contactName,
+      contactName:
+        importCandidate.contactName ?? importCandidate.name ?? s.contactName,
       email: importCandidate.email ?? s.email,
       intlDialCode: importCandidate.intlDialCode ?? s.intlDialCode,
       mobile: importCandidate.mobile ?? s.mobile,
@@ -239,8 +254,12 @@ export function PackerModal({
     toast.success("Data imported from another module");
   };
 
-  const isIdentificationValidByType = (identificationType: string, identification: string) => {
+  const isIdentificationValidByType = (
+    identificationType: string,
+    identification: string,
+  ) => {
     const value = identification.trim();
+
     if (!value) return false;
 
     switch (identificationType) {
@@ -263,8 +282,12 @@ export function PackerModal({
     if (submitting) return;
 
     // Validar formato de identificación por tipo
-    if (!isIdentificationValidByType(form.identificationType, form.identification)) {
-      const typeLabel = identificationTypes.find((t) => t.value === form.identificationType)?.label || form.identificationType;
+    if (
+      !isIdentificationValidByType(form.identificationType, form.identification)
+    ) {
+      const typeLabel =
+        identificationTypes.find((t) => t.value === form.identificationType)
+          ?.label || form.identificationType;
       const formatMessages: Record<string, string> = {
         CC: "National ID must be 6-10 digits",
         NIT: "NIT must be 8-12 digits",
@@ -272,9 +295,13 @@ export function PackerModal({
         PAS: "Passport must be 5-20 alphanumeric characters",
         EMPRESA_EXTERIOR: "Foreign company ID must be at least 3 characters",
       };
-      const message = formatMessages[form.identificationType] || `Invalid format for ${typeLabel}`;
+      const message =
+        formatMessages[form.identificationType] ||
+        `Invalid format for ${typeLabel}`;
+
       setErrors((prev) => ({ ...prev, identification: message }));
       toast.error(message);
+
       return;
     }
 
@@ -318,7 +345,9 @@ export function PackerModal({
       postalCode: form.postalCode.trim() ? form.postalCode.trim() : null,
       city: form.city.trim() ? form.city.trim() : "Medellín",
       department: form.department.trim() ? form.department.trim() : "ANTIOQUIA",
-      dailyCapacity: form.dailyCapacity.trim() ? Number(form.dailyCapacity) : null,
+      dailyCapacity: form.dailyCapacity.trim()
+        ? Number(form.dailyCapacity)
+        : null,
       isActive: false,
       identityDocumentUrl: form.identityDocumentUrl || null,
       rutDocumentUrl: form.rutDocumentUrl || null,
@@ -348,9 +377,9 @@ export function PackerModal({
   return (
     <Modal
       isOpen={isOpen && !importPromptOpen}
-      onOpenChange={onOpenChange}
-      size="3xl"
       scrollBehavior="inside"
+      size="3xl"
+      onOpenChange={onOpenChange}
     >
       <ModalContent>
         <ModalHeader>{packer ? "Edit packer" : "Create packer"}</ModalHeader>
@@ -358,13 +387,20 @@ export function PackerModal({
           <Tabs aria-label="Packer form" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identification" />}
+              title={
+                <FormTabTitle
+                  icon={<IdentificationIcon />}
+                  label="Identification"
+                />
+              }
             >
               <PackerIdentificationSection
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -378,7 +414,9 @@ export function PackerModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -392,7 +430,9 @@ export function PackerModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -406,7 +446,9 @@ export function PackerModal({
                 errors={errors}
                 form={form}
                 identificationTypes={identificationTypes}
-                onActiveChange={(value) => setForm((state) => ({ ...state, isActive: value }))}
+                onActiveChange={(value) =>
+                  setForm((state) => ({ ...state, isActive: value }))
+                }
                 onIdentificationInputChange={handleIdentificationInputChange}
                 onStringFieldChange={handleStringFieldChange}
               />
@@ -414,7 +456,9 @@ export function PackerModal({
 
             <Tab
               key="documentos"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Documents" />}
+              title={
+                <FormTabTitle icon={<IdentificationIcon />} label="Documents" />
+              }
             >
               <IdentificationDocumentsSection
                 disabled={!form.identificationType}
@@ -431,7 +475,11 @@ export function PackerModal({
           </Tabs>
         </ModalBody>
         <ModalFooter>
-          <Button isDisabled={submitting} variant="flat" onPress={() => onOpenChange(false)}>
+          <Button
+            isDisabled={submitting}
+            variant="flat"
+            onPress={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button color="primary" isLoading={submitting} onPress={submit}>

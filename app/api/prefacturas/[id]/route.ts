@@ -21,7 +21,12 @@ import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 const ADVANCE_PAYMENT_METHODS = new Set(["EFECTIVO", "TRANSFERENCIA"]);
-const CLIENT_PRICE_TYPES = new Set(["AUTORIZADO", "MAYORISTA", "VIOMAR", "COLANTA"]);
+const CLIENT_PRICE_TYPES = new Set([
+  "AUTORIZADO",
+  "MAYORISTA",
+  "VIOMAR",
+  "COLANTA",
+]);
 
 function toNullableNumericValue(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
@@ -33,7 +38,11 @@ function toNullableNumericValue(value: unknown) {
 }
 
 function normalizeCurrency(value: unknown) {
-  return String(value ?? "COP").trim().toUpperCase() === "USD" ? "USD" : "COP";
+  return String(value ?? "COP")
+    .trim()
+    .toUpperCase() === "USD"
+    ? "USD"
+    : "COP";
 }
 
 function isMissingColumnError(error: unknown) {
@@ -464,7 +473,9 @@ export async function PUT(
         "ENTREGADO",
       ]);
 
-      if (ORDER_MONTAJE_LOCKED_STATUSES.has(String(current.orderStatus ?? ""))) {
+      if (
+        ORDER_MONTAJE_LOCKED_STATUSES.has(String(current.orderStatus ?? ""))
+      ) {
         throw new Error("prefactura_locked_by_production");
       }
 
@@ -718,29 +729,46 @@ export async function PATCH(
           : null;
       }
       if ("taxZoneSnapshot" in body) {
-        const zone = String(body.taxZoneSnapshot ?? "").trim().toUpperCase();
+        const zone = String(body.taxZoneSnapshot ?? "")
+          .trim()
+          .toUpperCase();
+
         patch.taxZoneSnapshot =
-          zone === "FREE_ZONE" || zone === "SAN_ANDRES" || zone === "SPECIAL_REGIME"
+          zone === "FREE_ZONE" ||
+          zone === "SAN_ANDRES" ||
+          zone === "SPECIAL_REGIME"
             ? zone
             : "CONTINENTAL";
       }
       if ("withholdingTaxRate" in body) {
-        patch.withholdingTaxRate = String(Math.max(0, Number(body.withholdingTaxRate) || 0));
+        patch.withholdingTaxRate = String(
+          Math.max(0, Number(body.withholdingTaxRate) || 0),
+        );
       }
       if ("withholdingIcaRate" in body) {
-        patch.withholdingIcaRate = String(Math.max(0, Number(body.withholdingIcaRate) || 0));
+        patch.withholdingIcaRate = String(
+          Math.max(0, Number(body.withholdingIcaRate) || 0),
+        );
       }
       if ("withholdingIvaRate" in body) {
-        patch.withholdingIvaRate = String(Math.max(0, Number(body.withholdingIvaRate) || 0));
+        patch.withholdingIvaRate = String(
+          Math.max(0, Number(body.withholdingIvaRate) || 0),
+        );
       }
       if ("withholdingTaxAmount" in body) {
-        patch.withholdingTaxAmount = String(Math.max(0, Number(body.withholdingTaxAmount) || 0));
+        patch.withholdingTaxAmount = String(
+          Math.max(0, Number(body.withholdingTaxAmount) || 0),
+        );
       }
       if ("withholdingIcaAmount" in body) {
-        patch.withholdingIcaAmount = String(Math.max(0, Number(body.withholdingIcaAmount) || 0));
+        patch.withholdingIcaAmount = String(
+          Math.max(0, Number(body.withholdingIcaAmount) || 0),
+        );
       }
       if ("withholdingIvaAmount" in body) {
-        patch.withholdingIvaAmount = String(Math.max(0, Number(body.withholdingIvaAmount) || 0));
+        patch.withholdingIvaAmount = String(
+          Math.max(0, Number(body.withholdingIvaAmount) || 0),
+        );
       }
       if ("totalAfterWithholdings" in body) {
         patch.totalAfterWithholdings = String(
@@ -752,6 +780,7 @@ export async function PATCH(
         const clientPriceType = String(body.clientPriceType ?? "")
           .trim()
           .toUpperCase();
+
         if (!CLIENT_PRICE_TYPES.has(clientPriceType)) {
           throw new Error("bad_request:Tipo de cliente (COP) inválido.");
         }
@@ -846,7 +875,9 @@ export async function PATCH(
             referenceCode: effectiveReference,
             method: effectiveMethod as any,
             bankId:
-              effectiveMethod === "TRANSFERENCIA" ? bankRow?.id ?? null : null,
+              effectiveMethod === "TRANSFERENCIA"
+                ? (bankRow?.id ?? null)
+                : null,
             transferBank: null,
             transferCurrency:
               effectiveMethod === "TRANSFERENCIA" ? effectiveCurrency : null,
@@ -863,9 +894,12 @@ export async function PATCH(
     return Response.json({ ok: true });
   } catch (error) {
     if ((error as Error)?.message?.startsWith("bad_request:")) {
-      return new Response((error as Error).message.replace("bad_request:", ""), {
-        status: 400,
-      });
+      return new Response(
+        (error as Error).message.replace("bad_request:", ""),
+        {
+          status: 400,
+        },
+      );
     }
 
     if ((error as Error)?.message === "forbidden") {

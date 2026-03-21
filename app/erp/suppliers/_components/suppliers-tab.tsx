@@ -21,7 +21,16 @@ import {
   TableRow,
 } from "@heroui/table";
 import { Input } from "@heroui/input";
-import { BsPencilSquare, BsThreeDotsVertical, BsTrash, BsEyeFill, BsShieldCheck } from "react-icons/bs";
+import {
+  BsPencilSquare,
+  BsThreeDotsVertical,
+  BsTrash,
+  BsEyeFill,
+  BsShieldCheck,
+} from "react-icons/bs";
+
+import { SupplierModal } from "./supplier-modal";
+import { SupplierDetailsModal } from "./supplier-details-modal";
 
 import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
@@ -30,9 +39,6 @@ import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { ThirdPartyDocumentsModal } from "@/components/third-party-documents-modal";
-
-import { SupplierModal } from "./supplier-modal";
-import { SupplierDetailsModal } from "./supplier-details-modal";
 import { SupplierLegalStatusModal } from "@/app/erp/admin/_components/suppliers/supplier-legal-status-modal";
 
 export type Supplier = {
@@ -88,8 +94,10 @@ export function SuppliersTab({
   canChangeLegalStatus?: boolean;
   legalOnlyMode?: boolean;
 }) {
-  const { data, loading, page, setPage, refresh } =
-    usePaginatedApi<Supplier>("/api/suppliers", 10);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<Supplier>(
+    "/api/suppliers",
+    10,
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
@@ -99,9 +107,13 @@ export function SuppliersTab({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [viewing, setViewing] = useState<Supplier | null>(null);
   const [documentsOpen, setDocumentsOpen] = useState(false);
-  const [viewingDocuments, setViewingDocuments] = useState<Supplier | null>(null);
+  const [viewingDocuments, setViewingDocuments] = useState<Supplier | null>(
+    null,
+  );
   const [legalStatusModalOpen, setLegalStatusModalOpen] = useState(false);
-  const [viewingLegalStatus, setViewingLegalStatus] = useState<Supplier | null>(null);
+  const [viewingLegalStatus, setViewingLegalStatus] = useState<Supplier | null>(
+    null,
+  );
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Supplier | null>(null);
@@ -161,6 +173,7 @@ export function SuppliersTab({
   const createAsClient = async (supplier: Supplier) => {
     if (!supplier.email) {
       toast.error("To create as client, the supplier must have an email.");
+
       return;
     }
 
@@ -204,6 +217,7 @@ export function SuppliersTab({
   const createAsEmployee = async (supplier: Supplier) => {
     if (!supplier.email) {
       toast.error("To create as employee, the supplier must have an email.");
+
       return;
     }
 
@@ -302,14 +316,14 @@ export function SuppliersTab({
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <Input
-          className="sm:w-72"
-          placeholder="Search by code, name, email or contact…"
-          value={search}
-          onValueChange={setSearch}
-          isClearable
-          onClear={() => setSearch("")}
-        />
+          <Input
+            isClearable
+            className="sm:w-72"
+            placeholder="Search by code, name, email or contact…"
+            value={search}
+            onClear={() => setSearch("")}
+            onValueChange={setSearch}
+          />
           <FilterSelect
             className="sm:w-56"
             label="Status"
@@ -376,7 +390,9 @@ export function SuppliersTab({
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.supplierCode}</TableCell>
                 <TableCell className="font-medium">{s.name}</TableCell>
-                <TableCell className="text-default-500">{s.identificationType}</TableCell>
+                <TableCell className="text-default-500">
+                  {s.identificationType}
+                </TableCell>
                 <TableCell className="text-default-500">
                   {s.email ?? "-"}
                 </TableCell>
@@ -495,19 +511,23 @@ export function SuppliersTab({
       )}
 
       {data ? (
-        <Pager data={data as Paginated<Supplier>} page={page} onChange={setPage} />
+        <Pager
+          data={data as Paginated<Supplier>}
+          page={page}
+          onChange={setPage}
+        />
       ) : null}
 
       <SupplierModal
-        supplier={editing}
         isOpen={modalOpen}
+        supplier={editing}
         onOpenChange={setModalOpen}
         onSaved={refresh}
       />
 
       <SupplierDetailsModal
-        supplier={viewing}
         isOpen={detailsOpen}
+        supplier={viewing}
         onOpenChange={(open) => {
           setDetailsOpen(open);
           if (!open) setViewing(null);
@@ -515,11 +535,13 @@ export function SuppliersTab({
         onRequestCreateClient={
           legalOnlyMode ? undefined : () => viewing && createAsClient(viewing)
         }
+        onRequestCreateConfectionist={
+          legalOnlyMode
+            ? undefined
+            : () => viewing && createAsConfectionist(viewing)
+        }
         onRequestCreateEmployee={
           legalOnlyMode ? undefined : () => viewing && createAsEmployee(viewing)
-        }
-        onRequestCreateConfectionist={
-          legalOnlyMode ? undefined : () => viewing && createAsConfectionist(viewing)
         }
         onRequestCreatePacker={
           legalOnlyMode ? undefined : () => viewing && createAsPacker(viewing)
@@ -527,33 +549,51 @@ export function SuppliersTab({
       />
 
       <SupplierLegalStatusModal
-        supplier={viewingLegalStatus}
         isOpen={legalStatusModalOpen}
+        supplier={viewingLegalStatus}
         onOpenChange={setLegalStatusModalOpen}
       />
 
       <ThirdPartyDocumentsModal
-        title={`Documents of ${viewingDocuments?.name ?? ""}`}
+        documents={
+          viewingDocuments
+            ? [
+                {
+                  label: "Identity document",
+                  url: viewingDocuments.identityDocumentUrl,
+                },
+                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
+                {
+                  label: "Chamber of commerce",
+                  url: viewingDocuments.commerceChamberDocumentUrl,
+                },
+                {
+                  label: "Passport",
+                  url: viewingDocuments.passportDocumentUrl,
+                },
+                {
+                  label: "Tax certificate",
+                  url: viewingDocuments.taxCertificateDocumentUrl,
+                },
+                {
+                  label: "Company document",
+                  url: viewingDocuments.companyIdDocumentUrl,
+                },
+                {
+                  label: "Bank certificate",
+                  url: viewingDocuments.bankCertificateUrl,
+                },
+              ]
+            : []
+        }
+        emptyMessage="This supplier has no uploaded documents."
+        isOpen={documentsOpen}
         subtitle={
           viewingDocuments
             ? `${viewingDocuments.identificationType} - ${viewingDocuments.identification}`
             : undefined
         }
-        emptyMessage="This supplier has no uploaded documents."
-        documents={
-          viewingDocuments
-            ? [
-                { label: "Identity document", url: viewingDocuments.identityDocumentUrl },
-                { label: "RUT", url: viewingDocuments.rutDocumentUrl },
-                { label: "Chamber of commerce", url: viewingDocuments.commerceChamberDocumentUrl },
-                { label: "Passport", url: viewingDocuments.passportDocumentUrl },
-                { label: "Tax certificate", url: viewingDocuments.taxCertificateDocumentUrl },
-                { label: "Company document", url: viewingDocuments.companyIdDocumentUrl },
-                { label: "Bank certificate", url: viewingDocuments.bankCertificateUrl },
-              ]
-            : []
-        }
-        isOpen={documentsOpen}
+        title={`Documents of ${viewingDocuments?.name ?? ""}`}
         onOpenChange={(open) => {
           setDocumentsOpen(open);
           if (!open) setViewingDocuments(null);

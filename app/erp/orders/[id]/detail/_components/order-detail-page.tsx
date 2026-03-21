@@ -76,7 +76,6 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
   const giveOperationalAval = async () => {
@@ -120,7 +119,9 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Detalle del pedido</h1>
-          <p className="text-default-600 mt-1">Informacion completa del pedido.</p>
+          <p className="text-default-600 mt-1">
+            Informacion completa del pedido.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -132,10 +133,18 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           >
             {order?.operationalApprovedAt ? "Aval registrado" : "Dar aval"}
           </Button>
-          <Button as={NextLink} href={`/orders/${orderId}/items`} variant="flat">
+          <Button
+            as={NextLink}
+            href={`/orders/${orderId}/items`}
+            variant="flat"
+          >
             Ver Diseños
           </Button>
-          <Button as={NextLink} href={`/orders/${orderId}/payments`} variant="flat">
+          <Button
+            as={NextLink}
+            href={`/orders/${orderId}/payments`}
+            variant="flat"
+          >
             Ver pagos
           </Button>
           <Button as={NextLink} href="/orders" variant="flat">
@@ -171,8 +180,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                 Moneda: {order?.currency ?? "COP"}
               </div>
               <div className="text-sm text-default-600">
-                Aval: {order?.operationalApprovedAt
-                  ? new Date(order.operationalApprovedAt).toLocaleString("es-CO")
+                Aval:{" "}
+                {order?.operationalApprovedAt
+                  ? new Date(order.operationalApprovedAt).toLocaleString(
+                      "es-CO",
+                    )
                   : "Pendiente"}
               </div>
             </div>

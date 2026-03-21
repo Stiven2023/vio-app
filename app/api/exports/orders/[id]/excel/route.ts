@@ -1,8 +1,10 @@
-import ExcelJS from "exceljs";
-import { eq, inArray } from "drizzle-orm";
+import type { Buffer as NodeBuffer } from "node:buffer";
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { Buffer as NodeBuffer } from "node:buffer";
+
+import ExcelJS from "exceljs";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -15,7 +17,10 @@ import {
   orderPayments,
   orders,
 } from "@/src/db/schema";
-import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getEmployeeIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import {
@@ -58,6 +63,7 @@ type ImageExtension = "png" | "jpeg";
 
 function imageBase64(buffer: NodeBuffer, extension: ImageExtension) {
   const mime = extension === "png" ? "image/png" : "image/jpeg";
+
   return `data:${mime};base64,${buffer.toString("base64")}`;
 }
 
@@ -123,6 +129,7 @@ function styleSectionTitle(
 ) {
   worksheet.mergeCells(rowNumber, fromCol, rowNumber, toCol);
   const cell = worksheet.getCell(rowNumber, fromCol);
+
   cell.value = title;
   cell.font = { bold: true };
   cell.alignment = { vertical: "middle", horizontal: "left" };
@@ -136,9 +143,11 @@ function styleTableHeader(
   toCol: number,
 ) {
   const row = worksheet.getRow(rowNumber);
+
   row.font = { bold: true };
   for (let col = fromCol; col <= toCol; col += 1) {
     const cell = worksheet.getCell(rowNumber, col);
+
     cell.fill = {
       type: "pattern",
       pattern: "solid",
@@ -158,9 +167,13 @@ function qtyBySize(rows: Array<{ size: string | null; quantity: unknown }>) {
   const map = new Map<string, number>();
 
   for (const row of rows) {
-    const key = String(row.size ?? "").trim().toUpperCase();
+    const key = String(row.size ?? "")
+      .trim()
+      .toUpperCase();
+
     if (!key) continue;
     const qty = Math.max(0, Math.floor(asNumber(row.quantity)));
+
     if (qty <= 0) continue;
     map.set(key, (map.get(key) ?? 0) + qty);
   }
@@ -191,10 +204,12 @@ function setLabelValue(
   value: string,
 ) {
   const labelCell = worksheet.getCell(row, labelCol);
+
   labelCell.value = label;
   labelCell.font = { bold: true };
 
   const valueCell = worksheet.getCell(row, valueCol);
+
   valueCell.value = value;
 }
 
@@ -227,11 +242,13 @@ function applyDocumentHeader(
   worksheet.mergeCells(2, 1, 2, 5);
 
   const titleCell = worksheet.getCell(1, 1);
+
   titleCell.value = info.companyName;
   titleCell.font = { size: 18, bold: true };
   titleCell.alignment = { vertical: "middle", horizontal: "left" };
 
   const subtitleCell = worksheet.getCell(2, 1);
+
   subtitleCell.value = info.subtitle;
   subtitleCell.font = { size: 11 };
   subtitleCell.alignment = { vertical: "middle", horizontal: "left" };
@@ -419,11 +436,16 @@ export async function GET(
   const grandTotal = totalAfterDiscount + shippingFee;
 
   const paidTotal = payments.reduce(
-    (acc, pay) => (String(pay.status ?? "").toUpperCase() === "PAGADO" ? acc + asNumber(pay.amount) : acc),
+    (acc, pay) =>
+      String(pay.status ?? "").toUpperCase() === "PAGADO"
+        ? acc + asNumber(pay.amount)
+        : acc,
     0,
   );
   const paidPercent =
-    grandTotal > 0 ? Math.min(100, Math.max(0, (paidTotal / grandTotal) * 100)) : 0;
+    grandTotal > 0
+      ? Math.min(100, Math.max(0, (paidTotal / grandTotal) * 100))
+      : 0;
   const remaining = Math.max(0, grandTotal - paidTotal);
 
   const companyName = process.env.NEXT_PUBLIC_COMPANY_NAME ?? "VIOMAR";
@@ -435,14 +457,11 @@ export async function GET(
     : "-";
 
   const workbook = new ExcelJS.Workbook();
+
   workbook.creator = companyName;
   workbook.created = new Date();
 
-  const stickerPath = path.join(
-    process.cwd(),
-    "public",
-    "STICKER VIOMAR.png",
-  );
+  const stickerPath = path.join(process.cwd(), "public", "STICKER VIOMAR.png");
   const stickerBuffer = await readFile(stickerPath).catch(() => null);
   const stickerImageId = stickerBuffer
     ? workbook.addImage({
@@ -467,7 +486,12 @@ export async function GET(
   };
 
   const resumenSheet = workbook.addWorksheet("Resumen");
-  let rowPointer = applyDocumentHeader(resumenSheet, headerInfo, stickerImageId);
+  let rowPointer = applyDocumentHeader(
+    resumenSheet,
+    headerInfo,
+    stickerImageId,
+  );
+
   rowPointer += 1;
 
   styleSectionTitle(resumenSheet, rowPointer, 1, 5, "Totales");
@@ -498,6 +522,7 @@ export async function GET(
   }
 
   const prefacturaSheet = workbook.addWorksheet("Prefactura");
+
   rowPointer = applyDocumentHeader(prefacturaSheet, headerInfo, stickerImageId);
   prefacturaSheet.getColumn(1).width = 28;
   prefacturaSheet.getColumn(2).width = 12;
@@ -521,12 +546,14 @@ export async function GET(
       formatMoney(line.totalPrice ?? 0, currency),
       "",
     ]);
+
     applyRowBorder(prefacturaSheet, row.number, 1, 5);
     centerRowCells(prefacturaSheet, row.number, 1, 5);
     rowPointer = row.number + 1;
 
     if (line.imageUrl) {
       const image = await fetchImageBuffer(line.imageUrl);
+
       if (image) {
         const imageId = workbook.addImage({
           base64: imageBase64(
@@ -535,6 +562,7 @@ export async function GET(
           ),
           extension: image.extension,
         });
+
         addImageToCell(prefacturaSheet, imageId, row.number, 5, 80);
       } else {
         setCenteredCellValue(row.getCell(5), "Imagen no disponible");
@@ -561,6 +589,7 @@ export async function GET(
 
   for (const [label, value] of resumenPrefactura) {
     const isEmphasis = label === "Total" || label === "Saldo";
+
     prefacturaSheet.getCell(rowPointer, 1).value = label;
     prefacturaSheet.getCell(rowPointer, 1).font = { bold: true };
     prefacturaSheet.getCell(rowPointer, 2).value = value;
@@ -592,12 +621,14 @@ export async function GET(
       formatMoney(payment.amount ?? 0, currency),
       "",
     ]);
+
     applyRowBorder(prefacturaSheet, row.number, 1, 5);
     centerRowCells(prefacturaSheet, row.number, 1, 5);
     rowPointer = row.number + 1;
 
     if (payment.proofImageUrl) {
       const image = await fetchImageBuffer(payment.proofImageUrl);
+
       if (image) {
         const imageId = workbook.addImage({
           base64: imageBase64(
@@ -606,6 +637,7 @@ export async function GET(
           ),
           extension: image.extension,
         });
+
         addImageToCell(prefacturaSheet, imageId, row.number, 5, 80);
       } else {
         setCenteredCellValue(row.getCell(5), "Imagen no disponible");
@@ -616,25 +648,31 @@ export async function GET(
   }
 
   const packagingByItem = new Map<string, typeof packaging>();
+
   for (const row of packaging) {
     if (!row.orderItemId) continue;
     const list = packagingByItem.get(row.orderItemId) ?? [];
+
     list.push(row);
     packagingByItem.set(row.orderItemId, list);
   }
 
   const socksByItem = new Map<string, typeof socks>();
+
   for (const row of socks) {
     if (!row.orderItemId) continue;
     const list = socksByItem.get(row.orderItemId) ?? [];
+
     list.push(row);
     socksByItem.set(row.orderItemId, list);
   }
 
   const materialsByItem = new Map<string, typeof materials>();
+
   for (const row of materials) {
     if (!row.orderItemId) continue;
     const list = materialsByItem.get(row.orderItemId) ?? [];
+
     list.push(row);
     materialsByItem.set(row.orderItemId, list);
   }
@@ -649,12 +687,20 @@ export async function GET(
       subtitle: "Ficha de Diseño",
     };
     let sheetRow = applyDocumentHeader(sheet, sheetHeaderInfo, stickerImageId);
+
     sheetRow += 1;
 
     sheet.mergeCells(sheetRow, 1, sheetRow, 5);
     sheet.getCell(sheetRow, 1).value = `DISEÑO ${index + 1} DE ${totalItems}`;
-    sheet.getCell(sheetRow, 1).font = { bold: true, color: { argb: "FF00E5FF" }, size: 14 };
-    sheet.getCell(sheetRow, 1).alignment = { vertical: "middle", horizontal: "center" };
+    sheet.getCell(sheetRow, 1).font = {
+      bold: true,
+      color: { argb: "FF00E5FF" },
+      size: 14,
+    };
+    sheet.getCell(sheetRow, 1).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
     sheet.getCell(sheetRow, 1).fill = {
       type: "pattern",
       pattern: "solid",
@@ -665,11 +711,21 @@ export async function GET(
 
     const detailRows: Array<[string, string, string?, string?]> = [
       ["Diseño", item.name ?? "-", "Estado", item.status ?? "-"],
-      ["Posición", item.garmentType ?? "JUGADOR", "Total prendas", String(item.quantity ?? 0)],
+      [
+        "Posición",
+        item.garmentType ?? "JUGADOR",
+        "Total prendas",
+        String(item.quantity ?? 0),
+      ],
       ["Cantidad", String(item.quantity ?? 0), "Proceso", item.process ?? "-"],
       ["Tela", item.fabric ?? "-", "Cuello", item.neckType ?? "-"],
       ["Manga", item.sleeve ?? "-", "Color", item.color ?? "-"],
-      ["Genero", item.gender ?? "-", "Requiere medias", item.requiresSocks ? "Si" : "No"],
+      [
+        "Genero",
+        item.gender ?? "-",
+        "Requiere medias",
+        item.requiresSocks ? "Si" : "No",
+      ],
     ];
 
     for (const [leftLabel, leftValue, rightLabel, rightValue] of detailRows) {
@@ -689,6 +745,7 @@ export async function GET(
     sheetRow += 1;
 
     const imageRow = sheet.getRow(sheetRow);
+
     imageRow.height = 78;
     applyRowBorder(sheet, sheetRow, 1, 5);
 
@@ -700,14 +757,22 @@ export async function GET(
 
     for (let imageCol = 1; imageCol <= 3; imageCol += 1) {
       const source = imageSources[imageCol - 1];
+
       if (!source) {
-        setCenteredCellValue(sheet.getCell(sheetRow, imageCol), "Imagen no disponible");
+        setCenteredCellValue(
+          sheet.getCell(sheetRow, imageCol),
+          "Imagen no disponible",
+        );
         continue;
       }
 
       const image = await fetchImageBuffer(source);
+
       if (!image) {
-        setCenteredCellValue(sheet.getCell(sheetRow, imageCol), "Imagen no disponible");
+        setCenteredCellValue(
+          sheet.getCell(sheetRow, imageCol),
+          "Imagen no disponible",
+        );
         continue;
       }
 
@@ -718,6 +783,7 @@ export async function GET(
         ),
         extension: image.extension,
       });
+
       addImageToCell(sheet, imageId, sheetRow, imageCol, 72);
     }
 
@@ -725,7 +791,9 @@ export async function GET(
     styleSectionTitle(sheet, sheetRow, 1, 5, "EMPAQUE");
     sheetRow += 1;
     const itemPackaging = packagingByItem.get(item.id) ?? [];
-    const packingMap = qtyBySize(itemPackaging.map((p) => ({ size: p.size, quantity: p.quantity })));
+    const packingMap = qtyBySize(
+      itemPackaging.map((p) => ({ size: p.size, quantity: p.quantity })),
+    );
 
     sheet.addRow(["TALLA", ...KIDS_SIZES, "TOTAL"]);
     styleTableHeader(sheet, sheetRow, 1, 10);
@@ -734,6 +802,7 @@ export async function GET(
     const kidsValues = KIDS_SIZES.map((size) => packingMap.get(size) ?? 0);
     const kidsTotal = kidsValues.reduce((acc, v) => acc + v, 0);
     const kidsRow = sheet.addRow(["NIÑO", ...kidsValues, kidsTotal]);
+
     applyRowBorder(sheet, kidsRow.number, 1, 10);
     centerRowCells(sheet, kidsRow.number, 1, 10);
     sheetRow = kidsRow.number + 1;
@@ -745,6 +814,7 @@ export async function GET(
     const adultValues = ADULT_SIZES.map((size) => packingMap.get(size) ?? 0);
     const adultTotal = adultValues.reduce((acc, v) => acc + v, 0);
     const adultRow = sheet.addRow(["ADULTO", ...adultValues, adultTotal]);
+
     applyRowBorder(sheet, adultRow.number, 1, 10);
     centerRowCells(sheet, adultRow.number, 1, 10);
     sheetRow = adultRow.number + 1;
@@ -767,6 +837,7 @@ export async function GET(
 
     if (packagingRows.length === 0) {
       const row = sheet.addRow(["-", "-", "-", 0, ""]);
+
       applyRowBorder(sheet, row.number, 1, 5);
       centerRowCells(sheet, row.number, 1, 5);
       sheetRow = row.number + 1;
@@ -779,6 +850,7 @@ export async function GET(
           p.quantity ?? 0,
           "",
         ]);
+
         applyRowBorder(sheet, row.number, 1, 5);
         centerRowCells(sheet, row.number, 1, 5);
         sheetRow = row.number + 1;
@@ -789,7 +861,10 @@ export async function GET(
     styleSectionTitle(sheet, sheetRow, 1, 5, "MEDIAS");
     sheetRow += 1;
     const itemSocks = socksByItem.get(item.id) ?? [];
-    const socksMap = qtyBySize(itemSocks.map((s) => ({ size: s.size, quantity: s.quantity })));
+    const socksMap = qtyBySize(
+      itemSocks.map((s) => ({ size: s.size, quantity: s.quantity })),
+    );
+
     sheet.addRow(["TALLAS MEDIAS", ...SOCKS_SIZES, "TOTAL"]);
     styleTableHeader(sheet, sheetRow, 1, 7);
     sheetRow += 1;
@@ -797,6 +872,7 @@ export async function GET(
     const socksValues = SOCKS_SIZES.map((size) => socksMap.get(size) ?? 0);
     const socksTotal = socksValues.reduce((acc, v) => acc + v, 0);
     const socksRow = sheet.addRow(["JUGADOR", ...socksValues, socksTotal]);
+
     applyRowBorder(sheet, socksRow.number, 1, 7);
     centerRowCells(sheet, socksRow.number, 1, 7);
     sheetRow = socksRow.number + 1;
@@ -817,11 +893,13 @@ export async function GET(
           "",
           "",
         ]);
+
         applyRowBorder(sheet, row.number, 1, 5);
         centerRowCells(sheet, row.number, 1, 5);
 
         if (sock.imageUrl) {
           const image = await fetchImageBuffer(sock.imageUrl);
+
           if (image) {
             const imageId = workbook.addImage({
               base64: imageBase64(
@@ -830,6 +908,7 @@ export async function GET(
               ),
               extension: image.extension,
             });
+
             addImageToCell(sheet, imageId, row.number, 4, 60);
           } else {
             setCenteredCellValue(row.getCell(4), "Imagen no disponible");
@@ -849,8 +928,10 @@ export async function GET(
     sheetRow += 1;
 
     const itemMaterials = materialsByItem.get(item.id) ?? [];
+
     if (itemMaterials.length === 0) {
       const row = sheet.addRow(["-", "-", "-"]);
+
       applyRowBorder(sheet, row.number, 1, 3);
       centerRowCells(sheet, row.number, 1, 3);
     } else {
@@ -860,6 +941,7 @@ export async function GET(
           m.quantity ?? "-",
           m.note ?? "",
         ]);
+
         applyRowBorder(sheet, row.number, 1, 3);
         centerRowCells(sheet, row.number, 1, 3);
       });

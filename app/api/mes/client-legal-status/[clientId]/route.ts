@@ -28,9 +28,11 @@ export async function GET(
     limit: 300,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !READ_ROLES.has(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -56,14 +58,22 @@ export async function GET(
 
     if (!row) {
       // No record means enabled by default
-      return Response.json({ clientId, isLegallyEnabled: true, legalNotes: null });
+      return Response.json({
+        clientId,
+        isLegallyEnabled: true,
+        legalNotes: null,
+      });
     }
 
     return Response.json(row);
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al consultar estado jurídico del cliente", { status: 500 });
+
+    return new Response("Error al consultar estado jurídico del cliente", {
+      status: 500,
+    });
   }
 }
 
@@ -76,9 +86,11 @@ export async function PUT(
     limit: 60,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !WRITE_ROLES.has(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -157,7 +169,11 @@ export async function PUT(
     return Response.json(result);
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al actualizar estado jurídico del cliente", { status: 500 });
+
+    return new Response("Error al actualizar estado jurídico del cliente", {
+      status: 500,
+    });
   }
 }

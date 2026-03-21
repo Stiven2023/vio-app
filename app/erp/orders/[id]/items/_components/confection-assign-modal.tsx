@@ -46,6 +46,7 @@ export function ConfectionAssignModal({
 
   const title = useMemo(() => {
     if (hasAssignment) return "Cambiar confeccionista";
+
     return "Asignar confeccionista";
   }, [hasAssignment]);
 
@@ -79,6 +80,7 @@ export function ConfectionAssignModal({
     if (!orderItemId) return;
     if (!selected.trim()) {
       toast.error("Selecciona un confeccionista");
+
       return;
     }
 
@@ -134,6 +136,7 @@ export function ConfectionAssignModal({
             selectedKeys={selected ? [selected] : []}
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setSelected(first ? String(first) : "");
             }}
           >

@@ -64,10 +64,15 @@ export function JuridicaClient() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ pageSize: "100" });
+
       if (q) params.set("search", q);
-      const res = await fetch(`/api/mes/client-legal-status?${params.toString()}`);
+      const res = await fetch(
+        `/api/mes/client-legal-status?${params.toString()}`,
+      );
+
       if (!res.ok) throw new Error("Error al cargar datos");
       const data: PaginatedResponse = await res.json();
+
       setItems(data.items ?? []);
     } catch {
       toast.error("No se pudo cargar el listado de clientes");
@@ -90,23 +95,30 @@ export function JuridicaClient() {
   const handleSave = async () => {
     if (!editTarget) return;
     if (!editEnabled && !editNotes.trim()) {
-      toast.error("Las notas jurídicas son obligatorias al deshabilitar un cliente");
+      toast.error(
+        "Las notas jurídicas son obligatorias al deshabilitar un cliente",
+      );
+
       return;
     }
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/mes/client-legal-status/${editTarget.clientId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          isLegallyEnabled: editEnabled,
-          legalNotes: editNotes.trim() || null,
-        }),
-      });
+      const res = await fetch(
+        `/api/mes/client-legal-status/${editTarget.clientId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isLegallyEnabled: editEnabled,
+            legalNotes: editNotes.trim() || null,
+          }),
+        },
+      );
 
       if (!res.ok) {
         const msg = await res.text().catch(() => "Error desconocido");
+
         throw new Error(msg);
       }
 
@@ -128,6 +140,7 @@ export function JuridicaClient() {
 
   const formatDate = (value: string | null) => {
     if (!value) return "-";
+
     return new Date(value).toLocaleDateString("es-CO", {
       day: "2-digit",
       month: "2-digit",
@@ -146,10 +159,10 @@ export function JuridicaClient() {
           startContent={<MdSearch className="text-default-400" />}
           value={search}
           variant="bordered"
-          onValueChange={(v) => setSearch(v)}
           onKeyDown={(e) => {
             if (e.key === "Enter") void load(search);
           }}
+          onValueChange={(v) => setSearch(v)}
         />
         <Button
           radius="sm"
@@ -177,16 +190,26 @@ export function JuridicaClient() {
       <Divider />
 
       {loading ? (
-        <Card className="border border-dashed border-divider" radius="md" shadow="none">
+        <Card
+          className="border border-dashed border-divider"
+          radius="md"
+          shadow="none"
+        >
           <CardBody className="py-12 text-center text-default-400">
             <p className="text-sm">Cargando clientes...</p>
           </CardBody>
         </Card>
       ) : items.length === 0 ? (
-        <Card className="border border-dashed border-divider" radius="md" shadow="none">
+        <Card
+          className="border border-dashed border-divider"
+          radius="md"
+          shadow="none"
+        >
           <CardBody className="py-12 text-center text-default-400">
             <MdError className="mx-auto mb-2 opacity-40" size={36} />
-            <p className="text-sm">No se encontraron clientes con estado jurídico registrado</p>
+            <p className="text-sm">
+              No se encontraron clientes con estado jurídico registrado
+            </p>
           </CardBody>
         </Card>
       ) : (
@@ -208,7 +231,9 @@ export function JuridicaClient() {
                     <p className="text-sm font-medium">{item.clientName}</p>
                   </TableCell>
                   <TableCell>
-                    <p className="text-xs text-default-400">{item.clientCode ?? "-"}</p>
+                    <p className="text-xs text-default-400">
+                      {item.clientCode ?? "-"}
+                    </p>
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -227,7 +252,10 @@ export function JuridicaClient() {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    <p className="text-xs max-w-[200px] truncate" title={item.legalNotes ?? "-"}>
+                    <p
+                      className="text-xs max-w-[200px] truncate"
+                      title={item.legalNotes ?? "-"}
+                    >
                       {item.legalNotes ?? "-"}
                     </p>
                   </TableCell>
@@ -255,7 +283,11 @@ export function JuridicaClient() {
       )}
 
       {/* Edit Modal */}
-      <Modal isOpen={modalOpen} size="md" onOpenChange={(open) => !open && setModalOpen(false)}>
+      <Modal
+        isOpen={modalOpen}
+        size="md"
+        onOpenChange={(open) => !open && setModalOpen(false)}
+      >
         <ModalContent>
           <>
             <ModalHeader>
@@ -296,10 +328,15 @@ export function JuridicaClient() {
                 onValueChange={setEditNotes}
               />
               {!editEnabled && (
-                <Card className="border border-danger-200 bg-danger-50" radius="sm" shadow="none">
+                <Card
+                  className="border border-danger-200 bg-danger-50"
+                  radius="sm"
+                  shadow="none"
+                >
                   <CardBody className="py-2 px-3">
                     <p className="text-xs text-danger-700">
-                      Al deshabilitar, el operario de Despacho no podrá procesar pedidos de este cliente.
+                      Al deshabilitar, el operario de Despacho no podrá procesar
+                      pedidos de este cliente.
                     </p>
                   </CardBody>
                 </Card>

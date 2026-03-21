@@ -1,7 +1,9 @@
+import type { ClientOption } from "../_lib/types";
+
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
-import type { ClientOption } from "../_lib/types";
 
 export function useClientsData() {
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -11,10 +13,15 @@ export function useClientsData() {
     let active = true;
 
     setLoading(true);
-    apiJson<{ clients: ClientOption[] }>("/api/quotations/options?catalogType=NACIONAL")
+    apiJson<{ clients: ClientOption[] }>(
+      "/api/quotations/options?catalogType=NACIONAL",
+    )
       .then((res) => {
         if (!active) return;
-        const activeClients = (res.clients ?? []).filter((client) => Boolean(client.isActive));
+        const activeClients = (res.clients ?? []).filter((client) =>
+          Boolean(client.isActive),
+        );
+
         setClients(activeClients);
       })
       .catch((error) => {

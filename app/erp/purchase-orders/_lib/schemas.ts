@@ -3,7 +3,11 @@ import { z } from "zod";
 export const createPurchaseOrderSchema = z.object({
   supplierId: z.string().uuid().optional(),
   bankId: z.string().uuid("Banco requerido"),
-  bankAccountRef: z.string().trim().min(3, "Referencia bancaria requerida").max(80),
+  bankAccountRef: z
+    .string()
+    .trim()
+    .min(3, "Referencia bancaria requerida")
+    .max(80),
   notes: z.string().trim().max(2000).optional(),
   items: z
     .array(

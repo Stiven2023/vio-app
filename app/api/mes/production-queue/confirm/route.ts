@@ -24,9 +24,11 @@ export async function POST(request: Request) {
     limit: 30,
     windowMs: 60_000,
   });
+
   if (limited) return limited;
 
   const role = getRoleFromRequest(request);
+
   if (!role || !canWrite(role)) {
     return new Response("Forbidden", { status: 403 });
   }
@@ -43,11 +45,7 @@ export async function POST(request: Request) {
         confirmedBy: employeeId,
         updatedAt: now,
       })
-      .where(
-        and(
-          eq(mesProductionQueue.status, "EN_COLA"),
-        ),
-      )
+      .where(and(eq(mesProductionQueue.status, "EN_COLA")))
       .returning({ id: mesProductionQueue.id });
 
     return Response.json({
@@ -56,7 +54,11 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const resp = dbErrorResponse(error);
+
     if (resp) return resp;
-    return new Response("Error al confirmar cola de producción", { status: 500 });
+
+    return new Response("Error al confirmar cola de producción", {
+      status: 500,
+    });
   }
 }

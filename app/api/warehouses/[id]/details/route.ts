@@ -27,15 +27,18 @@ export async function GET(request: Request, { params }: Params) {
 
   const role = getRoleFromRequest(request);
   const allowedRole = role === "ADMINISTRADOR" || role === "LIDER_SUMINISTROS";
+
   if (!allowedRole) return new Response("Forbidden", { status: 403 });
 
   const forbidden = await requirePermission(request, "VER_INVENTARIO");
+
   if (forbidden) return forbidden;
 
   const { id } = await params;
   const warehouseId = String(id ?? "").trim();
 
-  if (!warehouseId) return new Response("warehouse id required", { status: 400 });
+  if (!warehouseId)
+    return new Response("warehouse id required", { status: 400 });
 
   const [warehouse] = await db
     .select({
@@ -43,6 +46,7 @@ export async function GET(request: Request, { params }: Params) {
       code: warehouses.code,
       name: warehouses.name,
       description: warehouses.description,
+      purpose: warehouses.purpose,
       isVirtual: warehouses.isVirtual,
       isExternal: warehouses.isExternal,
       address: warehouses.address,
@@ -60,7 +64,9 @@ export async function GET(request: Request, { params }: Params) {
   const products = await db
     .select({
       stockId: warehouseStock.id,
-      inventoryItemId: sql<string | null>`coalesce(${warehouseStock.inventoryItemId}, ${inventoryItemVariants.inventoryItemId})`,
+      inventoryItemId: sql<
+        string | null
+      >`coalesce(${warehouseStock.inventoryItemId}, ${inventoryItemVariants.inventoryItemId})`,
       variantId: warehouseStock.variantId,
       itemCode: inventoryItems.itemCode,
       itemName: inventoryItems.name,
@@ -114,7 +120,10 @@ export async function GET(request: Request, { params }: Params) {
       fromWarehouseId: stockMovements.fromWarehouseId,
     })
     .from(stockMovements)
-    .leftJoin(inventoryItems, eq(stockMovements.inventoryItemId, inventoryItems.id))
+    .leftJoin(
+      inventoryItems,
+      eq(stockMovements.inventoryItemId, inventoryItems.id),
+    )
     .leftJoin(
       inventoryItemVariants,
       eq(stockMovements.variantId, inventoryItemVariants.id),
@@ -143,7 +152,10 @@ export async function GET(request: Request, { params }: Params) {
       toWarehouseId: stockMovements.toWarehouseId,
     })
     .from(stockMovements)
-    .leftJoin(inventoryItems, eq(stockMovements.inventoryItemId, inventoryItems.id))
+    .leftJoin(
+      inventoryItems,
+      eq(stockMovements.inventoryItemId, inventoryItems.id),
+    )
     .leftJoin(
       inventoryItemVariants,
       eq(stockMovements.variantId, inventoryItemVariants.id),
@@ -169,7 +181,11 @@ export async function GET(request: Request, { params }: Params) {
 
   const relatedWarehouses = warehouseIdSet.size
     ? await db
-        .select({ id: warehouses.id, code: warehouses.code, name: warehouses.name })
+        .select({
+          id: warehouses.id,
+          code: warehouses.code,
+          name: warehouses.name,
+        })
         .from(warehouses)
         .where(inArray(warehouses.id, Array.from(warehouseIdSet)))
     : [];

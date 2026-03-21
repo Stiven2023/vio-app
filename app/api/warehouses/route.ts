@@ -33,9 +33,11 @@ export async function GET(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "VER_INVENTARIO");
+
   if (forbidden) return forbidden;
 
   try {
@@ -56,6 +58,7 @@ export async function GET(request: Request) {
         code: warehouses.code,
         name: warehouses.name,
         description: warehouses.description,
+        purpose: warehouses.purpose,
         isVirtual: warehouses.isVirtual,
         isExternal: warehouses.isExternal,
         address: warehouses.address,
@@ -75,7 +78,9 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudieron consultar bodegas", { status: 500 });
   }
 }
@@ -90,15 +95,18 @@ export async function POST(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   const {
     code,
     name,
     description,
+    purpose,
     isVirtual,
     isExternal,
     address,
@@ -113,12 +121,33 @@ export async function POST(request: Request) {
   if (!normalizedCode) return new Response("code required", { status: 400 });
   if (!normalizedName) return new Response("name required", { status: 400 });
 
+  const VALID_PURPOSES = [
+    "GENERAL",
+    "MATERIA_PRIMA",
+    "PRODUCCION",
+    "PRODUCTO_TERMINADO",
+    "TRANSITO",
+  ];
+  const normalizedPurpose = VALID_PURPOSES.includes(
+    String(purpose ?? "")
+      .trim()
+      .toUpperCase(),
+  )
+    ? (String(purpose).trim().toUpperCase() as
+        | "GENERAL"
+        | "MATERIA_PRIMA"
+        | "PRODUCCION"
+        | "PRODUCTO_TERMINADO"
+        | "TRANSITO")
+    : ("GENERAL" as const);
+
   const created = await db
     .insert(warehouses)
     .values({
       code: normalizedCode,
       name: normalizedName,
       description: String(description ?? "").trim() || null,
+      purpose: normalizedPurpose,
       isVirtual: Boolean(isVirtual),
       isExternal: Boolean(isExternal),
       address: String(address ?? "").trim() || null,
@@ -141,9 +170,11 @@ export async function PUT(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   const {
@@ -151,6 +182,7 @@ export async function PUT(request: Request) {
     code,
     name,
     description,
+    purpose,
     isVirtual,
     isExternal,
     address,
@@ -167,12 +199,33 @@ export async function PUT(request: Request) {
   if (!normalizedCode) return new Response("code required", { status: 400 });
   if (!normalizedName) return new Response("name required", { status: 400 });
 
+  const VALID_PURPOSES = [
+    "GENERAL",
+    "MATERIA_PRIMA",
+    "PRODUCCION",
+    "PRODUCTO_TERMINADO",
+    "TRANSITO",
+  ];
+  const normalizedPurpose = VALID_PURPOSES.includes(
+    String(purpose ?? "")
+      .trim()
+      .toUpperCase(),
+  )
+    ? (String(purpose).trim().toUpperCase() as
+        | "GENERAL"
+        | "MATERIA_PRIMA"
+        | "PRODUCCION"
+        | "PRODUCTO_TERMINADO"
+        | "TRANSITO")
+    : ("GENERAL" as const);
+
   const updated = await db
     .update(warehouses)
     .set({
       code: normalizedCode,
       name: normalizedName,
       description: String(description ?? "").trim() || null,
+      purpose: normalizedPurpose,
       isVirtual: Boolean(isVirtual),
       isExternal: Boolean(isExternal),
       address: String(address ?? "").trim() || null,
@@ -196,9 +249,11 @@ export async function DELETE(request: Request) {
   if (limited) return limited;
 
   const roleForbidden = ensureWarehouseRole(request);
+
   if (roleForbidden) return roleForbidden;
 
   const forbidden = await requirePermission(request, "CREAR_ORDEN_COMPRA");
+
   if (forbidden) return forbidden;
 
   const { id } = await request.json();
@@ -213,9 +268,12 @@ export async function DELETE(request: Request) {
     .limit(1);
 
   if (stockRef) {
-    return new Response("No se puede eliminar: la bodega tiene stock asociado", {
-      status: 409,
-    });
+    return new Response(
+      "No se puede eliminar: la bodega tiene stock asociado",
+      {
+        status: 409,
+      },
+    );
   }
 
   const deleted = await db

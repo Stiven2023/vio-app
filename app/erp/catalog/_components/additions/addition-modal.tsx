@@ -15,14 +15,24 @@ import {
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
-import { BsBoxSeam, BsCashCoin, BsTag } from "react-icons/bs";
+import { BsBoxSeam, BsCashCoin } from "react-icons/bs";
 
-import { apiJson, getErrorMessage } from "../../_lib/api";
+import { getErrorMessage } from "../../_lib/api";
+
 import { getTRMColombia, applyTRMConversion } from "@/src/utils/trm";
 
-function formatCurrency(value: string | null | undefined, currency: "COP" | "USD") {
+function formatCurrency(
+  value: string | null | undefined,
+  currency: "COP" | "USD",
+) {
   const amount = Number(value ?? 0);
-  if (!Number.isFinite(amount) || value === null || value === undefined || value === "") {
+
+  if (
+    !Number.isFinite(amount) ||
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
     return "";
   }
 
@@ -90,6 +100,7 @@ export function AdditionModal({
             priceCopInternational: "",
             priceUSD: "",
           }));
+
           return;
         }
 
@@ -115,7 +126,7 @@ export function AdditionModal({
         }
       }, 400);
     },
-    [toast]
+    [toast],
   );
 
   useEffect(() => {
@@ -161,12 +172,14 @@ export function AdditionModal({
 
       try {
         const trm = await getTRMColombia();
+
         trmUsed = trm;
 
         const basePrice = Number(finalPriceCopBase || "");
 
         if (!Number.isFinite(basePrice) || basePrice <= 0) {
           toast.error("Precio base requerido.");
+
           return;
         }
 
@@ -182,6 +195,7 @@ export function AdditionModal({
       } catch (trmError) {
         console.error("TRM conversion error:", trmError);
         toast.error("Error al obtener TRM. Intenta nuevamente.");
+
         return;
       }
 
@@ -210,7 +224,9 @@ export function AdditionModal({
 
       if (!res.ok) {
         const msg = await res.text();
+
         toast.error(msg || `${method} error`);
+
         return;
       }
 
@@ -225,7 +241,7 @@ export function AdditionModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
+    <Modal isOpen={isOpen} size="2xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader className="flex items-center gap-2">
           <BsBoxSeam className="h-5 w-5" />
@@ -233,29 +249,27 @@ export function AdditionModal({
         </ModalHeader>
         <ModalBody className="gap-4">
           <Select
+            errorMessage={errors.categoryId}
+            isDisabled={!canPickCategory}
+            isInvalid={!!errors.categoryId}
             label="Categoría"
             selectedKeys={form.categoryId ? [form.categoryId] : []}
             onChange={(e) =>
               setForm((s) => ({ ...s, categoryId: e.target.value }))
             }
-            isDisabled={!canPickCategory}
-            errorMessage={errors.categoryId}
-            isInvalid={!!errors.categoryId}
           >
             {categories.map((cat) => (
-              <SelectItem key={cat.id}>
-                {cat.name}
-              </SelectItem>
+              <SelectItem key={cat.id}>{cat.name}</SelectItem>
             ))}
           </Select>
 
           <Input
+            errorMessage={errors.name}
+            isInvalid={!!errors.name}
             label="Nombre"
             placeholder="Ej: Empaque pequeño"
             value={form.name}
             onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-            errorMessage={errors.name}
-            isInvalid={!!errors.name}
           />
 
           <Input
@@ -275,29 +289,30 @@ export function AdditionModal({
                 placeholder="Ej: 50000"
                 startContent={<BsCashCoin className="text-default-400" />}
                 value={form.priceCopBase}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, priceCopBase: e.target.value }))
-                }
                 onBlur={(e) => {
                   if (e.target.value.trim()) {
                     scheduleInternationalFromR1(e.target.value);
                   }
                 }}
+                onChange={(e) =>
+                  setForm((s) => ({ ...s, priceCopBase: e.target.value }))
+                }
               />
               <Input
+                isReadOnly
                 label="Precio COP internacional (calculado +19%)"
                 startContent={<BsCashCoin className="text-default-400" />}
                 value={formatCurrency(form.priceCopInternational, "COP")}
-                isReadOnly
               />
               <Input
+                isReadOnly
                 label="Precio USD (calculado)"
                 startContent={<BsCashCoin className="text-default-400" />}
                 value={formatCurrency(form.priceUSD, "USD")}
-                isReadOnly
               />
               <p className="text-xs text-default-500">
-                Ingresa el precio base. Los precios en COP internacional y USD se calcularán automáticamente.
+                Ingresa el precio base. Los precios en COP internacional y USD
+                se calcularán automáticamente.
               </p>
             </div>
           </div>
@@ -315,17 +330,13 @@ export function AdditionModal({
         <ModalFooter>
           <Button
             color="default"
+            isDisabled={submitting}
             variant="light"
             onPress={() => onOpenChange(false)}
-            isDisabled={submitting}
           >
             Cancelar
           </Button>
-          <Button
-            color="primary"
-            onPress={handleSave}
-            isLoading={submitting}
-          >
+          <Button color="primary" isLoading={submitting} onPress={handleSave}>
             {addition?.id ? "Guardar cambios" : "Crear"}
           </Button>
         </ModalFooter>

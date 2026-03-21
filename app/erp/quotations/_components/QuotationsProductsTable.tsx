@@ -1,14 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
-import { Input } from "@heroui/input";
-import { Select, SelectItem } from "@heroui/select";
-import { Button } from "@heroui/button";
-import { Card, CardBody, CardHeader } from "@heroui/card";
-import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
-
-import { QuotationsAdditionsPanel } from "./QuotationsAdditionsPanel";
 import type {
   Addition,
   AdditionOption,
@@ -19,6 +10,16 @@ import type {
   QuoteItem,
   QuoteProcess,
 } from "../_lib/types";
+
+import { useMemo, useState } from "react";
+import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
+import { Input } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
+import { Button } from "@heroui/button";
+import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
+
+import { QuotationsAdditionsPanel } from "./QuotationsAdditionsPanel";
 
 type QuotationsProductsTableProps = {
   items: QuoteItem[];
@@ -49,8 +50,11 @@ export function QuotationsProductsTable({
   onAddAddition,
   asMoney,
 }: QuotationsProductsTableProps) {
-  const isAuthorizedManual = currency === "COP" && clientPriceType === "AUTORIZADO";
-  const additionsById = new Map(additions.map((addition) => [addition.id, addition]));
+  const isAuthorizedManual =
+    currency === "COP" && clientPriceType === "AUTORIZADO";
+  const additionsById = new Map(
+    additions.map((addition) => [addition.id, addition]),
+  );
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   const editingRow = useMemo(
@@ -83,7 +87,7 @@ export function QuotationsProductsTable({
   });
 
   return (
-    <Card radius="md" shadow="none" className="border border-default-200">
+    <Card className="border border-default-200" radius="md" shadow="none">
       <CardHeader className="flex items-center justify-between">
         <span className="text-sm font-semibold">Product Details</span>
         <Button variant="flat" onPress={onAddItem}>
@@ -91,9 +95,11 @@ export function QuotationsProductsTable({
         </Button>
       </CardHeader>
       <CardBody className="space-y-4">
-        <Card radius="sm" shadow="none" className="border border-default-200">
+        <Card className="border border-default-200" radius="sm" shadow="none">
           <CardHeader className="py-3">
-            <span className="text-sm font-semibold">Products summary table</span>
+            <span className="text-sm font-semibold">
+              Products summary table
+            </span>
           </CardHeader>
           <CardBody className="pt-0">
             {summaryRows.length === 0 ? (
@@ -104,25 +110,46 @@ export function QuotationsProductsTable({
                   <thead>
                     <tr className="border-b border-default-200 text-default-600">
                       <th className="py-2 px-2 text-left font-semibold">#</th>
-                      <th className="py-2 px-2 text-left font-semibold">Product</th>
-                      <th className="py-2 px-2 text-left font-semibold">Process</th>
-                      <th className="py-2 px-2 text-right font-semibold">Qty.</th>
-                      <th className="py-2 px-2 text-right font-semibold">Design Total</th>
-                      <th className="py-2 px-2 text-right font-semibold">Additions</th>
-                      <th className="py-2 px-2 text-right font-semibold">Item Total</th>
-                      <th className="py-2 px-2 text-right font-semibold">Actions</th>
+                      <th className="py-2 px-2 text-left font-semibold">
+                        Product
+                      </th>
+                      <th className="py-2 px-2 text-left font-semibold">
+                        Process
+                      </th>
+                      <th className="py-2 px-2 text-right font-semibold">
+                        Qty.
+                      </th>
+                      <th className="py-2 px-2 text-right font-semibold">
+                        Design Total
+                      </th>
+                      <th className="py-2 px-2 text-right font-semibold">
+                        Additions
+                      </th>
+                      <th className="py-2 px-2 text-right font-semibold">
+                        Item Total
+                      </th>
+                      <th className="py-2 px-2 text-right font-semibold">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {summaryRows.map((row) => (
-                      <tr key={row.key} className="border-b border-default-100 last:border-b-0">
+                      <tr
+                        key={row.key}
+                        className="border-b border-default-100 last:border-b-0"
+                      >
                         <td className="py-2 px-2">{row.index}</td>
                         <td className="py-2 px-2">{`${row.code} - ${row.product}`}</td>
                         <td className="py-2 px-2">{row.process}</td>
                         <td className="py-2 px-2 text-right">{row.quantity}</td>
-                        <td className="py-2 px-2 text-right">{asMoney(row.lineTotal)}</td>
+                        <td className="py-2 px-2 text-right">
+                          {asMoney(row.lineTotal)}
+                        </td>
                         <td className="py-2 px-2 text-right">{`${row.additionsCount} · ${asMoney(row.additionsTotal)}`}</td>
-                        <td className="py-2 px-2 text-right font-semibold">{asMoney(row.totalWithAdditions)}</td>
+                        <td className="py-2 px-2 text-right font-semibold">
+                          {asMoney(row.totalWithAdditions)}
+                        </td>
                         <td className="py-2 px-2">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -133,9 +160,9 @@ export function QuotationsProductsTable({
                               Edit
                             </Button>
                             <Button
+                              color="danger"
                               size="sm"
                               variant="light"
-                              color="danger"
                               onPress={() => onRemoveItem(row.key)}
                             >
                               Remove
@@ -170,11 +197,14 @@ export function QuotationsProductsTable({
               <>
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                   <Select
+                    aria-label="Design type"
+                    classNames={{ trigger: "min-h-12 text-sm font-medium" }}
+                    label="Design Type"
+                    selectedKeys={
+                      editingRow.orderType ? [editingRow.orderType] : []
+                    }
                     size="sm"
                     variant="bordered"
-                    label="Design Type"
-                    aria-label="Design type"
-                    selectedKeys={editingRow.orderType ? [editingRow.orderType] : []}
                     onSelectionChange={(keys) => {
                       const first = Array.from(keys)[0];
                       const nextType = String(first ?? "NORMAL") as OrderType;
@@ -193,7 +223,6 @@ export function QuotationsProductsTable({
                             }),
                       });
                     }}
-                    classNames={{ trigger: "min-h-12 text-sm font-medium" }}
                   >
                     <SelectItem key="NORMAL">Nuevo</SelectItem>
                     <SelectItem key="COMPLETACION">Completación</SelectItem>
@@ -204,18 +233,21 @@ export function QuotationsProductsTable({
                   </Select>
 
                   <Select
+                    aria-label="Design process"
+                    classNames={{ trigger: "min-h-12 text-sm font-medium" }}
+                    label="Process"
+                    selectedKeys={
+                      editingRow.process ? [editingRow.process] : []
+                    }
                     size="sm"
                     variant="bordered"
-                    label="Process"
-                    aria-label="Design process"
-                    selectedKeys={editingRow.process ? [editingRow.process] : []}
                     onSelectionChange={(keys) => {
                       const first = Array.from(keys)[0];
+
                       onUpdateItem(editingRow.id, {
                         process: String(first ?? "PRODUCCION") as QuoteProcess,
                       });
                     }}
-                    classNames={{ trigger: "min-h-12 text-sm font-medium" }}
                   >
                     <SelectItem key="PRODUCCION">Producción</SelectItem>
                     <SelectItem key="BODEGA">Bodega</SelectItem>
@@ -223,17 +255,22 @@ export function QuotationsProductsTable({
                   </Select>
 
                   <Autocomplete
+                    aria-label="Search product by code"
+                    classNames={{
+                      base: "min-h-12",
+                      selectorButton: "min-h-12",
+                    }}
+                    defaultItems={products}
+                    isLoading={loadingProducts}
+                    label="Product (search by code)"
+                    selectedKey={editingRow.productId || null}
                     size="sm"
                     variant="bordered"
-                    label="Product (search by code)"
-                    isLoading={loadingProducts}
-                    aria-label="Search product by code"
-                    selectedKey={editingRow.productId || null}
-                    defaultItems={products}
                     onSelectionChange={(key) => {
-                      onUpdateItem(editingRow.id, { productId: String(key ?? "") });
+                      onUpdateItem(editingRow.id, {
+                        productId: String(key ?? ""),
+                      });
                     }}
-                    classNames={{ base: "min-h-12", selectorButton: "min-h-12" }}
                   >
                     {products.map((product) => (
                       <AutocompleteItem
@@ -247,76 +284,84 @@ export function QuotationsProductsTable({
                 </div>
 
                 <Input
-                  size="sm"
-                  variant="bordered"
-                  label="Description"
                   isReadOnly
-                  value={editingRow.description}
-                  classNames={{ input: "text-sm leading-5" }}
                   aria-label="Description"
+                  classNames={{ input: "text-sm leading-5" }}
+                  label="Description"
+                  size="sm"
+                  value={editingRow.description}
+                  variant="bordered"
                 />
 
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <Input
+                    aria-label="Quantity"
+                    label="Quantity"
                     size="sm"
                     type="number"
-                    variant="bordered"
-                    label="Quantity"
                     value={String(editingRow.quantity)}
-                    aria-label="Quantity"
+                    variant="bordered"
                     onValueChange={(v) =>
-                      onUpdateItem(editingRow.id, { quantity: Math.max(0, Number(v || 0)) })
+                      onUpdateItem(editingRow.id, {
+                        quantity: Math.max(0, Number(v || 0)),
+                      })
                     }
                   />
                   <Input
+                    aria-label="Unit price"
+                    isReadOnly={!isAuthorizedManual}
+                    label="Unit Price"
                     size="sm"
                     type="number"
-                    variant="bordered"
-                    label="Unit Price"
-                    isReadOnly={!isAuthorizedManual}
                     value={String(editingRow.unitPrice)}
-                    aria-label="Unit price"
+                    variant="bordered"
                     onValueChange={(v) => {
                       if (!isAuthorizedManual) return;
-                      onUpdateItem(editingRow.id, { unitPrice: Math.max(0, Number(v || 0)) });
+                      onUpdateItem(editingRow.id, {
+                        unitPrice: Math.max(0, Number(v || 0)),
+                      });
                     }}
                   />
                   <Input
-                    size="sm"
-                    type="number"
-                    variant="bordered"
+                    aria-label="Discount percentage"
                     label="Discount %"
                     placeholder="0"
+                    size="sm"
+                    type="number"
                     value={String(editingRow.discount)}
-                    aria-label="Discount percentage"
+                    variant="bordered"
                     onValueChange={(v) =>
-                      onUpdateItem(editingRow.id, { discount: Math.max(0, Math.min(100, Number(v || 0))) })
+                      onUpdateItem(editingRow.id, {
+                        discount: Math.max(0, Math.min(100, Number(v || 0))),
+                      })
                     }
                   />
                   <Input
-                    size="sm"
-                    variant="bordered"
-                    label="Total Value"
                     isReadOnly
+                    aria-label="Total value"
+                    label="Total Value"
+                    size="sm"
                     value={asMoney(
                       editingRow.quantity * editingRow.unitPrice -
-                        editingRow.quantity * editingRow.unitPrice * (editingRow.discount / 100),
+                        editingRow.quantity *
+                          editingRow.unitPrice *
+                          (editingRow.discount / 100),
                     )}
-                    aria-label="Total value"
+                    variant="bordered"
                   />
                 </div>
 
                 <QuotationsAdditionsPanel
-                  row={editingRow}
                   additions={additions}
-                  currency={currency}
+                  asMoney={asMoney}
                   clientPriceType={clientPriceType}
+                  currency={currency}
                   loadingAdditions={loadingAdditions}
-                  onUpdateItem={onUpdateItem}
+                  row={editingRow}
                   onAddAddition={(itemId, addition) => {
                     onAddAddition(itemId, addition);
                   }}
-                  asMoney={asMoney}
+                  onUpdateItem={onUpdateItem}
                 />
 
                 <div className="flex justify-end">

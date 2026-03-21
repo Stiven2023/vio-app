@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -22,7 +23,8 @@ import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 
 const BarChartBase = BarChart as unknown as ComponentType<any>;
 const LineChartBase = LineChart as unknown as ComponentType<any>;
-const ResponsiveContainerBase = ResponsiveContainer as unknown as ComponentType<any>;
+const ResponsiveContainerBase =
+  ResponsiveContainer as unknown as ComponentType<any>;
 const CartesianGridBase = CartesianGrid as unknown as ComponentType<any>;
 const XAxisBase = XAxis as unknown as ComponentType<any>;
 const YAxisBase = YAxis as unknown as ComponentType<any>;
@@ -66,7 +68,9 @@ export function RoleCharts({ role }: { role: string }) {
   const now = new Date();
   const currentYear = now.getFullYear();
   const [year, setYear] = useState(String(currentYear));
-  const [month, setMonth] = useState(String(now.getMonth() + 1).padStart(2, "0"));
+  const [month, setMonth] = useState(
+    String(now.getMonth() + 1).padStart(2, "0"),
+  );
 
   const monthOptions = [
     { value: "01", label: "Ene" },
@@ -86,6 +90,7 @@ export function RoleCharts({ role }: { role: string }) {
   const yearOptions = useMemo(() => {
     return Array.from({ length: 6 }, (_, index) => {
       const value = String(currentYear - index);
+
       return { value, label: value };
     });
   }, [currentYear]);
@@ -94,9 +99,13 @@ export function RoleCharts({ role }: { role: string }) {
 
   useEffect(() => {
     let active = true;
+
     setLoading(true);
 
-    const endpoint = role === "ASESOR" ? "/api/reports/charts/advisor" : "/api/reports/charts/admin";
+    const endpoint =
+      role === "ASESOR"
+        ? "/api/reports/charts/advisor"
+        : "/api/reports/charts/admin";
     const url = `${endpoint}?year=${encodeURIComponent(
       year,
     )}&month=${encodeURIComponent(String(Number(month)))}`;
@@ -124,12 +133,17 @@ export function RoleCharts({ role }: { role: string }) {
     };
   }, [month, role, year]);
 
-  if (role !== "ASESOR" && role !== "LIDER_OPERACIONAL" && role !== "ADMINISTRADOR") {
+  if (
+    role !== "ASESOR" &&
+    role !== "LIDER_OPERACIONAL" &&
+    role !== "ADMINISTRADOR"
+  ) {
     return null;
   }
 
-  const series = role === "ASESOR" ? advisorData?.series ?? [] : adminData?.series ?? [];
-  const status = role === "ASESOR" ? advisorData?.status ?? [] : [];
+  const series =
+    role === "ASESOR" ? (advisorData?.series ?? []) : (adminData?.series ?? []);
+  const status = role === "ASESOR" ? (advisorData?.status ?? []) : [];
 
   return (
     <div className="space-y-4">
@@ -159,14 +173,17 @@ export function RoleCharts({ role }: { role: string }) {
             {loading ? <Spinner size="sm" /> : null}
           </CardHeader>
           <CardBody className="h-72">
-            <ResponsiveContainerBase width="100%" height="100%">
+            <ResponsiveContainerBase height="100%" width="100%">
               <LineChartBase data={series} margin={{ left: 8, right: 8 }}>
-                <CartesianGridBase strokeDasharray="3 3" stroke={ROLE_CHART_COLORS.grid} />
+                <CartesianGridBase
+                  stroke={ROLE_CHART_COLORS.grid}
+                  strokeDasharray="3 3"
+                />
                 <XAxisBase
-                  dataKey="day"
-                  tickFormatter={(v: string) => v.slice(-2)}
                   axisLine={{ stroke: "var(--viomar-fg)" }}
+                  dataKey="day"
                   tick={{ fill: "var(--viomar-fg)" }}
+                  tickFormatter={(v: string) => v.slice(-2)}
                   tickLine={{ stroke: "var(--viomar-fg)" }}
                 />
                 <YAxisBase
@@ -177,18 +194,18 @@ export function RoleCharts({ role }: { role: string }) {
                 <TooltipBase />
                 <LegendBase />
                 <LineBase
-                  type="monotone"
                   dataKey="sold"
                   name="Vendido"
                   stroke={ROLE_CHART_COLORS.sold}
                   strokeWidth={2}
+                  type="monotone"
                 />
                 <LineBase
-                  type="monotone"
                   dataKey="paid"
                   name="Abonos"
                   stroke={ROLE_CHART_COLORS.paid}
                   strokeWidth={2}
+                  type="monotone"
                 />
               </LineChartBase>
             </ResponsiveContainerBase>
@@ -204,14 +221,17 @@ export function RoleCharts({ role }: { role: string }) {
               {loading ? <Spinner size="sm" /> : null}
             </CardHeader>
             <CardBody className="h-72">
-              <ResponsiveContainerBase width="100%" height="100%">
+              <ResponsiveContainerBase height="100%" width="100%">
                 <BarChartBase data={status} margin={{ left: 8, right: 8 }}>
-                  <CartesianGridBase strokeDasharray="3 3" stroke={ROLE_CHART_COLORS.grid} />
+                  <CartesianGridBase
+                    stroke={ROLE_CHART_COLORS.grid}
+                    strokeDasharray="3 3"
+                  />
                   <XAxisBase
-                    dataKey="status"
-                    tickFormatter={(v: string) => v.slice(0, 6)}
                     axisLine={{ stroke: "var(--viomar-fg)" }}
+                    dataKey="status"
                     tick={{ fill: "var(--viomar-fg)" }}
+                    tickFormatter={(v: string) => v.slice(0, 6)}
                     tickLine={{ stroke: "var(--viomar-fg)" }}
                   />
                   <YAxisBase
@@ -222,7 +242,11 @@ export function RoleCharts({ role }: { role: string }) {
                   />
                   <TooltipBase />
                   <LegendBase />
-                  <BarBase dataKey="count" name="Pedidos" fill={ROLE_CHART_COLORS.status} />
+                  <BarBase
+                    dataKey="count"
+                    fill={ROLE_CHART_COLORS.status}
+                    name="Pedidos"
+                  />
                 </BarChartBase>
               </ResponsiveContainerBase>
             </CardBody>
@@ -237,14 +261,17 @@ export function RoleCharts({ role }: { role: string }) {
               {loading ? <Spinner size="sm" /> : null}
             </CardHeader>
             <CardBody className="h-72">
-              <ResponsiveContainerBase width="100%" height="100%">
+              <ResponsiveContainerBase height="100%" width="100%">
                 <BarChartBase data={series} margin={{ left: 8, right: 8 }}>
-                  <CartesianGridBase strokeDasharray="3 3" stroke={ROLE_CHART_COLORS.grid} />
+                  <CartesianGridBase
+                    stroke={ROLE_CHART_COLORS.grid}
+                    strokeDasharray="3 3"
+                  />
                   <XAxisBase
-                    dataKey="day"
-                    tickFormatter={(v: string) => v.slice(-2)}
                     axisLine={{ stroke: "var(--viomar-fg)" }}
+                    dataKey="day"
                     tick={{ fill: "var(--viomar-fg)" }}
+                    tickFormatter={(v: string) => v.slice(-2)}
                     tickLine={{ stroke: "var(--viomar-fg)" }}
                   />
                   <YAxisBase
@@ -255,7 +282,11 @@ export function RoleCharts({ role }: { role: string }) {
                   />
                   <TooltipBase />
                   <LegendBase />
-                  <BarBase dataKey="orders" name="Pedidos" fill={ROLE_CHART_COLORS.orders} />
+                  <BarBase
+                    dataKey="orders"
+                    fill={ROLE_CHART_COLORS.orders}
+                    name="Pedidos"
+                  />
                 </BarChartBase>
               </ResponsiveContainerBase>
             </CardBody>

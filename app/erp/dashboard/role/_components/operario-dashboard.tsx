@@ -72,7 +72,9 @@ export function OperarioDashboard({ role }: { role: string }) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<Paginated<OperarioItem> | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [pendingStatus, setPendingStatus] = useState<Record<string, string>>({});
+  const [pendingStatus, setPendingStatus] = useState<Record<string, string>>(
+    {},
+  );
 
   const [confectionLoad, setConfectionLoad] = useState<ConfectionistLoad[]>([]);
   const [loadingLoad, setLoadingLoad] = useState(false);
@@ -81,7 +83,10 @@ export function OperarioDashboard({ role }: { role: string }) {
   const [outputs, setOutputs] = useState<InventoryOutput[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(false);
 
-  const allowedStatuses = useMemo(() => getAllowedStatusesForRole(role), [role]);
+  const allowedStatuses = useMemo(
+    () => getAllowedStatusesForRole(role),
+    [role],
+  );
 
   useEffect(() => {
     let active = true;
@@ -95,13 +100,16 @@ export function OperarioDashboard({ role }: { role: string }) {
         total: 0,
         hasNextPage: false,
       });
+
       return () => {
         active = false;
       };
     }
 
     setLoading(true);
-    apiJson<Paginated<OperarioItem>>(`/api/dashboard/operario-items?page=${page}`)
+    apiJson<Paginated<OperarioItem>>(
+      `/api/dashboard/operario-items?page=${page}`,
+    )
       .then((res) => {
         if (active) setData(res);
       })
@@ -165,11 +173,15 @@ export function OperarioDashboard({ role }: { role: string }) {
   }, [role]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, { orderCode: string; clientName: string; items: OperarioItem[] }>();
+    const map = new Map<
+      string,
+      { orderCode: string; clientName: string; items: OperarioItem[] }
+    >();
 
     for (const item of data?.items ?? []) {
       const key = item.orderId ?? "-";
       const existing = map.get(key);
+
       if (existing) {
         existing.items.push(item);
       } else {
@@ -191,6 +203,7 @@ export function OperarioDashboard({ role }: { role: string }) {
 
   const updateStatus = async (itemId: string) => {
     const next = pendingStatus[itemId];
+
     if (!next) return;
     if (savingId) return;
 
@@ -216,7 +229,9 @@ export function OperarioDashboard({ role }: { role: string }) {
         <Card>
           <CardHeader>
             <div>
-              <div className="text-lg font-semibold">Dashboard operativo por rol</div>
+              <div className="text-lg font-semibold">
+                Dashboard operativo por rol
+              </div>
               <div className="text-sm text-default-500">
                 Operarios, confeccionistas, mensajería y empaque.
               </div>
@@ -229,7 +244,8 @@ export function OperarioDashboard({ role }: { role: string }) {
       ) : (
         <Card>
           <CardBody className="text-sm text-default-500">
-            El formulario de operación de montaje ahora se gestiona en M.E.S. en el tab Montaje.
+            El formulario de operación de montaje ahora se gestiona en M.E.S. en
+            el tab Montaje.
           </CardBody>
         </Card>
       )}
@@ -246,10 +262,15 @@ export function OperarioDashboard({ role }: { role: string }) {
         </CardHeader>
         <CardBody className="space-y-4">
           {grouped.length === 0 && !loading ? (
-            <div className="text-sm text-default-500">Sin pedidos pendientes.</div>
+            <div className="text-sm text-default-500">
+              Sin pedidos pendientes.
+            </div>
           ) : null}
           {grouped.map(([orderId, group]) => (
-            <details key={orderId} className="rounded-medium border border-default-200">
+            <details
+              key={orderId}
+              className="rounded-medium border border-default-200"
+            >
               <summary className="cursor-pointer list-none px-4 py-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -288,9 +309,9 @@ export function OperarioDashboard({ role }: { role: string }) {
                       </div>
                       {item.imageUrl ? (
                         <img
-                          src={item.imageUrl}
                           alt={item.name ?? "Diseño"}
                           className="h-16 w-16 rounded-medium object-cover"
+                          src={item.imageUrl}
                         />
                       ) : null}
                     </div>
@@ -302,8 +323,8 @@ export function OperarioDashboard({ role }: { role: string }) {
                         </div>
                         <div className="mt-2 space-y-1 text-xs text-default-500">
                           {item.materials.map((mat, index) => (
-                            <div key={`${mat.inventoryItemId ?? index}`}>-
-                              {mat.itemName ?? "Item"} ({mat.quantity ?? "-"})
+                            <div key={`${mat.inventoryItemId ?? index}`}>
+                              -{mat.itemName ?? "Item"} ({mat.quantity ?? "-"})
                             </div>
                           ))}
                         </div>
@@ -318,11 +339,12 @@ export function OperarioDashboard({ role }: { role: string }) {
                           pendingStatus[item.id]
                             ? [pendingStatus[item.id]]
                             : item.status
-                            ? [item.status]
-                            : []
+                              ? [item.status]
+                              : []
                         }
                         onSelectionChange={(keys) => {
                           const first = Array.from(keys)[0];
+
                           if (!first) return;
                           setPendingStatus((prev) => ({
                             ...prev,
@@ -330,8 +352,10 @@ export function OperarioDashboard({ role }: { role: string }) {
                           }));
                         }}
                       >
-                        {(getAllowedNextStatuses(role, item.status ?? "")
-                          .filter((status) => allowedStatuses.includes(status))
+                        {(getAllowedNextStatuses(
+                          role,
+                          item.status ?? "",
+                        ).filter((status) => allowedStatuses.includes(status))
                           .length
                           ? getAllowedNextStatuses(role, item.status ?? "")
                           : item.status
@@ -344,9 +368,9 @@ export function OperarioDashboard({ role }: { role: string }) {
                         ))}
                       </Select>
                       <Button
-                        size="sm"
                         color="primary"
                         isLoading={savingId === item.id}
+                        size="sm"
                         onPress={() => updateStatus(item.id)}
                       >
                         Actualizar
@@ -358,11 +382,7 @@ export function OperarioDashboard({ role }: { role: string }) {
             </details>
           ))}
           {data ? (
-            <Pager
-              data={data}
-              page={data.page}
-              onChange={setPage}
-            />
+            <Pager data={data} page={data.page} onChange={setPage} />
           ) : null}
         </CardBody>
       </Card>
@@ -371,7 +391,9 @@ export function OperarioDashboard({ role }: { role: string }) {
         <Card>
           <CardHeader className="flex items-center justify-between">
             <div>
-              <div className="text-lg font-semibold">Carga de confeccionistas</div>
+              <div className="text-lg font-semibold">
+                Carga de confeccionistas
+              </div>
               <div className="text-sm text-default-500">
                 Pedidos asignados sin finalizar.
               </div>
@@ -411,7 +433,9 @@ export function OperarioDashboard({ role }: { role: string }) {
             <CardHeader className="flex items-center justify-between">
               <div>
                 <div className="text-lg font-semibold">Entradas recientes</div>
-                <div className="text-sm text-default-500">Ultimos movimientos.</div>
+                <div className="text-sm text-default-500">
+                  Ultimos movimientos.
+                </div>
               </div>
               {loadingInventory ? <Spinner size="sm" /> : null}
             </CardHeader>
@@ -420,14 +444,21 @@ export function OperarioDashboard({ role }: { role: string }) {
                 <div className="text-default-500">Sin registros.</div>
               ) : null}
               {entries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between">
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between"
+                >
                   <div>
-                    <div className="font-medium">{entry.itemName ?? "Item"}</div>
+                    <div className="font-medium">
+                      {entry.itemName ?? "Item"}
+                    </div>
                     <div className="text-xs text-default-500">
                       {entry.supplierName ?? "Sin proveedor"}
                     </div>
                   </div>
-                  <div className="text-default-500">+{entry.quantity ?? "0"}</div>
+                  <div className="text-default-500">
+                    +{entry.quantity ?? "0"}
+                  </div>
                 </div>
               ))}
             </CardBody>
@@ -436,7 +467,9 @@ export function OperarioDashboard({ role }: { role: string }) {
             <CardHeader className="flex items-center justify-between">
               <div>
                 <div className="text-lg font-semibold">Salidas recientes</div>
-                <div className="text-sm text-default-500">Ultimos consumos.</div>
+                <div className="text-sm text-default-500">
+                  Ultimos consumos.
+                </div>
               </div>
               {loadingInventory ? <Spinner size="sm" /> : null}
             </CardHeader>
@@ -445,14 +478,21 @@ export function OperarioDashboard({ role }: { role: string }) {
                 <div className="text-default-500">Sin registros.</div>
               ) : null}
               {outputs.map((output) => (
-                <div key={output.id} className="flex items-center justify-between">
+                <div
+                  key={output.id}
+                  className="flex items-center justify-between"
+                >
                   <div>
-                    <div className="font-medium">{output.itemName ?? "Item"}</div>
+                    <div className="font-medium">
+                      {output.itemName ?? "Item"}
+                    </div>
                     <div className="text-xs text-default-500">
                       {output.orderItemName ?? "Sin Diseño"}
                     </div>
                   </div>
-                  <div className="text-default-500">-{output.quantity ?? "0"}</div>
+                  <div className="text-default-500">
+                    -{output.quantity ?? "0"}
+                  </div>
                 </div>
               ))}
             </CardBody>

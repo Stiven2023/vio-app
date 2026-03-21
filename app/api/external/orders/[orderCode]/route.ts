@@ -14,7 +14,9 @@ export async function GET(
   if (error) return error;
 
   const { orderCode: rawOrderCode } = await params;
-  const orderCode = String(rawOrderCode ?? "").trim().toUpperCase();
+  const orderCode = String(rawOrderCode ?? "")
+    .trim()
+    .toUpperCase();
 
   if (!orderCode) {
     return new Response("orderCode requerido", { status: 400 });
@@ -36,7 +38,12 @@ export async function GET(
     })
     .from(orders)
     .leftJoin(clients, eq(orders.clientId, clients.id))
-    .where(and(eq(orders.clientId, payload.clientId), eq(orders.orderCode, orderCode)))
+    .where(
+      and(
+        eq(orders.clientId, payload.clientId),
+        eq(orders.orderCode, orderCode),
+      ),
+    )
     .limit(1);
 
   if (!order) {
@@ -79,12 +86,17 @@ export async function GET(
 
   const subtotal = items.reduce((acc, item) => {
     const directTotal = Number(item.totalPrice ?? "0");
-    if (Number.isFinite(directTotal) && directTotal > 0) return acc + directTotal;
+
+    if (Number.isFinite(directTotal) && directTotal > 0)
+      return acc + directTotal;
 
     const unit = Number(item.unitPrice ?? "0");
     const qty = Number(item.quantity ?? 0);
 
-    return acc + (Number.isFinite(unit) ? unit : 0) * (Number.isFinite(qty) ? qty : 0);
+    return (
+      acc +
+      (Number.isFinite(unit) ? unit : 0) * (Number.isFinite(qty) ? qty : 0)
+    );
   }, 0);
 
   const discountPercent = Math.max(0, Number(order.discount ?? "0"));
@@ -99,6 +111,7 @@ export async function GET(
   const paidTotal = payments.reduce((acc, payment) => {
     if (!isConfirmedPaymentStatus(payment.status)) return acc;
     const value = Number(payment.amount ?? "0");
+
     return acc + (Number.isFinite(value) ? value : 0);
   }, 0);
 

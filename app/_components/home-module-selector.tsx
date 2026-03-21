@@ -328,13 +328,17 @@ export function HomeModuleSelector() {
 
       <div className="noise-overlay" />
 
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${PRIMARY}, ${PRIMARY_DARK} 55%, transparent)` }} />
+      <div
+        style={{
+          height: 3,
+          background: `linear-gradient(90deg, ${PRIMARY}, ${PRIMARY_DARK} 55%, transparent)`,
+        }}
+      />
 
       <motion.header
+        animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : -10 }}
         className="home-header"
         initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : -10 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
         style={{
           display: "flex",
           alignItems: "center",
@@ -344,8 +348,12 @@ export function HomeModuleSelector() {
           gap: 12,
           flexWrap: "wrap",
         }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
       >
-        <div className="home-brand" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          className="home-brand"
+          style={{ display: "flex", alignItems: "center", gap: 12 }}
+        >
           <ViomarLogo className="home-logo" height={30} />
           <div style={{ width: 1, height: 22, background: "#C8C4BC" }} />
           <span
@@ -363,13 +371,29 @@ export function HomeModuleSelector() {
           </span>
         </div>
 
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
           {isAuthenticated ? (
             <Dropdown placement="bottom-end">
               <DropdownTrigger>
-                <Button className="home-user-trigger h-auto px-2" variant="light">
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Avatar name={user?.name ?? "VIOMAR"} size="sm" src={user?.avatarUrl ?? undefined} />
+                <Button
+                  className="home-user-trigger h-auto px-2"
+                  variant="light"
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <Avatar
+                      name={user?.name ?? "VIOMAR"}
+                      size="sm"
+                      src={user?.avatarUrl ?? undefined}
+                    />
                     <span
                       className="home-user-name"
                       style={{
@@ -397,7 +421,11 @@ export function HomeModuleSelector() {
                   }
                 }}
               >
-                <DropdownItem key="logout" className="text-danger" color="danger">
+                <DropdownItem
+                  key="logout"
+                  className="text-danger"
+                  color="danger"
+                >
                   Log out
                 </DropdownItem>
               </DropdownMenu>
@@ -408,11 +436,11 @@ export function HomeModuleSelector() {
       </motion.header>
 
       <motion.div
+        animate={{ opacity: loaded ? 1 : 0 }}
         className="home-sub"
         initial={{ opacity: 0 }}
-        animate={{ opacity: loaded ? 1 : 0 }}
-        transition={{ duration: 0.16, delay: 0.06 }}
         style={{ padding: "18px 28px 10px" }}
+        transition={{ duration: 0.16, delay: 0.06 }}
       >
         <span
           className="home-sub-text"
@@ -429,7 +457,16 @@ export function HomeModuleSelector() {
         </span>
       </motion.div>
 
-      <div className="selector-grid" style={{ display: "flex", flex: 1, padding: "0 18px 18px", gap: 0, minHeight: 0 }}>
+      <div
+        className="selector-grid"
+        style={{
+          display: "flex",
+          flex: 1,
+          padding: "0 18px 18px",
+          gap: 0,
+          minHeight: 0,
+        }}
+      >
         {sections.map((section, idx) => {
           const isActive = active === section.id;
           const isOther = active && !isActive;
@@ -437,24 +474,45 @@ export function HomeModuleSelector() {
           return (
             <motion.div
               key={section.id}
-              onHoverStart={() => setActive(section.id)}
-              onHoverEnd={() => setActive("erp")}
-              onTouchStart={() => setActive(section.id)}
-              onFocus={() => setActive(section.id)}
-              onClick={() => router.push(section.route)}
               animate={{ flex: isActive ? 1.5 : isOther ? 0.7 : 1 }}
-              transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.55 }}
               className={`panel${isActive ? " panel-active" : ""}`}
               style={{
-                borderRight: idx < sections.length - 1 ? "1px solid #D0CCC5" : "none",
+                borderRight:
+                  idx < sections.length - 1 ? "1px solid #D0CCC5" : "none",
                 willChange: "transform, opacity",
               }}
+              transition={{
+                type: "spring",
+                stiffness: 380,
+                damping: 34,
+                mass: 0.55,
+              }}
+              onClick={() => router.push(section.route)}
+              onFocus={() => setActive(section.id)}
+              onHoverEnd={() => setActive("erp")}
+              onHoverStart={() => setActive(section.id)}
+              onTouchStart={() => setActive(section.id)}
             >
               <div className="active-bar" />
               <div className="panel-glow" />
 
-              <div className="panel-inner" style={{ display: "flex", flexDirection: "column", height: "100%", padding: "18px 22px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "auto" }}>
+              <div
+                className="panel-inner"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                  padding: "18px 22px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "auto",
+                  }}
+                >
                   <span
                     style={{
                       fontFamily: "'Barlow Condensed', sans-serif",
@@ -466,20 +524,58 @@ export function HomeModuleSelector() {
                   >
                     {String(idx + 1).padStart(2, "0")}
                   </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Image alt="Sticker Viomar" height={18} src="/STICKER VIOMAR.png" width={18} style={{ width: 18, height: 18, opacity: isActive ? 0.9 : 0.35 }} />
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <Image
+                      alt="Sticker Viomar"
+                      height={18}
+                      src="/STICKER VIOMAR.png"
+                      style={{
+                        width: 18,
+                        height: 18,
+                        opacity: isActive ? 0.9 : 0.35,
+                      }}
+                      width={18}
+                    />
                     <span className="accent-tag">{section.accentWord}</span>
                   </div>
                 </div>
 
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", maxHeight: 160, minHeight: 90, padding: "14px 0" }}>
-                  <div style={{ width: "100%", maxWidth: 148, height: 120, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <ModuleLogo active={isActive} module={section.id} size={118} />
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    maxHeight: 160,
+                    minHeight: 90,
+                    padding: "14px 0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: 148,
+                      height: 120,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <ModuleLogo
+                      active={isActive}
+                      module={section.id}
+                      size={118}
+                    />
                   </div>
                 </div>
 
                 <div style={{ marginTop: "auto" }}>
-                  <motion.div animate={{ y: isActive ? -2 : 0 }} transition={{ duration: 0.12 }}>
+                  <motion.div
+                    animate={{ y: isActive ? -2 : 0 }}
+                    transition={{ duration: 0.12 }}
+                  >
                     <span className="module-title">{section.title}</span>
                     <p
                       style={{
@@ -496,9 +592,23 @@ export function HomeModuleSelector() {
                     </p>
                   </motion.div>
 
-                  <div style={{ height: 1, background: "#D8D4CC", margin: "14px 0" }} />
+                  <div
+                    style={{
+                      height: 1,
+                      background: "#D8D4CC",
+                      margin: "14px 0",
+                    }}
+                  />
 
-                  <p className="desc-text" style={{ fontFamily: "'Barlow', sans-serif", fontSize: "0.82rem", lineHeight: 1.6, color: "#7D7A75" }}>
+                  <p
+                    className="desc-text"
+                    style={{
+                      fontFamily: "'Barlow', sans-serif",
+                      fontSize: "0.82rem",
+                      lineHeight: 1.6,
+                      color: "#7D7A75",
+                    }}
+                  >
                     {section.description}
                   </p>
 
@@ -509,14 +619,37 @@ export function HomeModuleSelector() {
                       height: isActive ? "auto" : 0,
                       marginTop: isActive ? 16 : 0,
                     }}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-end",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      overflow: "hidden",
+                    }}
                     transition={{ duration: 0.14 }}
-                    style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10, overflow: "hidden" }}
                   >
                     <div>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: "1.7rem", color: PRIMARY, lineHeight: 1 }}>
+                      <div
+                        style={{
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontWeight: 900,
+                          fontSize: "1.7rem",
+                          color: PRIMARY,
+                          lineHeight: 1,
+                        }}
+                      >
                         {section.stat}
                       </div>
-                      <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: "0.62rem", letterSpacing: "0.2em", textTransform: "uppercase", color: "#6B6B6B" }}>
+                      <div
+                        style={{
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontWeight: 600,
+                          fontSize: "0.62rem",
+                          letterSpacing: "0.2em",
+                          textTransform: "uppercase",
+                          color: "#6B6B6B",
+                        }}
+                      >
                         {section.statLabel}
                       </div>
                     </div>
@@ -538,10 +671,9 @@ export function HomeModuleSelector() {
       </div>
 
       <motion.footer
+        animate={{ opacity: loaded ? 1 : 0 }}
         className="home-footer"
         initial={{ opacity: 0 }}
-        animate={{ opacity: loaded ? 1 : 0 }}
-        transition={{ delay: 0.18, duration: 0.16 }}
         style={{
           display: "flex",
           alignItems: "center",
@@ -551,10 +683,17 @@ export function HomeModuleSelector() {
           gap: 12,
           flexWrap: "wrap",
         }}
+        transition={{ delay: 0.18, duration: 0.16 }}
       >
-        <div className="footer-modules" style={{ display: "flex", alignItems: "center", gap: 18 }}>
+        <div
+          className="footer-modules"
+          style={{ display: "flex", alignItems: "center", gap: 18 }}
+        >
           {sections.map((section) => (
-            <div key={`footer-${section.id}`} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <div
+              key={`footer-${section.id}`}
+              style={{ display: "flex", alignItems: "center", gap: 7 }}
+            >
               <div
                 style={{
                   width: 6,
@@ -581,12 +720,30 @@ export function HomeModuleSelector() {
           ))}
         </div>
 
-        <span className="footer-legal" style={{ fontFamily: "'Barlow', sans-serif", fontSize: "0.72rem", color: "#8D8982" }}>
+        <span
+          className="footer-legal"
+          style={{
+            fontFamily: "'Barlow', sans-serif",
+            fontSize: "0.72rem",
+            color: "#8D8982",
+          }}
+        >
           © {footerYear} Viomar App. All rights reserved.
         </span>
 
-        <div className="footer-right" style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600, fontSize: "0.65rem", letterSpacing: "0.2em", color: "#A3A098" }}>
+        <div
+          className="footer-right"
+          style={{ display: "flex", alignItems: "center", gap: 12 }}
+        >
+          <span
+            style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontWeight: 600,
+              fontSize: "0.65rem",
+              letterSpacing: "0.2em",
+              color: "#A3A098",
+            }}
+          >
             {time} COL
           </span>
         </div>

@@ -27,9 +27,14 @@ export default async function DepositsPage() {
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <h1 className="text-2xl font-bold">Payments and cash flow</h1>
-      <p className="text-default-600 mt-1">Payment overview with filters by method, cash and transfers.</p>
+      <p className="text-default-600 mt-1">
+        Payment overview with filters by method, cash and transfers.
+      </p>
       <div className="mt-6">
-        <AccountingTabs canApprovePayments={canApprovePayments} canEdit={canEdit} />
+        <AccountingTabs
+          canApprovePayments={canApprovePayments}
+          canEdit={canEdit}
+        />
       </div>
     </div>
   );

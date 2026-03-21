@@ -120,9 +120,7 @@ function methodColor(
   return "success";
 }
 
-function statusColor(
-  value: ReceiptStatus,
-): "warning" | "success" | "danger" {
+function statusColor(value: ReceiptStatus): "warning" | "success" | "danger" {
   if (value === "CONFIRMED") return "success";
   if (value === "VOIDED") return "danger";
 
@@ -158,17 +156,19 @@ export function ReciboCajaTab({
     return `/api/contabilidad/recibos-caja?${params.toString()}`;
   }, [clientFilter, dateFrom, dateTo, paymentMethodFilter, statusFilter]);
 
-  const { data, loading, page, setPage, refresh } =
-    usePaginatedApi<ReceiptRow>(endpoint, 15);
+  const { data, loading, page, setPage, refresh } = usePaginatedApi<ReceiptRow>(
+    endpoint,
+    15,
+  );
 
   const receiptData = data as ReceiptData | null;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
   const [viewRow, setViewRow] = useState<ReceiptRow | null>(null);
-  const [prefacturaOptions, setPrefacturaOptions] = useState<PrefacturaOption[]>(
-    [],
-  );
+  const [prefacturaOptions, setPrefacturaOptions] = useState<
+    PrefacturaOption[]
+  >([]);
   const [prefacturaOptionsLoading, setPrefacturaOptionsLoading] =
     useState(false);
 
@@ -190,7 +190,14 @@ export function ReciboCajaTab({
 
   useEffect(() => {
     setPage(1);
-  }, [clientFilter, dateFrom, dateTo, paymentMethodFilter, setPage, statusFilter]);
+  }, [
+    clientFilter,
+    dateFrom,
+    dateTo,
+    paymentMethodFilter,
+    setPage,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     if (!draftClientId) {
@@ -212,7 +219,9 @@ export function ReciboCajaTab({
 
   const selectedPrefacturas = useMemo(
     () =>
-      prefacturaOptions.filter((option) => draftPrefacturaIds.includes(option.id)),
+      prefacturaOptions.filter((option) =>
+        draftPrefacturaIds.includes(option.id),
+      ),
     [draftPrefacturaIds, prefacturaOptions],
   );
 
@@ -250,9 +259,7 @@ export function ReciboCajaTab({
       });
 
       toast.success(
-        status === "CONFIRMED"
-          ? "Receipt confirmed"
-          : "Receipt voided",
+        status === "CONFIRMED" ? "Receipt confirmed" : "Receipt voided",
       );
       refresh();
     } catch (error) {
@@ -299,7 +306,9 @@ export function ReciboCajaTab({
       const remaining = toNumber(option.remaining);
 
       if (amount > remaining + 0.0001) {
-        toast.error(`Applied amount exceeds remaining balance for ${option.prefacturaCode}`);
+        toast.error(
+          `Applied amount exceeds remaining balance for ${option.prefacturaCode}`,
+        );
 
         return;
       }
@@ -341,7 +350,8 @@ export function ReciboCajaTab({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-default-500">
-          Manage client cash receipts and their application to open pre-invoices.
+          Manage client cash receipts and their application to open
+          pre-invoices.
         </div>
         {canCreate ? (
           <Button color="primary" onPress={() => setCreateOpen(true)}>
@@ -375,7 +385,9 @@ export function ReciboCajaTab({
           variant="bordered"
           onSelectionChange={(keys) => {
             setPaymentMethodFilter(
-              String(Array.from(keys)[0] ?? "ALL").toUpperCase() as (typeof METHOD_OPTIONS)[number]["value"],
+              String(
+                Array.from(keys)[0] ?? "ALL",
+              ).toUpperCase() as (typeof METHOD_OPTIONS)[number]["value"],
             );
           }}
         >
@@ -392,7 +404,9 @@ export function ReciboCajaTab({
           variant="bordered"
           onSelectionChange={(keys) => {
             setStatusFilter(
-              String(Array.from(keys)[0] ?? "ALL").toUpperCase() as (typeof STATUS_OPTIONS)[number]["value"],
+              String(
+                Array.from(keys)[0] ?? "ALL",
+              ).toUpperCase() as (typeof STATUS_OPTIONS)[number]["value"],
             );
           }}
         >
@@ -497,14 +511,22 @@ export function ReciboCajaTab({
               <TableCell>{row.receiptDate}</TableCell>
               <TableCell>{formatMoney(row.amountReceived)}</TableCell>
               <TableCell>
-                <Chip color={methodColor(row.paymentMethod)} size="sm" variant="flat">
+                <Chip
+                  color={methodColor(row.paymentMethod)}
+                  size="sm"
+                  variant="flat"
+                >
                   {row.paymentMethod}
                 </Chip>
               </TableCell>
               <TableCell>{row.includesIva ? "Yes" : "No"}</TableCell>
-              <TableCell>{row.paymentMethod === "TRANSFER" ? row.originBank || "-" : "-"}</TableCell>
               <TableCell>
-                {row.paymentMethod === "TRANSFER" ? row.referenceNumber || "-" : "-"}
+                {row.paymentMethod === "TRANSFER" ? row.originBank || "-" : "-"}
+              </TableCell>
+              <TableCell>
+                {row.paymentMethod === "TRANSFER"
+                  ? row.referenceNumber || "-"
+                  : "-"}
               </TableCell>
               <TableCell>{formatMoney(row.creditBalance)}</TableCell>
               <TableCell>
@@ -514,7 +536,11 @@ export function ReciboCajaTab({
               </TableCell>
               <TableCell>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="flat" onPress={() => setViewRow(row)}>
+                  <Button
+                    size="sm"
+                    variant="flat"
+                    onPress={() => setViewRow(row)}
+                  >
                     View
                   </Button>
                   <Button
@@ -543,7 +569,9 @@ export function ReciboCajaTab({
 
       {receiptData ? (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-default-500">Total: {receiptData.total ?? 0}</p>
+          <p className="text-sm text-default-500">
+            Total: {receiptData.total ?? 0}
+          </p>
           <div className="flex gap-2">
             <Button
               isDisabled={loading || page <= 1}
@@ -596,7 +624,9 @@ export function ReciboCajaTab({
                 isDisabled={!draftClientId}
                 label="Pre-invoice selector"
                 placeholder={
-                  prefacturaOptionsLoading ? "Loading open pre-invoices..." : "Optional"
+                  prefacturaOptionsLoading
+                    ? "Loading open pre-invoices..."
+                    : "Optional"
                 }
                 selectedKeys={draftPrefacturaIds}
                 selectionMode="multiple"
@@ -621,7 +651,8 @@ export function ReciboCajaTab({
               >
                 {prefacturaOptions.map((option) => (
                   <SelectItem key={option.id}>
-                    {option.prefacturaCode} - Remaining {formatMoney(option.remaining)}
+                    {option.prefacturaCode} - Remaining{" "}
+                    {formatMoney(option.remaining)}
                   </SelectItem>
                 ))}
               </Select>
@@ -650,14 +681,18 @@ export function ReciboCajaTab({
                 selectedKeys={[draftPaymentMethod]}
                 variant="bordered"
                 onSelectionChange={(keys) => {
-                  const next = String(Array.from(keys)[0] ?? "CASH").toUpperCase() as UiPaymentMethod;
+                  const next = String(
+                    Array.from(keys)[0] ?? "CASH",
+                  ).toUpperCase() as UiPaymentMethod;
 
                   setDraftPaymentMethod(next);
                 }}
               >
-                {METHOD_OPTIONS.filter((option) => option.value !== "ALL").map((option) => (
-                  <SelectItem key={option.value}>{option.label}</SelectItem>
-                ))}
+                {METHOD_OPTIONS.filter((option) => option.value !== "ALL").map(
+                  (option) => (
+                    <SelectItem key={option.value}>{option.label}</SelectItem>
+                  ),
+                )}
               </Select>
 
               {draftPaymentMethod === "TRANSFER" ? (
@@ -666,7 +701,9 @@ export function ReciboCajaTab({
                   selectedKeys={[draftIncludesIva ? "YES" : "NO"]}
                   variant="bordered"
                   onSelectionChange={(keys) => {
-                    setDraftIncludesIva(String(Array.from(keys)[0] ?? "NO") === "YES");
+                    setDraftIncludesIva(
+                      String(Array.from(keys)[0] ?? "NO") === "YES",
+                    );
                   }}
                 >
                   <SelectItem key="YES">Yes</SelectItem>
@@ -707,7 +744,9 @@ export function ReciboCajaTab({
                       className="grid grid-cols-1 gap-3 border-b border-default-100 pb-3 last:border-b-0 last:pb-0 md:grid-cols-4"
                     >
                       <div>
-                        <div className="text-sm font-medium">{option.prefacturaCode}</div>
+                        <div className="text-sm font-medium">
+                          {option.prefacturaCode}
+                        </div>
                         <div className="text-xs text-default-500">
                           Remaining: {formatMoney(option.remaining)}
                         </div>
@@ -768,7 +807,11 @@ export function ReciboCajaTab({
             <Button variant="flat" onPress={() => setCreateOpen(false)}>
               Cancel
             </Button>
-            <Button color="primary" isLoading={createLoading} onPress={saveReceipt}>
+            <Button
+              color="primary"
+              isLoading={createLoading}
+              onPress={saveReceipt}
+            >
               Save
             </Button>
           </ModalFooter>
@@ -788,22 +831,38 @@ export function ReciboCajaTab({
             {viewRow ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <Input isDisabled label="Receipt code" value={viewRow.receiptCode} />
+                  <Input
+                    isDisabled
+                    label="Receipt code"
+                    value={viewRow.receiptCode}
+                  />
                   <Input isDisabled label="Client" value={viewRow.clientName} />
-                  <Input isDisabled label="Receipt date" value={viewRow.receiptDate} />
+                  <Input
+                    isDisabled
+                    label="Receipt date"
+                    value={viewRow.receiptDate}
+                  />
                   <Input
                     isDisabled
                     label="Amount received"
                     value={formatMoney(viewRow.amountReceived)}
                   />
-                  <Input isDisabled label="Payment method" value={viewRow.paymentMethod} />
+                  <Input
+                    isDisabled
+                    label="Payment method"
+                    value={viewRow.paymentMethod}
+                  />
                   <Input isDisabled label="Status" value={viewRow.status} />
                   <Input
                     isDisabled
                     label="Includes IVA"
                     value={viewRow.includesIva ? "Yes" : "No"}
                   />
-                  <Input isDisabled label="Origin bank" value={viewRow.originBank ?? "-"} />
+                  <Input
+                    isDisabled
+                    label="Origin bank"
+                    value={viewRow.originBank ?? "-"}
+                  />
                   <Input
                     isDisabled
                     label="Reference number"
@@ -828,7 +887,9 @@ export function ReciboCajaTab({
                     {(application) => (
                       <TableRow key={application.id}>
                         <TableCell>{application.prefacturaCode}</TableCell>
-                        <TableCell>{formatMoney(application.appliedAmount)}</TableCell>
+                        <TableCell>
+                          {formatMoney(application.appliedAmount)}
+                        </TableCell>
                       </TableRow>
                     )}
                   </TableBody>

@@ -6,5 +6,6 @@ export default async function EditPrefacturaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
   redirect(`/erp/pre-invoices/${id}/edit`);
 }

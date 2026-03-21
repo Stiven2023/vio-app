@@ -46,19 +46,25 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
 ];
 
 function toAmountString(v: number | string | null | undefined) {
-  const raw = String(v ?? "").trim().replace(/,/g, ".");
+  const raw = String(v ?? "")
+    .trim()
+    .replace(/,/g, ".");
+
   if (!raw) return "";
   const n = Number(raw);
+
   return Number.isFinite(n) ? String(n) : "";
 }
 
 function toNumberInputValue(v: string) {
   const n = Number(String(v ?? "").replace(/,/g, "."));
+
   return Number.isFinite(n) ? n : 0;
 }
 
 function getPastedImageFile(e: React.ClipboardEvent<HTMLElement>) {
   const items = e.clipboardData?.items;
+
   if (!items) return null;
 
   for (const item of Array.from(items)) {
@@ -72,6 +78,7 @@ function getPastedImageFile(e: React.ClipboardEvent<HTMLElement>) {
 
 function focusById(id: string) {
   const element = document.getElementById(id) as HTMLInputElement | null;
+
   element?.focus();
 }
 
@@ -94,19 +101,29 @@ export function DistributedPaymentsPage({
   const [referenceCode, setReferenceCode] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("TRANSFERENCIA");
   const [bankId, setBankId] = useState("");
-  const [transferCurrency, setTransferCurrency] = useState<"COP" | "USD">("COP");
+  const [transferCurrency, setTransferCurrency] = useState<"COP" | "USD">(
+    "COP",
+  );
   const [banks, setBanks] = useState<BankOption[]>([]);
 
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreviewUrl, setProofPreviewUrl] = useState<string | null>(null);
 
   const [allocations, setAllocations] = useState<AllocationRow[]>([
-    { id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" },
+    {
+      id: crypto.randomUUID(),
+      orderId: "",
+      clientId: "",
+      amount: "",
+      orderSearch: "",
+    },
   ]);
 
   const depositAmountRef = useRef<HTMLInputElement | null>(null);
   const referenceCodeRef = useRef<HTMLInputElement | null>(null);
-  const allocationOrderRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const allocationOrderRefs = useRef<Record<string, HTMLInputElement | null>>(
+    {},
+  );
 
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<{
@@ -145,6 +162,7 @@ export function DistributedPaymentsPage({
     setLoadingOrders(true);
     const query = orderSearch.trim();
     const params = new URLSearchParams();
+
     params.set("q", query);
     params.set("limit", "20");
     if (fixedClientId) params.set("clientId", fixedClientId);
@@ -169,6 +187,7 @@ export function DistributedPaymentsPage({
 
   useEffect(() => {
     const selectedId = String(preselectedOrderId ?? "").trim();
+
     if (!selectedId) return;
 
     let firstRowId: string | null = null;
@@ -177,9 +196,18 @@ export function DistributedPaymentsPage({
       const baseRows =
         rows.length > 0
           ? rows
-          : [{ id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" }];
+          : [
+              {
+                id: crypto.randomUUID(),
+                orderId: "",
+                clientId: "",
+                amount: "",
+                orderSearch: "",
+              },
+            ];
 
       const [first, ...rest] = baseRows;
+
       if (!first) return baseRows;
 
       firstRowId = first.id;
@@ -187,7 +215,8 @@ export function DistributedPaymentsPage({
       if (first.orderId === selectedId) return baseRows;
 
       const option = orderOptions.find((item) => item.id === selectedId);
-      const nextSearch = option?.orderCode ?? preselectedOrderLabel ?? first.orderSearch;
+      const nextSearch =
+        option?.orderCode ?? preselectedOrderLabel ?? first.orderSearch;
 
       return [
         {
@@ -221,10 +250,12 @@ export function DistributedPaymentsPage({
   useEffect(() => {
     if (!proofFile) {
       setProofPreviewUrl(null);
+
       return;
     }
 
     const url = URL.createObjectURL(proofFile);
+
     setProofPreviewUrl(url);
 
     return () => {
@@ -233,11 +264,18 @@ export function DistributedPaymentsPage({
   }, [proofFile]);
 
   const assignedTotal = useMemo(
-    () => allocations.reduce((acc, row) => acc + Math.max(0, Number(row.amount || 0)), 0),
+    () =>
+      allocations.reduce(
+        (acc, row) => acc + Math.max(0, Number(row.amount || 0)),
+        0,
+      ),
     [allocations],
   );
 
-  const depositTotal = useMemo(() => Math.max(0, Number(depositAmount || 0)), [depositAmount]);
+  const depositTotal = useMemo(
+    () => Math.max(0, Number(depositAmount || 0)),
+    [depositAmount],
+  );
 
   const uploadProofToCloudinary = async (file: File) => {
     const sig = await apiJson<{
@@ -283,7 +321,13 @@ export function DistributedPaymentsPage({
   const addRow = () => {
     setAllocations((rows) => [
       ...rows,
-      { id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" },
+      {
+        id: crypto.randomUUID(),
+        orderId: "",
+        clientId: "",
+        amount: "",
+        orderSearch: "",
+      },
     ]);
     setErrors((prev) => ({ ...prev, allocations: { ...prev.allocations } }));
   };
@@ -291,13 +335,24 @@ export function DistributedPaymentsPage({
   const removeRow = (id: string) => {
     setAllocations((rows) => {
       const next = rows.filter((row) => row.id !== id);
+
       return next.length > 0
         ? next
-        : [{ id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" }];
+        : [
+            {
+              id: crypto.randomUUID(),
+              orderId: "",
+              clientId: "",
+              amount: "",
+              orderSearch: "",
+            },
+          ];
     });
     setErrors((prev) => {
       const nextAllocations = { ...prev.allocations };
+
       delete nextAllocations[id];
+
       return { ...prev, allocations: nextAllocations };
     });
   };
@@ -317,6 +372,7 @@ export function DistributedPaymentsPage({
       setErrors(nextErrors);
       toast.error(nextErrors.depositAmount);
       depositAmountRef.current?.focus();
+
       return;
     }
 
@@ -344,6 +400,7 @@ export function DistributedPaymentsPage({
       setErrors(nextErrors);
       toast.error("Agrega al menos un pedido con valor asignado");
       const firstRow = allocations[0];
+
       if (firstRow) {
         if (nextErrors.allocations[firstRow.id]?.orderId) {
           allocationOrderRefs.current[firstRow.id]?.focus();
@@ -351,11 +408,13 @@ export function DistributedPaymentsPage({
           focusById(`allocation-amount-${firstRow.id}`);
         }
       }
+
       return;
     }
 
     if (assignedTotal > depositTotal) {
       toast.error("El total asignado no puede superar la consignación total");
+
       return;
     }
 
@@ -366,7 +425,8 @@ export function DistributedPaymentsPage({
         nextErrors.bankId = "Selecciona un banco válido";
       }
       if (!transferCurrency) {
-        nextErrors.transferCurrency = "La moneda es obligatoria para transferencias";
+        nextErrors.transferCurrency =
+          "La moneda es obligatoria para transferencias";
       }
 
       if (transferCurrency === "USD" && selectedBank?.code !== "VIO_EXT") {
@@ -379,18 +439,25 @@ export function DistributedPaymentsPage({
 
       if (nextErrors.bankId || nextErrors.transferCurrency) {
         setErrors(nextErrors);
-        toast.error(nextErrors.bankId ?? nextErrors.transferCurrency ?? "Completa los datos de transferencia");
+        toast.error(
+          nextErrors.bankId ??
+            nextErrors.transferCurrency ??
+            "Completa los datos de transferencia",
+        );
+
         return;
       }
     }
 
     const uniqueOrderIds = new Set(validAllocations.map((row) => row.orderId));
+
     if (uniqueOrderIds.size !== validAllocations.length) {
       const seen = new Set<string>();
       const duplicated = allocations.find((row) => {
         if (!row.orderId) return false;
         if (seen.has(row.orderId)) return true;
         seen.add(row.orderId);
+
         return false;
       });
 
@@ -404,6 +471,7 @@ export function DistributedPaymentsPage({
       setErrors(nextErrors);
       toast.error("No repitas el mismo pedido en varias filas");
       if (duplicated) allocationOrderRefs.current[duplicated.id]?.focus();
+
       return;
     }
 
@@ -415,6 +483,7 @@ export function DistributedPaymentsPage({
 
     if (clientIds.size > 1) {
       toast.error("No puedes distribuir entre pedidos de clientes diferentes");
+
       return;
     }
 
@@ -433,7 +502,8 @@ export function DistributedPaymentsPage({
           depositAmount: Number(depositAmount),
           method,
           bankId: method === "TRANSFERENCIA" ? bankId : null,
-          transferCurrency: method === "TRANSFERENCIA" ? transferCurrency : null,
+          transferCurrency:
+            method === "TRANSFERENCIA" ? transferCurrency : null,
           referenceCode: referenceCode.trim() || null,
           proofImageUrl,
           allocations: validAllocations.map((row) => ({
@@ -451,7 +521,13 @@ export function DistributedPaymentsPage({
       setTransferCurrency("COP");
       setProofFile(null);
       setAllocations([
-        { id: crypto.randomUUID(), orderId: "", clientId: "", amount: "", orderSearch: "" },
+        {
+          id: crypto.randomUUID(),
+          orderId: "",
+          clientId: "",
+          amount: "",
+          orderSearch: "",
+        },
       ]);
       referenceCodeRef.current?.focus();
     } catch (error) {
@@ -469,15 +545,15 @@ export function DistributedPaymentsPage({
             <NumberInput
               ref={depositAmountRef}
               hideStepper
-              isInvalid={Boolean(errors.depositAmount)}
               errorMessage={errors.depositAmount}
-              label="Consignación total"
-              value={toNumberInputValue(depositAmount)}
               formatOptions={{
                 style: "currency",
                 currency: displayCurrency,
                 maximumFractionDigits: 2,
               }}
+              isInvalid={Boolean(errors.depositAmount)}
+              label="Consignación total"
+              value={toNumberInputValue(depositAmount)}
               onValueChange={(v) => setDepositAmount(toAmountString(v))}
             />
             <Input
@@ -487,9 +563,9 @@ export function DistributedPaymentsPage({
               onValueChange={setReferenceCode}
             />
             <Select
-              isRequired={method === "TRANSFERENCIA"}
-              isInvalid={Boolean(errors.bankId)}
               errorMessage={errors.bankId}
+              isInvalid={Boolean(errors.bankId)}
+              isRequired={method === "TRANSFERENCIA"}
               label="Banco"
               selectedKeys={bankId ? [bankId] : []}
               onSelectionChange={(keys) => {
@@ -502,41 +578,68 @@ export function DistributedPaymentsPage({
                 } else if (transferCurrency === "USD") {
                   setTransferCurrency("COP");
                 }
-                setErrors((prev) => ({ ...prev, bankId: undefined, transferCurrency: undefined }));
+                setErrors((prev) => ({
+                  ...prev,
+                  bankId: undefined,
+                  transferCurrency: undefined,
+                }));
               }}
             >
               {banks.map((bank) => (
-                <SelectItem key={bank.id}>{`${bank.code} - ${bank.name}`}</SelectItem>
+                <SelectItem
+                  key={bank.id}
+                >{`${bank.code} - ${bank.name}`}</SelectItem>
               ))}
             </Select>
             <Select
-              isRequired={method === "TRANSFERENCIA"}
-              isInvalid={Boolean(errors.transferCurrency)}
               errorMessage={errors.transferCurrency}
+              isInvalid={Boolean(errors.transferCurrency)}
+              isRequired={method === "TRANSFERENCIA"}
               label="Moneda"
               selectedKeys={[transferCurrency]}
               onSelectionChange={(keys) => {
-                const first = String(Array.from(keys)[0] ?? "COP").toUpperCase();
+                const first = String(
+                  Array.from(keys)[0] ?? "COP",
+                ).toUpperCase();
                 const nextCurrency = first === "USD" ? "USD" : "COP";
+
                 setTransferCurrency(nextCurrency);
                 setBankId((prev) => {
                   if (nextCurrency === "USD") {
-                    return banks.find((bank) => bank.code === "VIO_EXT")?.id ?? "";
+                    return (
+                      banks.find((bank) => bank.code === "VIO_EXT")?.id ?? ""
+                    );
                   }
                   if (selectedBank?.code === "VIO_EXT") return "";
+
                   return prev;
                 });
-                setErrors((prev) => ({ ...prev, bankId: undefined, transferCurrency: undefined }));
+                setErrors((prev) => ({
+                  ...prev,
+                  bankId: undefined,
+                  transferCurrency: undefined,
+                }));
               }}
             >
-              <SelectItem key="COP" isDisabled={selectedBank?.code === "VIO_EXT"}>COP</SelectItem>
-              <SelectItem key="USD" isDisabled={selectedBank?.code !== "VIO_EXT"}>USD</SelectItem>
+              <SelectItem
+                key="COP"
+                isDisabled={selectedBank?.code === "VIO_EXT"}
+              >
+                COP
+              </SelectItem>
+              <SelectItem
+                key="USD"
+                isDisabled={selectedBank?.code !== "VIO_EXT"}
+              >
+                USD
+              </SelectItem>
             </Select>
             <Select
               label="Método"
               selectedKeys={[method]}
               onSelectionChange={(keys) => {
                 const first = Array.from(keys)[0] as PaymentMethod | undefined;
+
                 setMethod(first ?? "TRANSFERENCIA");
               }}
             >
@@ -544,32 +647,32 @@ export function DistributedPaymentsPage({
                 <SelectItem key={m.value}>{m.label}</SelectItem>
               ))}
             </Select>
-            <Input
-              isReadOnly
-              label="Estado"
-              value="NO CONSIGNADO"
-            />
+            <Input isReadOnly label="Estado" value="NO CONSIGNADO" />
           </div>
 
           <div>
-            <div className="text-sm text-default-600 mb-1">Soporte de transferencia (opcional)</div>
+            <div className="text-sm text-default-600 mb-1">
+              Soporte de transferencia (opcional)
+            </div>
             <div
               className="rounded-medium border border-dashed border-default-300 bg-default-50 p-3"
+              tabIndex={0}
               onDragOver={(e) => {
                 e.preventDefault();
               }}
               onDrop={(e) => {
                 e.preventDefault();
                 const file = e.dataTransfer.files?.[0] ?? null;
+
                 setProofFile(file);
               }}
               onPaste={(e) => {
                 const file = getPastedImageFile(e);
+
                 if (!file) return;
                 e.preventDefault();
                 setProofFile(file);
               }}
-              tabIndex={0}
             >
               <p className="text-xs text-default-500 mb-2">
                 Arrastra una imagen aquí, selecciónala o pégala con Ctrl+V.
@@ -624,143 +727,166 @@ export function DistributedPaymentsPage({
 
           {!loadingOrders
             ? allocations.map((row, index) => (
-            <div key={row.id} className="grid grid-cols-1 gap-3 rounded-medium border border-default-200 p-3 md:grid-cols-[2fr,1fr,auto]">
-              <Autocomplete
-                defaultItems={orderOptions}
-                isInvalid={Boolean(errors.allocations[row.id]?.orderId)}
-                errorMessage={errors.allocations[row.id]?.orderId}
-                inputValue={row.orderSearch}
-                isLoading={loadingOrders}
-                label={`Pedido ${index + 1}`}
-                placeholder="Buscar por código pedido o cliente"
-                selectedKey={row.orderId || null}
-                onInputChange={(value) => {
-                  setAllocations((rows) =>
-                    rows.map((item) =>
-                      item.id === row.id ? { ...item, orderSearch: value } : item,
-                    ),
-                  );
-                  setErrors((prev) => ({
-                    ...prev,
-                    allocations: {
-                      ...prev.allocations,
-                      [row.id]: {
-                        ...(prev.allocations[row.id] ?? {}),
-                        orderId: undefined,
+                <div
+                  key={row.id}
+                  className="grid grid-cols-1 gap-3 rounded-medium border border-default-200 p-3 md:grid-cols-[2fr,1fr,auto]"
+                >
+                  <Autocomplete
+                    defaultItems={orderOptions}
+                    errorMessage={errors.allocations[row.id]?.orderId}
+                    inputProps={{
+                      ref: (el) => {
+                        allocationOrderRefs.current[row.id] = el;
                       },
-                    },
-                  }));
-                  setOrderSearch(value);
-                }}
-                onSelectionChange={(key) => {
-                  const selectedId = String(key ?? "");
-                  const selected = orderOptions.find((opt) => opt.id === selectedId);
+                    }}
+                    inputValue={row.orderSearch}
+                    isInvalid={Boolean(errors.allocations[row.id]?.orderId)}
+                    isLoading={loadingOrders}
+                    label={`Pedido ${index + 1}`}
+                    placeholder="Buscar por código pedido o cliente"
+                    selectedKey={row.orderId || null}
+                    onInputChange={(value) => {
+                      setAllocations((rows) =>
+                        rows.map((item) =>
+                          item.id === row.id
+                            ? { ...item, orderSearch: value }
+                            : item,
+                        ),
+                      );
+                      setErrors((prev) => ({
+                        ...prev,
+                        allocations: {
+                          ...prev.allocations,
+                          [row.id]: {
+                            ...(prev.allocations[row.id] ?? {}),
+                            orderId: undefined,
+                          },
+                        },
+                      }));
+                      setOrderSearch(value);
+                    }}
+                    onSelectionChange={(key) => {
+                      const selectedId = String(key ?? "");
+                      const selected = orderOptions.find(
+                        (opt) => opt.id === selectedId,
+                      );
 
-                  if (
-                    fixedClientId &&
-                    selected &&
-                    String(selected.clientId ?? "") !== String(fixedClientId)
-                  ) {
-                    toast.error("Solo puedes seleccionar pedidos del cliente actual");
-                    return;
-                  }
+                      if (
+                        fixedClientId &&
+                        selected &&
+                        String(selected.clientId ?? "") !==
+                          String(fixedClientId)
+                      ) {
+                        toast.error(
+                          "Solo puedes seleccionar pedidos del cliente actual",
+                        );
 
-                  const existingClientId = allocations.find(
-                    (item) => item.id !== row.id && item.clientId,
-                  )?.clientId;
+                        return;
+                      }
 
-                  if (
-                    !fixedClientId &&
-                    selected &&
-                    existingClientId &&
-                    String(selected.clientId ?? "") !== String(existingClientId)
-                  ) {
-                    toast.error("No puedes mezclar pedidos de clientes diferentes");
-                    return;
-                  }
+                      const existingClientId = allocations.find(
+                        (item) => item.id !== row.id && item.clientId,
+                      )?.clientId;
 
-                  setAllocations((rows) =>
-                    rows.map((item) =>
-                      item.id === row.id
-                        ? {
-                            ...item,
-                            orderId: selectedId,
-                            clientId: String(selected?.clientId ?? ""),
-                            orderSearch: selected
-                              ? `${selected.orderCode} ${selected.clientName ?? ""}`.trim()
-                              : item.orderSearch,
-                          }
-                        : item,
-                    ),
-                  );
-                  setErrors((prev) => ({
-                    ...prev,
-                    allocations: {
-                      ...prev.allocations,
-                      [row.id]: {
-                        ...(prev.allocations[row.id] ?? {}),
-                        orderId: undefined,
-                      },
-                    },
-                  }));
-                }}
-                inputProps={{
-                  ref: (el) => {
-                    allocationOrderRefs.current[row.id] = el;
-                  },
-                }}
-              >
-                {(item) => (
-                  <AutocompleteItem key={item.id} textValue={`${item.orderCode} ${item.clientCode ?? ""} ${item.clientName ?? ""}`}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{item.orderCode}</span>
-                      <span className="text-xs text-default-500">
-                        {item.clientCode ?? "-"} · {item.clientName ?? "-"}
-                      </span>
-                    </div>
-                  </AutocompleteItem>
-                )}
-              </Autocomplete>
+                      if (
+                        !fixedClientId &&
+                        selected &&
+                        existingClientId &&
+                        String(selected.clientId ?? "") !==
+                          String(existingClientId)
+                      ) {
+                        toast.error(
+                          "No puedes mezclar pedidos de clientes diferentes",
+                        );
 
-              <NumberInput
-                id={`allocation-amount-${row.id}`}
-                hideStepper
-                isInvalid={Boolean(errors.allocations[row.id]?.amount)}
-                errorMessage={errors.allocations[row.id]?.amount}
-                label="Valor asignado"
-                value={toNumberInputValue(row.amount)}
-                formatOptions={{
-                  style: "currency",
-                  currency: displayCurrency,
-                  maximumFractionDigits: 2,
-                }}
-                onValueChange={(v) => {
-                  const amount = toAmountString(v);
-                  setAllocations((rows) =>
-                    rows.map((item) =>
-                      item.id === row.id ? { ...item, amount } : item,
-                    ),
-                  );
-                  setErrors((prev) => ({
-                    ...prev,
-                    allocations: {
-                      ...prev.allocations,
-                      [row.id]: {
-                        ...(prev.allocations[row.id] ?? {}),
-                        amount: undefined,
-                      },
-                    },
-                  }));
-                }}
-              />
+                        return;
+                      }
 
-              <div className="flex items-end">
-                <Button color="danger" variant="light" onPress={() => removeRow(row.id)}>
-                  <BsTrash />
-                </Button>
-              </div>
-            </div>
-          ))
+                      setAllocations((rows) =>
+                        rows.map((item) =>
+                          item.id === row.id
+                            ? {
+                                ...item,
+                                orderId: selectedId,
+                                clientId: String(selected?.clientId ?? ""),
+                                orderSearch: selected
+                                  ? `${selected.orderCode} ${selected.clientName ?? ""}`.trim()
+                                  : item.orderSearch,
+                              }
+                            : item,
+                        ),
+                      );
+                      setErrors((prev) => ({
+                        ...prev,
+                        allocations: {
+                          ...prev.allocations,
+                          [row.id]: {
+                            ...(prev.allocations[row.id] ?? {}),
+                            orderId: undefined,
+                          },
+                        },
+                      }));
+                    }}
+                  >
+                    {(item) => (
+                      <AutocompleteItem
+                        key={item.id}
+                        textValue={`${item.orderCode} ${item.clientCode ?? ""} ${item.clientName ?? ""}`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.orderCode}</span>
+                          <span className="text-xs text-default-500">
+                            {item.clientCode ?? "-"} · {item.clientName ?? "-"}
+                          </span>
+                        </div>
+                      </AutocompleteItem>
+                    )}
+                  </Autocomplete>
+
+                  <NumberInput
+                    hideStepper
+                    errorMessage={errors.allocations[row.id]?.amount}
+                    formatOptions={{
+                      style: "currency",
+                      currency: displayCurrency,
+                      maximumFractionDigits: 2,
+                    }}
+                    id={`allocation-amount-${row.id}`}
+                    isInvalid={Boolean(errors.allocations[row.id]?.amount)}
+                    label="Valor asignado"
+                    value={toNumberInputValue(row.amount)}
+                    onValueChange={(v) => {
+                      const amount = toAmountString(v);
+
+                      setAllocations((rows) =>
+                        rows.map((item) =>
+                          item.id === row.id ? { ...item, amount } : item,
+                        ),
+                      );
+                      setErrors((prev) => ({
+                        ...prev,
+                        allocations: {
+                          ...prev.allocations,
+                          [row.id]: {
+                            ...(prev.allocations[row.id] ?? {}),
+                            amount: undefined,
+                          },
+                        },
+                      }));
+                    }}
+                  />
+
+                  <div className="flex items-end">
+                    <Button
+                      color="danger"
+                      variant="light"
+                      onPress={() => removeRow(row.id)}
+                    >
+                      <BsTrash />
+                    </Button>
+                  </div>
+                </div>
+              ))
             : null}
 
           <div className="grid grid-cols-1 gap-2 text-sm md:grid-cols-2">

@@ -1,14 +1,23 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import type { ComponentType } from "react";
-import { useRouter } from "next/navigation";
 
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { toast } from "react-hot-toast";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-const ResponsiveContainerBase = ResponsiveContainer as unknown as ComponentType<any>;
+const ResponsiveContainerBase =
+  ResponsiveContainer as unknown as ComponentType<any>;
 const LineChartBase = LineChart as unknown as ComponentType<any>;
 const LineBase = Line as unknown as ComponentType<any>;
 const XAxisBase = XAxis as unknown as ComponentType<any>;
@@ -56,9 +65,12 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
   const [rangeDays, setRangeDays] = useState<7 | 15 | 30>(15);
   const hasCurrentRate = Boolean(currentRate && currentRate > 0);
 
-  const hasPrevious = Boolean(hasCurrentRate && previousRate && previousRate > 0);
+  const hasPrevious = Boolean(
+    hasCurrentRate && previousRate && previousRate > 0,
+  );
   const changePercent = hasPrevious
-    ? ((Number(currentRate) - Number(previousRate)) / Number(previousRate)) * 100
+    ? ((Number(currentRate) - Number(previousRate)) / Number(previousRate)) *
+      100
     : null;
   const isUp = changePercent !== null && changePercent >= 0;
 
@@ -104,7 +116,10 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
       return {
         value: point.value,
         dateLabel: date
-          ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "2-digit" }).format(date)
+          ? new Intl.DateTimeFormat("es-CO", {
+              day: "2-digit",
+              month: "2-digit",
+            }).format(date)
           : "N/D",
       };
     });
@@ -116,7 +131,10 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
 
     const dateFmt = (date: Date | null) =>
       date
-        ? new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "2-digit" }).format(date)
+        ? new Intl.DateTimeFormat("es-CO", {
+            day: "2-digit",
+            month: "2-digit",
+          }).format(date)
         : "N/D";
 
     return {
@@ -145,6 +163,7 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
 
       if (!res.ok) {
         const text = await res.text();
+
         throw new Error(text || "No se pudo actualizar la tasa");
       }
 
@@ -165,7 +184,11 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
       toast.success(successMessage);
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo actualizar la tasa");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar la tasa",
+      );
     } finally {
       setUpdating(false);
     }
@@ -187,10 +210,15 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
           {hasCurrentRate ? (
             <>
               <div className="mt-2 text-[11px] text-default-500">
-                TRM: {sourceRate ? formatRate(sourceRate) : "N/D"} · Piso: {formatRate(floorRate)}
+                TRM: {sourceRate ? formatRate(sourceRate) : "N/D"} · Piso:{" "}
+                {formatRate(floorRate)}
               </div>
               <div className="mt-1 text-[11px] text-default-400">
-                Ajuste: {adjustmentApplied && adjustmentApplied > 0 ? `+${formatRate(adjustmentApplied)}` : "0.00"} · {provider}
+                Ajuste:{" "}
+                {adjustmentApplied && adjustmentApplied > 0
+                  ? `+${formatRate(adjustmentApplied)}`
+                  : "0.00"}{" "}
+                · {provider}
               </div>
             </>
           ) : (
@@ -214,7 +242,9 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
 
         <div className="rounded-medium border border-default-100 bg-default-50/40 p-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs font-medium text-default-600">Historial guardado</div>
+            <div className="text-xs font-medium text-default-600">
+              Historial guardado
+            </div>
             <div className="inline-flex rounded-medium border border-default-200 bg-content1 p-1">
               {[7, 15, 30].map((days) => {
                 const isActive = rangeDays === days;
@@ -222,12 +252,12 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
                 return (
                   <button
                     key={days}
-                    type="button"
                     className={`rounded-small px-2 py-1 text-[11px] font-medium transition ${
                       isActive
                         ? "bg-primary text-primary-foreground"
                         : "text-default-500 hover:bg-default-100"
                     }`}
+                    type="button"
                     onClick={() => setRangeDays(days as 7 | 15 | 30)}
                   >
                     {days}d
@@ -239,49 +269,67 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
           {chartModel ? (
             <>
               <div className="mt-2 h-56 w-full min-w-0">
-                <ResponsiveContainerBase width="100%" height="100%" minWidth={300} minHeight={220}>
-                  <LineChartBase data={chartModel.chartData} margin={{ top: 8, right: 12, left: 6, bottom: 4 }}>
-                    <CartesianGridBase strokeDasharray="3 3" stroke="var(--viomar-primary-light)" />
+                <ResponsiveContainerBase
+                  height="100%"
+                  minHeight={220}
+                  minWidth={300}
+                  width="100%"
+                >
+                  <LineChartBase
+                    data={chartModel.chartData}
+                    margin={{ top: 8, right: 12, left: 6, bottom: 4 }}
+                  >
+                    <CartesianGridBase
+                      stroke="var(--viomar-primary-light)"
+                      strokeDasharray="3 3"
+                    />
                     <XAxisBase
-                      dataKey="dateLabel"
                       axisLine={{ stroke: "var(--viomar-fg)" }}
+                      dataKey="dateLabel"
                       tick={{ fill: "var(--viomar-fg)", fontSize: 11 }}
                       tickLine={{ stroke: "var(--viomar-fg)" }}
                     />
                     <YAxisBase
                       axisLine={{ stroke: "var(--viomar-fg)" }}
-                      tick={{ fill: "var(--viomar-fg)", fontSize: 11 }}
-                      tickLine={{ stroke: "var(--viomar-fg)" }}
-                      tickFormatter={(v: number) => formatRate(Number(v ?? 0))}
                       domain={["dataMin - 5", "dataMax + 5"]}
+                      tick={{ fill: "var(--viomar-fg)", fontSize: 11 }}
+                      tickFormatter={(v: number) => formatRate(Number(v ?? 0))}
+                      tickLine={{ stroke: "var(--viomar-fg)" }}
                     />
                     <TooltipBase
-                      formatter={(value: number) => formatRate(Number(value ?? 0))}
-                      labelFormatter={(label: string) => `Fecha: ${label}`}
                       contentStyle={{
                         backgroundColor: "var(--viomar-bg)",
                         border: "1px solid var(--viomar-primary-light)",
                         borderRadius: 10,
                         color: "var(--viomar-fg)",
                       }}
-                      labelStyle={{ color: "var(--viomar-fg)", fontWeight: 600 }}
+                      formatter={(value: number) =>
+                        formatRate(Number(value ?? 0))
+                      }
                       itemStyle={{ color: "var(--viomar-fg)" }}
+                      labelFormatter={(label: string) => `Fecha: ${label}`}
+                      labelStyle={{
+                        color: "var(--viomar-fg)",
+                        fontWeight: 600,
+                      }}
                     />
                     <LineBase
-                      type="monotone"
+                      activeDot={{ r: 5 }}
                       dataKey="value"
+                      dot={{ r: 2 }}
                       name="TRM aplicada"
                       stroke="var(--viomar-primary)"
                       strokeWidth={2.5}
-                      dot={{ r: 2 }}
-                      activeDot={{ r: 5 }}
+                      type="monotone"
                     />
                   </LineChartBase>
                 </ResponsiveContainerBase>
               </div>
               <div className="mt-2 flex items-center justify-between text-[11px] text-default-500">
                 <span>{chartModel.firstLabel}</span>
-                <span>{chartModel.pointsCount} registros ({rangeDays}d)</span>
+                <span>
+                  {chartModel.pointsCount} registros ({rangeDays}d)
+                </span>
                 <span>{chartModel.lastLabel}</span>
               </div>
               <div className="mt-1 flex items-center justify-between text-[11px] text-default-400">

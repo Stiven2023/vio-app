@@ -100,11 +100,14 @@ export function parseSocksFromRows(rows: any[]) {
       .trim()
       .replace(/\s+/g, " ");
     const quantity = asPositiveInt(getCell(r, ["cantidad", "qty", "quantity"]));
-    const description = asString(getCell(r, ["descripcion", "descripción", "description"]))
+    const description = asString(
+      getCell(r, ["descripcion", "descripción", "description"]),
+    )
       .trim()
       .replace(/\s+/g, " ");
-    const imageUrl = asString(getCell(r, ["imagen", "image", "imageurl", "image_url", "url"]))
-      .trim();
+    const imageUrl = asString(
+      getCell(r, ["imagen", "image", "imageurl", "image_url", "url"]),
+    ).trim();
 
     if (!size && !quantity && !description) continue;
     if (!quantity) continue;

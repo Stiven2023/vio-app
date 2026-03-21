@@ -25,7 +25,8 @@ export default async function EmployeeLeavesPage() {
     <div className="container mx-auto max-w-7xl px-6 pt-16">
       <h1 className="text-2xl font-bold">Leaves and Absences</h1>
       <p className="mt-1 text-default-600">
-        Register and track employee absences, including payroll impact and monthly summary.
+        Register and track employee absences, including payroll impact and
+        monthly summary.
       </p>
       <div className="mt-6">
         <EmployeeLeavesTab

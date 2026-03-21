@@ -22,7 +22,8 @@ export default async function PilaPage() {
     <div className="container mx-auto max-w-7xl px-6 pt-16">
       <h1 className="text-2xl font-bold">Social Security (PILA)</h1>
       <p className="mt-1 text-default-600">
-        Liquidación de aportes de seguridad social por período con base en provisiones de nómina.
+        Liquidación de aportes de seguridad social por período con base en
+        provisiones de nómina.
       </p>
       <div className="mt-6">
         <PilaTab canGenerate={Boolean(perms.GENERAR_PILA)} />

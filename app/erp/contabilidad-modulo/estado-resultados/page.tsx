@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/erp/under-construction?modulo=erp&area=estado-resultados-contabilidad");
+  redirect(
+    "/erp/under-construction?modulo=erp&area=estado-resultados-contabilidad",
+  );
 }
-

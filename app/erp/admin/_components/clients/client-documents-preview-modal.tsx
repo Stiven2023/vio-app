@@ -29,23 +29,25 @@ export function ClientDocumentsPreviewModal({
   const handleDownload = async () => {
     if (!documentUrl) {
       toast.error("URL del documento inválida");
+
       return;
     }
 
     try {
       toast.loading("Descargando documento...");
-      
+
       // Usar el endpoint proxy del servidor con la ruta local
       const proxyUrl = `/api/documents/download?path=${encodeURIComponent(documentUrl)}`;
-      
+
       const link = document.createElement("a");
+
       link.href = proxyUrl;
       link.setAttribute("download", `${documentLabel}.pdf`);
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       setTimeout(() => {
         toast.dismiss();
         toast.success("Documento descargado");
@@ -76,11 +78,11 @@ export function ClientDocumentsPreviewModal({
                 </p>
               </div>
               <Button
+                className="mt-4"
                 color="primary"
                 size="lg"
                 startContent={<BsDownload />}
                 onPress={handleDownload}
-                className="mt-4"
               >
                 Descargar PDF
               </Button>

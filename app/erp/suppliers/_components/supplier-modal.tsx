@@ -16,6 +16,14 @@ import {
 import { Tab, Tabs } from "@heroui/tabs";
 import { z } from "zod";
 
+import {
+  SupplierContactSection,
+  SupplierCreditSection,
+  SupplierIdentificationSection,
+  SupplierLocationSection,
+  SupplierPhonesSection,
+} from "./supplier-modal-sections";
+
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import {
@@ -28,13 +36,6 @@ import {
 } from "@/components/form-tab-title";
 import { IdentificationDocumentsSection } from "@/components/identification-documents-section";
 import { FileUpload } from "@/components/file-upload";
-import {
-  SupplierContactSection,
-  SupplierCreditSection,
-  SupplierIdentificationSection,
-  SupplierLocationSection,
-  SupplierPhonesSection,
-} from "./supplier-modal-sections";
 
 const identificationTypes = [
   { value: "CC", label: "National ID" },
@@ -188,7 +189,9 @@ export function SupplierModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [importPromptOpen, setImportPromptOpen] = useState(false);
-  const [importCandidate, setImportCandidate] = useState<ImportData | null>(null);
+  const [importCandidate, setImportCandidate] = useState<ImportData | null>(
+    null,
+  );
   const [importMessage, setImportMessage] = useState("");
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -308,6 +311,7 @@ export function SupplierModal({
 
   const checkIdentification = async () => {
     const identification = form.identification.trim();
+
     if (!identification) return;
 
     try {
@@ -326,14 +330,17 @@ export function SupplierModal({
       if (result.sameModule) {
         setErrors((prev) => ({
           ...prev,
-          identification: result.sameModule?.message ?? "Duplicate identification",
+          identification:
+            result.sameModule?.message ?? "Duplicate identification",
         }));
+
         return;
       }
 
       setErrors((prev) => {
         if (!prev.identification) return prev;
         const { identification: _identification, ...rest } = prev;
+
         return rest;
       });
 
@@ -353,10 +360,12 @@ export function SupplierModal({
     setForm((s) => ({
       ...s,
       name: importCandidate.name ?? s.name,
-      identificationType: importCandidate.identificationType ?? s.identificationType,
+      identificationType:
+        importCandidate.identificationType ?? s.identificationType,
       identification: importCandidate.identification ?? s.identification,
       dv: importCandidate.dv ?? s.dv,
-      contactName: importCandidate.contactName ?? importCandidate.name ?? s.contactName,
+      contactName:
+        importCandidate.contactName ?? importCandidate.name ?? s.contactName,
       email: importCandidate.email ?? s.email,
       intlDialCode: importCandidate.intlDialCode ?? s.intlDialCode,
       mobile: importCandidate.mobile ?? s.mobile,
@@ -374,8 +383,12 @@ export function SupplierModal({
     toast.success("Data imported from another module");
   };
 
-  const isIdentificationValidByType = (identificationType: string, identification: string) => {
+  const isIdentificationValidByType = (
+    identificationType: string,
+    identification: string,
+  ) => {
     const value = identification.trim();
+
     if (!value) return false;
 
     switch (identificationType) {
@@ -397,10 +410,12 @@ export function SupplierModal({
   const submit = async () => {
     if (submitting) return;
 
-    if (!isIdentificationValidByType(form.identificationType, form.identification)) {
+    if (
+      !isIdentificationValidByType(form.identificationType, form.identification)
+    ) {
       const typeLabel =
-        identificationTypes.find((t) => t.value === form.identificationType)?.label ||
-        form.identificationType;
+        identificationTypes.find((t) => t.value === form.identificationType)
+          ?.label || form.identificationType;
       const formatMessages: Record<string, string> = {
         CC: "National ID must be 6-10 digits",
         NIT: "NIT must be 8-12 digits",
@@ -409,9 +424,12 @@ export function SupplierModal({
         EMPRESA_EXTERIOR: "Foreign company ID must be at least 3 characters",
       };
       const message =
-        formatMessages[form.identificationType] || `Invalid format for ${typeLabel}`;
+        formatMessages[form.identificationType] ||
+        `Invalid format for ${typeLabel}`;
+
       setErrors((prev) => ({ ...prev, identification: message }));
       toast.error(message);
+
       return;
     }
 
@@ -470,7 +488,7 @@ export function SupplierModal({
       await apiJson(`/api/suppliers`, {
         method: supplier ? "PUT" : "POST",
         body: JSON.stringify(
-          supplier ? { id: supplier.id, ...payload } : payload
+          supplier ? { id: supplier.id, ...payload } : payload,
         ),
       });
 
@@ -507,9 +525,9 @@ export function SupplierModal({
   return (
     <Modal
       isOpen={isOpen && !importPromptOpen}
-      onOpenChange={onOpenChange}
-      size="3xl"
       scrollBehavior="inside"
+      size="3xl"
+      onOpenChange={onOpenChange}
     >
       <ModalContent>
         <ModalHeader className="flex justify-between items-start">
@@ -530,7 +548,12 @@ export function SupplierModal({
           <Tabs aria-label="Form sections" variant="underlined">
             <Tab
               key="identificacion"
-              title={<FormTabTitle icon={<IdentificationIcon />} label="Identification" />}
+              title={
+                <FormTabTitle
+                  icon={<IdentificationIcon />}
+                  label="Identification"
+                />
+              }
             >
               <SupplierIdentificationSection
                 errors={errors}
@@ -576,7 +599,9 @@ export function SupplierModal({
 
             <Tab
               key="contacto"
-              title={<FormTabTitle icon={<ContactIcon />} label="Contact and tax" />}
+              title={
+                <FormTabTitle icon={<ContactIcon />} label="Contact and tax" />
+              }
             >
               <SupplierContactSection
                 errors={errors}
@@ -610,7 +635,12 @@ export function SupplierModal({
 
             <Tab
               key="credito"
-              title={<FormTabTitle icon={<FinanceIcon />} label="Status and credit" />}
+              title={
+                <FormTabTitle
+                  icon={<FinanceIcon />}
+                  label="Status and credit"
+                />
+              }
             >
               <SupplierCreditSection
                 errors={errors}

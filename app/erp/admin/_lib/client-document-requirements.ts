@@ -1,24 +1,29 @@
 /**
  * Determina qué documentos son necesarios basado en el tipo de identificación
- * 
+ *
  * CC (Cédula) → Persona Natural Nacional
  *   - Requiere: identityDocumentUrl (cédula), rutDocumentUrl (RUT)
- * 
+ *
  * NIT → Empresa Nacional (Persona Jurídica)
- *   - Requiere: rutDocumentUrl (RUT), commerceChamberDocumentUrl (Cámara de Comercio), 
+ *   - Requiere: rutDocumentUrl (RUT), commerceChamberDocumentUrl (Cámara de Comercio),
  *             identityDocumentUrl (cédula del representante legal)
- * 
+ *
  * CE (Cédula de Extranjero) → Persona Natural Extranjera
  *   - Requiere: identityDocumentUrl (CE), passportDocumentUrl (Pasaporte/PPT)
- * 
+ *
  * PAS (Pasaporte) → Persona Natural Extranjera (Venezolano)
  *   - Requiere: identityDocumentUrl (Pasaporte), passportDocumentUrl (PPT adicional si existe)
- * 
+ *
  * EMPRESA_EXTERIOR → Empresa Extranjera (Persona Jurídica)
  *   - Requiere: passportDocumentUrl, taxCertificateDocumentUrl, companyIdDocumentUrl
  */
 
-export type IdentificationType = "CC" | "NIT" | "CE" | "PAS" | "EMPRESA_EXTERIOR";
+export type IdentificationType =
+  | "CC"
+  | "NIT"
+  | "CE"
+  | "PAS"
+  | "EMPRESA_EXTERIOR";
 
 export interface RequiredDocuments {
   documents: string[];
@@ -28,7 +33,7 @@ export interface RequiredDocuments {
 }
 
 export function getRequiredDocumentsByIdentificationType(
-  identificationType: IdentificationType
+  identificationType: IdentificationType,
 ): RequiredDocuments {
   switch (identificationType) {
     case "CC":
@@ -94,7 +99,7 @@ export function getRequiredDocumentsByIdentificationType(
  */
 export function validateRequiredDocuments(
   identificationType: IdentificationType,
-  documents: Partial<Record<string, string | null | undefined>>
+  documents: Partial<Record<string, string | null | undefined>>,
 ): { isValid: boolean; missingDocuments: string[] } {
   const required = getRequiredDocumentsByIdentificationType(identificationType);
   const missing = required.documents.filter((doc) => !documents[doc]);

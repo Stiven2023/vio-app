@@ -39,10 +39,9 @@ async function buildNextAdditionCode(categoryId: string) {
   const nextSuffix = (row?.maxSuffix ?? 0) + 1;
 
   if (nextSuffix > 99) {
-    return new Response(
-      "Se alcanzó el máximo de códigos para esta categoría",
-      { status: 409 },
-    );
+    return new Response("Se alcanzó el máximo de códigos para esta categoría", {
+      status: 409,
+    });
   }
 
   return `${prefix}${String(nextSuffix).padStart(2, "0")}`;
@@ -70,8 +69,12 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
-    const catalogType = String(searchParams.get("catalogType") ?? "").trim().toUpperCase();
-    const status = String(searchParams.get("status") ?? "all").trim().toLowerCase();
+    const catalogType = String(searchParams.get("catalogType") ?? "")
+      .trim()
+      .toUpperCase();
+    const status = String(searchParams.get("status") ?? "all")
+      .trim()
+      .toLowerCase();
     const categoryId = String(searchParams.get("categoryId") ?? "").trim();
     const q = String(searchParams.get("q") ?? "").trim();
 
@@ -120,7 +123,9 @@ export async function GET(request: Request) {
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo consultar adiciones", { status: 500 });
   }
 }
@@ -198,7 +203,9 @@ export async function POST(request: Request) {
     return Response.json(created, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo crear la adición", { status: 500 });
   }
 }
@@ -260,9 +267,7 @@ export async function PUT(request: Request) {
     patch.catalogType = normalizeCatalogType(catalogType);
   if (productKind !== undefined) {
     patch.productKind =
-      String(productKind).toUpperCase() === "ESPECIAL"
-        ? "ESPECIAL"
-        : "REGULAR";
+      String(productKind).toUpperCase() === "ESPECIAL" ? "ESPECIAL" : "REGULAR";
   }
   if (priceCopBase !== undefined)
     patch.priceCopBase = priceCopBase ? String(priceCopBase) : null;
@@ -270,7 +275,8 @@ export async function PUT(request: Request) {
     patch.priceCopInternational = priceCopInternational
       ? String(priceCopInternational)
       : null;
-  if (priceUSD !== undefined) patch.priceUSD = priceUSD ? String(priceUSD) : null;
+  if (priceUSD !== undefined)
+    patch.priceUSD = priceUSD ? String(priceUSD) : null;
   if (trmUsed !== undefined) patch.trmUsed = trmUsed ? String(trmUsed) : null;
   if (startDate !== undefined)
     patch.startDate = startDate ? new Date(String(startDate)) : null;
@@ -314,7 +320,9 @@ export async function PUT(request: Request) {
     return Response.json(updated);
   } catch (error) {
     const response = dbErrorResponse(error);
+
     if (response) return response;
+
     return new Response("No se pudo editar la adición", { status: 500 });
   }
 }

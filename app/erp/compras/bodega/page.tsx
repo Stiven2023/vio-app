@@ -24,24 +24,38 @@ export default async function ComprasBodegaPage() {
   const forbiddenEntry = await requirePermission(req, "REGISTRAR_ENTRADA");
   const forbiddenOutput = await requirePermission(req, "REGISTRAR_SALIDA");
 
-  if (forbiddenInventory && forbiddenItems && forbiddenEntry && forbiddenOutput) {
+  if (
+    forbiddenInventory &&
+    forbiddenItems &&
+    forbiddenEntry &&
+    forbiddenOutput
+  ) {
     redirect("/unauthorized");
   }
 
   const canViewWarehouses = !forbiddenInventory;
   const canViewInventoryItems = !forbiddenItems;
-  const canCreateItem = !(await requirePermission(req, "CREAR_ITEM_INVENTARIO"));
+  const canCreateItem = !(await requirePermission(
+    req,
+    "CREAR_ITEM_INVENTARIO",
+  ));
   const canEditItem = !(await requirePermission(req, "EDITAR_ITEM_INVENTARIO"));
-  const canDeleteItem = !(await requirePermission(req, "ELIMINAR_ITEM_INVENTARIO"));
+  const canDeleteItem = !(await requirePermission(
+    req,
+    "ELIMINAR_ITEM_INVENTARIO",
+  ));
   const canEntry = !forbiddenEntry;
   const canOutput = !forbiddenOutput;
-  const canManageWarehouses = !(await requirePermission(req, "CREAR_ORDEN_COMPRA"));
+  const canManageWarehouses = !(await requirePermission(
+    req,
+    "CREAR_ORDEN_COMPRA",
+  ));
 
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
-      <h1 className="text-2xl font-bold">Warehouse &amp; inventory</h1>
+      <h1 className="text-2xl font-bold">Bodegas e Inventario</h1>
       <p className="text-default-600 mt-1">
-        Manage warehouses, items, entries and exits from a single module.
+        Gestiona bodegas (materia prima, producción, producto terminado, tránsito), items de inventario, entradas y salidas desde un solo módulo.
       </p>
       <div className="mt-6">
         <InventoryTabs
@@ -49,8 +63,8 @@ export default async function ComprasBodegaPage() {
           canDeleteItem={canDeleteItem}
           canEditItem={canEditItem}
           canEntry={canEntry}
-          canOutput={canOutput}
           canManageWarehouses={canManageWarehouses}
+          canOutput={canOutput}
           canViewInventoryItems={canViewInventoryItems}
           canViewWarehouses={canViewWarehouses}
         />

@@ -240,21 +240,27 @@ export function PurchaseOrdersCoordinationClient() {
     if (submittingTransferRequest) return;
     if (!transferFromWarehouseId) {
       toast.error("Selecciona bodega origen");
+
       return;
     }
     if (!transferToWarehouseId) {
       toast.error("Selecciona bodega destino");
+
       return;
     }
     if (!transferStockId) {
       toast.error("Selecciona item/variante");
+
       return;
     }
 
-    const selected = sourceProducts.find((row) => row.stockId === transferStockId);
+    const selected = sourceProducts.find(
+      (row) => row.stockId === transferStockId,
+    );
 
     if (!selected?.inventoryItemId || !selected.variantId) {
       toast.error("No se pudo resolver el item a solicitar");
+
       return;
     }
 
@@ -262,6 +268,7 @@ export function PurchaseOrdersCoordinationClient() {
 
     if (!Number.isFinite(qty) || qty <= 0) {
       toast.error("Cantidad invalida");
+
       return;
     }
 
@@ -385,10 +392,20 @@ export function PurchaseOrdersCoordinationClient() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button as={Link} href="/erp/compras/bodega" size="sm" variant="flat">
+            <Button
+              as={Link}
+              href="/erp/compras/bodega"
+              size="sm"
+              variant="flat"
+            >
               Solicitar traslado
             </Button>
-            <Button as={Link} href="/erp/purchase-orders" color="primary" size="sm">
+            <Button
+              as={Link}
+              color="primary"
+              href="/erp/purchase-orders"
+              size="sm"
+            >
               Repartir ingresos OC
             </Button>
           </div>
@@ -407,11 +424,16 @@ export function PurchaseOrdersCoordinationClient() {
             }
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setTransferFromWarehouseId(first ? String(first) : "");
               setTransferToWarehouseId("");
             }}
           >
-            {(row) => <SelectItem key={row.id}>{`${row.code} - ${row.name}`}</SelectItem>}
+            {(row) => (
+              <SelectItem
+                key={row.id}
+              >{`${row.code} - ${row.name}`}</SelectItem>
+            )}
           </Select>
 
           <Select
@@ -419,14 +441,21 @@ export function PurchaseOrdersCoordinationClient() {
             items={destinationWarehouseOptions}
             label="Bodega destino"
             selectedKeys={
-              transferToWarehouseId ? new Set([transferToWarehouseId]) : new Set([])
+              transferToWarehouseId
+                ? new Set([transferToWarehouseId])
+                : new Set([])
             }
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setTransferToWarehouseId(first ? String(first) : "");
             }}
           >
-            {(row) => <SelectItem key={row.id}>{`${row.code} - ${row.name}`}</SelectItem>}
+            {(row) => (
+              <SelectItem
+                key={row.id}
+              >{`${row.code} - ${row.name}`}</SelectItem>
+            )}
           </Select>
 
           <Select
@@ -434,9 +463,12 @@ export function PurchaseOrdersCoordinationClient() {
             isLoading={loadingSourceProducts}
             items={sourceProducts}
             label="Item / variante"
-            selectedKeys={transferStockId ? new Set([transferStockId]) : new Set([])}
+            selectedKeys={
+              transferStockId ? new Set([transferStockId]) : new Set([])
+            }
             onSelectionChange={(keys) => {
               const first = Array.from(keys)[0];
+
               setTransferStockId(first ? String(first) : "");
             }}
           >
