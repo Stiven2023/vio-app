@@ -155,8 +155,8 @@ async function generateConfectionistCode(): Promise<string> {
 
   let nextNumber = 1001;
   if (last?.confectionistCode) {
-    const lastNumber = parseInt(last.confectionistCode.replace(/^CON/i, ""), 10);
-    if (!isNaN(lastNumber)) nextNumber = lastNumber + 1;
+    const lastNumber = Number.parseInt(last.confectionistCode.replace(/^CON/i, ""), 10);
+    if (!Number.isNaN(lastNumber)) nextNumber = lastNumber + 1;
   }
   return `CON${nextNumber}`;
 }

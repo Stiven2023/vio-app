@@ -148,8 +148,8 @@ async function generateEmployeeCode(): Promise<string> {
 
   let nextNumber = 1001;
   if (last?.employeeCode) {
-    const lastNumber = parseInt(last.employeeCode.replace(/^EMP/i, ""), 10);
-    if (!isNaN(lastNumber)) nextNumber = lastNumber + 1;
+    const lastNumber = Number.parseInt(last.employeeCode.replace(/^EMP/i, ""), 10);
+    if (!Number.isNaN(lastNumber)) nextNumber = lastNumber + 1;
   }
   return `EMP${nextNumber}`;
 }

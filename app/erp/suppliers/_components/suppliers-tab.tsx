@@ -401,13 +401,13 @@ export function SuppliersTab({
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); }}
           />
           <Button variant="flat" onPress={exportCsv}>
-            Export CSV
+            Exportar CSV
           </Button>
           <Button variant="flat" onPress={downloadTemplate}>
-            Download CSV template
+            Descargar plantilla CSV
           </Button>
           <Button color="secondary" isLoading={importing} onPress={() => fileInputRef.current?.click()}>
-            Import CSV
+            Importar CSV
           </Button>
           {canCreate ? (
             <Button

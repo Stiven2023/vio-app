@@ -165,8 +165,8 @@ async function generateClientCode(
 
   let nextNumber = 10001;
   if (lastClient.length > 0 && lastClient[0]?.code) {
-    const lastNumber = parseInt(lastClient[0].code.slice(prefix.length), 10);
-    if (!isNaN(lastNumber)) nextNumber = lastNumber + 1;
+    const lastNumber = Number.parseInt(lastClient[0].code.slice(prefix.length), 10);
+    if (!Number.isNaN(lastNumber)) nextNumber = lastNumber + 1;
   }
 
   return `${prefix}${nextNumber}`;
