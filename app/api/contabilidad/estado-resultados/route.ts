@@ -5,10 +5,16 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-function getPeriodLabel(year: number, periodNum: number, periodType: string): string {
+function getPeriodLabel(
+  year: number,
+  periodNum: number,
+  periodType: string,
+): string {
   if (periodType === "annual") return String(year);
   if (periodType === "quarterly") return `T${periodNum}-${year}`;
-  const month = new Date(year, periodNum - 1, 1).toLocaleString("es-CO", { month: "short" });
+  const month = new Date(year, periodNum - 1, 1).toLocaleString("es-CO", {
+    month: "short",
+  });
   return `${month} ${year}`;
 }
 
@@ -26,7 +32,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const year = parseInt(searchParams.get("year") ?? String(new Date().getFullYear()), 10);
+    const year = parseInt(
+      searchParams.get("year") ?? String(new Date().getFullYear()),
+      10,
+    );
     const periodType = searchParams.get("period") ?? "monthly";
 
     const dateFrom = `${year}-01-01`;
@@ -93,7 +102,8 @@ export async function GET(request: Request) {
       ORDER BY period_num
     `);
 
-    const periodCount = periodType === "annual" ? 1 : periodType === "quarterly" ? 4 : 12;
+    const periodCount =
+      periodType === "annual" ? 1 : periodType === "quarterly" ? 4 : 12;
 
     const revenueMap: Record<number, number> = {};
     const cogsMap: Record<number, number> = {};
@@ -101,16 +111,24 @@ export async function GET(request: Request) {
     const opexMap: Record<number, number> = {};
 
     for (const r of revenueRows.rows as Record<string, unknown>[]) {
-      revenueMap[parseInt(String(r.period_num))] = parseFloat(String(r.amount ?? "0"));
+      revenueMap[parseInt(String(r.period_num))] = parseFloat(
+        String(r.amount ?? "0"),
+      );
     }
     for (const r of cogsRows.rows as Record<string, unknown>[]) {
-      cogsMap[parseInt(String(r.period_num))] = parseFloat(String(r.amount ?? "0"));
+      cogsMap[parseInt(String(r.period_num))] = parseFloat(
+        String(r.amount ?? "0"),
+      );
     }
     for (const r of payrollRows.rows as Record<string, unknown>[]) {
-      payrollMap[parseInt(String(r.period_num))] = parseFloat(String(r.amount ?? "0"));
+      payrollMap[parseInt(String(r.period_num))] = parseFloat(
+        String(r.amount ?? "0"),
+      );
     }
     for (const r of opexRows.rows as Record<string, unknown>[]) {
-      opexMap[parseInt(String(r.period_num))] = parseFloat(String(r.amount ?? "0"));
+      opexMap[parseInt(String(r.period_num))] = parseFloat(
+        String(r.amount ?? "0"),
+      );
     }
 
     const byPeriod = [];
@@ -147,10 +165,12 @@ export async function GET(request: Request) {
     }
 
     const grossProfit = totalRevenue - totalCOGS;
-    const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const grossMargin =
+      totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
     const totalOperatingCosts = totalPayroll + totalOpex;
     const operatingIncome = grossProfit - totalOperatingCosts;
-    const operatingMargin = totalRevenue > 0 ? (operatingIncome / totalRevenue) * 100 : 0;
+    const operatingMargin =
+      totalRevenue > 0 ? (operatingIncome / totalRevenue) * 100 : 0;
 
     return Response.json({
       year,

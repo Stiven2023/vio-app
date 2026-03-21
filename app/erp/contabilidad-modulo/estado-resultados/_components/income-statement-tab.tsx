@@ -104,7 +104,9 @@ function SummaryCard({
   return (
     <Card className="shadow-sm">
       <CardBody className="gap-1 p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-default-500">{label}</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-default-500">
+          {label}
+        </p>
         <p className={`text-xl font-bold ${colorMap[color]}`}>{value}</p>
         {sub && <p className="text-xs text-default-400">{sub}</p>}
       </CardBody>
@@ -160,8 +162,10 @@ export function IncomeStatementTab() {
     if (!data) return;
 
     const rows = data.byPeriod.map((r) => {
-      const grossMarginPct = r.revenue > 0 ? (r.grossProfit / r.revenue) * 100 : 0;
-      const opMarginPct = r.revenue > 0 ? (r.operatingIncome / r.revenue) * 100 : 0;
+      const grossMarginPct =
+        r.revenue > 0 ? (r.grossProfit / r.revenue) * 100 : 0;
+      const opMarginPct =
+        r.revenue > 0 ? (r.operatingIncome / r.revenue) * 100 : 0;
 
       return {
         Período: r.period,
@@ -244,7 +248,8 @@ export function IncomeStatementTab() {
 
   // Chart data: only show periods with any activity
   const chartData = data.byPeriod.filter(
-    (r) => r.revenue > 0 || r.cogs > 0 || r.payroll > 0 || r.operatingExpenses > 0,
+    (r) =>
+      r.revenue > 0 || r.cogs > 0 || r.payroll > 0 || r.operatingExpenses > 0,
   );
 
   return (
@@ -363,7 +368,10 @@ export function IncomeStatementTab() {
                 />
                 <Tooltip
                   formatter={(value, name) => {
-                    const num = typeof value === "number" ? value : parseFloat(String(value));
+                    const num =
+                      typeof value === "number"
+                        ? value
+                        : parseFloat(String(value));
                     return [fmt(isNaN(num) ? 0 : num), String(name)];
                   }}
                   labelStyle={{ fontWeight: 600, marginBottom: 4 }}
@@ -414,7 +422,9 @@ export function IncomeStatementTab() {
               <TableColumn className="text-right">Utilidad Bruta</TableColumn>
               <TableColumn className="text-right">Margen Bruto</TableColumn>
               <TableColumn className="text-right">Nómina</TableColumn>
-              <TableColumn className="text-right">Gastos Caja Menor</TableColumn>
+              <TableColumn className="text-right">
+                Gastos Caja Menor
+              </TableColumn>
               <TableColumn className="text-right">Costos Op.</TableColumn>
               <TableColumn className="text-right">Utilidad Op.</TableColumn>
               <TableColumn className="text-right">Margen Op.</TableColumn>
@@ -438,7 +448,9 @@ export function IncomeStatementTab() {
                 const grossMarginPct =
                   row.revenue > 0 ? (row.grossProfit / row.revenue) * 100 : 0;
                 const opMarginPct =
-                  row.revenue > 0 ? (row.operatingIncome / row.revenue) * 100 : 0;
+                  row.revenue > 0
+                    ? (row.operatingIncome / row.revenue) * 100
+                    : 0;
                 const totalOpCosts = row.payroll + row.operatingExpenses;
                 const isRowProfit = row.operatingIncome >= 0;
 
@@ -446,7 +458,9 @@ export function IncomeStatementTab() {
                   <TableRow
                     key={row.period}
                     className={
-                      isTotalRow ? "border-t-2 border-divider bg-default-50" : ""
+                      isTotalRow
+                        ? "border-t-2 border-divider bg-default-50"
+                        : ""
                     }
                   >
                     <TableCell
@@ -472,7 +486,9 @@ export function IncomeStatementTab() {
                     <TableCell
                       className={`text-right text-sm text-default-500 ${isTotalRow ? "font-bold" : ""}`}
                     >
-                      {isTotalRow ? fmtPct(toNum(s.grossMargin)) : fmtPct(grossMarginPct)}
+                      {isTotalRow
+                        ? fmtPct(toNum(s.grossMargin))
+                        : fmtPct(grossMarginPct)}
                     </TableCell>
                     <TableCell
                       className={`text-right font-mono text-default-600 ${isTotalRow ? "font-bold" : ""}`}
@@ -497,7 +513,9 @@ export function IncomeStatementTab() {
                     <TableCell
                       className={`text-right text-sm ${isTotalRow ? "font-bold" : "font-semibold"} ${isRowProfit ? "text-success-600" : "text-danger-600"}`}
                     >
-                      {isTotalRow ? fmtPct(toNum(s.operatingMargin)) : fmtPct(opMarginPct)}
+                      {isTotalRow
+                        ? fmtPct(toNum(s.operatingMargin))
+                        : fmtPct(opMarginPct)}
                     </TableCell>
                   </TableRow>
                 );
