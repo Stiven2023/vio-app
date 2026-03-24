@@ -102,6 +102,17 @@ export async function GET(request: Request) {
 
     const { page, pageSize, offset } = parsePagination(searchParams);
     const q = String(searchParams.get("q") ?? "").trim();
+    const statusFilterRaw = String(searchParams.get("status") ?? "")
+      .trim()
+      .toLowerCase();
+    const statusFilter =
+      statusFilterRaw === "active" || statusFilterRaw === "inactive"
+        ? statusFilterRaw
+        : "all";
+    const identificationTypeFilter = String(
+      searchParams.get("identificationType") ?? "",
+    ).trim();
+    const countryFilter = String(searchParams.get("country") ?? "").trim();
     const forAutocomplete = ["1", "true", "yes"].includes(
       String(searchParams.get("forAutocomplete") ?? "")
         .trim()
@@ -127,11 +138,33 @@ export async function GET(request: Request) {
           or ${clients.contactName} ilike ${qLike}
         )`
       : undefined;
+    const statusSqlFilter =
+      statusFilter === "active"
+        ? sql`${clients.isActive} = true`
+        : statusFilter === "inactive"
+          ? sql`${clients.isActive} = false`
+          : undefined;
+    const identificationTypeSqlFilter = identificationTypeFilter
+      ? sql`${clients.identificationType} = ${identificationTypeFilter}`
+      : undefined;
+    const countrySqlFilter = countryFilter
+      ? sql`${clients.country} = ${countryFilter}`
+      : undefined;
+
+    const baseFilters = [
+      textFilter,
+      statusSqlFilter,
+      identificationTypeSqlFilter,
+      countrySqlFilter,
+    ].filter((value): value is NonNullable<typeof value> => Boolean(value));
+
+    const baseWhereClause =
+      baseFilters.length > 0 ? sql.join(baseFilters, sql` and `) : undefined;
     const whereClause = forAutocomplete
-      ? textFilter
-        ? sql`${textFilter} and ${clients.isActive} = true`
+      ? baseWhereClause
+        ? sql`${baseWhereClause} and ${clients.isActive} = true`
         : sql`${clients.isActive} = true`
-      : textFilter;
+      : baseWhereClause;
 
     const totalQuery = db
       .select({ total: sql<number>`count(*)::int` })

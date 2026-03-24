@@ -399,6 +399,7 @@ export default async function RoleDashboardPage({
                     <Button
                       as={NextLink}
                       href={action.href}
+                      prefetch={false}
                       size="sm"
                       variant="flat"
                     >

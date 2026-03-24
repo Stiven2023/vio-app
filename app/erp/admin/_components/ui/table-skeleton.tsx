@@ -14,6 +14,7 @@ type TableSkeletonProps = {
   ariaLabel: string;
   headers: string[];
   rows?: number;
+  removeWrapper?: boolean;
 };
 
 function cellWidthClass(colIndex: number) {
@@ -26,9 +27,14 @@ export function TableSkeleton({
   ariaLabel,
   headers,
   rows = 8,
+  removeWrapper = false,
 }: TableSkeletonProps) {
   return (
-    <Table aria-label={ariaLabel}>
+    <Table
+      classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
+      removeWrapper={removeWrapper}
+      aria-label={ariaLabel}
+    >
       <TableHeader>
         {headers.map((h) => (
           <TableColumn key={h}>{h}</TableColumn>

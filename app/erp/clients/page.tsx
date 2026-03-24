@@ -29,7 +29,7 @@ export default async function ClientsPage() {
   const canChangeLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_CLIENTE;
 
   return (
-    <div className="container mx-auto max-w-7xl pt-16 px-6">
+    <div className="py-6">
       <h1 className="text-2xl font-bold">Clients</h1>
       <p className="text-default-600 mt-1">
         View and manage client information.

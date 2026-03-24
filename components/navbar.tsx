@@ -21,6 +21,7 @@ import NextLink from "next/link";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 import { BsChevronDown } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -161,6 +162,7 @@ export const Navbar = () => {
   const [canSeePackers, setCanSeePackers] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
   const [canSeePayments, setCanSeePayments] = useState(false);
+  const [verifyingSiigo, setVerifyingSiigo] = useState(false);
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const localeForRender = localeHydrated ? currentLocale : defaultAppLocale;
@@ -178,6 +180,18 @@ export const Navbar = () => {
         localeForRender === "es" ? "Usuario actual" : "Current user",
       notifications:
         localeForRender === "es" ? "Notificaciones" : "Notifications",
+      verifySiigo:
+        localeForRender === "es"
+          ? "Verificar API Siigo"
+          : "Verify Siigo API",
+      verifySiigoLoading:
+        localeForRender === "es"
+          ? "Verificando API de Siigo..."
+          : "Verifying Siigo API...",
+      verifySiigoSuccess:
+        localeForRender === "es"
+          ? "API de Siigo verificada correctamente"
+          : "Siigo API verified successfully",
       logOut: localeForRender === "es" ? "Cerrar sesión" : "Log out",
       noRole: localeForRender === "es" ? "SIN_ROL" : "NO_ROLE",
     }),
@@ -427,6 +441,44 @@ export const Navbar = () => {
 
     if (actionKey === "options") {
       router.push(`${moduleRoot}/options`);
+
+      return;
+    }
+
+    if (actionKey === "verify-siigo") {
+      if (verifyingSiigo) return;
+
+      setVerifyingSiigo(true);
+      const loadingToast = toast.loading(uiText.verifySiigoLoading);
+
+      try {
+        const response = await fetch("/api/siigo/auth", {
+          method: "POST",
+          credentials: "include",
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string; source?: string }
+          | null;
+
+        if (!response.ok) {
+          throw new Error(payload?.error || "Siigo auth failed");
+        }
+
+        toast.success(
+          payload?.source === "cache"
+            ? `${uiText.verifySiigoSuccess} (cache)`
+            : uiText.verifySiigoSuccess,
+          { id: loadingToast },
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Siigo auth failed",
+          { id: loadingToast },
+        );
+      } finally {
+        setVerifyingSiigo(false);
+      }
 
       return;
     }
@@ -700,6 +752,13 @@ export const Navbar = () => {
                 ) : null}
                 {currentModule === "erp" ? (
                   <DropdownItem key="options">{uiText.options}</DropdownItem>
+                ) : null}
+                {currentModule === "erp" ? (
+                  <DropdownItem key="verify-siigo">
+                    {verifyingSiigo
+                      ? uiText.verifySiigoLoading
+                      : uiText.verifySiigo}
+                  </DropdownItem>
                 ) : null}
                 <DropdownItem
                   key="logout"

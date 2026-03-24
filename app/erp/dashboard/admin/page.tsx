@@ -25,6 +25,10 @@ import {
 import { orderStatusValues } from "@/src/db/enums";
 import { AdminCharts } from "@/app/erp/dashboard/_components/admin-charts";
 import { ExchangeRateWidget } from "@/app/erp/dashboard/_components/exchange-rate-widget";
+import { SiigoStatusCard } from "@/app/erp/dashboard/_components/siigo-status-card";
+import { SiigoSyncCard } from "@/app/erp/dashboard/_components/siigo-sync-card";
+import { SiigoCustomersCard } from "@/app/erp/dashboard/_components/siigo-customers-card";
+import { getSiigoTokenStatus } from "@/src/utils/siigo";
 
 type QuickAction = {
   title: string;
@@ -162,6 +166,7 @@ export default async function AdminDashboardPage() {
   const sourceUsdCop = Number(latestExchangeRate?.sourceRate ?? 0);
   const floorUsdCop = Number(latestExchangeRate?.floorRate ?? 3600);
   const adjustmentApplied = Number(latestExchangeRate?.adjustmentApplied ?? 0);
+  const siigoStatus = getSiigoTokenStatus();
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16 pb-10">
@@ -260,6 +265,7 @@ export default async function AdminDashboardPage() {
                 <Button
                   as={NextLink}
                   href={action.href}
+                  prefetch={false}
                   size="sm"
                   variant="flat"
                 >
@@ -268,6 +274,15 @@ export default async function AdminDashboardPage() {
               </CardBody>
             </Card>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-lg font-semibold">Integrations</h2>
+        <div className="mt-4 grid gap-4">
+          <SiigoStatusCard initialStatus={siigoStatus} />
+          <SiigoSyncCard />
+          <SiigoCustomersCard />
         </div>
       </section>
 
@@ -292,6 +307,7 @@ export default async function AdminDashboardPage() {
               <Button
                 as={NextLink}
                 href="/api/exports/reports/inventory"
+                prefetch={false}
                 size="sm"
                 variant="flat"
               >
@@ -310,6 +326,7 @@ export default async function AdminDashboardPage() {
               <Button
                 as={NextLink}
                 href={`/api/exports/reports/sales-month?year=${reportYear}&month=${reportMonth}`}
+                prefetch={false}
                 size="sm"
                 variant="flat"
               >
@@ -328,6 +345,7 @@ export default async function AdminDashboardPage() {
               <Button
                 as={NextLink}
                 href={`/api/exports/reports/orders-month?year=${reportYear}&month=${reportMonth}`}
+                prefetch={false}
                 size="sm"
                 variant="flat"
               >

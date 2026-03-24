@@ -50,6 +50,8 @@ import { ClientLegalStatusModal } from "./client-legal-status-modal";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 type StatusFilter = "all" | "active" | "inactive";
+type IdentificationTypeFilter = "all" | string;
+type CountryFilter = "all" | string;
 
 export function ClientsTab({
   canCreate = true,
@@ -72,8 +74,28 @@ export function ClientsTab({
   onRequestCreateEmployee?: (prefill: EmployeeFormPrefill) => void;
   onRequestCreateConfectionist?: (prefill: ConfectionistFormPrefill) => void;
 } = {}) {
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [identificationType, setIdentificationType] =
+    useState<IdentificationTypeFilter>("all");
+  const [country, setCountry] = useState<CountryFilter>("all");
+  const endpoint = useMemo(() => {
+    const params = new URLSearchParams();
+
+    if (search.trim()) params.set("q", search.trim());
+    if (status !== "all") params.set("status", status);
+    if (identificationType !== "all") {
+      params.set("identificationType", identificationType);
+    }
+    if (country !== "all") params.set("country", country);
+
+    const query = params.toString();
+
+    return query ? `/api/clients?${query}` : "/api/clients";
+  }, [country, identificationType, search, status]);
+
   const { data, loading, page, setPage, refresh } = usePaginatedApi<Client>(
-    "/api/clients",
+    endpoint,
     10,
   );
   const [modalOpen, setModalOpen] = useState(false);
@@ -86,8 +108,6 @@ export function ClientsTab({
   const [viewingLegalStatus, setViewingLegalStatus] = useState<Client | null>(
     null,
   );
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("all");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -105,37 +125,53 @@ export function ClientsTab({
     onPrefillConsumed?.();
   }, [prefillCreate, onPrefillConsumed]);
 
-  const filtered = useMemo(() => {
+  useEffect(() => {
+    setPage(1);
+  }, [country, identificationType, search, setPage, status]);
+
+  const identificationTypeOptions = useMemo(
+    () => [
+      { value: "all", label: "Todos los tipos" },
+      { value: "CC", label: "CC" },
+      { value: "NIT", label: "NIT" },
+      { value: "CE", label: "CE" },
+      { value: "PAS", label: "PAS" },
+      { value: "EMPRESA_EXTERIOR", label: "EMPRESA_EXTERIOR" },
+    ],
+    [],
+  );
+
+  const countryOptions = useMemo(() => {
     const items = data?.items ?? [];
-    const q = search.trim().toLowerCase();
+    const values = Array.from(
+      new Set(
+        items
+          .map((client) => client.country?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ).sort((a, b) => a.localeCompare(b, "es"));
 
-    return items.filter((c) => {
-      if (status === "active" && !c.isActive) return false;
-      if (status === "inactive" && c.isActive) return false;
-      if (!q) return true;
+    return [
+      { value: "all", label: "Todos los países" },
+      ...values.map((value) => ({ value, label: value })),
+    ];
+  }, [data]);
 
-      const email = c.email ?? "";
-      const mobile = c.mobile ?? "";
-      const contactName = c.contactName ?? "";
-      const clientCode = c.clientCode ?? "";
-
-      return (
-        c.name.toLowerCase().includes(q) ||
-        c.identification.toLowerCase().includes(q) ||
-        email.toLowerCase().includes(q) ||
-        mobile.toLowerCase().includes(q) ||
-        contactName.toLowerCase().includes(q) ||
-        clientCode.toLowerCase().includes(q)
-      );
-    });
-  }, [data, search, status]);
+  const filtered = data?.items ?? [];
 
   const emptyContent = useMemo(() => {
     if (loading) return "";
-    if (search.trim() !== "" || status !== "all") return "Sin resultados";
+    if (
+      search.trim() !== "" ||
+      status !== "all" ||
+      identificationType !== "all" ||
+      country !== "all"
+    ) {
+      return "Sin resultados";
+    }
 
     return "Sin clientes";
-  }, [loading, search, status]);
+  }, [country, identificationType, loading, search, status]);
 
   const onSaved = () => {
     refresh();
@@ -375,7 +411,7 @@ export function ClientsTab({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-end">
           <FilterSearch
             className="sm:w-72"
             placeholder="Buscar por código, nombre, identificación, email, móvil…"
@@ -392,6 +428,20 @@ export function ClientsTab({
             ]}
             value={status}
             onChange={(v) => setStatus(v as StatusFilter)}
+          />
+          <FilterSelect
+            className="sm:w-56"
+            label="Tipo ID"
+            options={identificationTypeOptions}
+            value={identificationType}
+            onChange={setIdentificationType}
+          />
+          <FilterSelect
+            className="sm:w-56"
+            label="País"
+            options={countryOptions}
+            value={country}
+            onChange={setCountry}
           />
         </div>
 
@@ -431,130 +481,143 @@ export function ClientsTab({
       </div>
 
       {loading ? (
-        <TableSkeleton
-          ariaLabel="Clientes"
-          headers={[
-            "Código",
-            "Nombre",
-            "Tipo ID",
-            "Email",
-            "Móvil",
-            "Estado",
-            "Estado jurídico",
-            "Acciones",
-          ]}
-        />
+        <div className="overflow-x-auto rounded-medium border border-default-200">
+          <TableSkeleton
+            removeWrapper
+            ariaLabel="Clientes"
+            headers={[
+              "Código",
+              "Nombre",
+              "Tipo ID",
+              "Email",
+              "Móvil",
+              "Estado",
+              "Estado jurídico",
+              "Acciones",
+            ]}
+          />
+        </div>
       ) : (
-        <Table aria-label="Clientes">
-          <TableHeader>
-            <TableColumn>CÓDIGO</TableColumn>
-            <TableColumn>NOMBRE</TableColumn>
-            <TableColumn>TIPO ID</TableColumn>
-            <TableColumn>EMAIL</TableColumn>
-            <TableColumn>MÓVIL</TableColumn>
-            <TableColumn>ESTADO</TableColumn>
-            <TableColumn>ESTADO JURÍDICO</TableColumn>
-            <TableColumn>ACCIONES</TableColumn>
-          </TableHeader>
-          <TableBody emptyContent={emptyContent} items={filtered}>
-            {(c) => (
-              <TableRow key={c.id}>
-                <TableCell>
-                  <Chip
-                    color={
-                      c.clientType === "NACIONAL"
-                        ? "primary"
-                        : c.clientType === "EXTRANJERO"
-                          ? "secondary"
-                          : "warning"
-                    }
-                    size="sm"
-                    variant="flat"
-                  >
-                    {c.clientCode}
-                  </Chip>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{c.name}</span>
-                    <span className="text-xs text-default-500">
-                      {c.contactName}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Chip size="sm" variant="flat">
-                    {c.identificationType}
-                  </Chip>
-                </TableCell>
-                <TableCell className="text-sm text-default-500">
-                  <span className="flex items-center gap-1">
-                    <span className="text-danger" title="Campo crítico">
-                      *
-                    </span>
-                    {c.email}
-                  </span>
-                </TableCell>
-                <TableCell className="text-sm text-default-500">
-                  <span className="flex items-center gap-1">
-                    <span className="text-danger" title="Campo crítico">
-                      *
-                    </span>
-                    {c.fullMobile || c.mobile || "-"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    color={
-                      c.status === "ACTIVO"
-                        ? "success"
-                        : c.status === "SUSPENDIDO"
-                          ? "warning"
-                          : "default"
-                    }
-                    size="sm"
-                    variant="flat"
-                  >
-                    {c.status || (c.isActive ? "Activo" : "Inactivo")}
-                  </Chip>
-                </TableCell>
-                <TableCell>
-                  {c.legalStatus ? (
+        <div className="overflow-x-auto rounded-medium border border-default-200">
+          <Table
+            classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
+            removeWrapper
+            aria-label="Clientes"
+          >
+            <TableHeader>
+              <TableColumn>CÓDIGO</TableColumn>
+              <TableColumn>NOMBRE</TableColumn>
+              <TableColumn>TIPO ID</TableColumn>
+              <TableColumn>EMAIL</TableColumn>
+              <TableColumn>MÓVIL</TableColumn>
+              <TableColumn>ESTADO</TableColumn>
+              <TableColumn>ESTADO JURÍDICO</TableColumn>
+              <TableColumn>ACCIONES</TableColumn>
+            </TableHeader>
+            <TableBody emptyContent={emptyContent} items={filtered}>
+              {(c) => (
+                <TableRow key={c.id}>
+                  <TableCell>
                     <Chip
                       color={
-                        c.legalStatus === "VIGENTE"
-                          ? "success"
-                          : c.legalStatus === "EN_REVISION"
-                            ? "warning"
-                            : "danger"
+                        c.clientType === "NACIONAL"
+                          ? "primary"
+                          : c.clientType === "EXTRANJERO"
+                            ? "secondary"
+                            : "warning"
                       }
                       size="sm"
                       variant="flat"
                     >
-                      {c.legalStatus === "VIGENTE"
-                        ? "Vigente"
-                        : c.legalStatus === "EN_REVISION"
-                          ? "En Revisión"
-                          : "Bloqueado"}
+                      {c.clientCode}
                     </Chip>
-                  ) : (
-                    <Chip color="default" size="sm" variant="flat">
-                      Sin definir
+                  </TableCell>
+                  <TableCell>
+                      <div className="flex max-w-[260px] flex-col">
+                        <span className="truncate font-medium" title={c.name}>
+                          {c.name}
+                        </span>
+                        <span
+                          className="truncate text-xs text-default-500"
+                          title={c.contactName}
+                        >
+                        {c.contactName}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Chip size="sm" variant="flat">
+                      {c.identificationType}
                     </Chip>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isDisabled={Boolean(deletingId)}
+                  </TableCell>
+                  <TableCell className="text-sm text-default-500">
+                    <span className="flex items-center gap-1">
+                      <span className="text-danger" title="Campo crítico">
+                        *
+                      </span>
+                      {c.email}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-sm text-default-500">
+                    <span className="flex items-center gap-1">
+                      <span className="text-danger" title="Campo crítico">
+                        *
+                      </span>
+                      {c.fullMobile || c.mobile || "-"}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      color={
+                        c.status === "ACTIVO"
+                          ? "success"
+                          : c.status === "SUSPENDIDO"
+                            ? "warning"
+                            : "default"
+                      }
+                      size="sm"
+                      variant="flat"
+                    >
+                      {c.status || (c.isActive ? "Activo" : "Inactivo")}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    {c.legalStatus ? (
+                      <Chip
+                        color={
+                          c.legalStatus === "VIGENTE"
+                            ? "success"
+                            : c.legalStatus === "EN_REVISION"
+                              ? "warning"
+                              : "danger"
+                        }
                         size="sm"
                         variant="flat"
                       >
-                        <BsThreeDotsVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu aria-label="Acciones">
+                        {c.legalStatus === "VIGENTE"
+                          ? "Vigente"
+                          : c.legalStatus === "EN_REVISION"
+                            ? "En Revisión"
+                            : "Bloqueado"}
+                      </Chip>
+                    ) : (
+                      <Chip color="default" size="sm" variant="flat">
+                        Sin definir
+                      </Chip>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isDisabled={Boolean(deletingId)}
+                          size="sm"
+                          variant="flat"
+                        >
+                          <BsThreeDotsVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Acciones">
                       <DropdownItem
                         key="view"
                         startContent={<BsEyeFill />}
@@ -696,13 +759,14 @@ export function ClientsTab({
                           Eliminar
                         </DropdownItem>
                       ) : null}
-                    </DropdownMenu>
-                  </Dropdown>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                      </DropdownMenu>
+                    </Dropdown>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}

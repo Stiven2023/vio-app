@@ -6,12 +6,13 @@ import type {
   MoldingTemplateInsumo,
 } from "../_lib/types";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Input, Textarea } from "@heroui/input";
 import { Checkbox } from "@heroui/checkbox";
+import { Select, SelectItem } from "@heroui/select";
 import { Tab, Tabs } from "@heroui/tabs";
 import { Tooltip } from "@heroui/tooltip";
 import {
@@ -235,6 +236,13 @@ type InsumoFormState = {
   notes: string;
 };
 
+type InventoryItemOption = {
+  id: string;
+  itemCode: string | null;
+  name: string;
+  unit: string | null;
+};
+
 const emptyInsumoForm: InsumoFormState = {
   inventoryItemId: "",
   variantId: "",
@@ -276,6 +284,11 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   const [editingInsumoId, setEditingInsumoId] = useState<string | null>(null);
   const [insumoForm, setInsumoForm] =
     useState<InsumoFormState>(emptyInsumoForm);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItemOption[]>(
+    [],
+  );
+  const [loadingInventoryItems, setLoadingInventoryItems] = useState(false);
+  const [insumoItemSearch, setInsumoItemSearch] = useState("");
 
   const endpoint = useMemo(
     () => `/api/molding/templates?search=${encodeURIComponent(search)}`,
@@ -284,6 +297,57 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<MoldingTemplateRow>(endpoint, 20);
+
+  const inventoryItemById = useMemo(() => {
+    const map = new Map<string, InventoryItemOption>();
+
+    for (const item of inventoryItems) {
+      map.set(item.id, item);
+    }
+
+    return map;
+  }, [inventoryItems]);
+
+  const filteredInventoryItems = useMemo(() => {
+    const q = insumoItemSearch.trim().toLowerCase();
+
+    if (!q) return inventoryItems;
+
+    return inventoryItems.filter((item) => {
+      const code = String(item.itemCode ?? "").toLowerCase();
+      const name = String(item.name ?? "").toLowerCase();
+      const unit = String(item.unit ?? "").toLowerCase();
+
+      return code.includes(q) || name.includes(q) || unit.includes(q);
+    });
+  }, [inventoryItems, insumoItemSearch]);
+
+  const selectedInventoryItem =
+    insumoForm.inventoryItemId &&
+    inventoryItemById.has(insumoForm.inventoryItemId)
+      ? (inventoryItemById.get(insumoForm.inventoryItemId) ?? null)
+      : null;
+
+  const selectedInventoryLabel = selectedInventoryItem
+    ? `${selectedInventoryItem.itemCode ?? "—"} ${selectedInventoryItem.name}`.trim()
+    : "";
+
+  useEffect(() => {
+    void (async () => {
+      setLoadingInventoryItems(true);
+      try {
+        const response = (await apiJson(
+          "/api/inventory-items?page=1&pageSize=600",
+        )) as { items?: InventoryItemOption[] };
+
+        setInventoryItems(Array.isArray(response.items) ? response.items : []);
+      } catch {
+        setInventoryItems([]);
+      } finally {
+        setLoadingInventoryItems(false);
+      }
+    })();
+  }, []);
 
   function openCreate() {
     setEditingId(null);
@@ -315,6 +379,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   function openCreateInsumo() {
     setEditingInsumoId(null);
     setInsumoForm(emptyInsumoForm);
+    setInsumoItemSearch("");
     setInsumoModalOpen(true);
   }
 
@@ -328,6 +393,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       variesBySize: insumo.variesBySize ?? false,
       notes: insumo.notes ?? "",
     });
+    setInsumoItemSearch("");
     setInsumoModalOpen(true);
   }
 
@@ -1104,7 +1170,8 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             {insumos.map((insumo) => (
                               <TableRow key={insumo.id}>
                                 <TableCell className="text-xs">
-                                  {insumo.inventoryItemId}
+                                  {inventoryItemById.get(insumo.inventoryItemId)
+                                    ?.name ?? insumo.inventoryItemId}
                                 </TableCell>
                                 <TableCell>{insumo.qtyPerUnit}</TableCell>
                                 <TableCell>{insumo.unit}</TableCell>
@@ -1211,14 +1278,48 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
           </ModalHeader>
           <ModalBody className="space-y-4">
             <Input
-              isRequired
-              label="Inventory Item ID"
-              placeholder="e.g. TELA-001"
-              value={insumoForm.inventoryItemId}
-              onValueChange={(v) =>
-                setInsumoForm({ ...insumoForm, inventoryItemId: v })
-              }
+              label="Search inventory item"
+              placeholder="Search by code, name or unit"
+              value={insumoItemSearch}
+              onValueChange={setInsumoItemSearch}
             />
+            <Select
+              isRequired
+              isLoading={loadingInventoryItems}
+              items={filteredInventoryItems}
+              label="Inventory item"
+              selectedKeys={
+                insumoForm.inventoryItemId
+                  ? new Set([insumoForm.inventoryItemId])
+                  : new Set([])
+              }
+              selectionMode="single"
+              onSelectionChange={(keys) => {
+                const first = Array.from(keys)[0];
+
+                setInsumoForm((prev) => ({
+                  ...prev,
+                  inventoryItemId: first ? String(first) : "",
+                }));
+              }}
+            >
+              {(item) => (
+                <SelectItem
+                  key={item.id}
+                  textValue={`${item.itemCode ?? ""} ${item.name}`}
+                >
+                  <span className="font-mono text-xs text-default-500">
+                    {item.itemCode ?? "—"}
+                  </span>
+                  <span className="ml-2">{item.name}</span>
+                </SelectItem>
+              )}
+            </Select>
+            {selectedInventoryLabel ? (
+              <p className="text-xs text-default-500">
+                Selected: {selectedInventoryLabel}
+              </p>
+            ) : null}
             <Input
               label="Variant ID"
               placeholder="Optional"
