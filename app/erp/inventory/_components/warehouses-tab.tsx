@@ -137,7 +137,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
           ]}
         />
       ) : (
-        <Table aria-label="Bodegas">
+        <Table removeWrapper aria-label="Bodegas">
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>

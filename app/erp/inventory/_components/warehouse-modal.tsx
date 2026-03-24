@@ -127,7 +127,7 @@ export function WarehouseModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {warehouse ? "Editar bodega" : "Crear bodega"}
@@ -191,7 +191,7 @@ export function WarehouseModal({
           <Button variant="flat" onPress={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {warehouse ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

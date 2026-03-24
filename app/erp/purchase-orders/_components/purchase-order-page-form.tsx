@@ -551,8 +551,8 @@ export function PurchaseOrderPageForm({
         >
           Cancel
         </Button>
-        <Button color="primary" isLoading={submitting} onPress={submit}>
-          {isEdit ? "Save changes" : "Create order"}
+        <Button color="primary" isDisabled={submitting} onPress={submit}>
+          {submitting ? "Saving..." : isEdit ? "Save changes" : "Create order"}
         </Button>
       </div>
 

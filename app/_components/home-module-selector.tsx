@@ -78,6 +78,46 @@ export function HomeModuleSelector() {
   const [active, setActive] = useState<Section["id"] | null>("erp");
   const [loaded, setLoaded] = useState(false);
   const [time, setTime] = useState("");
+  const [currentLocale, setCurrentLocale] = useState<"en" | "es">("en");
+  const [localeHydrated, setLocaleHydrated] = useState(false);
+
+  useEffect(() => {
+    const storedLocale = (() => {
+      try {
+        const local = window.localStorage.getItem("preferredLanguage");
+
+        if (local === "en" || local === "es") return local;
+        const cookieValue = document.cookie
+          .split("; ")
+          .find((row) => row.startsWith("NEXT_LOCALE="))
+          ?.split("=")[1];
+
+        if (cookieValue === "en" || cookieValue === "es") return cookieValue;
+      } catch {
+        // SSR guard
+      }
+
+      return "en" as const;
+    })();
+
+    setCurrentLocale(storedLocale);
+    setLocaleHydrated(true);
+  }, []);
+
+  const handleLocaleChange = (nextLocale: "en" | "es") => {
+    setCurrentLocale(nextLocale);
+    try {
+      document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
+      document.documentElement.lang = nextLocale;
+      window.localStorage.setItem("preferredLanguage", nextLocale);
+      window.sessionStorage.setItem("preferredLanguage", nextLocale);
+      window.dispatchEvent(
+        new CustomEvent("viomar:locale-change", { detail: nextLocale }),
+      );
+    } catch {
+      // SSR guard
+    }
+  };
 
   useEffect(() => {
     const loadTimer = setTimeout(() => setLoaded(true), 40);
@@ -431,6 +471,20 @@ export function HomeModuleSelector() {
               </DropdownMenu>
             </Dropdown>
           ) : null}
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Button className="min-w-14" size="sm" variant="light">
+                {localeHydrated ? (currentLocale === "es" ? "ESP" : "ENG") : "ENG"}
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu
+              aria-label="Language selector"
+              onAction={(key) => handleLocaleChange(String(key) as "en" | "es")}
+            >
+              <DropdownItem key="en">English (ENG)</DropdownItem>
+              <DropdownItem key="es">Español (ESP)</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
           <ThemeSwitch />
         </div>
       </motion.header>

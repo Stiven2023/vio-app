@@ -635,8 +635,8 @@ export function OperarioWorklogTable({
       </div>
 
       <div className="flex justify-end">
-        <Button color="primary" isLoading={saving} onPress={createRecord}>
-          Guardar registro
+        <Button color="primary" isDisabled={saving} onPress={createRecord}>
+          {saving ? "Guardando..." : "Guardar registro"}
         </Button>
       </div>
 
@@ -710,7 +710,6 @@ export function OperarioWorklogTable({
                     <Button
                       color="danger"
                       isDisabled={deletingId === item.id || saving}
-                      isLoading={deletingId === item.id}
                       size="sm"
                       variant="flat"
                       onPress={() => removeRecord(item.id)}
@@ -727,7 +726,11 @@ export function OperarioWorklogTable({
 
       {data ? <Pager data={data} page={data.page} onChange={setPage} /> : null}
 
-      <Modal isOpen={showPartialModal} onOpenChange={setShowPartialModal}>
+      <Modal
+        disableAnimation
+        isOpen={showPartialModal}
+        onOpenChange={setShowPartialModal}
+      >
         <ModalContent>
           {(onClose) => (
             <>

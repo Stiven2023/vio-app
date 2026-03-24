@@ -121,7 +121,7 @@ export function ConfectionAssignModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>{title}</ModalHeader>
         <ModalBody>
@@ -163,11 +163,10 @@ export function ConfectionAssignModal({
           </Button>
           <Button
             color="primary"
-            isDisabled={loading}
-            isLoading={submitting}
+            isDisabled={loading || submitting}
             onPress={assign}
           >
-            Guardar
+            {submitting ? "Guardando..." : "Guardar"}
           </Button>
         </ModalFooter>
       </ModalContent>

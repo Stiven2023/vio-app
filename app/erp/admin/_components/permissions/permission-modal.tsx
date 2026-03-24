@@ -67,7 +67,7 @@ export function PermissionModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {permission ? "Editar permiso" : "Crear permiso"}
@@ -90,7 +90,7 @@ export function PermissionModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {permission ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

@@ -198,9 +198,11 @@ export function QuotationEditor({
     String(selectedClient?.identificationType ?? ""),
   );
   const selectedClientPriceType: ClientPriceType =
-    selectedClient?.priceClientType ?? "VIOMAR";
+    form.clientPriceTypeDisplay ?? selectedClient?.priceClientType ?? "VIOMAR";
   const clientPriceTypeForQuote: ClientPriceType | null = isInternationalClient
-    ? null
+    ? form.currency === "COP"
+      ? selectedClientPriceType
+      : null
     : selectedClientPriceType;
 
   const { items, setItems, updateItem, removeItem, addItem } = useQuoteItems(
@@ -403,21 +405,28 @@ export function QuotationEditor({
     form.documentType,
   );
 
+  const chargesEnabled = form.documentType === "F";
+  const effectiveWithholdingTaxRate = chargesEnabled ? withholdingTaxRate : 0;
+  const effectiveWithholdingIcaRate = chargesEnabled ? withholdingIcaRate : 0;
+  const effectiveWithholdingIvaRate = chargesEnabled ? withholdingIvaRate : 0;
+
   const withholdingTaxAmount = useMemo(
-    () => (computed.subtotal * withholdingTaxRate) / 100,
-    [computed.subtotal, withholdingTaxRate],
+    () => (computed.subtotal * effectiveWithholdingTaxRate) / 100,
+    [computed.subtotal, effectiveWithholdingTaxRate],
   );
   const withholdingIcaAmount = useMemo(
-    () => (computed.subtotal * withholdingIcaRate) / 100,
-    [computed.subtotal, withholdingIcaRate],
+    () => (computed.subtotal * effectiveWithholdingIcaRate) / 100,
+    [computed.subtotal, effectiveWithholdingIcaRate],
   );
   const withholdingIvaAmount = useMemo(
-    () => (computed.iva * withholdingIvaRate) / 100,
-    [computed.iva, withholdingIvaRate],
+    () => (computed.iva * effectiveWithholdingIvaRate) / 100,
+    [computed.iva, effectiveWithholdingIvaRate],
   );
   const totalWithholdings =
     withholdingTaxAmount + withholdingIcaAmount + withholdingIvaAmount;
-  const totalAfterWithholdings = computed.total - totalWithholdings;
+  const totalAfterWithholdings = chargesEnabled
+    ? computed.total - totalWithholdings
+    : computed.total;
 
   const { quoteCode, submitting, saveQuotation } = useSaveQuotation(
     quoteId,
@@ -511,9 +520,11 @@ export function QuotationEditor({
               total: computed.total,
               municipalityFiscalSnapshot: form.municipalityFiscalSnapshot,
               taxZoneSnapshot: form.taxZoneSnapshot,
-              withholdingTaxRate,
-              withholdingIcaRate,
-              withholdingIvaRate,
+              clientPriceType:
+                form.currency === "COP" ? selectedClientPriceType : null,
+              withholdingTaxRate: effectiveWithholdingTaxRate,
+              withholdingIcaRate: effectiveWithholdingIcaRate,
+              withholdingIvaRate: effectiveWithholdingIvaRate,
               withholdingTaxAmount,
               withholdingIcaAmount,
               withholdingIvaAmount,
@@ -556,14 +567,12 @@ export function QuotationEditor({
         }
 
         if (created?.prefactura?.id) {
-          router.push("/erp/pre-invoices");
-          router.refresh();
+          router.replace("/erp/pre-invoices");
 
           return;
         }
 
-        router.push("/erp/pre-invoices");
-        router.refresh();
+        router.replace("/erp/pre-invoices");
 
         return;
       } catch (error) {
@@ -592,9 +601,9 @@ export function QuotationEditor({
       {
         municipalityFiscalSnapshot: form.municipalityFiscalSnapshot,
         taxZoneSnapshot: form.taxZoneSnapshot,
-        withholdingTaxRate,
-        withholdingIcaRate,
-        withholdingIvaRate,
+        withholdingTaxRate: effectiveWithholdingTaxRate,
+        withholdingIcaRate: effectiveWithholdingIcaRate,
+        withholdingIvaRate: effectiveWithholdingIvaRate,
         withholdingTaxAmount,
         withholdingIcaAmount,
         withholdingIvaAmount,
@@ -610,8 +619,7 @@ export function QuotationEditor({
           // ignore
         }
       }
-      router.push("/quotations");
-      router.refresh();
+      router.replace("/quotations");
     }
   };
 
@@ -680,7 +688,7 @@ export function QuotationEditor({
                 <div>
                   <p className="text-sm font-semibold">Client approval</p>
                   <p className="text-xs text-default-500">
-                    Client's commercial confirmation.
+                    Client&apos;s commercial confirmation.
                   </p>
                 </div>
                 <Switch
@@ -717,13 +725,6 @@ export function QuotationEditor({
             loadingClients={loadingClients || loadingQuote}
             onFormChange={onFormChange}
           />
-
-          <Card className="border border-default-200" radius="md" shadow="none">
-            <CardBody className="py-3">
-              <p className="text-xs text-default-500">Client type (COP)</p>
-              <p className="text-sm font-semibold">{selectedClientPriceType}</p>
-            </CardBody>
-          </Card>
         </CardBody>
       </Card>
 
@@ -841,33 +842,41 @@ export function QuotationEditor({
               <p className="text-sm font-semibold">Withholdings</p>
               <div className="grid grid-cols-1 gap-2">
                 <Input
+                  isDisabled={!chargesEnabled}
                   label="Withholding tax (%)"
                   type="number"
-                  value={String(withholdingTaxRate)}
+                  value={String(effectiveWithholdingTaxRate)}
                   variant="flat"
                   onValueChange={(v) =>
                     setWithholdingTaxRate(Math.max(0, Number(v || 0)))
                   }
                 />
                 <Input
+                  isDisabled={!chargesEnabled}
                   label="ICA withholding (%)"
                   type="number"
-                  value={String(withholdingIcaRate)}
+                  value={String(effectiveWithholdingIcaRate)}
                   variant="flat"
                   onValueChange={(v) =>
                     setWithholdingIcaRate(Math.max(0, Number(v || 0)))
                   }
                 />
                 <Input
+                  isDisabled={!chargesEnabled}
                   label="IVA withholding (%)"
                   type="number"
-                  value={String(withholdingIvaRate)}
+                  value={String(effectiveWithholdingIvaRate)}
                   variant="flat"
                   onValueChange={(v) =>
                     setWithholdingIvaRate(Math.max(0, Number(v || 0)))
                   }
                 />
               </div>
+              {!chargesEnabled ? (
+                <p className="text-xs text-default-500">
+                  Con documento tipo R no se cobra IVA ni retenciones.
+                </p>
+              ) : null}
               <div className="rounded-medium border border-default-200 p-3 text-xs text-default-600">
                 <p>
                   Fiscal snapshot:{" "}
@@ -899,14 +908,16 @@ export function QuotationEditor({
 
             <Button
               color="primary"
-              isLoading={submitting || creatingPrefactura}
+              isDisabled={submitting || creatingPrefactura}
               onPress={handleSaveQuotation}
             >
-              {quoteId
-                ? "Save changes"
-                : mode === "prefactura"
-                  ? "Save prefacture"
-                  : "Save quotation"}
+              {submitting || creatingPrefactura
+                ? "Saving..."
+                : quoteId
+                  ? "Save changes"
+                  : mode === "prefactura"
+                    ? "Save prefacture"
+                    : "Save quotation"}
             </Button>
           </CardBody>
         </Card>

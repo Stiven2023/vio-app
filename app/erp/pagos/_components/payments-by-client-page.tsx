@@ -200,10 +200,9 @@ export function PaymentsByClientPage({
             <Button
               color="primary"
               isDisabled={!selectedClientId || loadingClientData}
-              isLoading={loadingClientData}
               onPress={() => loadClientData(selectedClientId)}
             >
-              Cargar cartera del cliente
+              {loadingClientData ? "Cargando..." : "Cargar cartera del cliente"}
             </Button>
           </div>
         </CardBody>

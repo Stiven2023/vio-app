@@ -267,7 +267,7 @@ export function EnviosPage() {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
+      <Modal disableAnimation isOpen={modalOpen} onOpenChange={setModalOpen}>
         <ModalContent>
           <ModalHeader>Register shipment</ModalHeader>
           <ModalBody>
@@ -461,8 +461,8 @@ export function EnviosPage() {
             >
               Cancel
             </Button>
-            <Button color="primary" isLoading={saving} onPress={createShipment}>
-              Save shipment
+            <Button color="primary" isDisabled={saving} onPress={createShipment}>
+              {saving ? "Saving..." : "Save shipment"}
             </Button>
           </ModalFooter>
         </ModalContent>

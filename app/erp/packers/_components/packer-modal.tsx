@@ -376,6 +376,7 @@ export function PackerModal({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen && !importPromptOpen}
       scrollBehavior="inside"
       size="3xl"
@@ -482,7 +483,7 @@ export function PackerModal({
           >
             Cancel
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {packer ? "Save" : "Create"}
           </Button>
         </ModalFooter>

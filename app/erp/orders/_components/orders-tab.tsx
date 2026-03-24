@@ -595,7 +595,7 @@ export function OrdersTab({
         }}
       />
 
-      <Modal isOpen={historyOpen} onOpenChange={setHistoryOpen}>
+      <Modal disableAnimation isOpen={historyOpen} onOpenChange={setHistoryOpen}>
         <ModalContent>
           <ModalHeader>Status history</ModalHeader>
           <ModalBody>
@@ -630,6 +630,7 @@ export function OrdersTab({
       </Modal>
 
       <Modal
+        disableAnimation
         isOpen={readyOpen}
         onOpenChange={(open) => {
           setReadyOpen(open);
@@ -704,10 +705,9 @@ export function OrdersTab({
             <Button
               color="primary"
               isDisabled={!readyOrder || readySubmitting}
-              isLoading={readySubmitting}
               onPress={confirmReadyDispatch}
             >
-              Confirm dispatch
+              {readySubmitting ? "Confirmando..." : "Confirm dispatch"}
             </Button>
           </ModalFooter>
         </ModalContent>

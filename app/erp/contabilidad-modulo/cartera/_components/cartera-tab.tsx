@@ -396,13 +396,13 @@ export function CarteraTab({ canExport }: { canExport: boolean }) {
         {canExport && (
           <Button
             className="ml-auto"
-            isLoading={exporting}
+            isDisabled={exporting}
             size="sm"
             startContent={!exporting && <BsDownload />}
             variant="flat"
             onPress={handleExport}
           >
-            Export Excel
+            {exporting ? "Exporting..." : "Export Excel"}
           </Button>
         )}
       </div>

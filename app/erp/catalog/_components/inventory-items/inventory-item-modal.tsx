@@ -223,7 +223,7 @@ export function InventoryItemModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>{item ? "Editar item" : "Crear item"}</ModalHeader>
         <ModalBody>
@@ -411,7 +411,7 @@ export function InventoryItemModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {item ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

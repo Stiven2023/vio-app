@@ -22,6 +22,12 @@ export function QuotationsForm({
   loadingClients,
   onFormChange,
 }: QuotationsFormProps) {
+  const CLIENT_PRICE_TYPE_OPTIONS = [
+    "AUTORIZADO",
+    "MAYORISTA",
+    "VIOMAR",
+    "COLANTA",
+  ] as const;
   const isMounted = useClientOnly();
   const clientsWithCode = clients.filter((client) =>
     Boolean(client.clientCode),
@@ -171,6 +177,36 @@ export function QuotationsForm({
         {isMounted ? (
           <Select
             classNames={{ trigger: "min-h-12" }}
+            isDisabled={form.currency !== "COP"}
+            label="Tipo de cliente (COP)"
+            selectedKeys={
+              form.clientPriceTypeDisplay ? [form.clientPriceTypeDisplay] : []
+            }
+            variant="bordered"
+            onSelectionChange={(keys) => {
+              const first = String(Array.from(keys)[0] ?? "VIOMAR");
+
+              onFormChange({
+                clientPriceTypeDisplay:
+                  first === "AUTORIZADO" ||
+                  first === "MAYORISTA" ||
+                  first === "VIOMAR" ||
+                  first === "COLANTA"
+                    ? first
+                    : "VIOMAR",
+              });
+            }}
+          >
+            {CLIENT_PRICE_TYPE_OPTIONS.map((priceType) => (
+              <SelectItem key={priceType}>{priceType}</SelectItem>
+            ))}
+          </Select>
+        ) : (
+          <Skeleton className="rounded-lg h-12" />
+        )}
+        {isMounted ? (
+          <Select
+            classNames={{ trigger: "min-h-12" }}
             label="Moneda"
             selectedKeys={[form.currency]}
             variant="bordered"
@@ -225,20 +261,20 @@ export function QuotationsForm({
         ) : (
           <Skeleton className="rounded-lg h-12" />
         )}
-        {form.paymentTerms === "CREDITO" && (
+        <div className={form.paymentTerms === "CREDITO" ? "block" : "hidden"}>
           <Input
             isReadOnly
             errorMessage={
-              !clientPromissoryNumber
+              form.paymentTerms === "CREDITO" && !clientPromissoryNumber
                 ? "The client has no promissory note number registered."
                 : undefined
             }
-            isInvalid={!clientPromissoryNumber}
+            isInvalid={form.paymentTerms === "CREDITO" && !clientPromissoryNumber}
             label="Promissory Note Number"
             value={clientPromissoryNumber || form.promissoryNoteNumber}
             variant="bordered"
           />
-        )}
+        </div>
       </div>
     </div>
   );

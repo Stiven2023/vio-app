@@ -509,6 +509,9 @@ export async function POST(request: Request) {
       const clientPriceType = String(body?.clientPriceType ?? "")
         .trim()
         .toUpperCase();
+      const documentType = String(body?.documentType ?? "F").trim().toUpperCase() === "R"
+        ? "R"
+        : "F";
       const currency =
         String(body?.currency ?? "COP")
           .trim()
@@ -566,7 +569,7 @@ export async function POST(request: Request) {
                 kind: "NUEVO" as any,
                 status: "PENDIENTE" as any,
                 total,
-                ivaEnabled: String(body?.documentType ?? "F") === "F",
+                ivaEnabled: documentType === "F",
                 discount: "0",
                 currency,
                 shippingFee,
@@ -933,21 +936,22 @@ export async function POST(request: Request) {
                 clientPriceType: clientPriceType || "VIOMAR",
                 municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
                 taxZoneSnapshot,
-                withholdingTaxRate: toNumericString(body?.withholdingTaxRate),
-                withholdingIcaRate: toNumericString(body?.withholdingIcaRate),
-                withholdingIvaRate: toNumericString(body?.withholdingIvaRate),
-                withholdingTaxAmount: toNumericString(
-                  body?.withholdingTaxAmount,
-                ),
-                withholdingIcaAmount: toNumericString(
-                  body?.withholdingIcaAmount,
-                ),
-                withholdingIvaAmount: toNumericString(
-                  body?.withholdingIvaAmount,
-                ),
-                totalAfterWithholdings: toNumericString(
-                  body?.totalAfterWithholdings,
-                ),
+                withholdingTaxRate:
+                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxRate),
+                withholdingIcaRate:
+                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaRate),
+                withholdingIvaRate:
+                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaRate),
+                withholdingTaxAmount:
+                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxAmount),
+                withholdingIcaAmount:
+                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaAmount),
+                withholdingIvaAmount:
+                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaAmount),
+                totalAfterWithholdings:
+                  documentType === "R"
+                    ? toNumericString(body?.total)
+                    : toNumericString(body?.totalAfterWithholdings),
               })
               .returning({
                 id: prefacturas.id,

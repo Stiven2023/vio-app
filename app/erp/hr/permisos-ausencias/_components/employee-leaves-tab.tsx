@@ -172,7 +172,7 @@ function LeaveModal({
   }, [draft.leaveType, setDraft]);
 
   return (
-    <Modal isOpen={open} size="3xl" onClose={onClose}>
+    <Modal disableAnimation isOpen={open} size="3xl" onClose={onClose}>
       <ModalContent>
         <ModalHeader>{title}</ModalHeader>
         <ModalBody>
@@ -280,8 +280,8 @@ function LeaveModal({
           <Button isDisabled={loading} variant="flat" onPress={onClose}>
             Cancel
           </Button>
-          <Button color="primary" isLoading={loading} onPress={onSubmit}>
-            Save
+          <Button color="primary" isDisabled={loading} onPress={onSubmit}>
+            {loading ? "Saving..." : "Save"}
           </Button>
         </ModalFooter>
       </ModalContent>

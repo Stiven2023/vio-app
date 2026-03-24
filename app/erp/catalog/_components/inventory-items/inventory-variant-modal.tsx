@@ -103,7 +103,7 @@ export function InventoryVariantModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {variant ? "Editar variante" : "Crear variante"}
@@ -138,7 +138,7 @@ export function InventoryVariantModal({
           <Button variant="flat" onPress={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {variant ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

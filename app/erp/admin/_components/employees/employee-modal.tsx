@@ -322,6 +322,7 @@ export function EmployeeModal({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen && !importPromptOpen}
       scrollBehavior="inside"
       size="3xl"
@@ -658,7 +659,7 @@ export function EmployeeModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {employee ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

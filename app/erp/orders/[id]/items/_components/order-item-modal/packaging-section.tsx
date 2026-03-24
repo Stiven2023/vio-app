@@ -35,6 +35,65 @@ function formatCount(value: number) {
   }).format(value);
 }
 
+function buildGroupedFromIndividuals(rows: OrderItemPackagingInput[]) {
+  const map = new Map<string, number>();
+
+  for (const row of rows) {
+    const size = String(row.size ?? "")
+      .trim()
+      .toUpperCase();
+
+    if (!size) continue;
+    map.set(size, (map.get(size) ?? 0) + 1);
+  }
+
+  return Array.from(map.entries()).map(([size, quantity]) => ({
+    mode: "AGRUPADO" as const,
+    size,
+    quantity,
+  }));
+}
+
+function splitCsvLine(line: string) {
+  const out: string[] = [];
+  let current = "";
+  let quoted = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      if (quoted && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        quoted = !quoted;
+      }
+      continue;
+    }
+
+    if ((ch === "," || ch === ";") && !quoted) {
+      out.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += ch;
+  }
+
+  out.push(current.trim());
+
+  return out;
+}
+
+function csvEscape(value: string) {
+  if (/[",\n;]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+
+  return value;
+}
+
 export function PackagingSection({
   mode: _mode,
   packaging,
@@ -55,12 +114,25 @@ export function PackagingSection({
   onError?: (message: string) => void;
 }) {
   const [curveExceeded, setCurveExceeded] = React.useState(false);
-  const groupedRows = (packaging ?? []).filter(
-    (p) => String(p.mode ?? "").toUpperCase() === "AGRUPADO",
+  const individualRows = (packaging ?? [])
+    .filter((p) => String(p.mode ?? "").toUpperCase() !== "AGRUPADO")
+    .flatMap((p) => {
+      const qty = Math.max(1, Math.floor(Number(p.quantity ?? 1)));
+
+      return Array.from({ length: qty }).map(() => ({
+        ...p,
+        mode: "INDIVIDUAL" as const,
+        quantity: 1,
+      }));
+    });
+  const groupedRows = React.useMemo(
+    () => buildGroupedFromIndividuals(individualRows),
+    [individualRows],
   );
-  const individualRows = (packaging ?? []).filter(
-    (p) => String(p.mode ?? "").toUpperCase() !== "AGRUPADO",
-  );
+  const isObjectGarment =
+    String(garmentType ?? "")
+      .trim()
+      .toUpperCase() === "OBJETO";
 
   const groupedMap = React.useMemo(() => {
     const map = new Map<string, number>();
@@ -93,6 +165,16 @@ export function PackagingSection({
     0,
   );
   const groupedTotal = kidsTotal + adultsTotal;
+  const individualTotal = React.useMemo(
+    () =>
+      individualRows.reduce((acc, row) => {
+        const qty = Number(row.quantity ?? 0);
+
+        return acc + (Number.isFinite(qty) ? Math.max(0, Math.floor(qty)) : 0);
+      }, 0),
+    [individualRows],
+  );
+  const pendingToAssign = Math.max(0, groupedTotal - individualTotal);
   const maxAllowedCurve = Number.isFinite(Number(maxCurveQuantity))
     ? Math.max(0, Math.floor(Number(maxCurveQuantity)))
     : null;
@@ -100,48 +182,76 @@ export function PackagingSection({
     (maxAllowedCurve !== null && groupedTotal > maxAllowedCurve) ||
     curveExceeded;
 
+  const syncFromIndividuals = React.useCallback(
+    (rows: OrderItemPackagingInput[]) => {
+      const normalized = rows.map((r) => ({
+        ...r,
+        mode: "INDIVIDUAL" as const,
+        quantity: 1,
+      }));
+      const grouped = buildGroupedFromIndividuals(normalized);
+
+      onPackagingChange([...grouped, ...normalized]);
+    },
+    [onPackagingChange],
+  );
+
   const setGroupedQty = (size: string, raw: string) => {
     const qty = parseCount(raw);
     const normalized = String(size).trim().toUpperCase();
-    const currentGrouped = (packaging ?? [])
-      .filter((row) => String(row.mode ?? "").toUpperCase() === "AGRUPADO")
-      .filter((row) => String(row.size ?? "").trim() !== "");
-    const currentIndividual = (packaging ?? []).filter(
-      (row) => String(row.mode ?? "").toUpperCase() !== "AGRUPADO",
-    );
+    const nextIndividuals = [...individualRows];
+    const currentBySize = nextIndividuals.filter(
+      (row) => String(row.size ?? "").trim().toUpperCase() === normalized,
+    ).length;
 
-    const nextGrouped = currentGrouped.filter(
-      (row) =>
-        String(row.size ?? "")
-          .trim()
-          .toUpperCase() !== normalized,
-    );
+    const currentTotal = nextIndividuals.length;
+    const nextTotal = currentTotal - currentBySize + qty;
 
-    if (qty > 0) {
-      nextGrouped.push({ mode: "AGRUPADO", size: normalized, quantity: qty });
+    if (maxAllowedCurve !== null && nextTotal > maxAllowedCurve) {
+      setCurveExceeded(true);
+      onError?.(
+        `La curva no puede superar la cantidad del diseño (${formatCount(maxAllowedCurve)}).`,
+      );
+
+      return;
     }
 
-    if (maxAllowedCurve !== null) {
-      const nextGroupedTotal = nextGrouped.reduce((acc, row) => {
-        const rowQty = Number(row.quantity ?? 0);
+    if (qty > currentBySize) {
+      const delta = qty - currentBySize;
 
-        return (
-          acc + (Number.isFinite(rowQty) ? Math.max(0, Math.floor(rowQty)) : 0)
-        );
-      }, 0);
+      for (let i = 0; i < delta; i += 1) {
+        nextIndividuals.push({
+          mode: "INDIVIDUAL",
+          size: normalized,
+          quantity: 1,
+          personName: "",
+          personNumber: "",
+        });
+      }
+    } else if (qty < currentBySize) {
+      let toRemove = currentBySize - qty;
 
-      if (nextGroupedTotal > maxAllowedCurve) {
+      for (let i = nextIndividuals.length - 1; i >= 0 && toRemove > 0; i -= 1) {
+        const sameSize =
+          String(nextIndividuals[i].size ?? "").trim().toUpperCase() === normalized;
+
+        if (!sameSize) continue;
+        nextIndividuals.splice(i, 1);
+        toRemove -= 1;
+      }
+    }
+
+    if (maxAllowedCurve !== null && nextIndividuals.length > maxAllowedCurve) {
         setCurveExceeded(true);
         onError?.(
           `La curva no puede superar la cantidad del diseño (${formatCount(maxAllowedCurve)}).`,
         );
 
         return;
-      }
     }
 
     setCurveExceeded(false);
-    onPackagingChange([...nextGrouped, ...currentIndividual]);
+    syncFromIndividuals(nextIndividuals);
   };
 
   async function onImportExcel(file: File) {
@@ -149,18 +259,158 @@ export function PackagingSection({
       const rows = await readExcelFirstSheetRows(file);
       const parsed = parseIndividualPackagingFromRows(rows);
 
-      const next: OrderItemPackagingInput[] = parsed.map((p) => ({
-        mode: "INDIVIDUAL",
-        size: p.size,
-        quantity: p.quantity,
-        personName: p.personName,
-        personNumber: p.personNumber,
-      }));
+      const next: OrderItemPackagingInput[] = parsed.flatMap((p) => {
+        const qty = Math.max(1, Math.floor(Number(p.quantity ?? 1)));
 
-      onPackagingChange([...groupedRows, ...next]);
+        return Array.from({ length: qty }).map(() => ({
+          mode: "INDIVIDUAL",
+          size: p.size,
+          quantity: 1,
+          personName: p.personName,
+          personNumber: p.personNumber,
+        }));
+      });
+
+      syncFromIndividuals(next);
     } catch (e: any) {
       onError?.(e?.message ?? "No se pudo importar el Excel de empaque");
     }
+  }
+
+  async function onImportCsv(file: File) {
+    try {
+      const text = await file.text();
+      const lines = text
+        .replace(/^\uFEFF/, "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (lines.length === 0) {
+        onError?.("El CSV está vacío.");
+
+        return;
+      }
+
+      const headers = splitCsvLine(lines[0]).map((h) => h.toLowerCase());
+      const rows = lines.slice(1).map((line) => splitCsvLine(line));
+
+      const next: OrderItemPackagingInput[] = [];
+
+      if (isObjectGarment) {
+        const qtyIdx = headers.findIndex(
+          (h) => h === "cantidad" || h === "qty" || h === "quantity",
+        );
+
+        if (qtyIdx < 0) {
+          onError?.("CSV inválido: para OBJETO se requiere columna 'cantidad'.");
+
+          return;
+        }
+
+        for (const row of rows) {
+          const qty = Math.max(1, parseCount(row[qtyIdx] ?? "0"));
+
+          for (let i = 0; i < qty; i += 1) {
+            next.push({
+              mode: "INDIVIDUAL",
+              size: "",
+              quantity: 1,
+              personName: "",
+              personNumber: "",
+            });
+          }
+        }
+      } else {
+        const numberIdx = headers.findIndex(
+          (h) => h === "numero" || h === "número" || h === "number",
+        );
+        const nameIdx = headers.findIndex(
+          (h) => h === "nombre" || h === "name",
+        );
+        const sizeIdx = headers.findIndex(
+          (h) => h === "talla" || h === "size",
+        );
+        const qtyIdx = headers.findIndex(
+          (h) => h === "cantidad" || h === "qty" || h === "quantity",
+        );
+
+        if (sizeIdx < 0) {
+          onError?.("CSV inválido: falta la columna 'talla'.");
+
+          return;
+        }
+
+        for (const row of rows) {
+          const size = String(row[sizeIdx] ?? "").trim();
+
+          if (!size) continue;
+
+          const qty = qtyIdx >= 0 ? Math.max(1, parseCount(row[qtyIdx] ?? "0")) : 1;
+
+          for (let i = 0; i < qty; i += 1) {
+            next.push({
+              mode: "INDIVIDUAL",
+              size,
+              quantity: 1,
+              personName: nameIdx >= 0 ? String(row[nameIdx] ?? "") : "",
+              personNumber: numberIdx >= 0 ? String(row[numberIdx] ?? "") : "",
+            });
+          }
+        }
+      }
+
+      syncFromIndividuals(next);
+    } catch {
+      onError?.("No se pudo importar el CSV de empaque.");
+    }
+  }
+
+  async function onImportFile(file: File) {
+    const lower = file.name.toLowerCase();
+
+    if (lower.endsWith(".csv")) {
+      await onImportCsv(file);
+
+      return;
+    }
+
+    await onImportExcel(file);
+  }
+
+  function downloadCsv(rows: OrderItemPackagingInput[], filename: string) {
+    const lines: string[] = [];
+
+    if (isObjectGarment) {
+      lines.push("cantidad");
+      for (const row of rows) {
+        lines.push(String(Math.max(1, Number(row.quantity ?? 1))));
+      }
+    } else {
+      lines.push("numero,nombre,talla");
+      for (const row of rows) {
+        lines.push(
+          [
+            csvEscape(String(row.personNumber ?? "")),
+            csvEscape(String(row.personName ?? "")),
+            csvEscape(String(row.size ?? "")),
+          ].join(","),
+        );
+      }
+    }
+
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -258,7 +508,7 @@ export function PackagingSection({
             variant="flat"
             onPress={() => {
               setCurveExceeded(false);
-              onPackagingChange(individualRows);
+              syncFromIndividuals([]);
             }}
           >
             Limpiar curva
@@ -281,9 +531,16 @@ export function PackagingSection({
             isDisabled={disabled}
             size="sm"
             variant="flat"
-            onPress={() =>
-              onPackagingChange([
-                ...groupedRows,
+            onPress={() => {
+              if (groupedTotal > 0 && pendingToAssign <= 0) {
+                onError?.(
+                  "La lista de empaque ya tiene asignada toda la cantidad de la curva.",
+                );
+
+                return;
+              }
+
+              syncFromIndividuals([
                 ...individualRows,
                 {
                   mode: "INDIVIDUAL",
@@ -292,17 +549,31 @@ export function PackagingSection({
                   personName: "",
                   personNumber: "",
                 },
-              ])
-            }
+              ]);
+            }}
           >
             Agregar
           </Button>
         </div>
 
-        <div>
-          <div className="text-sm text-default-600 mb-1">Importar Excel</div>
+        <div className="rounded-medium border border-default-200 bg-content2 px-3 py-2 text-xs text-default-600">
+          <span className="font-semibold">Curva:</span> {formatCount(groupedTotal) || "0"}
+          {"  ·  "}
+          <span className="font-semibold">Lista:</span> {formatCount(individualTotal) || "0"}
+          {"  ·  "}
+          <span className="font-semibold">Pendiente:</span> {formatCount(pendingToAssign) || "0"}
+        </div>
+
+        {groupedTotal > 0 && individualTotal !== groupedTotal ? (
+          <div className="text-xs text-warning">
+            La suma de la lista de empaque debe ser igual al total de la curva.
+          </div>
+        ) : null}
+
+        <div className="rounded-medium border border-default-200 bg-content2/40 p-3 space-y-2">
+          <div className="text-sm font-semibold">Importar / Exportar lista</div>
           <input
-            accept=".xlsx,.xls"
+            accept=".csv,.xlsx,.xls"
             disabled={disabled}
             type="file"
             onChange={(e) => {
@@ -310,30 +581,88 @@ export function PackagingSection({
 
               if (!f) return;
 
-              onImportExcel(f);
+              onImportFile(f);
+              e.currentTarget.value = "";
             }}
           />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              isDisabled={disabled}
+              size="sm"
+              variant="flat"
+              onPress={() => downloadCsv([], isObjectGarment ? "plantilla-empaque-objeto.csv" : "plantilla-empaque.csv")}
+            >
+              Descargar plantilla CSV
+            </Button>
+            <Button
+              isDisabled={disabled || individualRows.length === 0}
+              size="sm"
+              variant="flat"
+              onPress={() =>
+                downloadCsv(
+                  individualRows,
+                  isObjectGarment
+                    ? "lista-empaque-objeto.csv"
+                    : "lista-empaque.csv",
+                )
+              }
+            >
+              Descargar lista CSV
+            </Button>
+          </div>
           <div className="text-xs text-default-500 mt-1">
-            Columnas esperadas: nombre, numero (opcional), talla.
+            {isObjectGarment
+              ? "CSV OBJETO: cantidad."
+              : "CSV normal: numero, nombre, talla (cada fila cuenta como 1)."}
           </div>
         </div>
 
         {individualRows.length === 0 ? (
           <div className="text-sm text-default-500">Sin registros.</div>
+        ) : isObjectGarment ? (
+          <div className="rounded-medium border border-default-200 overflow-x-auto">
+            <div className="grid min-w-[360px] grid-cols-[1fr_120px] gap-2 border-b border-default-200 bg-content2 px-3 py-2 text-xs font-semibold uppercase text-default-500">
+              <div>Item</div>
+              <div />
+            </div>
+
+            {individualRows.map((p, idx) => (
+              <div
+                key={`${idx}`}
+                className="grid min-w-[360px] grid-cols-[1fr_120px] gap-2 px-3 py-2 text-sm"
+              >
+                <div className="rounded-medium border border-default-200 bg-content1 px-3 py-2 text-default-600">
+                  Unidad {idx + 1}
+                </div>
+                <Button
+                  color="danger"
+                  isDisabled={disabled}
+                  size="sm"
+                  variant="flat"
+                  onPress={() => {
+                    const next = individualRows.filter((_, i) => i !== idx);
+
+                    syncFromIndividuals(next);
+                  }}
+                >
+                  Quitar
+                </Button>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="rounded-medium border border-default-200 overflow-x-auto">
-            <div className="grid min-w-[780px] grid-cols-[120px_1.6fr_1fr_100px_120px] gap-2 border-b border-default-200 bg-content2 px-3 py-2 text-xs font-semibold uppercase text-default-500">
+            <div className="grid min-w-[720px] grid-cols-[120px_1.6fr_1fr_120px] gap-2 border-b border-default-200 bg-content2 px-3 py-2 text-xs font-semibold uppercase text-default-500">
               <div>Numero</div>
               <div>Nombre</div>
               <div>Talla</div>
-              <div>Cantidad</div>
               <div />
             </div>
 
             {individualRows.map((p, idx) => (
               <div
                 key={`${p.personNumber ?? ""}-${idx}`}
-                className="grid min-w-[780px] grid-cols-[120px_1.6fr_1fr_100px_120px] gap-2 px-3 py-2 text-sm"
+                className="grid min-w-[720px] grid-cols-[120px_1.6fr_1fr_120px] gap-2 px-3 py-2 text-sm"
               >
                 <Input
                   isDisabled={disabled}
@@ -345,9 +674,10 @@ export function PackagingSection({
                     next[idx] = {
                       ...next[idx],
                       mode: "INDIVIDUAL",
+                      quantity: 1,
                       personNumber: v,
                     };
-                    onPackagingChange([...groupedRows, ...next]);
+                    syncFromIndividuals(next);
                   }}
                 />
                 <Input
@@ -360,9 +690,10 @@ export function PackagingSection({
                     next[idx] = {
                       ...next[idx],
                       mode: "INDIVIDUAL",
+                      quantity: 1,
                       personName: v,
                     };
-                    onPackagingChange([...groupedRows, ...next]);
+                    syncFromIndividuals(next);
                   }}
                 />
                 <Input
@@ -372,24 +703,13 @@ export function PackagingSection({
                   onValueChange={(v: string) => {
                     const next = [...individualRows];
 
-                    next[idx] = { ...next[idx], mode: "INDIVIDUAL", size: v };
-                    onPackagingChange([...groupedRows, ...next]);
-                  }}
-                />
-                <Input
-                  isDisabled={disabled}
-                  placeholder="0"
-                  size="sm"
-                  value={formatCount(Number(p.quantity ?? 0))}
-                  onValueChange={(v: string) => {
-                    const next = [...individualRows];
-
                     next[idx] = {
                       ...next[idx],
                       mode: "INDIVIDUAL",
-                      quantity: Math.max(1, parseCount(v)),
+                      quantity: 1,
+                      size: v,
                     };
-                    onPackagingChange([...groupedRows, ...next]);
+                    syncFromIndividuals(next);
                   }}
                 />
                 <Button
@@ -400,7 +720,7 @@ export function PackagingSection({
                   onPress={() => {
                     const next = individualRows.filter((_, i) => i !== idx);
 
-                    onPackagingChange([...groupedRows, ...next]);
+                    syncFromIndividuals(next);
                   }}
                 >
                   Quitar

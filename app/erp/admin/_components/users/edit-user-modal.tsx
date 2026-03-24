@@ -65,7 +65,7 @@ export function EditUserModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Editar usuario</ModalHeader>
         <ModalBody>
@@ -90,8 +90,8 @@ export function EditUserModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            Guardar
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Guardando..." : "Guardar"}
           </Button>
         </ModalFooter>
       </ModalContent>

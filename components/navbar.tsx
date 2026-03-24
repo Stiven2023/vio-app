@@ -124,9 +124,9 @@ const getModuleFromPath = (pathname: string): AppModule => {
 export const Navbar = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>(() =>
-    resolvePreferredLocale(pathname),
-  );
+  const [currentLocale, setCurrentLocale] =
+    useState<SupportedLocale>(defaultAppLocale);
+  const [localeHydrated, setLocaleHydrated] = useState(false);
   const currentModule = getModuleFromPath(pathname);
   const moduleRoot = currentModule === "erp" ? "/erp" : `/${currentModule}`;
   const moduleTitle = currentModule.toUpperCase();
@@ -163,23 +163,25 @@ export const Navbar = () => {
   const [canSeePayments, setCanSeePayments] = useState(false);
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const localeForRender = localeHydrated ? currentLocale : defaultAppLocale;
 
   const uiText = useMemo(
     () => ({
-      dashboard: currentLocale === "es" ? "Panel" : "Dashboard",
-      shipments: currentLocale === "es" ? "Envíos" : "Shipments",
-      options: currentLocale === "es" ? "Opciones" : "Options",
-      more: currentLocale === "es" ? "Más" : "More",
+      dashboard: localeForRender === "es" ? "Panel" : "Dashboard",
+      shipments: localeForRender === "es" ? "Envíos" : "Shipments",
+      options: localeForRender === "es" ? "Opciones" : "Options",
+      more: localeForRender === "es" ? "Más" : "More",
       english: "English (ENG)",
       spanish: "Español (ESP)",
-      user: currentLocale === "es" ? "Usuario" : "User",
-      currentUser: currentLocale === "es" ? "Usuario actual" : "Current user",
+      user: localeForRender === "es" ? "Usuario" : "User",
+      currentUser:
+        localeForRender === "es" ? "Usuario actual" : "Current user",
       notifications:
-        currentLocale === "es" ? "Notificaciones" : "Notifications",
-      logOut: currentLocale === "es" ? "Cerrar sesión" : "Log out",
-      noRole: currentLocale === "es" ? "SIN_ROL" : "NO_ROLE",
+        localeForRender === "es" ? "Notificaciones" : "Notifications",
+      logOut: localeForRender === "es" ? "Cerrar sesión" : "Log out",
+      noRole: localeForRender === "es" ? "SIN_ROL" : "NO_ROLE",
     }),
-    [currentLocale],
+    [localeForRender],
   );
 
   const effectiveRole = role ?? null;
@@ -291,6 +293,7 @@ export const Navbar = () => {
 
   useEffect(() => {
     setCurrentLocale(resolvePreferredLocale(pathname));
+    setLocaleHydrated(true);
   }, [pathname]);
 
   useEffect(() => {
@@ -630,7 +633,7 @@ export const Navbar = () => {
           <Dropdown placement="bottom-end">
             <DropdownTrigger>
               <Button className="min-w-16" size="sm" variant="light">
-                {localeLabel[currentLocale]}
+                      {localeLabel[localeForRender]}
               </Button>
             </DropdownTrigger>
             <DropdownMenu
@@ -730,7 +733,7 @@ export const Navbar = () => {
         <Dropdown placement="bottom-end">
           <DropdownTrigger>
             <Button className="min-w-14" size="sm" variant="light">
-              {localeLabel[currentLocale]}
+              {localeLabel[localeForRender]}
             </Button>
           </DropdownTrigger>
           <DropdownMenu

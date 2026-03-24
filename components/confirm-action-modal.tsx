@@ -34,6 +34,7 @@ export function ConfirmActionModal({
 }: ConfirmActionModalProps) {
   return (
     <Modal
+      disableAnimation
       isDismissable={!isLoading}
       isKeyboardDismissDisabled={Boolean(isLoading)}
       isOpen={isOpen}
@@ -54,10 +55,10 @@ export function ConfirmActionModal({
           </Button>
           <Button
             color={confirmColor}
-            isLoading={Boolean(isLoading)}
+            isDisabled={Boolean(isLoading)}
             onPress={onConfirm}
           >
-            {confirmLabel}
+            {isLoading ? "Procesando..." : confirmLabel}
           </Button>
         </ModalFooter>
       </ModalContent>

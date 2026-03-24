@@ -101,7 +101,7 @@ export function ResetPasswordModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Enter token</ModalHeader>
         <ModalBody>

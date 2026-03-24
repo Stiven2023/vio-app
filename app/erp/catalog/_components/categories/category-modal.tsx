@@ -71,7 +71,7 @@ export function CategoryModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {category ? "Editar categoría" : "Crear categoría"}
@@ -93,8 +93,8 @@ export function CategoryModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            {category ? "Guardar" : "Crear"}
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Guardando..." : category ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

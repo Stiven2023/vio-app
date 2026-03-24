@@ -367,7 +367,7 @@ function GenerateModal({ open, onClose, onSuccess }: GenerateModalProps) {
   }
 
   return (
-    <Modal isOpen={open} scrollBehavior="inside" size="5xl" onClose={onClose}>
+    <Modal disableAnimation isOpen={open} scrollBehavior="inside" size="5xl" onClose={onClose}>
       <ModalContent>
         {() => (
           <>
@@ -391,12 +391,11 @@ function GenerateModal({ open, onClose, onSuccess }: GenerateModalProps) {
                 />
                 <Button
                   color="primary"
-                  isDisabled={!validPeriodFormat(period)}
-                  isLoading={loadingEmployees}
+                  isDisabled={!validPeriodFormat(period) || loadingEmployees}
                   variant="flat"
                   onPress={loadEmployees}
                 >
-                  Load employees
+                  {loadingEmployees ? "Loading..." : "Load employees"}
                 </Button>
               </div>
 
@@ -559,11 +558,10 @@ function GenerateModal({ open, onClose, onSuccess }: GenerateModalProps) {
               </Button>
               <Button
                 color="primary"
-                isDisabled={!fetched || includedRows.length === 0}
-                isLoading={submitting}
+                isDisabled={!fetched || includedRows.length === 0 || submitting}
                 onPress={handleSubmit}
               >
-                Generate {includedRows.length > 0 && `(${includedRows.length})`}
+                {submitting ? "Generating..." : `Generate${includedRows.length > 0 ? ` (${includedRows.length})` : ""}`}
               </Button>
             </ModalFooter>
           </>
@@ -639,7 +637,7 @@ function EditModal({ provision, onClose, onSuccess }: EditModalProps) {
   }
 
   return (
-    <Modal isOpen={!!provision} size="lg" onClose={onClose}>
+    <Modal disableAnimation isOpen={!!provision} size="lg" onClose={onClose}>
       <ModalContent>
         {() => (
           <>
@@ -726,10 +724,10 @@ function EditModal({ provision, onClose, onSuccess }: EditModalProps) {
               </Button>
               <Button
                 color="primary"
-                isLoading={submitting}
+                isDisabled={submitting}
                 onPress={handleSave}
               >
-                Save
+                {submitting ? "Saving..." : "Save"}
               </Button>
             </ModalFooter>
           </>
@@ -795,13 +793,12 @@ export function PayrollProvisionsTab({ canCreate }: { canCreate: boolean }) {
         </p>
         <div className="flex gap-2">
           <Button
-            isDisabled={items.length === 0}
-            isLoading={exporting}
+            isDisabled={items.length === 0 || exporting}
             startContent={<BsDownload />}
             variant="flat"
             onPress={handleExport}
           >
-            Export
+            {exporting ? "Exporting..." : "Export"}
           </Button>
           {canCreate && (
             <Button

@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 
 import { DesignSection } from "../../../_components/order-item-modal/design-section";
@@ -18,6 +19,10 @@ import {
 
 import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
 import { getErrorMessage } from "@/app/erp/orders/_lib/api";
+import type {
+  MoldingTemplateDetail,
+  MoldingTemplateRow,
+} from "@/app/erp/molding/_lib/types";
 
 type Currency = "COP" | "USD";
 
@@ -50,6 +55,22 @@ function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
 
   return Number.isFinite(n) ? n : 0;
+}
+
+function getPackagingTotals(rows: Array<{ mode?: string; quantity?: number }>) {
+  let groupedTotal = 0;
+  let individualTotal = 0;
+
+  for (const row of rows ?? []) {
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.floor(qty)) : 0;
+    const mode = String(row?.mode ?? "").trim().toUpperCase();
+
+    if (mode === "AGRUPADO") groupedTotal += safeQty;
+    else individualTotal += safeQty;
+  }
+
+  return { groupedTotal, individualTotal };
 }
 
 function pickCopScaleByQuantity(row: ProductPriceRow, quantity: number) {
@@ -111,6 +132,57 @@ function resolveUnitPrice(args: {
   return row.priceCopInternational;
 }
 
+function normalizeItemGarmentType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    raw === "JUGADOR" ||
+    raw === "ARQUERO" ||
+    raw === "CAPITAN" ||
+    raw === "JUEZ" ||
+    raw === "ENTRENADOR" ||
+    raw === "LIBERO" ||
+    raw === "OBJETO"
+  ) {
+    return raw as
+      | "JUGADOR"
+      | "ARQUERO"
+      | "CAPITAN"
+      | "JUEZ"
+      | "ENTRENADOR"
+      | "LIBERO"
+      | "OBJETO";
+  }
+
+  return null;
+}
+
+function normalizeItemProcess(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "PRODUCCION" || raw === "BODEGA" || raw === "COMPRAS") {
+    return raw;
+  }
+
+  return null;
+}
+
+function normalizeItemSleeve(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "CORTA" || raw === "LARGA" || raw === "SISA") {
+    return raw;
+  }
+
+  return null;
+}
+
 export function OrderItemEditPage(props: {
   orderId: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
@@ -131,6 +203,12 @@ export function OrderItemEditPage(props: {
   const [initialValue, setInitialValue] = React.useState<
     Partial<OrderItemModalValue> | undefined
   >(undefined);
+  const [moldingTemplateId, setMoldingTemplateId] = React.useState<string | null>(null);
+  const [initialMoldingTemplateId, setInitialMoldingTemplateId] = React.useState<string | null>(null);
+  const [moldingTemplates, setMoldingTemplates] = React.useState<MoldingTemplateRow[]>([]);
+  const [loadingMoldings, setLoadingMoldings] = React.useState(false);
+  const [isApplyingMolding, setIsApplyingMolding] = React.useState(false);
+  const skipNextMoldingAutofillRef = React.useRef(false);
 
   React.useEffect(() => {
     let active = true;
@@ -152,6 +230,62 @@ export function OrderItemEditPage(props: {
       })
       .finally(() => {
         if (active) setLoadingItem(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [itemId]);
+
+  React.useEffect(() => {
+    let active = true;
+
+    setLoadingMoldings(true);
+    fetch(`/api/molding/templates?page=1&pageSize=500&activeOnly=true`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error(await r.text());
+
+        return (await r.json()) as { items: MoldingTemplateRow[] };
+      })
+      .then((d) => {
+        if (!active) return;
+        setMoldingTemplates(Array.isArray(d.items) ? d.items : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setMoldingTemplates([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoadingMoldings(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let active = true;
+
+    fetch(`/api/molding/order-items/${itemId}/moldings`)
+      .then(async (r) => {
+        if (!r.ok) return null;
+
+        return (await r.json()) as { items: Array<{ moldingTemplateId: string | null }> };
+      })
+      .then((d) => {
+        if (!active || !d) return;
+        const firstTemplateId = d.items?.[0]?.moldingTemplateId ?? null;
+
+        if (firstTemplateId) {
+          skipNextMoldingAutofillRef.current = true;
+        }
+        setMoldingTemplateId(firstTemplateId);
+        setInitialMoldingTemplateId(firstTemplateId);
+      })
+      .catch(() => {
+        // non-critical
       });
 
     return () => {
@@ -201,6 +335,138 @@ export function OrderItemEditPage(props: {
     orderId,
     initialValue,
   });
+
+  React.useEffect(() => {
+    const selectedId = String(moldingTemplateId ?? "").trim();
+
+    if (!selectedId) {
+      setIsApplyingMolding(false);
+
+      return;
+    }
+    if (skipNextMoldingAutofillRef.current) {
+      skipNextMoldingAutofillRef.current = false;
+
+      return;
+    }
+
+    let active = true;
+
+    setIsApplyingMolding(true);
+
+    fetch(`/api/molding/templates/${selectedId}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+
+        return (await res.json()) as MoldingTemplateDetail;
+      })
+      .then((template) => {
+        if (!active) return;
+
+        let hasChanges = false;
+
+        setItem((prev) => {
+          const updated = { ...prev };
+
+          if (!String(prev.garmentType ?? "").trim() && template.garmentType) {
+            updated.garmentType =
+              normalizeItemGarmentType(template.garmentType) ?? prev.garmentType;
+            if (updated.garmentType !== prev.garmentType) hasChanges = true;
+          }
+          if (!String(prev.observations ?? "").trim() && template.observations) {
+            updated.observations = template.observations;
+            hasChanges = true;
+          }
+          if (!String(prev.fabric ?? "").trim() && template.fabric) {
+            updated.fabric = template.fabric;
+            hasChanges = true;
+          }
+          if (!String(prev.imageUrl ?? "").trim() && template.clothingImageOneUrl) {
+            updated.imageUrl = template.clothingImageOneUrl;
+            hasChanges = true;
+          }
+          if (
+            !String(prev.clothingImageOneUrl ?? "").trim() &&
+            template.clothingImageOneUrl
+          ) {
+            updated.clothingImageOneUrl = template.clothingImageOneUrl;
+            hasChanges = true;
+          }
+          if (
+            !String(prev.clothingImageTwoUrl ?? "").trim() &&
+            template.clothingImageTwoUrl
+          ) {
+            updated.clothingImageTwoUrl = template.clothingImageTwoUrl;
+            hasChanges = true;
+          }
+          if (!String(prev.logoImageUrl ?? "").trim() && template.logoImageUrl) {
+            updated.logoImageUrl = template.logoImageUrl;
+            hasChanges = true;
+          }
+          if (!String(prev.gender ?? "").trim() && template.gender) {
+            updated.gender = template.gender;
+            hasChanges = true;
+          }
+          if (!String(prev.process ?? "").trim() && template.process) {
+            updated.process = normalizeItemProcess(template.process) ?? prev.process;
+            if (updated.process !== prev.process) hasChanges = true;
+          }
+          if (!String(prev.neckType ?? "").trim() && template.neckType) {
+            updated.neckType = template.neckType;
+            hasChanges = true;
+          }
+          if (!String(prev.sleeve ?? "").trim() && template.sleeveType) {
+            updated.sleeve = normalizeItemSleeve(template.sleeveType) ?? prev.sleeve;
+            if (updated.sleeve !== prev.sleeve) hasChanges = true;
+          }
+          if (!String(prev.color ?? "").trim() && template.color) {
+            updated.color = template.color;
+            hasChanges = true;
+          }
+          if (!prev.screenPrint && template.screenPrint) {
+            updated.screenPrint = true;
+            hasChanges = true;
+          }
+          if (!prev.embroidery && template.embroidery) {
+            updated.embroidery = true;
+            hasChanges = true;
+          }
+          if (!prev.buttonhole && template.buttonhole) {
+            updated.buttonhole = true;
+            hasChanges = true;
+          }
+          if (!prev.snap && template.snap) {
+            updated.snap = true;
+            hasChanges = true;
+          }
+          if (!prev.tag && template.tag) {
+            updated.tag = true;
+            hasChanges = true;
+          }
+          if (!prev.flag && template.flag) {
+            updated.flag = true;
+            hasChanges = true;
+          }
+
+          return updated;
+        });
+
+        if (hasChanges) {
+          toast.success(`Datos cargados de molderia: ${template.moldingCode}`);
+        }
+      })
+      .catch((e) => {
+        toast.error(getErrorMessage(e));
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsApplyingMolding(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [moldingTemplateId, setItem]);
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [loadingProducts, setLoadingProducts] = React.useState(false);
@@ -368,6 +634,15 @@ export function OrderItemEditPage(props: {
 
     const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
     const unitPrice = Math.max(0, asNumber(item.unitPrice));
+    const { groupedTotal, individualTotal } = getPackagingTotals(packaging);
+
+    if (groupedTotal !== individualTotal) {
+      setError(
+        `La lista de empaque debe sumar exactamente la curva (${groupedTotal}). Actualmente: ${individualTotal}.`,
+      );
+
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -396,10 +671,6 @@ export function OrderItemEditPage(props: {
             file: logoFile,
             folder: `order-items/${orderId}/logos`,
           });
-        }
-
-        if (!String(logoImageUrl ?? "").trim()) {
-          throw new Error("Debes cargar el logo del diseño");
         }
       }
 
@@ -450,6 +721,18 @@ export function OrderItemEditPage(props: {
       });
 
       if (!res.ok) throw new Error(await res.text());
+
+      if (moldingTemplateId && moldingTemplateId !== initialMoldingTemplateId) {
+        try {
+          await fetch(`/api/molding/order-items/${itemId}/moldings`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ moldingTemplateId }),
+          });
+        } catch {
+          // non-blocking
+        }
+      }
 
       toast.success("Diseño actualizado");
       window.location.href = `/orders/${orderId}/items`;
@@ -512,78 +795,56 @@ export function OrderItemEditPage(props: {
           {error ? <div className="text-sm text-danger">{error}</div> : null}
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Select
-              isDisabled={uiDisabled || loadingProducts || isRestricted}
+            <Input
+              isReadOnly
+              isDisabled
               label="Producto"
-              selectedKeys={item.productId ? [String(item.productId)] : []}
-              onSelectionChange={(keys: any) => {
-                const k = Array.from(keys as any)[0];
-
-                setItem((s) => ({
-                  ...s,
-                  productId: k ? String(k) : null,
-                }));
-              }}
-            >
-              {products.map((p) => (
-                <SelectItem key={p.id}>{p.name}</SelectItem>
-              ))}
-            </Select>
-
-            <Select
-              isDisabled={
-                uiDisabled ||
-                loadingPrices ||
-                !item.productId ||
-                isRestricted ||
-                prices.length === 0
-              }
-              label="Precio vigente (referencia)"
-              selectedKeys={
-                item.productPriceId ? [String(item.productPriceId)] : []
-              }
-              onSelectionChange={(keys: any) => {
-                const k = Array.from(keys as any)[0];
-                const id = k ? String(k) : "";
-                const row = prices.find((p) => p.id === id) ?? null;
-                const price = row
-                  ? resolveUnitPrice({
-                      currency: orderCurrency,
-                      clientPriceType: priceClientType,
-                      quantity: Math.max(
-                        1,
-                        Math.floor(asNumber(item.quantity)),
-                      ),
-                      row,
-                    })
-                  : null;
-
-                setItem((s) => ({
-                  ...s,
-                  productPriceId: id ? id : null,
-                  unitPrice: price ?? s.unitPrice,
-                }));
-              }}
-            >
-              {prices.map((pp) => {
-                const price = resolveUnitPrice({
-                  currency: orderCurrency,
-                  clientPriceType: priceClientType,
-                  quantity: Math.max(1, Math.floor(asNumber(item.quantity))),
-                  row: pp,
-                });
-                const label = price
-                  ? `${pp.referenceCode} — ${price}`
-                  : `${pp.referenceCode} — (sin precio aplicable)`;
-
-                return <SelectItem key={pp.id}>{label}</SelectItem>;
-              })}
-            </Select>
+              value={selectedProduct?.name ?? ""}
+            />
+            <Input
+              isReadOnly
+              isDisabled
+              label="Referencia"
+              value={selectedPrice?.referenceCode ?? ""}
+            />
           </div>
 
           {selectedProduct ? (
             <div className="text-sm text-default-600">
               Producto seleccionado: {selectedProduct.name}
+            </div>
+          ) : null}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Molderia</div>
+        </CardHeader>
+        <CardBody className="space-y-2">
+          <Select
+            isDisabled={
+              uiDisabled || loadingMoldings || isRestricted || isApplyingMolding
+            }
+            label="Plantilla de molderia (opcional)"
+            selectedKeys={moldingTemplateId ? [moldingTemplateId] : []}
+            onSelectionChange={(keys: any) => {
+              const k = Array.from(keys as any)[0];
+
+              setMoldingTemplateId(k ? String(k) : null);
+            }}
+          >
+            {moldingTemplates.map((t) => (
+              <SelectItem key={t.id}>
+                {t.moldingCode}
+                {t.garmentType ? ` — ${t.garmentType}` : ""}
+                {t.color ? ` / ${t.color}` : ""}
+              </SelectItem>
+            ))}
+          </Select>
+          {isApplyingMolding ? (
+            <div className="text-xs text-primary animate-pulse">
+              Aplicando datos de molderia...
             </div>
           ) : null}
         </CardBody>
@@ -672,11 +933,10 @@ export function OrderItemEditPage(props: {
         </Button>
         <Button
           color="primary"
-          isDisabled={isUploadingAssets || loadingItem}
-          isLoading={isSaving}
+          isDisabled={isUploadingAssets || loadingItem || isSaving}
           onPress={onSubmit}
         >
-          Guardar
+          {isSaving ? "Guardando..." : "Guardar"}
         </Button>
       </div>
     </div>

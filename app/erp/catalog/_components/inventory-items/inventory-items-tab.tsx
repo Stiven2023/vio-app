@@ -140,7 +140,7 @@ export function InventoryItemsTab({
           headers={["Nombre", "Unidad", "Stock actual", "Acciones"]}
         />
       ) : (
-        <Table aria-label="Inventario">
+        <Table removeWrapper aria-label="Inventario">
           <TableHeader>
             <TableColumn>Nombre</TableColumn>
             <TableColumn>Unidad</TableColumn>

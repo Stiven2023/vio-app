@@ -114,10 +114,9 @@ export function LoginAccessTabs({
               className="w-full font-semibold uppercase tracking-[0.2em]"
               color="primary"
               isDisabled={loading}
-              isLoading={loading}
               type="submit"
             >
-              Sign in
+              {loading ? "Signing in..." : "Sign in"}
             </Button>
 
             <Button
@@ -192,10 +191,9 @@ export function LoginAccessTabs({
             className="w-full"
             color="primary"
             isDisabled={loading}
-            isLoading={loading}
             type="submit"
           >
-            Sign in as third-party
+            {loading ? "Signing in..." : "Sign in as third-party"}
           </Button>
         </form>
       </Tab>

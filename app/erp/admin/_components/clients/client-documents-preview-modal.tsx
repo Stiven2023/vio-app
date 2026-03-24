@@ -60,7 +60,7 @@ export function ClientDocumentsPreviewModal({
   };
 
   return (
-    <Modal isOpen={isOpen} size="2xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="2xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader className="flex items-center gap-2">
           <BsFileEarmarkPdf className="text-primary text-xl" />

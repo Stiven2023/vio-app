@@ -694,6 +694,7 @@ export function OrderPaymentsPage({
       ) : null}
 
       <Modal
+        disableAnimation
         isOpen={modalOpen}
         size="xl"
         onOpenChange={(open) => {
@@ -931,10 +932,9 @@ export function OrderPaymentsPage({
             <Button
               color="primary"
               isDisabled={submitting}
-              isLoading={submitting}
               onPress={createPayment}
             >
-              Save
+              {submitting ? "Saving..." : "Save"}
             </Button>
           </ModalFooter>
         </ModalContent>

@@ -127,7 +127,7 @@ export function ConfectionistLegalStatusModal({
   const CurrentIcon = currentConfig.icon;
 
   return (
-    <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader className="flex gap-2">
           <CurrentIcon className="text-xl" />
@@ -294,11 +294,10 @@ export function ConfectionistLegalStatusModal({
           </Button>
           <Button
             color="primary"
-            isDisabled={loading}
-            isLoading={saving}
+            isDisabled={loading || saving}
             onPress={handleSave}
           >
-            Guardar Cambio
+            {saving ? "Guardando..." : "Guardar Cambio"}
           </Button>
         </ModalFooter>
       </ModalContent>

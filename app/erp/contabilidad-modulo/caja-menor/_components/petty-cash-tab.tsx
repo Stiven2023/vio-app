@@ -703,6 +703,7 @@ export function PettyCashTab({
           MODAL – Nuevo Movimiento
       ══════════════════════════ */}
       <Modal
+        disableAnimation
         isOpen={createTxOpen}
         size="2xl"
         onOpenChange={(open) => {
@@ -829,10 +830,10 @@ export function PettyCashTab({
             </Button>
             <Button
               color="primary"
-              isLoading={createTxLoading}
+              isDisabled={createTxLoading}
               onPress={saveTx}
             >
-              Registrar
+              {createTxLoading ? "Registrando..." : "Registrar"}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -842,6 +843,7 @@ export function PettyCashTab({
           MODAL – Nuevo Fondo
       ══════════════════════════ */}
       <Modal
+        disableAnimation
         isOpen={createFundOpen}
         size="xl"
         onOpenChange={(open) => {
@@ -914,10 +916,10 @@ export function PettyCashTab({
             </Button>
             <Button
               color="primary"
-              isLoading={createFundLoading}
+              isDisabled={createFundLoading}
               onPress={saveFund}
             >
-              Crear Fondo
+              {createFundLoading ? "Creando..." : "Crear Fondo"}
             </Button>
           </ModalFooter>
         </ModalContent>

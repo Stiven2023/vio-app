@@ -127,11 +127,10 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           <Button
             color="primary"
             isDisabled={Boolean(order?.operationalApprovedAt) || approving}
-            isLoading={approving}
             variant="solid"
             onPress={giveOperationalAval}
           >
-            {order?.operationalApprovedAt ? "Aval registrado" : "Dar aval"}
+            {approving ? "Guardando..." : order?.operationalApprovedAt ? "Aval registrado" : "Dar aval"}
           </Button>
           <Button
             as={NextLink}

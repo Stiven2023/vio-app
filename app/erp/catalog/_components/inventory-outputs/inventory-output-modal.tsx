@@ -253,7 +253,7 @@ export function InventoryOutputModal({
     orderItems.find((orderItem) => orderItem.id === orderItemId) ?? null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {output ? "Editar salida" : "Registrar salida"}
@@ -387,7 +387,7 @@ export function InventoryOutputModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {output ? "Guardar" : "Registrar"}
           </Button>
         </ModalFooter>

@@ -50,7 +50,7 @@ export function MoldingPurchaseNeedsTab() {
         </p>
         <Button
           isIconOnly
-          isLoading={loading}
+          isDisabled={loading}
           size="sm"
           variant="light"
           onPress={load}

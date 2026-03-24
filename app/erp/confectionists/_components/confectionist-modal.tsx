@@ -442,6 +442,7 @@ export function ConfectionistModal({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen && !importPromptOpen}
       scrollBehavior="inside"
       size="3xl"
@@ -550,8 +551,8 @@ export function ConfectionistModal({
           >
             Cancel
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            {confectionist ? "Save" : "Create"}
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Guardando..." : confectionist ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>

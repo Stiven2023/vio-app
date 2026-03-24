@@ -430,11 +430,11 @@ export function OptionsPageClient() {
                   onChange={onEmployeeImageSelected}
                 />
                 <Button
-                  isLoading={uploadingEmployeeImage}
+                  isDisabled={uploadingEmployeeImage}
                   variant="flat"
                   onPress={() => employeeImageInputRef.current?.click()}
                 >
-                  Subir imagen
+                  {uploadingEmployeeImage ? "Subiendo..." : "Subir imagen"}
                 </Button>
                 <Button
                   color="danger"
@@ -472,11 +472,11 @@ export function OptionsPageClient() {
                 onChange={onSignatureImageSelected}
               />
               <Button
-                isLoading={uploadingSignatureImage}
+                isDisabled={uploadingSignatureImage}
                 variant="flat"
                 onPress={() => signatureImageInputRef.current?.click()}
               >
-                Subir firma
+                {uploadingSignatureImage ? "Subiendo..." : "Subir firma"}
               </Button>
               <Button
                 color="danger"
@@ -513,11 +513,11 @@ export function OptionsPageClient() {
                 onChange={onCompanyImageSelected}
               />
               <Button
-                isLoading={uploadingCompanyImage}
+                isDisabled={uploadingCompanyImage}
                 variant="flat"
                 onPress={() => companyImageInputRef.current?.click()}
               >
-                Subir imagen empresa
+                {uploadingCompanyImage ? "Subiendo..." : "Subir imagen empresa"}
               </Button>
               <Button
                 color="danger"
@@ -531,8 +531,8 @@ export function OptionsPageClient() {
           </div>
         </div>
 
-        <Button color="primary" isLoading={savingProfile} onPress={saveProfile}>
-          Guardar información
+        <Button color="primary" isDisabled={savingProfile} onPress={saveProfile}>
+          {savingProfile ? "Guardando..." : "Guardar información"}
         </Button>
       </section>
 
@@ -555,10 +555,10 @@ export function OptionsPageClient() {
         </div>
         <Button
           color="primary"
-          isLoading={savingLanguage}
+          isDisabled={savingLanguage}
           onPress={saveLanguage}
         >
-          Guardar idioma
+          {savingLanguage ? "Guardando..." : "Guardar idioma"}
         </Button>
       </section>
 
@@ -584,10 +584,10 @@ export function OptionsPageClient() {
         </div>
         <Button
           color="primary"
-          isLoading={savingPassword}
+          isDisabled={savingPassword}
           onPress={changePassword}
         >
-          Actualizar contraseña
+          {savingPassword ? "Actualizando..." : "Actualizar contraseña"}
         </Button>
       </section>
     </div>

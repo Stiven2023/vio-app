@@ -131,7 +131,7 @@ export function EmployeeLegalStatusModal({
   const employeeName = employee.name;
 
   return (
-    <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader className="flex gap-2">
           <CurrentIcon className="text-xl" />
@@ -303,11 +303,10 @@ export function EmployeeLegalStatusModal({
           </Button>
           <Button
             color="primary"
-            isDisabled={loading}
-            isLoading={saving}
+            isDisabled={loading || saving}
             onPress={handleSave}
           >
-            Guardar Cambio
+            {saving ? "Guardando..." : "Guardar Cambio"}
           </Button>
         </ModalFooter>
       </ModalContent>

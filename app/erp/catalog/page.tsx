@@ -27,7 +27,7 @@ export default async function CatalogPage() {
   const canDeleteItem = perms.ELIMINAR_ITEM_INVENTARIO;
 
   return (
-    <div className="container mx-auto max-w-7xl pt-16 px-6">
+    <div className="space-y-2">
       <h1 className="text-2xl font-bold">Catalog</h1>
       <p className="text-default-600 mt-1">
         Manage products, additions and categories.

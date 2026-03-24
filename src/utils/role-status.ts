@@ -151,6 +151,7 @@ export function isOperarioRole(role: string | null) {
     role.startsWith("OPERARIO_") ||
     role === "EMPAQUE" ||
     role === "CONFECCIONISTA" ||
-    role === "MENSAJERO"
+    role === "MENSAJERO" ||
+    role === "CONDUCTOR"
   );
 }

@@ -217,7 +217,7 @@ export function InventoryEntriesTab({
           ]}
         />
       ) : (
-        <Table aria-label="Entradas">
+        <Table removeWrapper aria-label="Entradas">
           <TableHeader>
             <TableColumn>Item</TableColumn>
             <TableColumn>SKU variante</TableColumn>

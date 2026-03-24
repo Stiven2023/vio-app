@@ -121,7 +121,7 @@ export function OrderItemStatusModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Estado del Diseño</ModalHeader>
         <ModalBody>
@@ -163,11 +163,10 @@ export function OrderItemStatusModal({
           </Button>
           <Button
             color="primary"
-            isDisabled={!canChangeStatus}
-            isLoading={saving}
+            isDisabled={!canChangeStatus || saving}
             onPress={submit}
           >
-            Guardar
+            {saving ? "Guardando..." : "Guardar"}
           </Button>
         </ModalFooter>
       </ModalContent>

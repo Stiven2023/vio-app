@@ -544,6 +544,7 @@ export function ClientModal({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen && !importPromptOpen}
       scrollBehavior="inside"
       size="3xl"
@@ -641,7 +642,7 @@ export function ClientModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {client ? "Guardar cambios" : "Crear cliente"}
           </Button>
         </ModalFooter>

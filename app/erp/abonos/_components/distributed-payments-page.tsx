@@ -901,8 +901,8 @@ export function DistributedPaymentsPage({
           </div>
 
           <div className="flex justify-end">
-            <Button color="primary" isLoading={submitting} onPress={submit}>
-              Registrar abono distribuido
+            <Button color="primary" isDisabled={submitting} onPress={submit}>
+              {submitting ? "Registrando..." : "Registrar abono distribuido"}
             </Button>
           </div>
         </CardBody>

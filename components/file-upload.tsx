@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@heroui/button";
-import { Spinner } from "@heroui/spinner";
 import { useState, useRef, useEffect } from "react";
 import {
   BsCheckCircleFill,
@@ -255,13 +254,7 @@ export function FileUpload({
             className="justify-start"
             color={errorMessage ? "danger" : "default"}
             isDisabled={isUploading}
-            startContent={
-              isUploading ? (
-                <Spinner size="sm" />
-              ) : (
-                <BsUpload className="text-lg" />
-              )
-            }
+            startContent={<BsUpload className="text-lg" />}
             variant="flat"
             onPress={() => inputRef.current?.click()}
           >

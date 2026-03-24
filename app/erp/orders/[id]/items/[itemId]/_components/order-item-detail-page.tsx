@@ -558,11 +558,10 @@ export function OrderItemDetailPage({
           <div className="flex justify-end">
             <Button
               color="primary"
-              isDisabled={!issueMessage.trim()}
-              isLoading={reporting}
+              isDisabled={!issueMessage.trim() || reporting}
               onPress={reportIssue}
             >
-              Reportar
+              {reporting ? "Reportando..." : "Reportar"}
             </Button>
           </div>
 

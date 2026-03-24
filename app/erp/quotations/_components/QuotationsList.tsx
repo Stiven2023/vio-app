@@ -555,6 +555,7 @@ export function QuotationsList() {
       />
 
       <Modal
+        disableAnimation
         isDismissable={!downloadingId}
         isKeyboardDismissDisabled={Boolean(downloadingId)}
         isOpen={Boolean(downloadRow)}
@@ -602,6 +603,7 @@ export function QuotationsList() {
       </Modal>
 
       <Modal
+        disableAnimation
         isDismissable={!prefacturaId}
         isKeyboardDismissDisabled={Boolean(prefacturaId)}
         isOpen={Boolean(prefacturaRow)}
@@ -651,10 +653,10 @@ export function QuotationsList() {
             </Button>
             <Button
               color="primary"
-              isLoading={Boolean(prefacturaId)}
+              isDisabled={Boolean(prefacturaId)}
               onPress={convertToPrefactura}
             >
-              Confirm
+              {prefacturaId ? "Converting..." : "Confirm"}
             </Button>
           </ModalFooter>
         </ModalContent>

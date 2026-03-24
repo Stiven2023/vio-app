@@ -451,6 +451,7 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
       ) : null}
 
       <Modal
+        disableAnimation
         isOpen={createOpen}
         size="4xl"
         onOpenChange={(open) => {
@@ -543,10 +544,10 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
             </Button>
             <Button
               color="primary"
-              isLoading={createLoading}
+              isDisabled={createLoading}
               onPress={saveFactoring}
             >
-              Confirm
+              {createLoading ? "Saving..." : "Confirm"}
             </Button>
           </ModalFooter>
         </ModalContent>

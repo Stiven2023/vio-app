@@ -15,6 +15,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/erp/login" ||
+    pathname === "/home" ||
     isLocalizedHome
   ) {
     return <>{children}</>;

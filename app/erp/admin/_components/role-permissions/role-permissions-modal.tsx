@@ -72,7 +72,7 @@ export function RolePermissionsModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Crear relación</ModalHeader>
         <ModalBody>
@@ -115,8 +115,8 @@ export function RolePermissionsModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            Crear
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Creando..." : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

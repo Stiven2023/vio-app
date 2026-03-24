@@ -487,7 +487,7 @@ export function WarehouseDetailsModal({
   };
 
   return (
-    <Modal isOpen={isOpen} size="5xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="5xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {warehouse
@@ -583,10 +583,10 @@ export function WarehouseDetailsModal({
             <div>
               <Button
                 color="primary"
-                isLoading={transferring}
+                isDisabled={transferring}
                 onPress={submitTransfer}
               >
-                Trasladar
+                {transferring ? "Trasladando..." : "Trasladar"}
               </Button>
             </div>
           </div>
@@ -654,10 +654,10 @@ export function WarehouseDetailsModal({
             <div>
               <Button
                 color="secondary"
-                isLoading={requestingTransfer}
+                isDisabled={requestingTransfer}
                 onPress={submitTransferRequest}
               >
-                Solicitar traslado
+                {requestingTransfer ? "Enviando..." : "Solicitar traslado"}
               </Button>
             </div>
           </div>
@@ -709,20 +709,20 @@ export function WarehouseDetailsModal({
                         <div className="flex gap-2">
                           <Button
                             color="primary"
-                            isLoading={approvingRequestId === row.id}
+                            isDisabled={Boolean(approvingRequestId)}
                             size="sm"
                             onPress={() => approveTransferRequest(row.id)}
                           >
-                            Aprobar
+                            {approvingRequestId === row.id ? "..." : "Aprobar"}
                           </Button>
                           <Button
                             color="danger"
-                            isLoading={rejectingRequestId === row.id}
+                            isDisabled={Boolean(rejectingRequestId)}
                             size="sm"
                             variant="flat"
                             onPress={() => rejectTransferRequest(row.id)}
                           >
-                            Rechazar
+                            {rejectingRequestId === row.id ? "..." : "Rechazar"}
                           </Button>
                         </div>
                       </TableCell>
@@ -775,12 +775,12 @@ export function WarehouseDetailsModal({
                       <TableCell>
                         <Button
                           color="warning"
-                          isLoading={cancelingRequestId === row.id}
+                          isDisabled={Boolean(cancelingRequestId)}
                           size="sm"
                           variant="flat"
                           onPress={() => cancelTransferRequest(row.id)}
                         >
-                          Cancelar
+                          {cancelingRequestId === row.id ? "..." : "Cancelar"}
                         </Button>
                       </TableCell>
                     </TableRow>

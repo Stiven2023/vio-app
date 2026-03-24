@@ -103,7 +103,7 @@ export function VerifyEmailModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Verificar correo</ModalHeader>
         <ModalBody>

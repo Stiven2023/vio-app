@@ -67,7 +67,7 @@ export function RoleModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>{role ? "Editar rol" : "Crear rol"}</ModalHeader>
         <ModalBody>
@@ -88,7 +88,7 @@ export function RoleModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
             {role ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>

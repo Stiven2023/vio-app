@@ -49,6 +49,7 @@ export function CategoryProductsModal({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen}
       scrollBehavior="inside"
       size="4xl"

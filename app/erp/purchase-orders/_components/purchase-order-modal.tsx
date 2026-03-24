@@ -210,7 +210,7 @@ export function PurchaseOrderModal({
   };
 
   return (
-    <Modal isOpen={isOpen} size="5xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="5xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Nueva orden de compra</ModalHeader>
         <ModalBody className="space-y-4">
@@ -579,8 +579,8 @@ export function PurchaseOrderModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            Crear
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Creando..." : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

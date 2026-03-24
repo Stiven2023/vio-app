@@ -632,7 +632,7 @@ export function PrefacturaForm({
   const statusVal = initial?.status ?? "PENDIENTE_CONTABILIDAD";
 
   return (
-    <div className="container mx-auto max-w-7xl space-y-6 px-6 py-10">
+    <div className="space-y-6 py-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">
@@ -1302,8 +1302,8 @@ export function PrefacturaForm({
         >
           Cancelar
         </Button>
-        <Button color="primary" isLoading={submitting} onPress={handleSubmit}>
-          {mode === "create" ? "Crear prefactura" : "Guardar cambios"}
+        <Button color="primary" isDisabled={submitting} onPress={handleSubmit}>
+          {submitting ? "Guardando..." : mode === "create" ? "Crear prefactura" : "Guardar cambios"}
         </Button>
       </div>
     </div>

@@ -202,6 +202,7 @@ export function CreateUserModal({
 
   return (
     <Modal
+      disableAnimation
       isDismissable={!busy}
       isKeyboardDismissDisabled={busy}
       isOpen={isOpen}
@@ -247,11 +248,10 @@ export function CreateUserModal({
                   submitting ||
                   emailVerified
                 }
-                isLoading={sendingCode}
                 variant="flat"
                 onPress={sendCode}
               >
-                Enviar código
+                {sendingCode ? "Enviando..." : "Enviar código"}
               </Button>
               {countdown ? (
                 <div className="text-xs text-default-500">
@@ -272,10 +272,9 @@ export function CreateUserModal({
             <Button
               color="primary"
               isDisabled={!otpReady || verifying || submitting || emailVerified}
-              isLoading={verifying}
               onPress={verifyOtp}
             >
-              {emailVerified ? "Verificado" : "Verificar"}
+              {emailVerified ? "Verificado" : verifying ? "Verificando..." : "Verificar"}
             </Button>
           </div>
 
@@ -319,10 +318,9 @@ export function CreateUserModal({
           <Button
             color="primary"
             isDisabled={!canSubmit || submitting || !emailVerified}
-            isLoading={submitting}
             onPress={submit}
           >
-            Crear
+            {submitting ? "Creando..." : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

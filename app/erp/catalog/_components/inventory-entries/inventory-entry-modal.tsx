@@ -168,7 +168,7 @@ export function InventoryEntryModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {entry ? "Editar entrada" : "Registrar entrada"}
@@ -280,8 +280,8 @@ export function InventoryEntryModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            {entry ? "Guardar" : "Registrar"}
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Guardando..." : entry ? "Guardar" : "Registrar"}
           </Button>
         </ModalFooter>
       </ModalContent>

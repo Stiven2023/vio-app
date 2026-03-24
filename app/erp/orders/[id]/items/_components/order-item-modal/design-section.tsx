@@ -318,33 +318,14 @@ export function DesignSection({
         <SelectItem key="OBJETO">Objeto</SelectItem>
       </Select>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3">
         <Input
+          isDisabled
           label="Cantidad"
           type="number"
           value={String(value.quantity ?? 1)}
-          onValueChange={(v: string) =>
-            onChange({
-              ...value,
-              quantity: Math.max(1, Math.floor(Number(v || 1))),
-            })
-          }
+          description="La cantidad se ajusta fuera de esta seccion"
         />
-
-        <Input
-          description={
-            canEditUnitPrice
-              ? "Editable para cliente AUTORIZADO"
-              : "Bloqueado: solo cliente AUTORIZADO puede modificar precio"
-          }
-          isDisabled={locked || !canEditUnitPrice}
-          label="Precio unitario"
-          type="number"
-          value={String(value.unitPrice ?? "0")}
-          onValueChange={(v: string) => onChange({ ...value, unitPrice: v })}
-        />
-
-        <Input isReadOnly label="Total" value={computedTotal} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -532,12 +513,11 @@ export function DesignSection({
               <div className="border border-default-200 bg-content1 p-0">
                 <ImageDropZone
                   compact
-                  required
                   disabled={dropDisabled}
                   imageFitClass="object-contain"
                   minHeightClass="min-h-[96px]"
                   previewSrc={resolvedLogo}
-                  subtitle="Obligatorio"
+                  subtitle="Opcional"
                   title="Logo"
                   onSelectFile={onSelectLogoFile}
                 />

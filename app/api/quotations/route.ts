@@ -308,6 +308,9 @@ export async function POST(request: Request) {
   const items = Array.isArray(body?.items) ? body.items : [];
   const totalProducts = calculateTotalProductsFromItems(items);
   const paymentTerms = String(body?.paymentTerms ?? "").toUpperCase();
+  const documentType = String(body?.documentType ?? "F").toUpperCase() === "R"
+    ? "R"
+    : "F";
   const autoExpiryDate = buildExpiryDateFromDelivery(
     toDateOnlyLocal(new Date()),
     30,
@@ -361,9 +364,7 @@ export async function POST(request: Request) {
           clientPriceType: body?.clientPriceType
             ? String(body.clientPriceType)
             : null,
-          documentType: body?.documentType
-            ? (String(body.documentType) as "F" | "R")
-            : "F",
+          documentType,
           currency: body?.currency ? String(body.currency) : "COP",
           deliveryDate: null,
           expiryDate: autoExpiryDate,
@@ -372,7 +373,7 @@ export async function POST(request: Request) {
             paymentTerms === "CREDITO" ? validatedPromissoryNoteNumber : null,
           totalProducts,
           subtotal: toNumericString(body?.subtotal),
-          iva: toNumericString(body?.iva),
+          iva: documentType === "R" ? "0.00" : toNumericString(body?.iva),
           shippingEnabled: Boolean(body?.shippingEnabled),
           shippingFee: toNumericString(body?.shippingFee),
           insuranceEnabled: Boolean(body?.insuranceEnabled),
@@ -381,13 +382,22 @@ export async function POST(request: Request) {
           advancePayment: toNumericString(body?.advancePayment),
           municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
           taxZoneSnapshot,
-          withholdingTaxRate: toNumericString(body?.withholdingTaxRate),
-          withholdingIcaRate: toNumericString(body?.withholdingIcaRate),
-          withholdingIvaRate: toNumericString(body?.withholdingIvaRate),
-          withholdingTaxAmount: toNumericString(body?.withholdingTaxAmount),
-          withholdingIcaAmount: toNumericString(body?.withholdingIcaAmount),
-          withholdingIvaAmount: toNumericString(body?.withholdingIvaAmount),
-          totalAfterWithholdings: toNumericString(body?.totalAfterWithholdings),
+          withholdingTaxRate:
+            documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxRate),
+          withholdingIcaRate:
+            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaRate),
+          withholdingIvaRate:
+            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaRate),
+          withholdingTaxAmount:
+            documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxAmount),
+          withholdingIcaAmount:
+            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaAmount),
+          withholdingIvaAmount:
+            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaAmount),
+          totalAfterWithholdings:
+            documentType === "R"
+              ? toNumericString(body?.total)
+              : toNumericString(body?.totalAfterWithholdings),
           isActive: true,
           updatedAt: new Date(),
         })

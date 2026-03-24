@@ -230,12 +230,12 @@ export function ExchangeRateWidget(props: ExchangeRateWidgetProps) {
           <div className="mt-3">
             <Button
               color="primary"
-              isLoading={updating}
+              isDisabled={updating}
               size="sm"
               variant="flat"
               onPress={onUpdateNow}
             >
-              Actualizar ahora
+              {updating ? "Actualizando..." : "Actualizar ahora"}
             </Button>
           </div>
         </div>

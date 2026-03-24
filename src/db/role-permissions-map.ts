@@ -220,6 +220,7 @@ export const ROLE_PERMISSIONS: Record<string, string[] | "ALL"> = {
     "VER_NOTIFICACION",
   ],
   MENSAJERO: ["VER_PEDIDO", "VER_NOTIFICACION"],
+  CONDUCTOR: ["VER_PEDIDO", "VER_NOTIFICACION"],
   CONFECCIONISTA: [
     "VER_PEDIDO",
     "VER_DISEÑO",

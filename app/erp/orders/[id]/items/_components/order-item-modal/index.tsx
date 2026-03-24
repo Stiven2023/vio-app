@@ -30,6 +30,22 @@ function asNumber(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function getPackagingTotals(rows: Array<{ mode?: string; quantity?: number }>) {
+  let groupedTotal = 0;
+  let individualTotal = 0;
+
+  for (const row of rows ?? []) {
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.floor(qty)) : 0;
+    const mode = String(row?.mode ?? "").trim().toUpperCase();
+
+    if (mode === "AGRUPADO") groupedTotal += safeQty;
+    else individualTotal += safeQty;
+  }
+
+  return { groupedTotal, individualTotal };
+}
+
 export function OrderItemModal(props: {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -140,6 +156,15 @@ export function OrderItemModal(props: {
     }
 
     const unitPrice = Math.max(0, asNumber(item.unitPrice));
+    const { groupedTotal, individualTotal } = getPackagingTotals(packaging);
+
+    if (groupedTotal !== individualTotal) {
+      setError(
+        `La lista de empaque debe sumar exactamente la curva (${groupedTotal}). Actualmente: ${individualTotal}.`,
+      );
+
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -172,10 +197,6 @@ export function OrderItemModal(props: {
       }
 
       imageUrl = clothingImageOneUrl;
-
-      if (orderKind !== "COMPLETACION" && !String(logoImageUrl ?? "").trim()) {
-        throw new Error("El logo es obligatorio para el diseño");
-      }
 
       if (!String(item.garmentType ?? "").trim()) {
         throw new Error("Selecciona el tipo de prenda/posición");
@@ -243,7 +264,7 @@ export function OrderItemModal(props: {
   }
 
   return (
-    <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
       <ModalContent>
         {(onClose: () => void) => (
           <>
@@ -315,11 +336,10 @@ export function OrderItemModal(props: {
               </Button>
               <Button
                 color="primary"
-                isDisabled={isUploadingAssets}
-                isLoading={isSaving}
+                isDisabled={isUploadingAssets || isSaving}
                 onPress={onSubmit}
               >
-                Guardar
+                {isSaving ? "Guardando..." : "Guardar"}
               </Button>
             </ModalFooter>
           </>

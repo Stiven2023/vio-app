@@ -26,7 +26,7 @@ export function DetailModal({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>{title}</ModalHeader>
         <ModalBody>

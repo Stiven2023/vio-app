@@ -445,7 +445,7 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <Modal isOpen={historyOpen} size="3xl" onOpenChange={setHistoryOpen}>
+      <Modal disableAnimation isOpen={historyOpen} size="3xl" onOpenChange={setHistoryOpen}>
         <ModalContent>
           <ModalHeader>
             Historial de orden {selectedOrder?.purchaseOrderCode ?? ""}
@@ -482,7 +482,7 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={routeOpen} size="5xl" onOpenChange={setRouteOpen}>
+      <Modal disableAnimation isOpen={routeOpen} size="5xl" onOpenChange={setRouteOpen}>
         <ModalContent>
           <ModalHeader>
             Rutas de coordinación - {selectedOrder?.purchaseOrderCode ?? ""}
@@ -702,10 +702,10 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
             <div className="flex justify-end">
               <Button
                 color="primary"
-                isLoading={savingRoute}
+                isDisabled={savingRoute}
                 onPress={createRoute}
               >
-                Crear ruta
+                {savingRoute ? "Creando..." : "Crear ruta"}
               </Button>
             </div>
 

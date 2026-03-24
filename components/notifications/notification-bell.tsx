@@ -196,7 +196,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
         ) : null}
       </Button>
 
-      <Modal isOpen={open} size="3xl" onOpenChange={setOpen}>
+      <Modal disableAnimation isOpen={open} size="3xl" onOpenChange={setOpen}>
         <ModalContent>
           <ModalHeader>Notificaciones</ModalHeader>
           <ModalBody>

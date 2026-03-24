@@ -242,12 +242,11 @@ export function PilaTab({ canGenerate }: { canGenerate: boolean }) {
         {canGenerate ? (
           <Button
             color="primary"
-            isDisabled={Boolean(pilaData?.generation.isGenerated)}
-            isLoading={previewLoading}
+            isDisabled={Boolean(pilaData?.generation.isGenerated) || previewLoading}
             startContent={<BsPlus />}
             onPress={openPreview}
           >
-            Generate PILA
+            {previewLoading ? "Loading..." : "Generate PILA"}
           </Button>
         ) : null}
       </div>
@@ -433,6 +432,7 @@ export function PilaTab({ canGenerate }: { canGenerate: boolean }) {
       ) : null}
 
       <Modal
+        disableAnimation
         isOpen={previewOpen}
         size="5xl"
         onClose={() => setPreviewOpen(false)}
@@ -507,11 +507,10 @@ export function PilaTab({ canGenerate }: { canGenerate: boolean }) {
             </Button>
             <Button
               color="primary"
-              isDisabled={!preview || preview.isGenerated}
-              isLoading={confirmLoading}
+              isDisabled={!preview || preview.isGenerated || confirmLoading}
               onPress={confirmGenerate}
             >
-              Confirm and lock period
+              {confirmLoading ? "Locking..." : "Confirm and lock period"}
             </Button>
           </ModalFooter>
         </ModalContent>

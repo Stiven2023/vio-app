@@ -574,7 +574,7 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
       </Card>
 
       {/* Modal: Editar anticipo */}
-      <Modal isOpen={anticipoOpen} onOpenChange={setAnticipo}>
+      <Modal disableAnimation isOpen={anticipoOpen} onOpenChange={setAnticipo}>
         <ModalContent>
           <ModalHeader>Editar anticipo</ModalHeader>
           <ModalBody>
@@ -634,17 +634,16 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
             <Button
               color="primary"
               isDisabled={anticipoSaving}
-              isLoading={anticipoSaving}
               onPress={saveAnticipo}
             >
-              Guardar
+              {anticipoSaving ? "Guardando..." : "Guardar"}
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       {/* Modal: Editar convenio */}
-      <Modal isOpen={convenioOpen} onOpenChange={setConvenio}>
+      <Modal disableAnimation isOpen={convenioOpen} onOpenChange={setConvenio}>
         <ModalContent>
           <ModalHeader>Editar convenio comercial</ModalHeader>
           <ModalBody>
@@ -697,10 +696,9 @@ export function PrefacturaPage({ orderId }: { orderId: string }) {
             <Button
               color="primary"
               isDisabled={convenioSaving}
-              isLoading={convenioSaving}
               onPress={saveConvenio}
             >
-              Guardar
+              {convenioSaving ? "Guardando..." : "Guardar"}
             </Button>
           </ModalFooter>
         </ModalContent>

@@ -498,11 +498,10 @@ export function PurchaseOrdersCoordinationClient() {
         <div className="mt-3">
           <Button
             color="primary"
-            isDisabled={loadingWarehouses || loadingSourceProducts}
-            isLoading={submittingTransferRequest}
+            isDisabled={loadingWarehouses || loadingSourceProducts || submittingTransferRequest}
             onPress={() => void submitTransferRequest()}
           >
-            Crear solicitud de traslado
+            {submittingTransferRequest ? "Creando..." : "Crear solicitud de traslado"}
           </Button>
         </div>
       </div>
@@ -513,11 +512,11 @@ export function PurchaseOrdersCoordinationClient() {
             Órdenes coordinadas
           </h3>
           <Button
-            isLoading={loading}
+            isDisabled={loading}
             variant="flat"
             onPress={() => void load()}
           >
-            Refrescar
+            {loading ? "Cargando..." : "Refrescar"}
           </Button>
         </div>
 

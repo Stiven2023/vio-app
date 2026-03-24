@@ -594,6 +594,7 @@ export function ReciboCajaTab({
       ) : null}
 
       <Modal
+        disableAnimation
         isOpen={createOpen}
         scrollBehavior="inside"
         size="5xl"
@@ -809,10 +810,10 @@ export function ReciboCajaTab({
             </Button>
             <Button
               color="primary"
-              isLoading={createLoading}
+              isDisabled={createLoading}
               onPress={saveReceipt}
             >
-              Save
+              {createLoading ? "Saving..." : "Save"}
             </Button>
           </ModalFooter>
         </ModalContent>

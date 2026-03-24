@@ -153,6 +153,7 @@ export function PlotterRepoWizard({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen}
       size="md"
       onOpenChange={(open) => !open && handleClose()}
@@ -359,11 +360,11 @@ export function PlotterRepoWizard({
                 </Button>
                 <Button
                   color="primary"
-                  isLoading={saving}
+                  isDisabled={saving}
                   size="sm"
                   onPress={() => void generateRepoTicket()}
                 >
-                  Generar ticket de reposición
+                  {saving ? "Generando..." : "Generar ticket de reposición"}
                 </Button>
               </>
             )}

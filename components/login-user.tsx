@@ -2,7 +2,6 @@
 
 import { ChangeEvent, FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { Card } from "@heroui/card";
 
 import { validateLogin } from "@/utils/validation";
@@ -124,11 +123,8 @@ export default function LoginUser() {
       </div>
 
       <div className="grid min-h-screen lg:grid-cols-[42%_58%]">
-        <motion.aside
-          animate={{ opacity: 1, x: 0 }}
+        <aside
           className="relative hidden overflow-hidden border-r border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_92%,black_8%)] p-10 lg:flex lg:flex-col lg:justify-between"
-          initial={{ opacity: 0, x: -24 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
         >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_30%_60%,color-mix(in_srgb,var(--viomar-primary)_12%,transparent)_0%,transparent_70%)]" />
           <div className="pointer-events-none absolute inset-y-0 right-0 flex w-8 gap-1 px-1 opacity-10">
@@ -184,15 +180,10 @@ export default function LoginUser() {
           <div className="relative z-10 text-[0.62rem] uppercase tracking-[0.18em] text-default-500">
             © {new Date().getFullYear()} Viomar
           </div>
-        </motion.aside>
+        </aside>
 
         <div className="flex items-center justify-center p-4 sm:p-6 lg:p-10">
-          <motion.div
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-[580px]"
-            initial={{ opacity: 0, y: 18 }}
-            transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
-          >
+          <div className="w-full max-w-[580px]">
             <Card className="border border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_88%,black_12%)] p-4 sm:p-6 shadow-[0_16px_50px_rgba(0,0,0,0.35)]">
               <div className="space-y-4">
                 <div className="space-y-1">
@@ -220,7 +211,7 @@ export default function LoginUser() {
                 />
               </div>
             </Card>
-          </motion.div>
+          </div>
         </div>
       </div>
 

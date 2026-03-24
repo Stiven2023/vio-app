@@ -766,6 +766,7 @@ export function PrefacturasTab({
       />
 
       <Modal
+        disableAnimation
         isOpen={advanceModalOpen}
         size="xl"
         onOpenChange={(open) => {
@@ -905,16 +906,16 @@ export function PrefacturasTab({
             <Button
               color="primary"
               isDisabled={advanceLoading || advanceSubmitting}
-              isLoading={advanceSubmitting}
               onPress={saveAdvancePayment}
             >
-              Save advance
+              {advanceSubmitting ? "Saving..." : "Save advance"}
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       <Modal
+        disableAnimation
         isOpen={readyModalOpen}
         onOpenChange={(open) => {
           setReadyModalOpen(open);
@@ -980,10 +981,9 @@ export function PrefacturasTab({
                 !readyPreview ||
                 !readyPreview.targetStatus
               }
-              isLoading={readySubmitting}
               onPress={confirmReadyDispatch}
             >
-              Confirm shipment
+              {readySubmitting ? "Confirming..." : "Confirm shipment"}
             </Button>
           </ModalFooter>
         </ModalContent>

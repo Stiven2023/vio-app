@@ -241,7 +241,7 @@ export function AdditionModal({
   }
 
   return (
-    <Modal isOpen={isOpen} size="2xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="2xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader className="flex items-center gap-2">
           <BsBoxSeam className="h-5 w-5" />
@@ -336,8 +336,8 @@ export function AdditionModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={handleSave}>
-            {addition?.id ? "Guardar cambios" : "Crear"}
+          <Button color="primary" isDisabled={submitting} onPress={handleSave}>
+            {submitting ? "Guardando..." : addition?.id ? "Guardar cambios" : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

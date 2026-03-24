@@ -160,6 +160,47 @@ function parseDecimalField(v: unknown): string | null {
   return Number.isFinite(n) && n > 0 ? String(n) : null;
 }
 
+async function generateMoldingCode(version: number): Promise<string> {
+  const rows = await db
+    .select({ moldingCode: moldingTemplates.moldingCode })
+    .from(moldingTemplates)
+    .where(ilike(moldingTemplates.moldingCode, "MOL-%"));
+
+  let maxNumeric = 0;
+
+  for (const row of rows) {
+    const code = String(row.moldingCode ?? "").trim();
+    const match = code.match(/(\d+)$/);
+
+    if (!match) continue;
+    const n = Number(match[1]);
+
+    if (Number.isInteger(n) && n > maxNumeric) {
+      maxNumeric = n;
+    }
+  }
+
+  let nextNumeric = maxNumeric + 1;
+
+  while (true) {
+    const candidate = `MOL-${String(nextNumeric).padStart(4, "0")}`;
+    const existing = await db
+      .select({ id: moldingTemplates.id })
+      .from(moldingTemplates)
+      .where(
+        and(
+          eq(moldingTemplates.moldingCode, candidate),
+          eq(moldingTemplates.version, version),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length === 0) return candidate;
+
+    nextNumeric += 1;
+  }
+}
+
 export async function POST(request: Request) {
   const limited = rateLimit(request, {
     key: "molding-templates:post",
@@ -183,13 +224,12 @@ export async function POST(request: Request) {
     return new Response("Invalid JSON body", { status: 400 });
   }
 
-  const moldingCode = parseStr(body.moldingCode, 50);
+  const version = parseIntField(body.version) ?? 1;
+  let moldingCode = parseStr(body.moldingCode, 50);
 
   if (!moldingCode) {
-    return new Response("moldingCode is required", { status: 400 });
+    moldingCode = await generateMoldingCode(version);
   }
-
-  const version = parseIntField(body.version) ?? 1;
 
   // Check unique constraint
   const existing = await db

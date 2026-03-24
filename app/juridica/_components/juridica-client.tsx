@@ -284,6 +284,7 @@ export function JuridicaClient() {
 
       {/* Edit Modal */}
       <Modal
+        disableAnimation
         isOpen={modalOpen}
         size="md"
         onOpenChange={(open) => !open && setModalOpen(false)}
@@ -355,11 +356,11 @@ export function JuridicaClient() {
               </Button>
               <Button
                 color={editEnabled ? "success" : "danger"}
-                isLoading={saving}
+                isDisabled={saving}
                 size="sm"
                 onPress={() => void handleSave()}
               >
-                {editEnabled ? "Guardar (Habilitar)" : "Guardar (Deshabilitar)"}
+                {saving ? "Guardando..." : editEnabled ? "Guardar (Habilitar)" : "Guardar (Deshabilitar)"}
               </Button>
             </ModalFooter>
           </>

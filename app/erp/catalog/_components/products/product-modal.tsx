@@ -295,7 +295,7 @@ export function ProductModal({
   };
 
   return (
-    <Modal isOpen={isOpen} scrollBehavior="inside" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} scrollBehavior="inside" onOpenChange={onOpenChange}>
       <ModalContent className="max-w-6xl">
         <ModalHeader>
           {product ? "Editar producto" : "Crear producto"}
@@ -462,8 +462,8 @@ export function ProductModal({
           >
             Cancelar
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            {product ? "Guardar" : "Crear"}
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Guardando..." : product ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>
       </ModalContent>

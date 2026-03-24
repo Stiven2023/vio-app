@@ -591,6 +591,7 @@ export function WithholdingsTab({
       ) : null}
 
       <Modal
+        disableAnimation
         isOpen={editRateOpen}
         onOpenChange={(open) => {
           setEditRateOpen(open);
@@ -635,10 +636,10 @@ export function WithholdingsTab({
             </Button>
             <Button
               color="primary"
-              isLoading={saveRateLoading}
+              isDisabled={saveRateLoading}
               onPress={saveRates}
             >
-              Guardar
+              {saveRateLoading ? "Guardando..." : "Guardar"}
             </Button>
           </ModalFooter>
         </ModalContent>

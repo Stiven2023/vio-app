@@ -16,8 +16,6 @@ export function useQuoteItems(
   clientPriceType: ClientPriceType,
 ) {
   const [items, setItems] = useState<QuoteItem[]>([makeItem()]);
-  const isAuthorizedManual =
-    currency === "COP" && clientPriceType === "AUTORIZADO";
 
   // Actualizar items cuando cambian productos o moneda
   useEffect(() => {
@@ -42,18 +40,16 @@ export function useQuoteItems(
           code: product.productCode ?? "",
           product: product.name,
           description: product.description ?? "",
-          unitPrice: isAuthorizedManual
-            ? row.unitPrice
-            : resolveUnitPrice(
-                product,
-                row.quantity,
-                currency,
-                clientPriceType,
-              ),
+          unitPrice: resolveUnitPrice(
+            product,
+            row.quantity,
+            currency,
+            clientPriceType,
+          ),
         };
       }),
     );
-  }, [currency, products, clientPriceType, isAuthorizedManual]);
+  }, [currency, products, clientPriceType]);
 
   const updateItem = useCallback(
     (id: string, patch: Partial<QuoteItem>): void => {
@@ -103,22 +99,16 @@ export function useQuoteItems(
               code: product.productCode ?? "",
               product: product.name,
               description: product.description ?? "",
-              unitPrice: isAuthorizedManual
-                ? 0
-                : resolveUnitPrice(
-                    product,
-                    next.quantity,
-                    currency,
-                    clientPriceType,
-                  ),
+              unitPrice: resolveUnitPrice(
+                product,
+                next.quantity,
+                currency,
+                clientPriceType,
+              ),
             };
           }
 
-          if (
-            patch.quantity !== undefined &&
-            next.productId &&
-            !isAuthorizedManual
-          ) {
+          if (patch.quantity !== undefined && next.productId) {
             const product = products.find((p) => p.id === next.productId);
 
             if (product) {
@@ -142,7 +132,7 @@ export function useQuoteItems(
         }),
       );
     },
-    [products, currency, clientPriceType, isAuthorizedManual],
+    [products, currency, clientPriceType],
   );
 
   const removeItem = useCallback((id: string) => {

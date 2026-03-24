@@ -346,10 +346,10 @@ export function ProductsTab({
           </Button>
           <Button
             color="secondary"
-            isLoading={importing}
+            isDisabled={importing}
             onPress={() => fileInputRef.current?.click()}
           >
-            Importar CSV
+            {importing ? "Importando..." : "Importar CSV"}
           </Button>
           {canCreate ? (
             <Button
@@ -374,7 +374,7 @@ export function ProductsTab({
           headers={["Código", "Nombre", "Categoría", "Activo", "Acciones"]}
         />
       ) : (
-        <Table aria-label="Productos">
+        <Table removeWrapper aria-label="Productos">
           <TableHeader>
             <TableColumn>Código</TableColumn>
             <TableColumn>Nombre</TableColumn>

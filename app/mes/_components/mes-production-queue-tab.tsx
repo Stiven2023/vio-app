@@ -159,13 +159,13 @@ export function MesProductionQueueTab() {
           </Button>
           <Button
             color={isConfirmed ? "success" : "primary"}
-            isLoading={confirming}
+            isDisabled={confirming}
             radius="sm"
             size="sm"
             startContent={isConfirmed ? <MdCheckCircle /> : <MdListAlt />}
             onPress={() => void confirmQueue()}
           >
-            {isConfirmed ? "Cola confirmada ✓" : "Confirmar cola"}
+            {isConfirmed ? "Cola confirmada ✓" : confirming ? "Confirmando..." : "Confirmar cola"}
           </Button>
         </div>
       </div>
@@ -282,12 +282,12 @@ export function MesProductionQueueTab() {
                     {item.priority !== "URGENTE" ? (
                       <Button
                         color="danger"
-                        isLoading={settingUrgent === item.id}
+                        isDisabled={Boolean(settingUrgent)}
                         size="sm"
                         variant="flat"
                         onPress={() => void markUrgent(item.id)}
                       >
-                        Marcar URGENTE
+                        {settingUrgent === item.id ? "..." : "Marcar URGENTE"}
                       </Button>
                     ) : (
                       <Chip color="danger" size="sm" variant="flat">

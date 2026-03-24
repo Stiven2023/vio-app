@@ -369,11 +369,11 @@ export function OperarioDashboard({ role }: { role: string }) {
                       </Select>
                       <Button
                         color="primary"
-                        isLoading={savingId === item.id}
+                        isDisabled={Boolean(savingId)}
                         size="sm"
                         onPress={() => updateStatus(item.id)}
                       >
-                        Actualizar
+                        {savingId === item.id ? "..." : "Actualizar"}
                       </Button>
                     </div>
                   </div>

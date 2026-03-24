@@ -47,7 +47,7 @@ export function ProductDetailsModal({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Modal isOpen={isOpen} scrollBehavior="inside" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} scrollBehavior="inside" onOpenChange={onOpenChange}>
       <ModalContent className="max-w-5xl">
         <ModalHeader>Detalle del producto</ModalHeader>
         <ModalBody>

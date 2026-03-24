@@ -613,10 +613,10 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         <div>
           <Button
             color="primary"
-            isLoading={transferring}
+            isDisabled={transferring}
             onPress={submitTransfer}
           >
-            Trasladar
+            {transferring ? "Trasladando..." : "Trasladar"}
           </Button>
         </div>
       </div>
@@ -684,10 +684,10 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         <div>
           <Button
             color="secondary"
-            isLoading={requestingTransfer}
+            isDisabled={requestingTransfer}
             onPress={submitTransferRequest}
           >
-            Solicitar traslado
+            {requestingTransfer ? "Solicitando..." : "Solicitar traslado"}
           </Button>
         </div>
       </div>
@@ -740,20 +740,20 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                     <div className="flex gap-2">
                       <Button
                         color="primary"
-                        isLoading={approvingRequestId === row.id}
+                        isDisabled={approvingRequestId === row.id}
                         size="sm"
                         onPress={() => approveTransferRequest(row.id)}
                       >
-                        Aprobar
+                        {approvingRequestId === row.id ? "Aprobando..." : "Aprobar"}
                       </Button>
                       <Button
                         color="danger"
-                        isLoading={rejectingRequestId === row.id}
+                        isDisabled={rejectingRequestId === row.id}
                         size="sm"
                         variant="flat"
                         onPress={() => rejectTransferRequest(row.id)}
                       >
-                        Rechazar
+                        {rejectingRequestId === row.id ? "Rechazando..." : "Rechazar"}
                       </Button>
                     </div>
                   </TableCell>
@@ -807,12 +807,12 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
                   <TableCell>
                     <Button
                       color="warning"
-                      isLoading={cancelingRequestId === row.id}
+                      isDisabled={cancelingRequestId === row.id}
                       size="sm"
                       variant="flat"
                       onPress={() => cancelTransferRequest(row.id)}
                     >
-                      Cancelar
+                      {cancelingRequestId === row.id ? "Cancelando..." : "Cancelar"}
                     </Button>
                   </TableCell>
                 </TableRow>

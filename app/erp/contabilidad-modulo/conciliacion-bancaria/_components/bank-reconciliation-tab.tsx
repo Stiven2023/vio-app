@@ -453,6 +453,7 @@ export function BankReconciliationTab({
       ) : null}
 
       <Modal
+        disableAnimation
         isOpen={createOpen}
         scrollBehavior="inside"
         size="5xl"
@@ -631,16 +632,17 @@ export function BankReconciliationTab({
             </Button>
             <Button
               color="primary"
-              isLoading={createLoading}
+              isDisabled={createLoading}
               onPress={saveReconciliation}
             >
-              Save
+              {createLoading ? "Saving..." : "Save"}
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
       <Modal
+        disableAnimation
         isOpen={Boolean(viewRow)}
         size="5xl"
         onOpenChange={(open) => !open && setViewRow(null)}

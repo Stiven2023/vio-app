@@ -85,7 +85,7 @@ export function OrderStatusModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>Estado del pedido</ModalHeader>
         <ModalBody>
@@ -126,11 +126,10 @@ export function OrderStatusModal({
           </Button>
           <Button
             color="primary"
-            isDisabled={!canChangeStatus}
-            isLoading={saving}
+            isDisabled={!canChangeStatus || saving}
             onPress={submit}
           >
-            Guardar
+            {saving ? "Guardando..." : "Guardar"}
           </Button>
         </ModalFooter>
       </ModalContent>

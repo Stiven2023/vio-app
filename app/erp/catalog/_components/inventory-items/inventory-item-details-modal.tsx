@@ -146,7 +146,7 @@ export function InventoryItemDetailsModal({
   };
 
   return (
-    <Modal isOpen={isOpen} size="4xl" onOpenChange={onOpenChange}>
+    <Modal disableAnimation isOpen={isOpen} size="4xl" onOpenChange={onOpenChange}>
       <ModalContent>
         <ModalHeader>
           {item ? `Detalle item: ${item.name}` : "Detalle item"}

@@ -366,8 +366,8 @@ export function PackersTab({
           <Button variant="flat" onPress={downloadTemplate}>
             Descargar plantilla CSV
           </Button>
-          <Button color="secondary" isLoading={importing} onPress={() => fileInputRef.current?.click()}>
-            Importar CSV
+          <Button color="secondary" isDisabled={importing} onPress={() => fileInputRef.current?.click()}>
+            {importing ? "Importando..." : "Importar CSV"}
           </Button>
           {canCreate ? (
             <Button

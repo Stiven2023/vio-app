@@ -257,7 +257,7 @@ export default function RegisterUser() {
         </div>
       ) : null}
 
-      <Modal isOpen={employeeOpen} onOpenChange={setEmployeeOpen}>
+      <Modal disableAnimation isOpen={employeeOpen} onOpenChange={setEmployeeOpen}>
         <ModalContent>
           <ModalHeader>Employee Registration</ModalHeader>
           <ModalBody>

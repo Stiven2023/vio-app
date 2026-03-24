@@ -351,7 +351,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}
 
-      <Modal isOpen={modalOpen} onOpenChange={setModalOpen}>
+      <Modal disableAnimation isOpen={modalOpen} onOpenChange={setModalOpen}>
         <ModalContent>
           <ModalHeader>{draft.id ? "Edit bank" : "New bank"}</ModalHeader>
           <ModalBody className="space-y-3">
@@ -400,8 +400,8 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
             <Button variant="flat" onPress={() => setModalOpen(false)}>
               Cancel
             </Button>
-            <Button color="primary" isLoading={saving} onPress={save}>
-              Save
+            <Button color="primary" isDisabled={saving} onPress={save}>
+              {saving ? "Saving..." : "Save"}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -425,7 +425,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
         }}
       />
 
-      <Modal isOpen={historyOpen} size="5xl" onOpenChange={setHistoryOpen}>
+      <Modal disableAnimation isOpen={historyOpen} size="5xl" onOpenChange={setHistoryOpen}>
         <ModalContent>
           <ModalHeader>
             {history?.bank

@@ -231,7 +231,7 @@ export function OrderModal({
 
   return (
     <>
-      <Modal isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
+      <Modal disableAnimation isOpen={isOpen} size="3xl" onOpenChange={onOpenChange}>
         <ModalContent>
           <ModalHeader>{order ? "Edit order" : "Create order"}</ModalHeader>
           <ModalBody>
@@ -391,7 +391,6 @@ export function OrderModal({
             <Button
               color="primary"
               isDisabled={submitting}
-              isLoading={submitting}
               onPress={submit}
             >
               {submitting ? "Saving..." : order ? "Save" : "Create"}

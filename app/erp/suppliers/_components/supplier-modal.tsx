@@ -524,6 +524,7 @@ export function SupplierModal({
 
   return (
     <Modal
+      disableAnimation
       isOpen={isOpen && !importPromptOpen}
       scrollBehavior="inside"
       size="3xl"
@@ -659,8 +660,8 @@ export function SupplierModal({
           >
             Cancel
           </Button>
-          <Button color="primary" isLoading={submitting} onPress={submit}>
-            {supplier ? "Save" : "Create"}
+          <Button color="primary" isDisabled={submitting} onPress={submit}>
+            {submitting ? "Guardando..." : supplier ? "Save" : "Create"}
           </Button>
         </ModalFooter>
       </ModalContent>
