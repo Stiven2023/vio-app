@@ -306,7 +306,7 @@ export const stockMovementReasonPgEnum = pgEnum(
   "stock_movement_reason",
   stockMovementReasonValues,
 );
-export const stockMovementReferenceTypePgEnum = pgEnum(
+export const stockMovementReferenceTypePgEnum = pgEnum( 
   "stock_movement_reference_type",
   stockMovementReferenceTypeValues,
 );
@@ -1774,6 +1774,15 @@ export const exchangeRates = pgTable("exchange_rates", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+export const advisorCommissionRates = pgTable("advisor_commission_rates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  advisorName: varchar("advisor_name", { length: 150 }).notNull().unique(),
+  rate: numeric("rate", { precision: 8, scale: 6 }).notNull().default("0.05"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 /* =========================
    LEGAL STATUS (Genérico para todos los terceros)
 ========================= */
@@ -1849,6 +1858,7 @@ export const moldingTemplates = pgTable(
     hasEntretela: boolean("has_entretela").default(false),
     invisibleZipperColor: varchar("invisible_zipper_color", { length: 80 }),
     observations: text("observations"),
+    compatibleFabrics: text("compatible_fabrics"),
     isActive: boolean("is_active").default(true),
     deprecatedAt: timestamp("deprecated_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => employees.id),

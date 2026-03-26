@@ -84,6 +84,7 @@ export async function GET(
         hasEntretela: moldingTemplates.hasEntretela,
         invisibleZipperColor: moldingTemplates.invisibleZipperColor,
         observations: moldingTemplates.observations,
+        compatibleFabrics: moldingTemplates.compatibleFabrics,
         isActive: moldingTemplates.isActive,
         deprecatedAt: moldingTemplates.deprecatedAt,
         createdBy: moldingTemplates.createdBy,
@@ -221,6 +222,7 @@ export async function PATCH(
     "logoImageUrl",
     "fusioningNotes",
     "observations",
+    "compatibleFabrics",
   ] as const;
   const boolFields = [
     "screenPrint",

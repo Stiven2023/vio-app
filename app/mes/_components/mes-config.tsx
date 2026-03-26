@@ -16,7 +16,7 @@ export const PROCESO_PREFIX: Record<string, string> = {
 
 export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {
   montaje: {
-    label: "Assembly",
+    label: "Montaje",
     role: "OPERARIO_MONTAJE",
     operationType: "MONTAJE",
   },

@@ -9,6 +9,7 @@ import {
   resolvePaymentBankById,
   validatePaymentBankCurrency,
 } from "@/src/utils/payment-banks";
+import { generatePaymentReferenceCode } from "@/src/utils/payment-reference-code";
 import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
@@ -171,11 +172,6 @@ export async function POST(
       ? null
       : String(body.proofImageUrl).trim() || null;
 
-  const referenceCode =
-    body.referenceCode === undefined || body.referenceCode === null
-      ? null
-      : String(body.referenceCode).trim() || null;
-
   const depositAmount = toPositiveNumericString(body.depositAmount) ?? amount;
 
   const bankId =
@@ -211,13 +207,18 @@ export async function POST(
 
     if (!o) throw new Error("order not found");
 
+    const generatedReferenceCode = await generatePaymentReferenceCode(tx, {
+      method: method as "EFECTIVO" | "TRANSFERENCIA" | "CREDITO",
+      bankIsOfficial: bankRow?.isOfficial ?? null,
+    });
+
     const [p] = await tx
       .insert(orderPayments)
       .values({
         orderId,
         amount,
         depositAmount,
-        referenceCode,
+        referenceCode: generatedReferenceCode,
         method: method as any,
         bankId: method === "TRANSFERENCIA" ? (bankRow?.id ?? null) : null,
         transferBank: null,

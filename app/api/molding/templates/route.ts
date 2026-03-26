@@ -136,6 +136,7 @@ type CreateMoldingTemplateBody = {
   hasEntretela?: unknown;
   invisibleZipperColor?: unknown;
   observations?: unknown;
+  compatibleFabrics?: unknown;
 };
 
 function parseStr(v: unknown, maxLen = 255): string | null {
@@ -306,6 +307,7 @@ export async function POST(request: Request) {
         hasEntretela: parseBool(body.hasEntretela),
         invisibleZipperColor: parseStr(body.invisibleZipperColor, 80),
         observations: parseStr(body.observations, 2000),
+        compatibleFabrics: parseStr(body.compatibleFabrics, 2000),
         createdBy: employeeId ?? undefined,
         isActive: true,
       })

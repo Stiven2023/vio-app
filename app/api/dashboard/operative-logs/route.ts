@@ -68,8 +68,8 @@ const NEXT_STATUS_BY_OPERATION: Record<
   (typeof OPERATION_TYPES)[number],
   OrderItemStatusType
 > = {
-  MONTAJE: ORDER_ITEM_STATUS.MONTAJE,
-  PLOTTER: ORDER_ITEM_STATUS.IMPRESION,
+  MONTAJE: ORDER_ITEM_STATUS.IMPRESION,
+  PLOTTER: ORDER_ITEM_STATUS.SUBLIMACION,
   SUBLIMACION: ORDER_ITEM_STATUS.SUBLIMACION,
   CALANDRA: ORDER_ITEM_STATUS.CORTE_MANUAL,
   CORTE_LASER: ORDER_ITEM_STATUS.PENDIENTE_CONFECCION,
@@ -498,8 +498,12 @@ export async function POST(request: Request) {
     return new Response("producedQuantity inválido", { status: 400 });
   }
 
-  const startAt = parseDateTime(body.startAt);
-  const endAt = parseDateTime(body.endAt);
+  const parsedStartAt = parseDateTime(body.startAt);
+  const parsedEndAt = parseDateTime(body.endAt);
+  const isComplete = toBoolean(body.isComplete);
+  const isPartial = toBoolean(body.isPartial);
+  const authorizeManualCut = toBoolean(body.authorizeManualCut);
+  const repoCheck = toBoolean(body.repoCheck);
 
   const createdByUserId = getUserIdFromRequest(request);
   const changedByEmployeeId = await getEmployeeIdFromRequest(request);
@@ -601,6 +605,20 @@ export async function POST(request: Request) {
         }
       }
 
+      let effectiveStartAt = parsedStartAt;
+      let effectiveEndAt = parsedEndAt;
+
+      if (operationType === "MONTAJE") {
+        const activeTakeOrder = await resolveActiveMontajeTakeOrder({
+          tx,
+          orderCode,
+        });
+
+        effectiveStartAt =
+          activeTakeOrder?.startAt ?? activeTakeOrder?.createdAt ?? new Date();
+        effectiveEndAt = isComplete ? new Date() : null;
+      }
+
       const [created] = await tx
         .insert(operativeDashboardLogs)
         .values({
@@ -612,16 +630,33 @@ export async function POST(request: Request) {
           size: toOptionalText(body.size),
           quantityOp,
           producedQuantity,
-          startAt,
-          endAt,
-          isComplete: toBoolean(body.isComplete),
-          isPartial: toBoolean(body.isPartial),
+          startAt: effectiveStartAt,
+          endAt: effectiveEndAt,
+          isComplete,
+          isPartial,
           observations: toOptionalText(body.observations),
-          repoCheck: toBoolean(body.repoCheck),
+          repoCheck,
           processCode,
           createdByUserId,
         })
         .returning();
+
+      if (operationType === "MONTAJE" && isComplete) {
+        await tx
+          .update(operativeDashboardLogs)
+          .set({
+            isComplete: true,
+            endAt: effectiveEndAt,
+          })
+          .where(
+            and(
+              eq(operativeDashboardLogs.orderCode, orderCode),
+              eq(operativeDashboardLogs.operationType, "MONTAJE"),
+              eq(operativeDashboardLogs.details, MONTAJE_TAKE_ORDER_MARKER),
+              eq(operativeDashboardLogs.isComplete, false),
+            ),
+          );
+      }
 
       const linkedItem = await resolveOrderItemByDesignAndSize({
         tx,
@@ -634,12 +669,11 @@ export async function POST(request: Request) {
       let appliedStatus: OrderItemStatusType | null = null;
 
       if (linkedItem?.id) {
-        const isComplete = toBoolean(body.isComplete);
-        const isPartial = toBoolean(body.isPartial);
-        const repoCheck = toBoolean(body.repoCheck);
-
         if (isComplete && operationType) {
-          const nextStatus = NEXT_STATUS_BY_OPERATION[operationType];
+          const nextStatus =
+            operationType === "MONTAJE" && (authorizeManualCut || processCode === "C")
+              ? ORDER_ITEM_STATUS.CORTE_MANUAL
+              : NEXT_STATUS_BY_OPERATION[operationType];
 
           if (shouldMoveForward(linkedItem.status, nextStatus)) {
             await updateOrderItemStatus({

@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 
 import { DesignSection } from "../../_components/order-item-modal/design-section";
@@ -45,6 +46,26 @@ type ProductPriceRow = {
   startDate: string | null;
   endDate: string | null;
   isActive: boolean | null;
+};
+
+type ImageMoldingAssignment = {
+  designName: string;
+  garmentType:
+    | "JUGADOR"
+    | "ARQUERO"
+    | "CAPITAN"
+    | "JUEZ"
+    | "ENTRENADOR"
+    | "LIBERO"
+    | "OBJETO";
+  position:
+    | "FRENTE"
+    | "ESPALDA"
+    | "LATERAL_IZQUIERDO"
+    | "LATERAL_DERECHO"
+    | "MANGA_IZQUIERDA"
+    | "MANGA_DERECHA";
+  moldingTemplateId: string | null;
 };
 
 function asNumber(v: unknown) {
@@ -179,6 +200,70 @@ function normalizeItemSleeve(v: unknown) {
   return null;
 }
 
+async function buildAutoMaterialsFromTemplateIds(args: {
+  templateIds: string[];
+  quantity: number;
+}) {
+  const { templateIds, quantity } = args;
+  const totals = new Map<
+    string,
+    { quantity: number; notes: Set<string> }
+  >();
+
+  for (const templateId of templateIds) {
+    const res = await fetch(`/api/molding/templates/${templateId}`);
+
+    if (!res.ok) throw new Error(await res.text());
+
+    const template = (await res.json()) as MoldingTemplateDetail;
+    const templateLabel = String(template.moldingCode ?? "MOLDERIA").trim();
+
+    for (const insumo of template.insumos ?? []) {
+      const inventoryItemId = String(insumo.inventoryItemId ?? "").trim();
+
+      if (!inventoryItemId) continue;
+
+      const perUnit = Number(insumo.qtyPerUnit ?? 0);
+
+      if (!Number.isFinite(perUnit) || perUnit <= 0) continue;
+
+      const required = perUnit * quantity;
+      const current =
+        totals.get(inventoryItemId) ??
+        ({ quantity: 0, notes: new Set<string>() } as {
+          quantity: number;
+          notes: Set<string>;
+        });
+
+      current.quantity += required;
+      current.notes.add(`AUTO ${templateLabel}`);
+      if (String(insumo.notes ?? "").trim()) {
+        current.notes.add(String(insumo.notes));
+      }
+      totals.set(inventoryItemId, current);
+    }
+  }
+
+  return Array.from(totals.entries()).map(([inventoryItemId, value]) => ({
+    inventoryItemId,
+    quantity: Number(value.quantity.toFixed(4)),
+    note: Array.from(value.notes).join(" | "),
+  }));
+}
+
+function normalizeMaterialsForCompare(
+  rows: Array<{ inventoryItemId: string; quantity?: number | string | null; note?: string | null }>,
+) {
+  return rows
+    .map((row) => ({
+      inventoryItemId: String(row.inventoryItemId ?? "").trim(),
+      quantity: Number(row.quantity ?? 0).toFixed(4),
+      note: String(row.note ?? "").trim(),
+    }))
+    .filter((row) => row.inventoryItemId)
+    .sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
+}
+
 export function OrderItemCreatePage(props: {
   orderId: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
@@ -194,10 +279,21 @@ export function OrderItemCreatePage(props: {
   const [imageOneFile, setImageOneFile] = React.useState<File | null>(null);
   const [imageTwoFile, setImageTwoFile] = React.useState<File | null>(null);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
-  const [moldingTemplateId, setMoldingTemplateId] = React.useState<string | null>(null);
   const [moldingTemplates, setMoldingTemplates] = React.useState<MoldingTemplateRow[]>([]);
   const [loadingMoldings, setLoadingMoldings] = React.useState(false);
   const [isApplyingMolding, setIsApplyingMolding] = React.useState(false);
+  const [assignmentOne, setAssignmentOne] = React.useState<ImageMoldingAssignment>({
+    designName: "",
+    garmentType: "JUGADOR",
+    position: "FRENTE",
+    moldingTemplateId: null,
+  });
+  const [assignmentTwo, setAssignmentTwo] = React.useState<ImageMoldingAssignment>({
+    designName: "",
+    garmentType: "JUGADOR",
+    position: "ESPALDA",
+    moldingTemplateId: null,
+  });
 
   const {
     inventoryItems,
@@ -253,120 +349,45 @@ export function OrderItemCreatePage(props: {
   }, []);
 
   React.useEffect(() => {
-    const selectedId = String(moldingTemplateId ?? "").trim();
+    const templateIds = Array.from(
+      new Set(
+        [assignmentOne.moldingTemplateId, assignmentTwo.moldingTemplateId]
+          .map((id) => String(id ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
 
-    if (!selectedId) {
+    if (templateIds.length === 0) {
+      setMaterials([]);
       setIsApplyingMolding(false);
 
       return;
     }
 
     let active = true;
+    const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
 
     setIsApplyingMolding(true);
 
-    fetch(`/api/molding/templates/${selectedId}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-
-        return (await res.json()) as MoldingTemplateDetail;
-      })
-      .then((template) => {
+    buildAutoMaterialsFromTemplateIds({ templateIds, quantity })
+      .then((autoMaterials) => {
         if (!active) return;
 
-        let hasChanges = false;
+        const nextNorm = normalizeMaterialsForCompare(autoMaterials);
+        const currentNorm = normalizeMaterialsForCompare(
+          (materials ?? []) as Array<{
+            inventoryItemId: string;
+            quantity?: number | string | null;
+            note?: string | null;
+          }>,
+        );
 
-        setItem((prev) => {
-          const updated = { ...prev };
-
-          if (!String(prev.garmentType ?? "").trim() && template.garmentType) {
-            updated.garmentType =
-              normalizeItemGarmentType(template.garmentType) ?? prev.garmentType;
-            if (updated.garmentType !== prev.garmentType) hasChanges = true;
-          }
-          if (!String(prev.observations ?? "").trim() && template.observations) {
-            updated.observations = template.observations;
-            hasChanges = true;
-          }
-          if (!String(prev.fabric ?? "").trim() && template.fabric) {
-            updated.fabric = template.fabric;
-            hasChanges = true;
-          }
-          if (!String(prev.imageUrl ?? "").trim() && template.clothingImageOneUrl) {
-            updated.imageUrl = template.clothingImageOneUrl;
-            hasChanges = true;
-          }
-          if (
-            !String(prev.clothingImageOneUrl ?? "").trim() &&
-            template.clothingImageOneUrl
-          ) {
-            updated.clothingImageOneUrl = template.clothingImageOneUrl;
-            hasChanges = true;
-          }
-          if (
-            !String(prev.clothingImageTwoUrl ?? "").trim() &&
-            template.clothingImageTwoUrl
-          ) {
-            updated.clothingImageTwoUrl = template.clothingImageTwoUrl;
-            hasChanges = true;
-          }
-          if (!String(prev.logoImageUrl ?? "").trim() && template.logoImageUrl) {
-            updated.logoImageUrl = template.logoImageUrl;
-            hasChanges = true;
-          }
-          if (!String(prev.gender ?? "").trim() && template.gender) {
-            updated.gender = template.gender;
-            hasChanges = true;
-          }
-          if (!String(prev.process ?? "").trim() && template.process) {
-            updated.process = normalizeItemProcess(template.process) ?? prev.process;
-            if (updated.process !== prev.process) hasChanges = true;
-          }
-          if (!String(prev.neckType ?? "").trim() && template.neckType) {
-            updated.neckType = template.neckType;
-            hasChanges = true;
-          }
-          if (!String(prev.sleeve ?? "").trim() && template.sleeveType) {
-            updated.sleeve = normalizeItemSleeve(template.sleeveType) ?? prev.sleeve;
-            if (updated.sleeve !== prev.sleeve) hasChanges = true;
-          }
-          if (!String(prev.color ?? "").trim() && template.color) {
-            updated.color = template.color;
-            hasChanges = true;
-          }
-          if (!prev.screenPrint && template.screenPrint) {
-            updated.screenPrint = true;
-            hasChanges = true;
-          }
-          if (!prev.embroidery && template.embroidery) {
-            updated.embroidery = true;
-            hasChanges = true;
-          }
-          if (!prev.buttonhole && template.buttonhole) {
-            updated.buttonhole = true;
-            hasChanges = true;
-          }
-          if (!prev.snap && template.snap) {
-            updated.snap = true;
-            hasChanges = true;
-          }
-          if (!prev.tag && template.tag) {
-            updated.tag = true;
-            hasChanges = true;
-          }
-          if (!prev.flag && template.flag) {
-            updated.flag = true;
-            hasChanges = true;
-          }
-
-          return updated;
-        });
-
-        if (hasChanges) {
-          toast.success(`Datos cargados de molderia: ${template.moldingCode}`);
+        if (JSON.stringify(nextNorm) !== JSON.stringify(currentNorm)) {
+          setMaterials(autoMaterials);
         }
       })
       .catch((e) => {
+        if (!active) return;
         toast.error(getErrorMessage(e));
       })
       .finally(() => {
@@ -377,7 +398,13 @@ export function OrderItemCreatePage(props: {
     return () => {
       active = false;
     };
-  }, [moldingTemplateId, setItem]);
+  }, [
+    assignmentOne.moldingTemplateId,
+    assignmentTwo.moldingTemplateId,
+    item.quantity,
+    materials,
+    setMaterials,
+  ]);
 
   React.useEffect(() => {
     let active = true;
@@ -692,15 +719,69 @@ export function OrderItemCreatePage(props: {
 
       const created = (await res.json()) as { id?: string };
 
-      if (moldingTemplateId && created?.id) {
-        try {
-          await fetch(`/api/molding/order-items/${created.id}/moldings`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ moldingTemplateId }),
-          });
-        } catch {
-          // non-blocking
+      if (created?.id) {
+        const assignments = [
+          {
+            ...assignmentOne,
+            combinationOrder: 1,
+            imageSlot: 1,
+            imageUrl: clothingImageOneUrl,
+          },
+          {
+            ...assignmentTwo,
+            combinationOrder: 2,
+            imageSlot: 2,
+            imageUrl: clothingImageTwoUrl,
+          },
+        ].filter((entry) => String(entry.moldingTemplateId ?? "").trim());
+
+        for (const entry of assignments) {
+          const assignRes = await fetch(
+            `/api/molding/order-items/${created.id}/moldings`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                moldingTemplateId: entry.moldingTemplateId,
+                combinationOrder: entry.combinationOrder,
+                imageSlot: entry.imageSlot,
+                imageUrl: entry.imageUrl,
+                garmentType: entry.garmentType,
+                garmentSubtype: entry.position,
+                designDetail:
+                  String(entry.designName ?? "").trim() ||
+                  String(item.name ?? ""),
+              }),
+            },
+          );
+
+          if (!assignRes.ok) {
+            throw new Error(await assignRes.text());
+          }
+
+          const createdMolding = (await assignRes.json()) as { id?: string };
+          const sizeList = Array.from(
+            new Set(
+              (packaging ?? [])
+                .map((row) => String(row?.size ?? "").trim().toUpperCase())
+                .filter(Boolean),
+            ),
+          );
+
+          if (createdMolding.id) {
+            const calcRes = await fetch(
+              `/api/molding/order-items/${created.id}/moldings/${createdMolding.id}/insumos`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sizes: sizeList }),
+              },
+            );
+
+            if (!calcRes.ok) {
+              throw new Error(await calcRes.text());
+            }
+          }
         }
       }
 
@@ -829,27 +910,170 @@ export function OrderItemCreatePage(props: {
         <CardHeader>
           <div className="font-semibold">Molderia</div>
         </CardHeader>
-        <CardBody className="space-y-2">
-          <Select
-            isDisabled={
-              uiDisabled || loadingMoldings || isCreateBlocked || isApplyingMolding
-            }
-            label="Plantilla de molderia (opcional)"
-            selectedKeys={moldingTemplateId ? [moldingTemplateId] : []}
-            onSelectionChange={(keys: any) => {
-              const k = Array.from(keys as any)[0];
+        <CardBody className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="rounded-medium border border-default-200 p-3 space-y-3">
+              <div className="text-sm font-semibold">Prenda 1</div>
+              <Input
+                isDisabled={uiDisabled || isCreateBlocked}
+                label="Nombre prenda 1"
+                placeholder="Ej: Camiseta titular"
+                value={assignmentOne.designName}
+                onValueChange={(v) =>
+                  setAssignmentOne((s) => ({ ...s, designName: v }))
+                }
+              />
+              <Select
+                isDisabled={uiDisabled || isCreateBlocked}
+                label="Tipo de prenda"
+                selectedKeys={[assignmentOne.garmentType]}
+                onSelectionChange={(keys: any) => {
+                  const k = String(Array.from(keys as any)[0] ?? "JUGADOR");
 
-              setMoldingTemplateId(k ? String(k) : null);
-            }}
-          >
-            {moldingTemplates.map((t) => (
-              <SelectItem key={t.id}>
-                {t.moldingCode}
-                {t.garmentType ? ` — ${t.garmentType}` : ""}
-                {t.color ? ` / ${t.color}` : ""}
-              </SelectItem>
-            ))}
-          </Select>
+                  setAssignmentOne((s) => ({
+                    ...s,
+                    garmentType: (k as ImageMoldingAssignment["garmentType"]) ?? "JUGADOR",
+                  }));
+                }}
+              >
+                <SelectItem key="JUGADOR">Jugador</SelectItem>
+                <SelectItem key="ARQUERO">Arquero</SelectItem>
+                <SelectItem key="CAPITAN">Capitán</SelectItem>
+                <SelectItem key="JUEZ">Juez</SelectItem>
+                <SelectItem key="ENTRENADOR">Entrenador</SelectItem>
+                <SelectItem key="LIBERO">Líbero</SelectItem>
+                <SelectItem key="OBJETO">Objeto</SelectItem>
+              </Select>
+              <Select
+                isDisabled={uiDisabled || isCreateBlocked}
+                label="Posición"
+                selectedKeys={[assignmentOne.position]}
+                onSelectionChange={(keys: any) => {
+                  const k = String(Array.from(keys as any)[0] ?? "FRENTE");
+
+                  setAssignmentOne((s) => ({
+                    ...s,
+                    position: (k as ImageMoldingAssignment["position"]) ?? "FRENTE",
+                  }));
+                }}
+              >
+                <SelectItem key="FRENTE">Frente</SelectItem>
+                <SelectItem key="ESPALDA">Espalda</SelectItem>
+                <SelectItem key="LATERAL_IZQUIERDO">Lateral izquierda</SelectItem>
+                <SelectItem key="LATERAL_DERECHO">Lateral derecha</SelectItem>
+                <SelectItem key="MANGA_IZQUIERDA">Manga izquierda</SelectItem>
+                <SelectItem key="MANGA_DERECHA">Manga derecha</SelectItem>
+              </Select>
+              <Select
+                isDisabled={
+                  uiDisabled || loadingMoldings || isCreateBlocked || isApplyingMolding
+                }
+                label="Moldería"
+                selectedKeys={
+                  assignmentOne.moldingTemplateId
+                    ? [assignmentOne.moldingTemplateId]
+                    : []
+                }
+                onSelectionChange={(keys: any) => {
+                  const k = Array.from(keys as any)[0];
+
+                  setAssignmentOne((s) => ({
+                    ...s,
+                    moldingTemplateId: k ? String(k) : null,
+                  }));
+                }}
+              >
+                {moldingTemplates.map((t) => (
+                  <SelectItem key={t.id}>
+                    {t.moldingCode}
+                    {t.garmentType ? ` — ${t.garmentType}` : ""}
+                    {t.color ? ` / ${t.color}` : ""}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+
+            <div className="rounded-medium border border-default-200 p-3 space-y-3">
+              <div className="text-sm font-semibold">Prenda 2</div>
+              <Input
+                isDisabled={uiDisabled || isCreateBlocked}
+                label="Nombre prenda 2"
+                placeholder="Ej: Camiseta alterna"
+                value={assignmentTwo.designName}
+                onValueChange={(v) =>
+                  setAssignmentTwo((s) => ({ ...s, designName: v }))
+                }
+              />
+              <Select
+                isDisabled={uiDisabled || isCreateBlocked}
+                label="Tipo de prenda"
+                selectedKeys={[assignmentTwo.garmentType]}
+                onSelectionChange={(keys: any) => {
+                  const k = String(Array.from(keys as any)[0] ?? "JUGADOR");
+
+                  setAssignmentTwo((s) => ({
+                    ...s,
+                    garmentType: (k as ImageMoldingAssignment["garmentType"]) ?? "JUGADOR",
+                  }));
+                }}
+              >
+                <SelectItem key="JUGADOR">Jugador</SelectItem>
+                <SelectItem key="ARQUERO">Arquero</SelectItem>
+                <SelectItem key="CAPITAN">Capitán</SelectItem>
+                <SelectItem key="JUEZ">Juez</SelectItem>
+                <SelectItem key="ENTRENADOR">Entrenador</SelectItem>
+                <SelectItem key="LIBERO">Líbero</SelectItem>
+                <SelectItem key="OBJETO">Objeto</SelectItem>
+              </Select>
+              <Select
+                isDisabled={uiDisabled || isCreateBlocked}
+                label="Posición"
+                selectedKeys={[assignmentTwo.position]}
+                onSelectionChange={(keys: any) => {
+                  const k = String(Array.from(keys as any)[0] ?? "ESPALDA");
+
+                  setAssignmentTwo((s) => ({
+                    ...s,
+                    position: (k as ImageMoldingAssignment["position"]) ?? "ESPALDA",
+                  }));
+                }}
+              >
+                <SelectItem key="FRENTE">Frente</SelectItem>
+                <SelectItem key="ESPALDA">Espalda</SelectItem>
+                <SelectItem key="LATERAL_IZQUIERDO">Lateral izquierda</SelectItem>
+                <SelectItem key="LATERAL_DERECHO">Lateral derecha</SelectItem>
+                <SelectItem key="MANGA_IZQUIERDA">Manga izquierda</SelectItem>
+                <SelectItem key="MANGA_DERECHA">Manga derecha</SelectItem>
+              </Select>
+              <Select
+                isDisabled={
+                  uiDisabled || loadingMoldings || isCreateBlocked || isApplyingMolding
+                }
+                label="Moldería"
+                selectedKeys={
+                  assignmentTwo.moldingTemplateId
+                    ? [assignmentTwo.moldingTemplateId]
+                    : []
+                }
+                onSelectionChange={(keys: any) => {
+                  const k = Array.from(keys as any)[0];
+
+                  setAssignmentTwo((s) => ({
+                    ...s,
+                    moldingTemplateId: k ? String(k) : null,
+                  }));
+                }}
+              >
+                {moldingTemplates.map((t) => (
+                  <SelectItem key={t.id}>
+                    {t.moldingCode}
+                    {t.garmentType ? ` — ${t.garmentType}` : ""}
+                    {t.color ? ` / ${t.color}` : ""}
+                  </SelectItem>
+                ))}
+              </Select>
+            </div>
+          </div>
           {isApplyingMolding ? (
             <div className="text-xs text-primary animate-pulse">
               Aplicando datos de molderia...

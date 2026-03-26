@@ -48,7 +48,9 @@ import {
 } from "@/app/mes/_components/mes-cards";
 import {
   fetchMesPedidos,
+  fetchMesPreprocessOrderRank,
   fetchMontajeAssignments,
+  invalidateMesDataCache,
 } from "@/app/mes/_components/mes-data";
 import { buildProcessQueue } from "@/app/mes/_components/mes-utils";
 import { useSessionStore } from "@/store/session";
@@ -100,10 +102,34 @@ export default function MesPageClient() {
     const pedidos = await fetchMesPedidos(
       activeProcessConfig.operationType,
       mesOrderStatuses,
+      {
+        activeProceso,
+        includeActualizacion: activeProceso !== "programacion",
+      },
     );
 
-    return pedidos;
-  }, [activeProcessConfig.operationType, mesOrderStatuses]);
+    if (activeProceso !== "programacion") {
+      return pedidos;
+    }
+
+    const preprocessRank = await fetchMesPreprocessOrderRank({
+      confirmedOnly: false,
+    });
+
+    return [...pedidos].sort((a, b) => {
+      const aRank = preprocessRank.get(a.pedido);
+      const bRank = preprocessRank.get(b.pedido);
+
+      if (aRank === undefined && bRank === undefined) {
+        return b.pedido.localeCompare(a.pedido);
+      }
+      if (aRank === undefined) return 1;
+      if (bRank === undefined) return -1;
+      if (aRank !== bRank) return aRank - bRank;
+
+      return b.pedido.localeCompare(a.pedido);
+    });
+  }, [activeProcessConfig.operationType, activeProceso, mesOrderStatuses]);
 
   const reloadMontajeAssignments = useCallback(async () => {
     if (activeProceso !== "montaje") {
@@ -113,7 +139,11 @@ export default function MesPageClient() {
     return fetchMontajeAssignments();
   }, [activeProceso]);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (forceRefresh = false) => {
+    if (forceRefresh) {
+      invalidateMesDataCache();
+    }
+
     const [pedidos, assignments] = await Promise.all([
       reloadMesPedidos(),
       reloadMontajeAssignments(),
@@ -158,7 +188,7 @@ export default function MesPageClient() {
           throw new Error(message);
         }
 
-        await refreshData();
+        await refreshData(true);
         setSelectedMontajeTicket({
           pedido: row.pedido,
           detalle: row.detalle,
@@ -166,7 +196,7 @@ export default function MesPageClient() {
           ticketMontaje: row.ticket,
           tallas: row.tallas,
         });
-        toast.success("Order taken in assembly");
+        toast.success("Pedido tomado en montaje");
       } catch (error) {
         const message =
           error instanceof Error && error.message
@@ -225,7 +255,7 @@ export default function MesPageClient() {
 
   const handleMontajeSaved = () => {
     setSelectedMontajeTicket(null);
-    void refreshData();
+    void refreshData(true);
   };
 
   const togglePedido = (idx: number) => {
@@ -290,7 +320,7 @@ export default function MesPageClient() {
           {[
             ...(isLider ? [{ key: "pre-proceso", label: "Pre-proceso" }] : []),
             { key: "programacion", label: "Scheduling" },
-            { key: "montaje", label: "Assembly" },
+            { key: "montaje", label: "Montaje" },
             { key: "plotter", label: "Plotter" },
             { key: "sublimacion", label: "Sublimation" },
             { key: "corte", label: "Cutting" },
@@ -414,6 +444,7 @@ export default function MesPageClient() {
                 <PedidoSection
                   key={pedido.pedido}
                   pedido={pedido}
+                  showProcessTracking
                   onToggle={() => togglePedido(realIdx)}
                 />
               );

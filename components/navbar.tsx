@@ -21,7 +21,6 @@ import NextLink from "next/link";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { toast } from "react-hot-toast";
 import { BsChevronDown } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
@@ -155,6 +154,7 @@ export const Navbar = () => {
 
   const [canSeeClients, setCanSeeClients] = useState(false);
   const [canSeeCatalog, setCanSeeCatalog] = useState(false);
+  const [canSeeMolding, setCanSeeMolding] = useState(false);
   const [canSeeOrders, setCanSeeOrders] = useState(false);
   const [canSeeSuppliers, setCanSeeSuppliers] = useState(false);
   const [canSeePurchaseOrders, setCanSeePurchaseOrders] = useState(false);
@@ -162,7 +162,6 @@ export const Navbar = () => {
   const [canSeePackers, setCanSeePackers] = useState(false);
   const [canSeeStatusHistory, setCanSeeStatusHistory] = useState(false);
   const [canSeePayments, setCanSeePayments] = useState(false);
-  const [verifyingSiigo, setVerifyingSiigo] = useState(false);
 
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const localeForRender = localeHydrated ? currentLocale : defaultAppLocale;
@@ -180,18 +179,6 @@ export const Navbar = () => {
         localeForRender === "es" ? "Usuario actual" : "Current user",
       notifications:
         localeForRender === "es" ? "Notificaciones" : "Notifications",
-      verifySiigo:
-        localeForRender === "es"
-          ? "Verificar API Siigo"
-          : "Verify Siigo API",
-      verifySiigoLoading:
-        localeForRender === "es"
-          ? "Verificando API de Siigo..."
-          : "Verifying Siigo API...",
-      verifySiigoSuccess:
-        localeForRender === "es"
-          ? "API de Siigo verificada correctamente"
-          : "Siigo API verified successfully",
       logOut: localeForRender === "es" ? "Cerrar sesión" : "Log out",
       noRole: localeForRender === "es" ? "SIN_ROL" : "NO_ROLE",
     }),
@@ -204,6 +191,7 @@ export const Navbar = () => {
   const applyPermissions = (permissions?: Record<string, boolean>) => {
     setCanSeeClients(Boolean(permissions?.VER_CLIENTE));
     setCanSeeCatalog(Boolean(permissions?.VER_INVENTARIO));
+    setCanSeeMolding(Boolean(permissions?.VER_MOLDERIA));
     setCanSeeOrders(Boolean(permissions?.VER_PEDIDO));
     setCanSeeSuppliers(Boolean(permissions?.VER_PROVEEDOR));
     setCanSeePurchaseOrders(Boolean(permissions?.CREAR_ORDEN_COMPRA));
@@ -267,7 +255,7 @@ export const Navbar = () => {
     }
 
     fetch(
-      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_EMPAQUE,VER_HISTORIAL_ESTADO,VER_PAGO,CREAR_PAGO`,
+      `/api/auth/permissions?names=VER_CLIENTE,VER_INVENTARIO,VER_MOLDERIA,VER_PEDIDO,VER_PROVEEDOR,CREAR_ORDEN_COMPRA,VER_CONFECCIONISTA,VER_EMPAQUE,VER_HISTORIAL_ESTADO,VER_PAGO,CREAR_PAGO`,
       { credentials: "include" },
     )
       .then(async (r) => {
@@ -276,6 +264,7 @@ export const Navbar = () => {
             permissions: {
               VER_CLIENTE: false,
               VER_INVENTARIO: false,
+              VER_MOLDERIA: false,
               VER_PEDIDO: false,
               VER_PROVEEDOR: false,
               CREAR_ORDEN_COMPRA: false,
@@ -401,6 +390,7 @@ export const Navbar = () => {
         isAuthenticated,
         canSeeCatalog,
         canSeeClients,
+        canSeeMolding,
         canSeeOrders,
         canSeePayments,
         canSeePurchaseOrders,
@@ -411,6 +401,7 @@ export const Navbar = () => {
       currentLocale,
       canSeeCatalog,
       canSeeClients,
+      canSeeMolding,
       canSeeOrders,
       canSeePayments,
       canSeePurchaseOrders,
@@ -441,44 +432,6 @@ export const Navbar = () => {
 
     if (actionKey === "options") {
       router.push(`${moduleRoot}/options`);
-
-      return;
-    }
-
-    if (actionKey === "verify-siigo") {
-      if (verifyingSiigo) return;
-
-      setVerifyingSiigo(true);
-      const loadingToast = toast.loading(uiText.verifySiigoLoading);
-
-      try {
-        const response = await fetch("/api/siigo/auth", {
-          method: "POST",
-          credentials: "include",
-        });
-
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: string; source?: string }
-          | null;
-
-        if (!response.ok) {
-          throw new Error(payload?.error || "Siigo auth failed");
-        }
-
-        toast.success(
-          payload?.source === "cache"
-            ? `${uiText.verifySiigoSuccess} (cache)`
-            : uiText.verifySiigoSuccess,
-          { id: loadingToast },
-        );
-      } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Siigo auth failed",
-          { id: loadingToast },
-        );
-      } finally {
-        setVerifyingSiigo(false);
-      }
 
       return;
     }
@@ -752,13 +705,6 @@ export const Navbar = () => {
                 ) : null}
                 {currentModule === "erp" ? (
                   <DropdownItem key="options">{uiText.options}</DropdownItem>
-                ) : null}
-                {currentModule === "erp" ? (
-                  <DropdownItem key="verify-siigo">
-                    {verifyingSiigo
-                      ? uiText.verifySiigoLoading
-                      : uiText.verifySiigo}
-                  </DropdownItem>
                 ) : null}
                 <DropdownItem
                   key="logout"

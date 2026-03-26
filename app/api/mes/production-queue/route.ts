@@ -4,6 +4,8 @@ import { db } from "@/src/db";
 import {
   clients,
   mesProductionQueue,
+  orderItemPackaging,
+  orderItems,
   orders,
   prefacturas,
   quotations,
@@ -28,6 +30,164 @@ function canWrite(role: string | null) {
   return role === "ADMINISTRADOR" || role === "LIDER_OPERACIONAL";
 }
 
+function toQueueKey(orderItemId: string, size: string | null | undefined) {
+  const item = String(orderItemId ?? "").trim();
+  const talla = String(size ?? "")
+    .trim()
+    .toUpperCase();
+
+  return `${item}::${talla}`;
+}
+
+async function ensureQueueFromProgramacionOrders() {
+  const candidates = await db
+    .select({
+      orderId: orders.id,
+      orderItemId: orderItems.id,
+      design: orderItems.name,
+      itemQuantity: orderItems.quantity,
+      orderDate: orders.createdAt,
+      deliveryDate: quotations.deliveryDate,
+    })
+    .from(orderItems)
+    .innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
+    .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
+    .where(
+      and(
+        eq(orders.status, "PROGRAMACION" as any),
+        sql`(
+          case
+            when upper(trim(coalesce(${orderItems.process}, ''))) in ('PRODUCCION', 'BODEGA', 'COMPRAS')
+              then upper(trim(coalesce(${orderItems.process}, '')))
+            else 'PRODUCCION'
+          end
+        ) = 'PRODUCCION'`,
+      ),
+    );
+
+  if (candidates.length === 0) return;
+
+  const orderItemIds = Array.from(
+    new Set(candidates.map((row) => String(row.orderItemId ?? "").trim())),
+  ).filter(Boolean);
+
+  const packagingRows = orderItemIds.length
+    ? await db
+        .select({
+          orderItemId: orderItemPackaging.orderItemId,
+          mode: orderItemPackaging.mode,
+          size: orderItemPackaging.size,
+          quantity: orderItemPackaging.quantity,
+          rowOrder: orderItemPackaging.id,
+        })
+        .from(orderItemPackaging)
+        .where(sql`${orderItemPackaging.orderItemId} in ${orderItemIds}`)
+        .orderBy(orderItemPackaging.id)
+    : [];
+
+  const packagingByItem = new Map<
+    string,
+    Array<{ mode: string; size: string; quantity: number; rowOrder: string }>
+  >();
+
+  for (const row of packagingRows) {
+    const itemId = String(row.orderItemId ?? "").trim();
+    const mode = String(row.mode ?? "").trim().toUpperCase();
+    const size = String(row.size ?? "").trim();
+    const quantity = Number(row.quantity ?? 0);
+
+    if (!itemId || !size || !Number.isFinite(quantity) || quantity <= 0) {
+      continue;
+    }
+
+    const current = packagingByItem.get(itemId) ?? [];
+
+    current.push({
+      mode,
+      size,
+      quantity: Math.max(1, Math.floor(quantity)),
+      rowOrder: String(row.rowOrder ?? ""),
+    });
+    packagingByItem.set(itemId, current);
+  }
+
+  const existingRows = await db
+    .select({
+      orderItemId: mesProductionQueue.orderItemId,
+      size: mesProductionQueue.size,
+      status: mesProductionQueue.status,
+    })
+    .from(mesProductionQueue)
+    .where(sql`${mesProductionQueue.orderItemId} in ${orderItemIds}`);
+
+  const existingKeys = new Set(
+    existingRows
+      .filter((row) => String(row.status ?? "") !== "COMPLETADO")
+      .map((row) =>
+        toQueueKey(String(row.orderItemId ?? ""), String(row.size ?? "")),
+      ),
+  );
+
+  const toInsert: Array<typeof mesProductionQueue.$inferInsert> = [];
+
+  for (const row of candidates) {
+    const itemId = String(row.orderItemId ?? "").trim();
+    const grouped = (packagingByItem.get(itemId) ?? []).filter(
+      (p) => p.mode === "AGRUPADO",
+    );
+    const sourceSizes = grouped.length > 0 ? grouped : (packagingByItem.get(itemId) ?? []);
+    const orderDateTs = row.orderDate ? new Date(row.orderDate).getTime() : Date.now();
+    const deliveryTs = row.deliveryDate
+      ? new Date(row.deliveryDate).getTime()
+      : orderDateTs;
+    const suggestedOrder = Math.floor((Number.isFinite(deliveryTs) ? deliveryTs : Date.now()) / 1000);
+
+    if (sourceSizes.length === 0) {
+      const key = toQueueKey(itemId, null);
+
+      if (existingKeys.has(key)) continue;
+
+      toInsert.push({
+        orderId: String(row.orderId),
+        orderItemId: itemId,
+        design: String(row.design ?? "Diseño"),
+        size: null,
+        quantityTotal: Math.max(1, Math.floor(Number(row.itemQuantity ?? 1))),
+        priority: "NORMAL",
+        suggestedOrder,
+        finalOrder: suggestedOrder + 1_000_000,
+        status: "EN_COLA",
+      });
+      existingKeys.add(key);
+      continue;
+    }
+
+    for (const sizeRow of sourceSizes) {
+      const key = toQueueKey(itemId, sizeRow.size);
+
+      if (existingKeys.has(key)) continue;
+
+      toInsert.push({
+        orderId: String(row.orderId),
+        orderItemId: itemId,
+        design: String(row.design ?? "Diseño"),
+        size: sizeRow.size,
+        quantityTotal: sizeRow.quantity,
+        priority: "NORMAL",
+        suggestedOrder,
+        finalOrder: suggestedOrder + 1_000_000,
+        status: "EN_COLA",
+      });
+      existingKeys.add(key);
+    }
+  }
+
+  if (toInsert.length > 0) {
+    await db.insert(mesProductionQueue).values(toInsert);
+  }
+}
+
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "mes:production-queue:get",
@@ -44,6 +204,8 @@ export async function GET(request: Request) {
   }
 
   try {
+    await ensureQueueFromProgramacionOrders();
+
     const items = await db
       .select({
         id: mesProductionQueue.id,

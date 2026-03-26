@@ -14,6 +14,14 @@ export interface TallaRow {
   observacion?: string;
 }
 
+export interface ProcessHistoryEntry {
+  operationType: string;
+  state: "COMPLETADO" | "EN_PROCESO" | "PARCIAL";
+  at: string | null;
+  notes: string | null;
+  producedQuantity: number;
+}
+
 export interface DisenoGroup {
   diseno: number;
   detalle: string;
@@ -21,6 +29,8 @@ export interface DisenoGroup {
   genero: string;
   ticketMontaje: string;
   ticketPlotter: string;
+  currentProcess?: string;
+  processHistory?: ProcessHistoryEntry[];
   tallas: TallaRow[];
 }
 
@@ -52,6 +62,7 @@ export type ProgramacionApiRow = {
   quantity: number | null;
   fabric: string | null;
   gender: string | null;
+  itemStatus: string | null;
 };
 
 export type PaginatedResponse<T> = {
@@ -74,6 +85,8 @@ export type OperativeLogRow = {
   repoCheck: boolean;
   observations: string | null;
   startAt: string | null;
+  endAt: string | null;
+  operationType: string | null;
   createdAt: string | null;
   createdByUserId: string | null;
 };

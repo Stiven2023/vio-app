@@ -1,7 +1,8 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  banks,
   clients,
   orderPayments,
   orders,
@@ -17,6 +18,7 @@ import {
   resolvePaymentBankById,
   validatePaymentBankCurrency,
 } from "@/src/utils/payment-banks";
+import { generatePaymentReferenceCode } from "@/src/utils/payment-reference-code";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -155,6 +157,45 @@ async function resolveAdvisorFilter(request: Request) {
   return employeeId;
 }
 
+async function hydrateAdvanceFromFirstConsignation<T extends Record<string, any>>(
+  row: T | null,
+) {
+  if (!row?.orderId) return row;
+
+  const [firstPayment] = await db
+    .select({
+      method: orderPayments.method,
+      bankId: orderPayments.bankId,
+      referenceCode: orderPayments.referenceCode,
+      transferCurrency: orderPayments.transferCurrency,
+      proofImageUrl: orderPayments.proofImageUrl,
+      createdAt: orderPayments.createdAt,
+    })
+    .from(orderPayments)
+    .leftJoin(banks, eq(orderPayments.bankId, banks.id))
+    .where(
+      and(
+        eq(orderPayments.orderId, String(row.orderId)),
+        sql`${orderPayments.status} <> 'ANULADO'`,
+      ),
+    )
+    .orderBy(asc(orderPayments.createdAt))
+    .limit(1);
+
+  if (!firstPayment) return row;
+
+  return {
+    ...row,
+    advanceMethod: firstPayment.method ?? row.advanceMethod,
+    advanceBankId: firstPayment.bankId ?? row.advanceBankId,
+    advanceReferenceNumber: firstPayment.referenceCode ?? row.advanceReferenceNumber,
+    advanceCurrency: firstPayment.transferCurrency ?? row.advanceCurrency,
+    advanceDate: firstPayment.createdAt ?? row.advanceDate,
+    advancePaymentImageUrl:
+      firstPayment.proofImageUrl ?? row.advancePaymentImageUrl,
+  };
+}
+
 async function getPrefacturaById(id: string, advisorScope: string | null) {
   const filters = [eq(prefacturas.id, id)] as Array<any>;
 
@@ -259,7 +300,7 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
       .where(and(...filters))
       .limit(1);
 
-    return row ?? null;
+    return hydrateAdvanceFromFirstConsignation(row ?? null);
   } catch {
     const [legacyRow] = await db
       .select({
@@ -353,7 +394,7 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
       .where(and(...filters))
       .limit(1);
 
-    return legacyRow ?? null;
+    return hydrateAdvanceFromFirstConsignation(legacyRow ?? null);
   }
 }
 
@@ -454,9 +495,12 @@ export async function PUT(
           orderId: prefacturas.orderId,
           orderCreatedBy: orders.createdBy,
           orderStatus: orders.status,
+          orderIvaEnabled: orders.ivaEnabled,
+          quotationDocumentType: quotations.documentType,
         })
         .from(prefacturas)
         .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+        .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
         .where(eq(prefacturas.id, prefacturaId))
         .limit(1);
 
@@ -480,6 +524,19 @@ export async function PUT(
       }
 
       if (status) {
+        const resolvedDocumentType = String(
+          current.quotationDocumentType ??
+            (current.orderIvaEnabled === false ? "R" : "F"),
+        )
+          .trim()
+          .toUpperCase();
+
+        if (status === "APROBADA" && resolvedDocumentType !== "F") {
+          throw new Error(
+            "bad_request:Solo las prefacturas con tipo de documento F pueden pasar a factura generada por Siigo.",
+          );
+        }
+
         await tx
           .update(prefacturas)
           .set({ status })
@@ -540,6 +597,15 @@ export async function PUT(
       return Response.json({ ok: true, id: prefacturaId });
     }
   } catch (error) {
+    if ((error as Error)?.message?.startsWith("bad_request:")) {
+      return new Response(
+        (error as Error).message.replace("bad_request:", ""),
+        {
+          status: 400,
+        },
+      );
+    }
+
     if ((error as Error)?.message === "forbidden") {
       return new Response("Forbidden", { status: 403 });
     }
@@ -796,7 +862,13 @@ export async function PATCH(
           ? String(patch.clientApprovalImageUrl ?? "").trim()
           : String(current.clientApprovalImageUrl ?? "").trim();
 
-      if (effectiveHasClientApproval && !effectiveClientApprovalImageUrl) {
+      if (!effectiveHasClientApproval) {
+        throw new Error(
+          "bad_request:El aval del cliente es obligatorio para actualizar la prefactura.",
+        );
+      }
+
+      if (!effectiveClientApprovalImageUrl) {
         throw new Error(
           "bad_request:Debes adjuntar la captura/evidencia del aval del cliente.",
         );
@@ -833,12 +905,6 @@ export async function PATCH(
               : current.advanceBankId
                 ? String(current.advanceBankId)
                 : null;
-          const effectiveReference =
-            patch.advanceReferenceNumber !== undefined
-              ? String(patch.advanceReferenceNumber ?? "").trim() || null
-              : current.advanceReferenceNumber
-                ? String(current.advanceReferenceNumber)
-                : null;
           const effectiveCurrency = normalizeCurrency(
             patch.advanceCurrency ?? current.advanceCurrency,
           );
@@ -868,11 +934,16 @@ export async function PATCH(
           const paymentStatus =
             effectiveMethod === "EFECTIVO" ? "CONFIRMADO_CAJA" : "PENDIENTE";
 
+          const generatedReferenceCode = await generatePaymentReferenceCode(tx, {
+            method: effectiveMethod as "EFECTIVO" | "TRANSFERENCIA" | "CREDITO",
+            bankIsOfficial: bankRow?.isOfficial ?? null,
+          });
+
           await tx.insert(orderPayments).values({
             orderId: String(current.orderId),
             amount: String(registeredAdvanceDelta),
             depositAmount: String(registeredAdvanceDelta),
-            referenceCode: effectiveReference,
+            referenceCode: generatedReferenceCode,
             method: effectiveMethod as any,
             bankId:
               effectiveMethod === "TRANSFERENCIA"

@@ -479,7 +479,14 @@ export async function POST(request: Request) {
       body?.clientApprovalImageUrl ?? "",
     ).trim();
 
-    if (hasClientApproval && !clientApprovalImageUrl) {
+    if (!hasClientApproval) {
+      return new Response(
+        "El aval del cliente es obligatorio para crear la prefactura.",
+        { status: 400 },
+      );
+    }
+
+    if (!clientApprovalImageUrl) {
       return new Response(
         "Debes adjuntar la captura/evidencia del aval del cliente.",
         { status: 400 },

@@ -222,6 +222,7 @@ export async function GET(request: Request) {
       sellerName: employees.name,
       sellerCode: employees.employeeCode,
       design: orderItems.name,
+      itemStatus: orderItems.status,
       quantity: sql<number | null>`coalesce(${orderItems.quantity}, 0)`,
       fabric: orderItems.fabric,
       gender: orderItems.gender,
@@ -248,6 +249,7 @@ export async function GET(request: Request) {
     ? await db
         .select({
           orderItemId: orderItemPackaging.orderItemId,
+          mode: orderItemPackaging.mode,
           size: orderItemPackaging.size,
           quantity: orderItemPackaging.quantity,
           rowOrder: orderItemPackaging.id,
@@ -262,17 +264,44 @@ export async function GET(request: Request) {
     Array<{ size: string; quantity: number; rowOrder: string }>
   >();
 
+  const packagingRowsByItem = new Map<
+    string,
+    Array<{ mode: string; size: string; quantity: number; rowOrder: string }>
+  >();
+
   for (const row of packagingSizes) {
     const itemId = String(row.orderItemId ?? "").trim();
+    const mode = String(row.mode ?? "").trim().toUpperCase();
     const size = String(row.size ?? "").trim();
     const quantity = Number(row.quantity ?? 0);
 
     if (!itemId || !size || !Number.isFinite(quantity) || quantity <= 0)
       continue;
 
+    const currentRows = packagingRowsByItem.get(itemId) ?? [];
+
+    currentRows.push({
+      mode,
+      size,
+      quantity,
+      rowOrder: String(row.rowOrder ?? ""),
+    });
+    packagingRowsByItem.set(itemId, currentRows);
+  }
+
+  for (const [itemId, rows] of packagingRowsByItem.entries()) {
+    const groupedRows = rows.filter((row) => row.mode === "AGRUPADO");
+    const sourceRows = groupedRows.length > 0 ? groupedRows : rows;
     const current = sizesByItem.get(itemId) ?? [];
 
-    current.push({ size, quantity, rowOrder: String(row.rowOrder ?? "") });
+    for (const row of sourceRows) {
+      current.push({
+        size: row.size,
+        quantity: row.quantity,
+        rowOrder: row.rowOrder,
+      });
+    }
+
     sizesByItem.set(itemId, current);
   }
 
@@ -298,6 +327,7 @@ export async function GET(request: Request) {
     leadDays: number | null;
     leadHours: number | null;
     process: string | null;
+    itemStatus: string | null;
   }> = [];
 
   const splitBySize = !(view === "ACTUALIZACION" && groupBy === "ITEM");
@@ -437,6 +467,7 @@ export async function GET(request: Request) {
         leadDays: item.leadDays,
         leadHours: item.leadHours,
         process: item.process,
+        itemStatus: item.itemStatus,
       });
       continue;
     }
@@ -464,6 +495,7 @@ export async function GET(request: Request) {
         leadDays: item.leadDays,
         leadHours: item.leadHours,
         process: item.process,
+        itemStatus: item.itemStatus,
       });
       continue;
     }
@@ -499,6 +531,7 @@ export async function GET(request: Request) {
         leadDays: item.leadDays,
         leadHours: item.leadHours,
         process: item.process,
+        itemStatus: item.itemStatus,
       });
     });
   }
@@ -548,6 +581,7 @@ export async function GET(request: Request) {
               leadDays: number | null;
               leadHours: number | null;
               process: string | null;
+              itemStatus: string | null;
             }
           >();
 

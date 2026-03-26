@@ -32,7 +32,6 @@ import {
   BsEye,
   BsCheck2Circle,
   BsPiggyBank,
-  BsPencilSquare,
   BsPlusCircle,
   BsThreeDotsVertical,
   BsTrash,
@@ -146,6 +145,21 @@ function formatMoney(value: string | number | null | undefined) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+function canShowReadyDispatchAction(currentStatusRaw: string | null | undefined) {
+  const currentStatus = String(currentStatusRaw ?? "")
+    .trim()
+    .toUpperCase();
+
+  return ![
+    "PROGRAMACION",
+    "PRODUCCION",
+    "ATRASADO",
+    "FINALIZADO",
+    "ENTREGADO",
+    "CANCELADO",
+  ].includes(currentStatus);
 }
 
 function normalizeCurrency(value: string | null | undefined): "COP" | "USD" {
@@ -681,17 +695,6 @@ export function PrefacturasTab({
                       ) : null}
                       {canEdit ? (
                         <DropdownItem
-                          key="edit"
-                          startContent={<BsPencilSquare />}
-                          onPress={() =>
-                            router.push(`/erp/pre-invoices/${row.id}/edit`)
-                          }
-                        >
-                          Edit
-                        </DropdownItem>
-                      ) : null}
-                      {canEdit ? (
-                        <DropdownItem
                           key="advance"
                           startContent={<BsPiggyBank />}
                           onPress={() => openAdvanceModal(row)}
@@ -699,7 +702,9 @@ export function PrefacturasTab({
                           Pay advance
                         </DropdownItem>
                       ) : null}
-                      {canChangeStatus && row.orderId ? (
+                      {canChangeStatus &&
+                      row.orderId &&
+                      canShowReadyDispatchAction(row.status) ? (
                         <DropdownItem
                           key="ready-dispatch"
                           startContent={<BsCheck2Circle />}

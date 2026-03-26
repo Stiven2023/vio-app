@@ -58,6 +58,7 @@ export type MoldingTemplateDetail = MoldingTemplateRow & {
   hasEntretela: boolean | null;
   invisibleZipperColor: string | null;
   observations: string | null;
+  compatibleFabrics: string | null;
   updatedAt: string | null;
   insumos: MoldingTemplateInsumo[];
 };

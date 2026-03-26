@@ -31,6 +31,7 @@ type BuildSectionsArgs = {
   isAuthenticated: boolean;
   canSeeCatalog: boolean;
   canSeeClients: boolean;
+  canSeeMolding: boolean;
   canSeeOrders: boolean;
   canSeePayments: boolean;
   canSeePurchaseOrders: boolean;
@@ -51,6 +52,7 @@ export const buildNavbarSections = ({
   isAuthenticated,
   canSeeCatalog,
   canSeeClients,
+  canSeeMolding,
   canSeeOrders,
   canSeePayments,
   canSeePurchaseOrders,
@@ -64,6 +66,16 @@ export const buildNavbarSections = ({
     purchasing: locale === "es" ? "Compras" : "Purchasing",
     sales: locale === "es" ? "Ventas" : "Sales",
     accounting: locale === "es" ? "Contabilidad" : "Accounting",
+    accountingOverview:
+      locale === "es" ? "Hub contable" : "Accounting hub",
+    accountingDocuments:
+      locale === "es" ? "Documentos comerciales" : "Commercial documents",
+    accountingCashBanks:
+      locale === "es" ? "Recaudo y bancos" : "Collections & banks",
+    accountingReceivables:
+      locale === "es" ? "Cartera y recuperación" : "Receivables & recovery",
+    accountingCloseControl:
+      locale === "es" ? "Cierre y control" : "Closing & control",
     production: locale === "es" ? "Producción" : "Production",
     masterData: locale === "es" ? "Maestros" : "Master Data",
     costs: locale === "es" ? "Costos" : "Costs",
@@ -101,7 +113,7 @@ export const buildNavbarSections = ({
     cashReceipt: locale === "es" ? "Recibo de caja" : "Cash receipt",
     deposits: locale === "es" ? "Consignaciones" : "Deposits",
     bankReconciliation:
-      locale === "es" ? "Conciliación bancaria" : "Bank reconciliation",
+      locale === "es" ? "Extractos bancarios" : "Bank statements",
     factoring: "Factoring",
     withholdings: locale === "es" ? "Retenciones" : "Withholdings",
     pettyCash: locale === "es" ? "Caja menor" : "Petty cash",
@@ -203,34 +215,23 @@ export const buildNavbarSections = ({
       icon: FiDollarSign,
       visible: canSeeOrders,
       items: [
-        { name: labels.invoices, href: "/erp/accounting-module/invoices" },
+        { name: labels.accountingOverview, href: "/erp/accounting-module" },
         {
-          name: labels.deliveryNotes,
-          href: "/erp/accounting-module/delivery-notes",
+          name: labels.accountingDocuments,
+          href: "/erp/accounting-module?tab=docs",
         },
         {
-          name: labels.cashReceipt,
-          href: "/erp/accounting-module/cash-receipt",
-        },
-        { name: labels.deposits, href: "/erp/accounting-module/deposits" },
-        {
-          name: labels.bankReconciliation,
-          href: "/erp/accounting-module/bank-reconciliation",
+          name: labels.accountingCashBanks,
+          href: "/erp/accounting-module?tab=cash-banks",
         },
         {
-          name: labels.withholdings,
-          href: "/erp/accounting-module/withholdings",
-        },
-        { name: labels.factoring, href: "/erp/accounting-module/factoring" },
-        {
-          name: labels.accountsReceivable,
-          href: "/erp/accounting-module/accounts-receivable",
+          name: labels.accountingReceivables,
+          href: "/erp/accounting-module?tab=receivables",
         },
         {
-          name: labels.incomeStatement,
-          href: "/erp/accounting-module/income-statement",
+          name: labels.accountingCloseControl,
+          href: "/erp/accounting-module?tab=close-control",
         },
-        { name: labels.pettyCash, href: "/erp/accounting-module/petty-cash" },
       ],
     },
     {
@@ -255,7 +256,11 @@ export const buildNavbarSections = ({
       label: labels.masterData,
       icon: FiDatabase,
       visible:
-        canSeeClients || canSeeSuppliers || canSeeCatalog || canSeePayments,
+        canSeeClients ||
+        canSeeSuppliers ||
+        canSeeCatalog ||
+        canSeePayments ||
+        canSeeMolding,
       items: [
         { name: labels.products, href: "/maestros/productos" },
         { name: labels.clients, href: "/maestros/clientes" },

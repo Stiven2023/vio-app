@@ -17,7 +17,8 @@
     "db:repair:stock-links": "tsx src/db/repair-warehouse-stock-links.ts",
     "db:seed:roles": "tsx src/db/seed-roles-perms.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "db:seed:test": "tsx src/db/seed-test.ts"
+    "db:seed:test": "tsx src/db/seed-test.ts",
+    "db:seed:molding": "tsx src/db/seed-molding-templates.ts"
 
   },
   "dependencies": {

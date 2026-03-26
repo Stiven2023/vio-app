@@ -2,15 +2,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ExchangeRateWidget } from "@/app/erp/dashboard/_components/exchange-rate-widget";
-import { SiigoStatusCard } from "@/app/erp/dashboard/_components/siigo-status-card";
-import { SiigoSyncCard } from "@/app/erp/dashboard/_components/siigo-sync-card";
 import { SiigoCustomersCard } from "@/app/erp/dashboard/_components/siigo-customers-card";
 import { DashboardSectionsSkeleton } from "@/app/erp/dashboard/_components/dashboard-sections-skeleton";
 import {
   getLatestUsdCopRatePair,
   getUsdCopRateHistory,
 } from "@/src/utils/exchange-rate";
-import { getSiigoTokenStatus } from "@/src/utils/siigo";
 import { verifyAuthToken } from "@/src/utils/auth";
 
 export default async function DashboardPage() {
@@ -21,7 +18,6 @@ export default async function DashboardPage() {
 
   const rates = await getLatestUsdCopRatePair();
   const history = await getUsdCopRateHistory(45);
-  const siigoStatus = getSiigoTokenStatus();
   const latest = rates.latest;
   const previous = rates.previous;
 
@@ -49,10 +45,8 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <section className="scroll-mt-24" id="siigo-status-card">
+      <section className="scroll-mt-24" id="siigo-customers-card">
         <div className="grid gap-4">
-          <SiigoStatusCard initialStatus={siigoStatus} />
-          <SiigoSyncCard />
           <SiigoCustomersCard />
         </div>
       </section>

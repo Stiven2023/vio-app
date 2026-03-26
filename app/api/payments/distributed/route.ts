@@ -8,6 +8,7 @@ import {
   resolvePaymentBankById,
   validatePaymentBankCurrency,
 } from "@/src/utils/payment-banks";
+import { generatePaymentReferenceCodes } from "@/src/utils/payment-reference-code";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function toNullableNumericString(v: unknown) {
@@ -97,11 +98,6 @@ export async function POST(request: Request) {
       }
     }
 
-    const referenceCode =
-      body.referenceCode === undefined || body.referenceCode === null
-        ? null
-        : String(body.referenceCode).trim() || null;
-
     const proofImageUrl =
       body.proofImageUrl === undefined || body.proofImageUrl === null
         ? null
@@ -172,14 +168,20 @@ export async function POST(request: Request) {
     }
 
     const inserted = await db.transaction(async (tx) => {
+      const generatedReferenceCodes = await generatePaymentReferenceCodes(tx, {
+        method: method as "EFECTIVO" | "TRANSFERENCIA" | "CREDITO",
+        bankIsOfficial: bankRow?.isOfficial ?? null,
+        count: allocations.length,
+      });
+
       const rows = await tx
         .insert(orderPayments)
         .values(
-          allocations.map((a) => ({
+          allocations.map((a, index) => ({
             orderId: a.orderId,
             amount: a.amount,
             depositAmount,
-            referenceCode,
+            referenceCode: generatedReferenceCodes[index],
             method: method as any,
             bankId: method === "TRANSFERENCIA" ? (bankRow?.id ?? null) : null,
             transferBank: null,

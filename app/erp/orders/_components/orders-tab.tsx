@@ -24,7 +24,6 @@ import {
   BsCheck2Circle,
   BsClockHistory,
   BsEye,
-  BsPencilSquare,
   BsReceipt,
   BsThreeDotsVertical,
   BsTrash,
@@ -86,6 +85,21 @@ export function OrdersTab({
   isAdvisor: boolean;
   advisorEmployeeId: string | null;
 }) {
+  const canShowReadyDispatchAction = (currentStatusRaw: string | null | undefined) => {
+    const currentStatus = String(currentStatusRaw ?? "")
+      .trim()
+      .toUpperCase();
+
+    return ![
+      "PROGRAMACION",
+      "PRODUCCION",
+      "ATRASADO",
+      "FINALIZADO",
+      "ENTREGADO",
+      "CANCELADO",
+    ].includes(currentStatus);
+  };
+
   const formatCurrency = (
     value: string | number | null | undefined,
     currency: string | null | undefined,
@@ -523,20 +537,9 @@ export function OrdersTab({
                         </DropdownItem>
                       ) : null}
 
-                      {canEdit && canAccessOrder(o) ? (
-                        <DropdownItem
-                          key="edit"
-                          startContent={<BsPencilSquare />}
-                          onPress={() => {
-                            setEditing(o);
-                            setModalOpen(true);
-                          }}
-                        >
-                          Edit
-                        </DropdownItem>
-                      ) : null}
-
-                      {canChangeStatus && canAccessOrder(o) ? (
+                      {canChangeStatus &&
+                      canAccessOrder(o) &&
+                      canShowReadyDispatchAction(o.status) ? (
                         <DropdownItem
                           key="ready-dispatch"
                           startContent={<BsCheck2Circle />}

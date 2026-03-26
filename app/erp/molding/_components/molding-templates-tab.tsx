@@ -36,6 +36,7 @@ import {
   FiHelpCircle,
   FiTrash2,
   FiEdit2,
+  FiEye,
 } from "react-icons/fi";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
@@ -43,6 +44,7 @@ import { apiJson, getErrorMessage } from "../_lib/api";
 import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
+import { FileUpload } from "@/components/file-upload";
 
 type Props = {
   canCreate: boolean;
@@ -113,6 +115,8 @@ type FormState = {
   designDetail: string;
   fusioningNotes: string;
   observations: string;
+  // Fabrics checklist
+  fabricChecklist: string[];
 };
 
 const emptyForm: FormState = {
@@ -124,7 +128,7 @@ const emptyForm: FormState = {
   color: "",
   gender: "",
   process: "",
-  estimatedLeadDays: "",
+  estimatedLeadDays: "28",
   manufacturingId: "",
   clothingImageOneUrl: "",
   clothingImageTwoUrl: "",
@@ -167,6 +171,7 @@ const emptyForm: FormState = {
   designDetail: "",
   fusioningNotes: "",
   observations: "",
+  fabricChecklist: [],
 };
 
 function mapDetailToForm(detail: MoldingTemplateDetail): FormState {
@@ -179,9 +184,7 @@ function mapDetailToForm(detail: MoldingTemplateDetail): FormState {
     color: detail.color ?? "",
     gender: detail.gender ?? "",
     process: detail.process ?? "",
-    estimatedLeadDays: detail.estimatedLeadDays
-      ? String(detail.estimatedLeadDays)
-      : "",
+    estimatedLeadDays: "28",
     manufacturingId: detail.manufacturingId ?? "",
     clothingImageOneUrl: detail.clothingImageOneUrl ?? "",
     clothingImageTwoUrl: detail.clothingImageTwoUrl ?? "",
@@ -224,6 +227,22 @@ function mapDetailToForm(detail: MoldingTemplateDetail): FormState {
     designDetail: detail.designDetail ?? "",
     fusioningNotes: detail.fusioningNotes ?? "",
     observations: detail.observations ?? "",
+    fabricChecklist: (() => {
+      try {
+        const parsed = JSON.parse(detail.compatibleFabrics ?? "[]");
+
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => normalizeUpper(item));
+        }
+      } catch {
+        // Ignore parse errors and fall back to fabric field.
+      }
+
+      return String(detail.fabric ?? "")
+        .split(",")
+        .map((item) => normalizeUpper(item))
+        .filter(Boolean);
+    })(),
   };
 }
 
@@ -252,6 +271,166 @@ const emptyInsumoForm: InsumoFormState = {
   notes: "",
 };
 
+const FABRIC_OPTIONS = [
+  "VIOPLUS",
+  "SUDAPLUS",
+  "MONTEPLUS",
+  "SANPLUS",
+  "SPRING",
+  "ZANETTY",
+  "MONTESIMONE",
+  "POLUX",
+  "LICRA JABON",
+  "LICRA NEWFLEX",
+  "LICRA BAHIA",
+] as const;
+
+const GARMENT_TYPE_OPTIONS = [
+  "CAMISILLA",
+  "CAMISETA",
+  "PANTALONETA",
+  "SHORT",
+  "LICRA CORTA",
+  "BERMUDA",
+  "POLO",
+  "SUDADERA",
+  "TOP",
+  "CHAQUETA",
+  "CORTAVIENTO",
+  "BUSO",
+  "BEISBOLERA",
+  "TRUSAS",
+  "FALDA",
+  "CHALECOS",
+  "PANTALON",
+  "ESTETICA",
+] as const;
+
+const CAMISETA_SLEEVE_OPTIONS = ["MANGA CORTA", "MANGA LARGA"] as const;
+
+const CAMISETA_SHORT_SLEEVE_SUBTYPE_OPTIONS = [
+  "CUELLO OLIMPUS",
+  "CUELLO COUGLAS",
+  "CUELLO CON VENA",
+  "CUELLO MILITAR",
+  "CUELLO TIPO POLO",
+  "CUELLO REDONDO",
+  "CUELLO EN V",
+] as const;
+
+const CAMISETA_LONG_SLEEVE_SUBTYPE_OPTIONS = [
+  "CUELLO EN V-REDONDO",
+  "CUELLO BARUDA CON BABERO",
+  "CUELLO MILITAR",
+  "CUELLO TIPO POLO EN V O REDONDO",
+] as const;
+
+const CAMISETA_OBSERVATION_NOTE =
+  "TENER EN CUENTA LA MANGA SIEMPRE IRA SENCILLA CON DOBLEZ EN PUÑO";
+
+const CAMISILLA_NECK_OPTIONS = ["CUELLO NORMAL 4.5 CM", "CUELLO ESPECIAL 6.0 CM"] as const;
+
+const CAMISILLA_SESGO_OPTIONS = ["SESGO O SOBREPUESTO 4.5 CM", "SESGO ESPECIAL 6.0 CM"] as const;
+
+const SHORT_SUBTYPE_OPTIONS = [
+  "VOLLEY",
+  "PETO",
+  "BALONCESTO",
+  "PROMESAS",
+  "DOBLE FAZ",
+] as const;
+
+const POLO_SUBTYPE_OPTIONS = [
+  "CON CIERRE EN PERILLA",
+  "2 BOTONES",
+  "3 BOTONES",
+  "CON BROCHE",
+  "CON BOLSILLO (ARBITRO)",
+  "CON CUELLO PREPARADO",
+] as const;
+
+const POLO_SHORT_SLEEVE_NECK_OPTIONS = ["CUELLO EN V", "CUELLO REDONDO"] as const;
+
+const POLO_LONG_SLEEVE_NECK_OPTIONS = [
+  "CUELLO BARUDA O CON BABERO",
+  "CUELLO MILITAR",
+  "CUELLO TIPO POLO",
+] as const;
+
+const GENDER_OPTIONS = ["MASCULINO", "FEMENINO"] as const;
+const PROCESS_OPTIONS = ["SUBLIMACION", "CORTE"] as const;
+const NECK_TYPE_OPTIONS = [
+  "CUELLO REDONDO",
+  "CUELLO EN V",
+  "CUELLO MILITAR",
+  "CUELLO TIPO POLO",
+  "CUELLO TORTUGA",
+  "OTRO",
+] as const;
+const SESGO_TYPE_OPTIONS = [
+  ...CAMISILLA_SESGO_OPTIONS,
+  "SESGO NORMAL",
+  "SESGO INTERNO",
+  "SIN SESGO",
+  "OTRO",
+] as const;
+const SLEEVE_TYPE_OPTIONS = [
+  ...CAMISETA_SLEEVE_OPTIONS,
+  "SISA",
+  "SIN MANGA",
+  "OTRO",
+] as const;
+const LINING_TYPE_OPTIONS = [
+  "SIN FORRO",
+  "MALLA",
+  "POLAR",
+  "TAFETA",
+  "OTRO",
+] as const;
+const HOOD_TYPE_OPTIONS = [
+  "SIN CAPUCHA",
+  "FIJA",
+  "DESMONTABLE",
+  "GUARDABLE",
+] as const;
+const BUTTON_TYPE_OPTIONS = [
+  "SIN BOTONES",
+  "2 BOTONES",
+  "3 BOTONES",
+  "BROCHE",
+  "OTRO",
+] as const;
+const BUTTONHOLE_TYPE_OPTIONS = [
+  "SIN OJAL",
+  "SENCILLO",
+  "REFORZADO",
+  "OTRO",
+] as const;
+
+function normalizeUpper(value: string | null | undefined) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function getCamisetaSubtypeOptions(sleeveType: string) {
+  const sleeve = normalizeUpper(sleeveType);
+
+  if (sleeve === "MANGA LARGA") {
+    return [...CAMISETA_LONG_SLEEVE_SUBTYPE_OPTIONS];
+  }
+
+  return [...CAMISETA_SHORT_SLEEVE_SUBTYPE_OPTIONS];
+}
+
+function getPoloNeckOptions(sleeveType: string): string[] {
+  const sleeve = normalizeUpper(sleeveType);
+
+  if (sleeve === "MANGA LARGA") {
+    return [...POLO_LONG_SLEEVE_NECK_OPTIONS];
+  }
+
+  return [...POLO_SHORT_SLEEVE_NECK_OPTIONS];
+}
+
 const fieldHelps: Record<string, string> = {
   garmentType: "Tipo de prenda (ej: T-SHIRT, POLO, JERSEY)",
   fabric:
@@ -277,6 +456,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [viewOnly, setViewOnly] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [activeTab, setActiveTab] = useState("general");
   const [insumos, setInsumos] = useState<MoldingTemplateInsumo[]>([]);
@@ -332,6 +512,183 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     ? `${selectedInventoryItem.itemCode ?? "—"} ${selectedInventoryItem.name}`.trim()
     : "";
 
+  const garmentTypeOptions = useMemo(() => {
+    const current = String(form.garmentType ?? "").trim();
+
+    if (!current || GARMENT_TYPE_OPTIONS.includes(current as any)) {
+      return [...GARMENT_TYPE_OPTIONS];
+    }
+
+    return [current, ...GARMENT_TYPE_OPTIONS];
+  }, [form.garmentType]);
+
+  const isCamiseta = normalizeUpper(form.garmentType) === "CAMISETA";
+  const isCamisilla = normalizeUpper(form.garmentType) === "CAMISILLA";
+  const isLicraCorta = normalizeUpper(form.garmentType) === "LICRA CORTA";
+  const isShort = normalizeUpper(form.garmentType) === "SHORT";
+  const isPolo = normalizeUpper(form.garmentType) === "POLO";
+  const isSublimacion = normalizeUpper(form.process) === "SUBLIMACION";
+  const isCorte = normalizeUpper(form.process) === "CORTE";
+  const camisetaSubtypeOptions = useMemo(
+    () => getCamisetaSubtypeOptions(form.sleeveType),
+    [form.sleeveType],
+  );
+  const poloNeckOptions = useMemo(
+    () => getPoloNeckOptions(form.sleeveType),
+    [form.sleeveType],
+  );
+
+  useEffect(() => {
+    if (!isCamiseta) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSleeve = normalizeUpper(prev.sleeveType);
+      const allowedSubtypeOptions = getCamisetaSubtypeOptions(prev.sleeveType);
+
+      if (
+        normalizedSleeve !== "MANGA CORTA" &&
+        normalizedSleeve !== "MANGA LARGA"
+      ) {
+        patch.sleeveType = "MANGA CORTA";
+      }
+
+      if (
+        prev.garmentSubtype &&
+        !allowedSubtypeOptions.includes(prev.garmentSubtype as any)
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!normalizeUpper(prev.observations).includes(CAMISETA_OBSERVATION_NOTE)) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${CAMISETA_OBSERVATION_NOTE}`
+          : CAMISETA_OBSERVATION_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isCamiseta]);
+
+  useEffect(() => {
+    if (!isCamisilla) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+
+      if (prev.sleeveType) patch.sleeveType = "";
+
+      if (
+        prev.neckType &&
+        !CAMISILLA_NECK_OPTIONS.includes(prev.neckType as any)
+      ) {
+        patch.neckType = "";
+      }
+
+      if (
+        prev.sesgoType &&
+        !CAMISILLA_SESGO_OPTIONS.includes(prev.sesgoType as any)
+      ) {
+        patch.sesgoType = "";
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isCamisilla]);
+
+  useEffect(() => {
+    if (!isLicraCorta) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+
+      if (prev.garmentSubtype) patch.garmentSubtype = "";
+      if (prev.sleeveType) patch.sleeveType = "";
+      if (prev.neckType) patch.neckType = "";
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isLicraCorta]);
+
+  useEffect(() => {
+    if (!isShort) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+
+      if (prev.sleeveType) patch.sleeveType = "";
+      if (prev.neckType) patch.neckType = "";
+
+      if (
+        prev.garmentSubtype &&
+        !SHORT_SUBTYPE_OPTIONS.includes(prev.garmentSubtype as any)
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isShort]);
+
+  useEffect(() => {
+    if (!isPolo) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSleeve = normalizeUpper(prev.sleeveType);
+      const allowedNecks = [...getPoloNeckOptions(prev.sleeveType)] as string[];
+
+      if (
+        normalizedSleeve !== "MANGA CORTA" &&
+        normalizedSleeve !== "MANGA LARGA"
+      ) {
+        patch.sleeveType = "MANGA CORTA";
+      }
+
+      if (
+        prev.garmentSubtype &&
+        !POLO_SUBTYPE_OPTIONS.includes(prev.garmentSubtype as any)
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (
+        prev.neckType &&
+        !allowedNecks.some((neck) => neck === String(prev.neckType))
+      ) {
+        patch.neckType = "";
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isPolo]);
+
+  useEffect(() => {
+    setForm((prev) => {
+      const normalizedProcess = normalizeUpper(prev.process);
+
+      if (normalizedProcess === "SUBLIMACION") {
+        if (!prev.color) return prev;
+
+        return { ...prev, color: "" };
+      }
+
+      if (!prev.color) return prev;
+
+      return { ...prev, color: normalizeUpper(prev.color) };
+    });
+  }, [form.process]);
+
   useEffect(() => {
     void (async () => {
       setLoadingInventoryItems(true);
@@ -351,6 +708,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
   function openCreate() {
     setEditingId(null);
+    setViewOnly(false);
     setForm(emptyForm);
     setInsumos([]);
     setActiveTab("general");
@@ -365,6 +723,27 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       )) as MoldingTemplateDetail;
 
       setEditingId(id);
+      setViewOnly(false);
+      setForm(mapDetailToForm(detail));
+      setInsumos(detail.insumos ?? []);
+      setActiveTab("general");
+      setModalOpen(true);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function openView(id: string) {
+    setSaving(true);
+    try {
+      const detail = (await apiJson(
+        `/api/molding/templates/${id}`,
+      )) as MoldingTemplateDetail;
+
+      setEditingId(id);
+      setViewOnly(true);
       setForm(mapDetailToForm(detail));
       setInsumos(detail.insumos ?? []);
       setActiveTab("general");
@@ -477,6 +856,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   function closeModal() {
     setModalOpen(false);
     setEditingId(null);
+    setViewOnly(false);
     setForm(emptyForm);
     setInsumos([]);
     setActiveTab("general");
@@ -487,6 +867,84 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   }
 
   async function handleSave() {
+    if (isCamiseta) {
+      const normalizedSleeve = normalizeUpper(form.sleeveType);
+      const allowedSubtypeOptions = getCamisetaSubtypeOptions(form.sleeveType);
+
+      if (
+        normalizedSleeve !== "MANGA CORTA" &&
+        normalizedSleeve !== "MANGA LARGA"
+      ) {
+        toast.error("Para CAMISETA debes elegir MANGA CORTA o MANGA LARGA");
+
+        return;
+      }
+
+      if (!form.garmentSubtype) {
+        toast.error("Para CAMISETA debes seleccionar el subtipo de cuello");
+
+        return;
+      }
+
+      if (!allowedSubtypeOptions.includes(form.garmentSubtype as any)) {
+        toast.error("El subtipo no corresponde al tipo de manga seleccionado");
+
+        return;
+      }
+    }
+
+    if (isCamisilla) {
+      if (!CAMISILLA_NECK_OPTIONS.includes(form.neckType as any)) {
+        toast.error("Para CAMISILLA debes seleccionar el cuello");
+
+        return;
+      }
+
+      if (!CAMISILLA_SESGO_OPTIONS.includes(form.sesgoType as any)) {
+        toast.error("Para CAMISILLA debes seleccionar el sesgo");
+
+        return;
+      }
+    }
+
+    if (isLicraCorta && !form.hasFajon) {
+      toast.error("Para LICRA CORTA debes marcar FAJON");
+
+      return;
+    }
+
+    if (isShort && !SHORT_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+      toast.error("Para SHORT debes seleccionar un subtipo válido");
+
+      return;
+    }
+
+    if (isPolo) {
+      const normalizedSleeve = normalizeUpper(form.sleeveType);
+      const allowedNecks = [...getPoloNeckOptions(form.sleeveType)] as string[];
+
+      if (
+        normalizedSleeve !== "MANGA CORTA" &&
+        normalizedSleeve !== "MANGA LARGA"
+      ) {
+        toast.error("Para POLO debes elegir MANGA CORTA o MANGA LARGA");
+
+        return;
+      }
+
+      if (!POLO_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para POLO debes seleccionar un subtipo válido");
+
+        return;
+      }
+
+      if (!allowedNecks.some((neck) => neck === String(form.neckType))) {
+        toast.error("El cuello no corresponde al tipo de manga seleccionado");
+
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -494,17 +952,15 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         version: form.version ? Number(form.version) : 1,
         garmentType: form.garmentType || undefined,
         garmentSubtype: form.garmentSubtype || undefined,
-        fabric: form.fabric || undefined,
-        color: form.color || undefined,
+        fabric:
+          form.fabricChecklist.length > 0
+            ? form.fabricChecklist.join(", ")
+            : form.fabric || undefined,
+        color: isSublimacion ? undefined : form.color || undefined,
         gender: form.gender || undefined,
         process: form.process || undefined,
-        estimatedLeadDays: form.estimatedLeadDays
-          ? Number(form.estimatedLeadDays)
-          : undefined,
-        manufacturingId: form.manufacturingId || undefined,
+        estimatedLeadDays: 28,
         clothingImageOneUrl: form.clothingImageOneUrl || undefined,
-        clothingImageTwoUrl: form.clothingImageTwoUrl || undefined,
-        logoImageUrl: form.logoImageUrl || undefined,
         screenPrint: form.screenPrint,
         embroidery: form.embroidery,
         buttonhole: form.buttonhole,
@@ -543,6 +999,10 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         designDetail: form.designDetail || undefined,
         fusioningNotes: form.fusioningNotes || undefined,
         observations: form.observations || undefined,
+        compatibleFabrics:
+          form.fabricChecklist.length > 0
+            ? JSON.stringify(form.fabricChecklist)
+            : undefined,
       };
 
       if (editingId) {
@@ -652,6 +1112,14 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        startContent={<FiEye />}
+                        variant="light"
+                        onPress={() => openView(row.id)}
+                      >
+                        View
+                      </Button>
                       {canEdit && row.isActive && (
                         <Button
                           size="sm"
@@ -694,7 +1162,11 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       >
         <ModalContent>
           <ModalHeader>
-            {editingId ? "Edit molding template" : "New molding template"}
+            {editingId
+              ? viewOnly
+                ? "View molding template"
+                : "Edit molding template"
+              : "New molding template"}
           </ModalHeader>
           <ModalBody className="pb-2">
             <Tabs
@@ -730,34 +1202,131 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       <HelpIcon text="Información básica de la prenda (tipo, tela, color)" />
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                      <Input
-                        label={
-                          <div className="flex items-center">
-                            Garment type
-                            <HelpIcon text={fieldHelps.garmentType} />
-                          </div>
+                      <Select
+                        isRequired
+                        label="Tipo de prenda"
+                        placeholder="Seleccionar tipo de prenda"
+                        selectedKeys={
+                          form.garmentType
+                            ? new Set([form.garmentType])
+                            : new Set([])
                         }
-                        placeholder="e.g. T-SHIRT"
-                        value={form.garmentType}
-                        onValueChange={(v) => setField("garmentType", v)}
-                      />
-                      <Input
-                        label="Garment subtype"
-                        placeholder="e.g. POLO"
-                        value={form.garmentSubtype}
-                        onValueChange={(v) => setField("garmentSubtype", v)}
-                      />
-                      <Input
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("garmentType", first ? String(first) : "");
+                        }}
+                      >
+                        {garmentTypeOptions.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      {isCamiseta ? (
+                        <Select
+                          isRequired
+                          label="Garment subtype"
+                          placeholder="Select camiseta neck type"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {camisetaSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isShort ? (
+                        <Select
+                          isRequired
+                          label="Garment subtype"
+                          placeholder="Select short subtype"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {SHORT_SUBTYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isPolo ? (
+                        <Select
+                          isRequired
+                          label="Garment subtype"
+                          placeholder="Select polo subtype"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {POLO_SUBTYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isLicraCorta ? (
+                        <Input
+                          isDisabled
+                          label="Garment subtype"
+                          placeholder="No aplica para LICRA CORTA"
+                          value={form.garmentSubtype}
+                          onValueChange={(v) => setField("garmentSubtype", v)}
+                        />
+                      ) : (
+                        <Input
+                          label="Garment subtype"
+                          placeholder="e.g. POLO"
+                          value={form.garmentSubtype}
+                          onValueChange={(v) => setField("garmentSubtype", v)}
+                        />
+                      )}
+                      <Select
                         label={
                           <div className="flex items-center">
-                            Fabric
+                            Tela
                             <HelpIcon text={fieldHelps.fabric} />
                           </div>
                         }
-                        placeholder="e.g. LYCRA 90/10"
-                        value={form.fabric}
-                        onValueChange={(v) => setField("fabric", v)}
-                      />
+                        placeholder="Seleccionar telas compatibles"
+                        selectedKeys={new Set(form.fabricChecklist)}
+                        selectionMode="multiple"
+                        onSelectionChange={(keys) => {
+                          const next = Array.from(keys).map((item) =>
+                            normalizeUpper(String(item)),
+                          );
+
+                          setForm((prev) => ({
+                            ...prev,
+                            fabricChecklist: next,
+                            fabric: next.join(", "),
+                          }));
+                        }}
+                      >
+                        {FABRIC_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Input
                         label={
                           <div className="flex items-center">
@@ -765,49 +1334,76 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             <HelpIcon text={fieldHelps.color} />
                           </div>
                         }
-                        placeholder="e.g. WHITE"
+                        isDisabled={!isCorte}
+                        placeholder={
+                          isCorte
+                            ? "COLOR"
+                            : "No aplica para SUBLIMACION"
+                        }
                         value={form.color}
-                        onValueChange={(v) => setField("color", v)}
+                        onValueChange={(v) => setField("color", normalizeUpper(v))}
                       />
-                      <Input
+                      <Select
                         label={
                           <div className="flex items-center">
                             Gender
                             <HelpIcon text={fieldHelps.gender} />
                           </div>
                         }
-                        placeholder="e.g. UNISEX"
-                        value={form.gender}
-                        onValueChange={(v) => setField("gender", v)}
-                      />
-                      <Input
+                        placeholder="Select gender"
+                        selectedKeys={
+                          form.gender ? new Set([form.gender]) : new Set([])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          if (!first) {
+                            setField("gender", "");
+
+                            return;
+                          }
+
+                          setField("gender", String(first));
+                        }}
+                      >
+                        {GENDER_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
                         label={
                           <div className="flex items-center">
                             Process
                             <HelpIcon text={fieldHelps.process} />
                           </div>
                         }
-                        placeholder="e.g. CORTE-CONFECCION"
-                        value={form.process}
-                        onValueChange={(v) => setField("process", v)}
-                      />
+                        placeholder="Select process"
+                        selectedKeys={
+                          form.process ? new Set([form.process]) : new Set([])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("process", first ? String(first) : "");
+                        }}
+                      >
+                        {PROCESS_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Input
+                        isDisabled
                         label={
                           <div className="flex items-center">
                             Estimated lead days
                             <HelpIcon text={fieldHelps.estimatedLeadDays} />
                           </div>
                         }
-                        placeholder="7"
+                        placeholder="28"
                         type="number"
-                        value={form.estimatedLeadDays}
-                        onValueChange={(v) => setField("estimatedLeadDays", v)}
-                      />
-                      <Input
-                        label="Manufacturing ID"
-                        placeholder="e.g. MFG-001"
-                        value={form.manufacturingId}
-                        onValueChange={(v) => setField("manufacturingId", v)}
+                        value="28"
                       />
                     </div>
                   </div>
@@ -815,31 +1411,27 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                   {/* Images */}
                   <div>
                     <p className="text-sm font-semibold text-default-600 mb-3">
-                      Images (URLs)
+                      Imagen de referencia
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Input
-                        label="Clothing image 1 URL"
-                        placeholder="https://..."
+                      <FileUpload
+                        acceptedFileTypes="image/*"
+                        label="Subir imagen"
+                        uploadFolder="molding/templates"
                         value={form.clothingImageOneUrl}
-                        onValueChange={(v) =>
-                          setField("clothingImageOneUrl", v)
-                        }
+                        onChange={(url) => setField("clothingImageOneUrl", url)}
+                        onClear={() => setField("clothingImageOneUrl", "")}
                       />
-                      <Input
-                        label="Clothing image 2 URL"
-                        placeholder="https://..."
-                        value={form.clothingImageTwoUrl}
-                        onValueChange={(v) =>
-                          setField("clothingImageTwoUrl", v)
-                        }
-                      />
-                      <Input
-                        label="Logo image URL"
-                        placeholder="https://..."
-                        value={form.logoImageUrl}
-                        onValueChange={(v) => setField("logoImageUrl", v)}
-                      />
+                      {form.clothingImageOneUrl ? (
+                        <div className="rounded-medium border border-default-200 p-2">
+                          <div className="mb-2 text-xs text-default-500">Vista previa</div>
+                          <img
+                            alt="Vista previa de molderia"
+                            className="h-44 w-full rounded-medium object-cover"
+                            src={form.clothingImageOneUrl}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -868,22 +1460,10 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         Buttonhole
                       </Checkbox>
                       <Checkbox
-                        isSelected={form.snap}
-                        onValueChange={(v) => setField("snap", v)}
-                      >
-                        Snap
-                      </Checkbox>
-                      <Checkbox
                         isSelected={form.tag}
                         onValueChange={(v) => setField("tag", v)}
                       >
-                        Tag
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.flag}
-                        onValueChange={(v) => setField("flag", v)}
-                      >
-                        Flag
+                        Marquilla
                       </Checkbox>
                       <Checkbox
                         isSelected={form.hasElastic}
@@ -942,11 +1522,71 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Neck & Collar
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Input
-                        label="Neck type"
-                        value={form.neckType}
-                        onValueChange={(v) => setField("neckType", v)}
-                      />
+                      {isCamisilla ? (
+                        <Select
+                          isRequired
+                          label="Neck type"
+                          placeholder="Select camisilla neck type"
+                          selectedKeys={
+                            form.neckType ? new Set([form.neckType]) : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("neckType", first ? String(first) : "");
+                          }}
+                        >
+                          {CAMISILLA_NECK_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isPolo ? (
+                        <Select
+                          isRequired
+                          label="Neck type"
+                          placeholder="Select polo neck type"
+                          selectedKeys={
+                            form.neckType ? new Set([form.neckType]) : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("neckType", first ? String(first) : "");
+                          }}
+                        >
+                          {poloNeckOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isLicraCorta || isShort ? (
+                        <Input
+                          isDisabled
+                          label="Neck type"
+                          placeholder="No aplica para este tipo de prenda"
+                          value={form.neckType}
+                          onValueChange={(v) => setField("neckType", v)}
+                        />
+                      ) : (
+                        <Select
+                          label="Neck type"
+                          placeholder="Select neck type"
+                          selectedKeys={
+                            form.neckType ? new Set([form.neckType]) : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("neckType", first ? String(first) : "");
+                          }}
+                        >
+                          {NECK_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      )}
                       <Input
                         label="Collar type"
                         value={form.collarType}
@@ -961,11 +1601,44 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Sesgo & Thread
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Input
-                        label="Sesgo type"
-                        value={form.sesgoType}
-                        onValueChange={(v) => setField("sesgoType", v)}
-                      />
+                      {isCamisilla ? (
+                        <Select
+                          isRequired
+                          label="Sesgo type"
+                          placeholder="Select camisilla sesgo type"
+                          selectedKeys={
+                            form.sesgoType ? new Set([form.sesgoType]) : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("sesgoType", first ? String(first) : "");
+                          }}
+                        >
+                          {CAMISILLA_SESGO_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : (
+                        <Select
+                          label="Sesgo type"
+                          placeholder="Select sesgo type"
+                          selectedKeys={
+                            form.sesgoType ? new Set([form.sesgoType]) : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("sesgoType", first ? String(first) : "");
+                          }}
+                        >
+                          {SESGO_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      )}
                       <Input
                         label="Sesgo color"
                         value={form.sesgoColor}
@@ -990,11 +1663,55 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Sleeve & Cuff
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <Input
-                        label="Sleeve type"
-                        value={form.sleeveType}
-                        onValueChange={(v) => setField("sleeveType", v)}
-                      />
+                      {isCamiseta || isPolo ? (
+                        <Select
+                          isRequired
+                          label="Sleeve type"
+                          selectedKeys={
+                            form.sleeveType
+                              ? new Set([form.sleeveType])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("sleeveType", first ? String(first) : "");
+                          }}
+                        >
+                          {CAMISETA_SLEEVE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isCamisilla || isShort || isLicraCorta ? (
+                        <Input
+                          isDisabled
+                          label="Sleeve type"
+                          placeholder="No aplica para este tipo de prenda"
+                          value={form.sleeveType}
+                          onValueChange={(v) => setField("sleeveType", v)}
+                        />
+                      ) : (
+                        <Select
+                          label="Sleeve type"
+                          placeholder="Select sleeve type"
+                          selectedKeys={
+                            form.sleeveType
+                              ? new Set([form.sleeveType])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("sleeveType", first ? String(first) : "");
+                          }}
+                        >
+                          {SLEEVE_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      )}
                       <Input
                         label="Cuff type"
                         value={form.cuffType}
@@ -1051,21 +1768,45 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Lining & Hood
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Input
+                      <Select
                         label="Lining type"
-                        value={form.liningType}
-                        onValueChange={(v) => setField("liningType", v)}
-                      />
+                        placeholder="Select lining type"
+                        selectedKeys={
+                          form.liningType ? new Set([form.liningType]) : new Set([])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("liningType", first ? String(first) : "");
+                        }}
+                      >
+                        {LINING_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Input
                         label="Lining color"
                         value={form.liningColor}
                         onValueChange={(v) => setField("liningColor", v)}
                       />
-                      <Input
+                      <Select
                         label="Hood type"
-                        value={form.hoodType}
-                        onValueChange={(v) => setField("hoodType", v)}
-                      />
+                        placeholder="Select hood type"
+                        selectedKeys={
+                          form.hoodType ? new Set([form.hoodType]) : new Set([])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("hoodType", first ? String(first) : "");
+                        }}
+                      >
+                        {HOOD_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Input
                         label="Lateral mesh color"
                         value={form.lateralMeshColor}
@@ -1080,16 +1821,42 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Buttons
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      <Input
+                      <Select
                         label="Button type"
-                        value={form.buttonType}
-                        onValueChange={(v) => setField("buttonType", v)}
-                      />
-                      <Input
+                        placeholder="Select button type"
+                        selectedKeys={
+                          form.buttonType ? new Set([form.buttonType]) : new Set([])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("buttonType", first ? String(first) : "");
+                        }}
+                      >
+                        {BUTTON_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
                         label="Buttonhole type"
-                        value={form.buttonholeType}
-                        onValueChange={(v) => setField("buttonholeType", v)}
-                      />
+                        placeholder="Select buttonhole type"
+                        selectedKeys={
+                          form.buttonholeType
+                            ? new Set([form.buttonholeType])
+                            : new Set([])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("buttonholeType", first ? String(first) : "");
+                        }}
+                      >
+                        {BUTTONHOLE_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Input
                         label="Perilla color"
                         value={form.perillaColor}
@@ -1118,7 +1885,11 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       />
                       <Textarea
                         label="Observations"
-                        placeholder="Additional notes..."
+                        placeholder={
+                          isCamiseta
+                            ? CAMISETA_OBSERVATION_NOTE
+                            : "Additional notes..."
+                        }
                         value={form.observations}
                         onValueChange={(v) => setField("observations", v)}
                       />
@@ -1140,6 +1911,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           Materias Primas por Unidad
                         </h3>
                         <Button
+                          isDisabled={viewOnly}
                           color="primary"
                           size="sm"
                           startContent={<FiPlus />}
@@ -1191,6 +1963,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                                 <TableCell>
                                   <div className="flex gap-2">
                                     <Button
+                                      isDisabled={viewOnly}
                                       isIconOnly
                                       size="sm"
                                       variant="light"
@@ -1199,6 +1972,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                                       <FiEdit2 />
                                     </Button>
                                     <Button
+                                      isDisabled={viewOnly}
                                       isIconOnly
                                       color="danger"
                                       size="sm"
@@ -1228,14 +2002,20 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
           </ModalBody>
           <ModalFooter>
             <Button variant="light" onPress={closeModal}>
-              Cancel
+              {viewOnly ? "Close" : "Cancel"}
             </Button>
-            <Button color="primary" isDisabled={saving} onPress={handleSave}>
-              {saving
-                ? "Saving..."
-                : editingId
-                  ? "Save changes"
-                  : "Create template"}
+            <Button
+              color="primary"
+              isDisabled={saving || viewOnly}
+              onPress={handleSave}
+            >
+              {viewOnly
+                ? "Read only"
+                : saving
+                  ? "Saving..."
+                  : editingId
+                    ? "Save changes"
+                    : "Create template"}
             </Button>
           </ModalFooter>
         </ModalContent>

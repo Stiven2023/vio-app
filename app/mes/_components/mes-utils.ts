@@ -3,6 +3,7 @@ import type {
   EstadoProceso,
   OperativeLogRow,
   PedidoGroup,
+  ProcessHistoryEntry,
   ProcessQueueRow,
   ProgramacionApiRow,
 } from "./mes-types";
@@ -52,6 +53,20 @@ export function buildProcessTallaKey(
     .toUpperCase();
 
   return `${order}::${design}::${talla}`;
+}
+
+export function buildProcessDesignKey(
+  orderCode: string,
+  designName: string,
+): string {
+  const order = String(orderCode ?? "")
+    .trim()
+    .toUpperCase();
+  const design = String(designName ?? "")
+    .trim()
+    .toUpperCase();
+
+  return `${order}::${design}::*`;
 }
 
 export function mergeEstado(
@@ -121,6 +136,8 @@ export function computeEstadoFromOperativeLog(
 export function buildPedidoGroups(
   rows: ProgramacionApiRow[],
   operationStatusByTalla: Map<string, EstadoProceso>,
+  currentProcessByDesign?: Map<string, string>,
+  processHistoryByDesign?: Map<string, ProcessHistoryEntry[]>,
 ): PedidoGroup[] {
   const byOrder = new Map<
     string,
@@ -176,6 +193,14 @@ export function buildPedidoGroups(
         genero: row.gender ?? "-",
         ticketMontaje: String(row.ticketMontaje ?? "").trim() || "SIN TICKET",
         ticketPlotter: String(row.ticketPlotter ?? "").trim() || "SIN TICKET",
+        currentProcess:
+          currentProcessByDesign?.get(
+            buildProcessDesignKey(orderCode, row.design ?? ""),
+          ) ?? "Not started",
+        processHistory:
+          processHistoryByDesign?.get(
+            buildProcessDesignKey(orderCode, row.design ?? ""),
+          ) ?? [],
         tallas: [],
       };
       orderEntry.disenosByItem.set(itemId, diseno);
@@ -187,11 +212,15 @@ export function buildPedidoGroups(
 
     const talla = row.talla ?? "UNICA";
     const tallaKey = buildProcessTallaKey(orderCode, diseno.detalle, talla);
+    const designKey = buildProcessDesignKey(orderCode, diseno.detalle);
 
     diseno.tallas.push({
       talla,
       cantidad: qty,
-      estado: operationStatusByTalla.get(tallaKey) ?? "pendiente",
+      estado:
+        operationStatusByTalla.get(tallaKey) ??
+        operationStatusByTalla.get(designKey) ??
+        "pendiente",
     });
   }
 

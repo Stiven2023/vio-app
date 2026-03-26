@@ -110,6 +110,7 @@ type DraftRow = {
   endAt: string;
   isComplete: boolean;
   isPartial: boolean;
+  authorizeManualCut: boolean;
   observations: string;
   repoCheck: boolean;
   processCode: ProcessCode;
@@ -128,6 +129,7 @@ const initialDraft: DraftRow = {
   endAt: "",
   isComplete: false,
   isPartial: false,
+  authorizeManualCut: false,
   observations: "",
   repoCheck: false,
   processCode: "P",
@@ -234,6 +236,10 @@ export function OperarioWorklogTable({
 
   const roleAreaFilter = useMemo(() => normalizeRoleAreaByRole(role), [role]);
   const operationFilter = useMemo(() => normalizeOperationByRole(role), [role]);
+  const isAssemblyMode = useMemo(
+    () => operationFilter === "MONTAJE",
+    [operationFilter],
+  );
   const isOperationFixed = useMemo(() => role.startsWith("OPERARIO_"), [role]);
   const isPrefilledMode = Boolean(prefill);
   const sessionUser = useSessionStore((state) => state.user);
@@ -260,11 +266,17 @@ export function OperarioWorklogTable({
     if (!prefill) return;
 
     const firstTalla = tallaOptions[0];
-    const initialSize =
-      String(prefill.size ?? "").trim() ||
-      String(firstTalla?.talla ?? "").trim();
-    const initialQty =
-      firstTalla && String(firstTalla.talla).trim() === initialSize
+    const initialSize = isAssemblyMode
+      ? ""
+      : String(prefill.size ?? "").trim() ||
+        String(firstTalla?.talla ?? "").trim();
+    const qtyFromTallas = tallaOptions.reduce(
+      (sum, item) => sum + Math.max(0, Math.floor(Number(item.cantidad) || 0)),
+      0,
+    );
+    const initialQty = isAssemblyMode
+      ? qtyFromTallas
+      : firstTalla && String(firstTalla.talla).trim() === initialSize
         ? Math.max(0, Math.floor(Number(firstTalla.cantidad) || 0))
         : null;
 
@@ -283,9 +295,16 @@ export function OperarioWorklogTable({
             ? String(Math.max(0, Math.floor(prefill.quantityOp)))
             : prev.quantityOp,
     }));
-  }, [prefill, roleAreaFilter, operationFilter, tallaOptions]);
+  }, [
+    prefill,
+    roleAreaFilter,
+    operationFilter,
+    tallaOptions,
+    isAssemblyMode,
+  ]);
 
   useEffect(() => {
+    if (isAssemblyMode) return;
     if (tallaOptions.length === 0) return;
 
     const selected = tallaOptions.find(
@@ -299,7 +318,7 @@ export function OperarioWorklogTable({
     if (qty === draft.quantityOp) return;
 
     setDraft((prev) => ({ ...prev, quantityOp: qty }));
-  }, [draft.size, draft.quantityOp, tallaOptions]);
+  }, [draft.size, draft.quantityOp, tallaOptions, isAssemblyMode]);
 
   useEffect(() => {
     let active = true;
@@ -390,13 +409,14 @@ export function OperarioWorklogTable({
           orderCode: draft.orderCode,
           designName: draft.designName,
           details: draft.details || null,
-          size: draft.size || null,
+          size: isAssemblyMode ? null : draft.size || null,
           quantityOp: Number(draft.quantityOp || 0),
           producedQuantity: Number(draft.producedQuantity || 0),
-          startAt: asDateTimeIso(draft.startAt),
-          endAt: asDateTimeIso(draft.endAt),
+          startAt: isAssemblyMode ? null : asDateTimeIso(draft.startAt),
+          endAt: isAssemblyMode ? null : asDateTimeIso(draft.endAt),
           isComplete: draft.isComplete,
           isPartial: draft.isPartial,
+          authorizeManualCut: isAssemblyMode ? draft.authorizeManualCut : false,
           observations: partialRepoObservations,
           repoCheck: draft.isPartial ? true : draft.repoCheck,
           processCode: draft.processCode,
@@ -457,9 +477,9 @@ export function OperarioWorklogTable({
   return (
     <div className="space-y-3">
       <div className="text-sm text-default-500">
-        Registra producción por rol y operación: pedido, diseño, talla y
-        cantidades; si marcas parcial + repo o creas reposición desde una fila
-        parcial, se vincula con Programación por pedido/diseño/talla.
+        {isAssemblyMode
+          ? "En Montaje registra producción por cantidad total. La hora de inicio se toma al tomar pedido y la hora de fin al marcar completo. Si autorizas corte manual, marca la casilla correspondiente antes de guardar completo."
+          : "Registra producción por rol y operación: pedido, diseño, talla y cantidades; si marcas parcial + repo o creas reposición desde una fila parcial, se vincula con Programación por pedido/diseño/talla."}
       </div>
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
@@ -487,32 +507,40 @@ export function OperarioWorklogTable({
           value={draft.details}
           onValueChange={(value) => setDraft((s) => ({ ...s, details: value }))}
         />
-        {tallaOptions.length > 0 ? (
-          <Select
-            disallowEmptySelection
-            label="Talla"
-            selectedKeys={[draft.size || String(tallaOptions[0]?.talla ?? "")]}
-            size="sm"
-            onSelectionChange={(keys) => {
-              const first = String(Array.from(keys)[0] ?? "").trim();
+        {!isAssemblyMode
+          ? tallaOptions.length > 0
+            ? (
+                <Select
+                  disallowEmptySelection
+                  label="Talla"
+                  selectedKeys={[
+                    draft.size || String(tallaOptions[0]?.talla ?? ""),
+                  ]}
+                  size="sm"
+                  onSelectionChange={(keys) => {
+                    const first = String(Array.from(keys)[0] ?? "").trim();
 
-              setDraft((s) => ({ ...s, size: first }));
-            }}
-          >
-            {tallaOptions.map((option) => (
-              <SelectItem key={option.talla}>
-                {`${option.talla} (${Math.max(0, Math.floor(Number(option.cantidad) || 0))} uds)`}
-              </SelectItem>
-            ))}
-          </Select>
-        ) : (
-          <Input
-            label="Talla"
-            size="sm"
-            value={draft.size}
-            onValueChange={(value) => setDraft((s) => ({ ...s, size: value }))}
-          />
-        )}
+                    setDraft((s) => ({ ...s, size: first }));
+                  }}
+                >
+                  {tallaOptions.map((option) => (
+                    <SelectItem key={option.talla}>
+                      {`${option.talla} (${Math.max(0, Math.floor(Number(option.cantidad) || 0))} uds)`}
+                    </SelectItem>
+                  ))}
+                </Select>
+              )
+            : (
+                <Input
+                  label="Talla"
+                  size="sm"
+                  value={draft.size}
+                  onValueChange={(value) =>
+                    setDraft((s) => ({ ...s, size: value }))
+                  }
+                />
+              )
+          : null}
         <Input
           isReadOnly={isPrefilledMode}
           label="Cantidad OP"
@@ -532,20 +560,26 @@ export function OperarioWorklogTable({
             setDraft((s) => ({ ...s, producedQuantity: value }))
           }
         />
-        <Input
-          label="Hora inicio"
-          size="sm"
-          type="datetime-local"
-          value={draft.startAt}
-          onValueChange={(value) => setDraft((s) => ({ ...s, startAt: value }))}
-        />
-        <Input
-          label="Hora fin"
-          size="sm"
-          type="datetime-local"
-          value={draft.endAt}
-          onValueChange={(value) => setDraft((s) => ({ ...s, endAt: value }))}
-        />
+        {!isAssemblyMode ? (
+          <Input
+            label="Hora inicio"
+            size="sm"
+            type="datetime-local"
+            value={draft.startAt}
+            onValueChange={(value) =>
+              setDraft((s) => ({ ...s, startAt: value }))
+            }
+          />
+        ) : null}
+        {!isAssemblyMode ? (
+          <Input
+            label="Hora fin"
+            size="sm"
+            type="datetime-local"
+            value={draft.endAt}
+            onValueChange={(value) => setDraft((s) => ({ ...s, endAt: value }))}
+          />
+        ) : null}
         <Input
           label="Observaciones"
           size="sm"
@@ -632,6 +666,19 @@ export function OperarioWorklogTable({
             Parcial
           </Checkbox>
         </div>
+
+        {isAssemblyMode ? (
+          <div className="flex items-center gap-3">
+            <Checkbox
+              isSelected={draft.authorizeManualCut}
+              onValueChange={(value) =>
+                setDraft((s) => ({ ...s, authorizeManualCut: value }))
+              }
+            >
+              Autorizar pase directo a corte manual
+            </Checkbox>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex justify-end">

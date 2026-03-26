@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function PettyCashPage() {
-  redirect("/erp/contabilidad-modulo/caja-menor");
+  redirect("/erp/accounting-module?tab=close-control");
 }

@@ -91,6 +91,38 @@ export async function POST(
       ? body.moldingTemplateId.trim()
       : null;
 
+  const overrideGarmentType =
+    typeof body.garmentType === "string" && body.garmentType.trim()
+      ? body.garmentType.trim().toUpperCase()
+      : null;
+
+  const overrideGarmentSubtype =
+    typeof body.garmentSubtype === "string" && body.garmentSubtype.trim()
+      ? body.garmentSubtype.trim().toUpperCase()
+      : null;
+
+  const overrideDesignDetail =
+    typeof body.designDetail === "string" && body.designDetail.trim()
+      ? body.designDetail.trim()
+      : null;
+
+  const overrideImageUrl =
+    typeof body.imageUrl === "string" && body.imageUrl.trim()
+      ? body.imageUrl.trim()
+      : null;
+
+  const imageSlotRaw =
+    typeof body.imageSlot === "number"
+      ? body.imageSlot
+      : Number(String(body.imageSlot ?? ""));
+
+  const imageSlot = imageSlotRaw === 1 || imageSlotRaw === 2 ? imageSlotRaw : null;
+
+  const requestedCombinationOrder =
+    typeof body.combinationOrder === "number"
+      ? body.combinationOrder
+      : Number(String(body.combinationOrder ?? ""));
+
   // Determine next combination order
   const [{ maxOrder }] = await db
     .select({
@@ -99,7 +131,10 @@ export async function POST(
     .from(orderItemMoldings)
     .where(eq(orderItemMoldings.orderItemId, orderItemId));
 
-  const combinationOrder = (maxOrder ?? 0) + 1;
+  const combinationOrder =
+    Number.isFinite(requestedCombinationOrder) && requestedCombinationOrder > 0
+      ? Math.floor(requestedCombinationOrder)
+      : (maxOrder ?? 0) + 1;
 
   // If a template is provided, snapshot its fields
   let templateSnapshot: Record<string, unknown> = {};
@@ -170,6 +205,23 @@ export async function POST(
   }
 
   try {
+    const overrides: Record<string, unknown> = {};
+
+    if (overrideGarmentType) overrides.garmentType = overrideGarmentType;
+    if (overrideGarmentSubtype)
+      overrides.garmentSubtype = overrideGarmentSubtype;
+    if (overrideDesignDetail) overrides.designDetail = overrideDesignDetail;
+
+    if (overrideImageUrl) {
+      overrides.imageUrl = overrideImageUrl;
+      if (imageSlot === 1) {
+        overrides.clothingImageOneUrl = overrideImageUrl;
+      }
+      if (imageSlot === 2) {
+        overrides.clothingImageTwoUrl = overrideImageUrl;
+      }
+    }
+
     const [created] = await db
       .insert(orderItemMoldings)
       .values({
@@ -178,6 +230,7 @@ export async function POST(
         combinationOrder,
         assignedBy: employeeId ?? undefined,
         ...templateSnapshot,
+        ...overrides,
       })
       .returning();
 

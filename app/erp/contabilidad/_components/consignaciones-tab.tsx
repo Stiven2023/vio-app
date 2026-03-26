@@ -36,7 +36,10 @@ import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { usePaginatedApi } from "@/app/erp/orders/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
-import { normalizePaymentStatusLabel } from "@/src/utils/payment-status";
+import {
+  canSetPaymentStatusOnApproval,
+  normalizePaymentStatusLabel,
+} from "@/src/utils/payment-status";
 
 type DepositRow = {
   id: string;
@@ -76,6 +79,16 @@ type BankOption = {
   isActive: boolean | null;
 };
 
+type ExchangeRateCurrent = {
+  provider: string;
+  sourceRate: number;
+  floorRate: number;
+  effectiveRate: number;
+  adjustmentApplied: number;
+  sourceDate: string | null;
+  createdAt: string | null;
+};
+
 function formatMoney(
   value: string | number | null | undefined,
   currency: string,
@@ -86,6 +99,15 @@ function formatMoney(
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: cur,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(n) ? n : 0);
+}
+
+function formatRate(value: number | null | undefined) {
+  const n = Number(value ?? 0);
+
+  return new Intl.NumberFormat("es-CO", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number.isFinite(n) ? n : 0);
@@ -103,6 +125,11 @@ export function DepositsTab({
   const [currency, setCurrency] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [usdToCop, setUsdToCop] = useState("3700");
+  const [defaultCommissionRate, setDefaultCommissionRate] = useState("0.05");
+  const [latestUsdCop, setLatestUsdCop] = useState<ExchangeRateCurrent | null>(
+    null,
+  );
   const [bankOptions, setBankOptions] = useState<
     Array<{ value: string; label: string }>
   >([{ value: "all", label: "Todos" }]);
@@ -134,6 +161,16 @@ export function DepositsTab({
       })
       .catch(() => {
         setBankOptions([{ value: "all", label: "Todos" }]);
+      });
+  }, []);
+
+  useEffect(() => {
+    apiJson<ExchangeRateCurrent>("/api/exchange-rate/current")
+      .then((rate) => {
+        setLatestUsdCop(rate);
+      })
+      .catch(() => {
+        setLatestUsdCop(null);
       });
   }, []);
 
@@ -175,9 +212,30 @@ export function DepositsTab({
     }
   };
 
+  const downloadAccountingMacro = () => {
+    const sp = new URLSearchParams();
+
+    if (dateFrom) sp.set("dateFrom", dateFrom);
+    if (dateTo) sp.set("dateTo", dateTo);
+    if (usdToCop.trim()) sp.set("usdToCop", usdToCop.trim());
+    if (defaultCommissionRate.trim()) {
+      sp.set("defaultCommissionRate", defaultCommissionRate.trim());
+    }
+
+    const query = sp.toString();
+    const href = `/api/exports/reports/accounting-macro${query ? `?${query}` : ""}`;
+    const anchor = document.createElement("a");
+
+    anchor.href = href;
+    anchor.download = "contabilidad-macro.xlsx";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardBody className="gap-1">
             <div className="text-xs uppercase tracking-wide text-default-500">
@@ -223,6 +281,21 @@ export function DepositsTab({
             </div>
             <p className="text-xs text-default-500">
               Incluye créditos y otros métodos si existen en el período.
+            </p>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody className="gap-1">
+            <div className="text-xs uppercase tracking-wide text-default-500">
+              TRM vigente (USD/COP)
+            </div>
+            <div className="text-2xl font-semibold">
+              {latestUsdCop ? formatRate(latestUsdCop.effectiveRate) : "N/D"}
+            </div>
+            <p className="text-xs text-default-500">
+              {latestUsdCop?.sourceDate
+                ? `Fuente ${new Date(latestUsdCop.sourceDate).toLocaleDateString("es-CO")}`
+                : "Macro usa historial de TRM por fecha exacta."}
             </p>
           </CardBody>
         </Card>
@@ -273,6 +346,23 @@ export function DepositsTab({
             value={dateTo}
             onValueChange={setDateTo}
           />
+          <Input
+            className="sm:w-36"
+            label="TRM fallback"
+            placeholder="3700"
+            value={usdToCop}
+            onValueChange={setUsdToCop}
+          />
+          <Input
+            className="sm:w-36"
+            label="% comisión base"
+            placeholder="0.05"
+            value={defaultCommissionRate}
+            onValueChange={setDefaultCommissionRate}
+          />
+          <Button color="primary" variant="flat" onPress={downloadAccountingMacro}>
+            Exportar macro contabilidad
+          </Button>
         </div>
         <div className="flex justify-end gap-2">
           <Button
@@ -284,6 +374,12 @@ export function DepositsTab({
               setCurrency("all");
               setDateFrom("");
               setDateTo("");
+              setUsdToCop(
+                latestUsdCop?.effectiveRate
+                  ? String(latestUsdCop.effectiveRate)
+                  : "3700",
+              );
+              setDefaultCommissionRate("0.05");
             }}
           >
             Limpiar filtros
@@ -393,7 +489,11 @@ export function DepositsTab({
                         <DropdownItem
                           key="approve"
                           isDisabled={
-                            !canApprovePayments || row.status === "PAGADO"
+                            !canApprovePayments ||
+                            !canSetPaymentStatusOnApproval("PAGADO") ||
+                            !["PENDIENTE", "PARCIAL"].includes(
+                              String(row.status ?? "").trim().toUpperCase(),
+                            )
                           }
                           onPress={() => updateStatus(row.id, "PAGADO")}
                         >
@@ -402,7 +502,10 @@ export function DepositsTab({
                         <DropdownItem
                           key="reject"
                           isDisabled={
-                            !canApprovePayments || row.status === "PAGADO"
+                            !canApprovePayments ||
+                            !["PENDIENTE", "PARCIAL"].includes(
+                              String(row.status ?? "").trim().toUpperCase(),
+                            )
                           }
                           onPress={() => updateStatus(row.id, "ANULADO")}
                         >

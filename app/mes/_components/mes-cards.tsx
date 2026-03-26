@@ -22,32 +22,48 @@ import { formatDate } from "./mes-utils";
 
 function TicketBadge({ ticket, proceso }: { ticket: string; proceso: string }) {
   const colors: Record<string, string> = {
-    MO: "bg-violet-600 dark:bg-violet-500",
-    MON: "bg-violet-600 dark:bg-violet-500",
-    PLO: "bg-cyan-600 dark:bg-cyan-500",
-    SUB: "bg-orange-500 dark:bg-orange-400",
-    COR: "bg-rose-600 dark:bg-rose-500",
-    INT: "bg-teal-600 dark:bg-teal-500",
-    CON: "bg-indigo-600 dark:bg-indigo-500",
-    EMP: "bg-amber-600 dark:bg-amber-500",
-    DES: "bg-emerald-600 dark:bg-emerald-500",
+    MO: "bg-violet-600/90 dark:bg-violet-500/80",
+    MON: "bg-violet-600/90 dark:bg-violet-500/80",
+    PLO: "bg-cyan-600/90 dark:bg-cyan-500/80",
+    SUB: "bg-orange-500/90 dark:bg-orange-400/80",
+    COR: "bg-rose-600/90 dark:bg-rose-500/80",
+    INT: "bg-teal-600/90 dark:bg-teal-500/80",
+    CON: "bg-indigo-600/90 dark:bg-indigo-500/80",
+    EMP: "bg-amber-600/90 dark:bg-amber-500/80",
+    DES: "bg-emerald-600/90 dark:bg-emerald-500/80",
   };
   const prefix = String(ticket.split("-")[0] ?? "").toUpperCase();
-  const bg = colors[prefix] ?? "bg-gray-600";
+  const bg = colors[prefix] ?? "bg-gray-600/90";
 
   return (
     <Tooltip content={`${proceso} ticket`} placement="left">
       <div
-        className={`absolute -top-2 -right-2 z-10 flex items-center gap-1 px-2 py-0.5 rounded-full shadow-lg text-white text-[10px] font-bold tracking-wide ${bg}`}
+        className={[
+          "absolute top-3 right-3 z-10",
+          "flex items-center gap-1",
+          "px-2 py-0.5 rounded-full",
+          "text-white text-[10px] font-semibold tracking-wide",
+          "shadow-sm",
+          "backdrop-blur",
+          bg,
+        ].join(" ")}
       >
-        <MdTag size={10} />
-        {ticket}
+        <MdTag size={10} className="opacity-90" />
+        <span className="font-mono">{ticket}</span>
       </div>
     </Tooltip>
   );
 }
 
-function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
+function DisenoCard({
+  diseno,
+  showProcessTracking,
+}: {
+  diseno: DisenoGroup;
+  showProcessTracking?: boolean;
+}) {
+  const currentProcess = diseno.currentProcess ?? "Not started";
+  const processHistory = diseno.processHistory ?? [];
   const total = diseno.tallas.reduce((s, t) => s + t.cantidad, 0);
   const completadas = diseno.tallas
     .filter((t) => t.estado === "completado")
@@ -62,7 +78,7 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
             Design {diseno.diseno}
           </span>
           <Chip
-            className="ml-auto text-[10px]"
+            className="ml-auto text-[10px] h-5 px-2"
             color="default"
             size="sm"
             variant="flat"
@@ -86,22 +102,30 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
             Total:{" "}
             <span className="text-foreground font-bold">{total} units</span>
           </span>
+          {showProcessTracking ? (
+            <span className="text-xs text-default-400">
+              Current process:{" "}
+              <span className="text-foreground font-semibold">
+                {currentProcess}
+              </span>
+            </span>
+          ) : null}
         </div>
+        {showProcessTracking ? (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <Chip className="text-[10px] font-mono" size="sm" variant="flat">
+              M: {diseno.ticketMontaje || "SIN TICKET"}
+            </Chip>
+            <Chip className="text-[10px] font-mono" size="sm" variant="flat">
+              P: {diseno.ticketPlotter || "SIN TICKET"}
+            </Chip>
+          </div>
+        ) : null}
         <div className="w-full h-1 bg-default-100 rounded-full mt-2 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-primary to-success rounded-full transition-all duration-500"
             style={{ width: `${pct}%` }}
           />
-        </div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Chip
-            className="text-[10px] h-5 font-bold"
-            color="secondary"
-            size="sm"
-            variant="flat"
-          >
-            Assembly: {diseno.ticketMontaje}
-          </Chip>
         </div>
       </CardHeader>
 
@@ -185,11 +209,46 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
 
         <div className="flex justify-end mt-2 pr-2">
           <span className="text-[10px] text-default-400">
-            Single assembly ticket per design
+                  Un ticket de montaje por diseño
           </span>
         </div>
+
+        {showProcessTracking ? (
+          <div className="mt-2 rounded-medium border border-default-200 bg-default-50 p-2">
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-default-500">
+              Previous process records
+            </div>
+            {processHistory.length === 0 ? (
+              <div className="text-xs text-default-400">
+                No previous records yet.
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {processHistory.map((entry, index) => (
+                  <Chip
+                    key={`${entry.operationType}-${entry.at ?? "na"}-${index}`}
+                    className="text-[10px]"
+                    color={
+                      entry.state === "COMPLETADO"
+                        ? "success"
+                        : entry.state === "PARCIAL"
+                          ? "warning"
+                          : "default"
+                    }
+                    size="sm"
+                    variant="flat"
+                  >
+                    {`${entry.operationType} · ${entry.state}${entry.at ? ` · ${formatDate(entry.at)}` : ""}`}
+                  </Chip>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
       </CardBody>
-      <TicketBadge proceso="Assembly" ticket={diseno.ticketMontaje} />
+            {String(diseno.ticketMontaje ?? "").trim() ? (
+              <TicketBadge proceso="Montaje" ticket={diseno.ticketMontaje} />
+      ) : null}
     </Card>
   );
 }
@@ -197,9 +256,11 @@ function DisenoCard({ diseno }: { diseno: DisenoGroup }) {
 export function PedidoSection({
   pedido,
   onToggle,
+  showProcessTracking,
 }: {
   pedido: PedidoGroup;
   onToggle: () => void;
+  showProcessTracking?: boolean;
 }) {
   const cfg = PEDIDO_ESTADO_CONFIG[pedido.estado];
   const totalUds = pedido.disenos
@@ -278,7 +339,11 @@ export function PedidoSection({
         <CardBody className="pt-0 px-3 pb-3">
           <Divider className="mb-3" />
           {pedido.disenos.map((d, i) => (
-            <DisenoCard key={i} diseno={d} />
+            <DisenoCard
+              key={i}
+              diseno={d}
+              showProcessTracking={showProcessTracking}
+            />
           ))}
         </CardBody>
       )}

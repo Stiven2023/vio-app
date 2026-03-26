@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import { orderPayments } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import { canSetPaymentStatusOnApproval } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function normalizeStatus(value: unknown) {
@@ -52,6 +53,12 @@ export async function PUT(
           status: 400,
         },
       );
+    }
+
+    if (!canSetPaymentStatusOnApproval(status)) {
+      return new Response("Status must be PAGADO or ANULADO", {
+        status: 400,
+      });
     }
 
     const [updated] = await db

@@ -74,6 +74,12 @@ type PrefacturaFormMode = "create" | "edit";
 type SupportedCurrency = "COP" | "USD";
 type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
 type TaxZone = "CONTINENTAL" | "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+type BankOption = {
+  id: string;
+  code: string | null;
+  name: string;
+  isActive?: boolean | null;
+};
 
 const TAX_ZONE_DEFAULT_RATES: Record<
   TaxZone,
@@ -262,6 +268,31 @@ function toMoneyInputString(
   return String(Math.round(n));
 }
 
+function normalizeAmountInput(value: string): string {
+  const cleaned = value.replace(/[^\d.,]/g, "").replace(/,/g, ".");
+  const firstDot = cleaned.indexOf(".");
+
+  if (firstDot === -1) return cleaned;
+
+  const integerPart = cleaned.slice(0, firstDot + 1);
+  const decimals = cleaned.slice(firstDot + 1).replace(/\./g, "");
+
+  return `${integerPart}${decimals}`;
+}
+
+function resolveAdvanceStatus(
+  received: number,
+  total: number,
+): "PENDIENTE" | "PARCIAL" | "RECIBIDO" {
+  const safeReceived = Math.max(0, Number.isFinite(received) ? received : 0);
+  const safeTotal = Math.max(0, Number.isFinite(total) ? total : 0);
+
+  if (safeReceived <= 0) return "PENDIENTE";
+  if (safeTotal > 0 && safeReceived >= safeTotal) return "RECIBIDO";
+
+  return "PARCIAL";
+}
+
 export function PrefacturaForm({
   mode,
   initial,
@@ -306,6 +337,7 @@ export function PrefacturaForm({
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
+  const [banks, setBanks] = useState<BankOption[]>([]);
 
   const [hasAdvance, setHasAdvance] = useState(
     Number(initial?.advanceRequired ?? 0) > 0,
@@ -324,10 +356,27 @@ export function PrefacturaForm({
       ? initial.advanceMethod
       : "",
   );
-
-  const [hasClientApproval, setHasClientApproval] = useState(
-    initial?.hasClientApproval ?? false,
+  const [advanceReceived, setAdvanceReceived] = useState(
+    toMoneyInputString(
+      initial?.advanceReceived,
+      normalizeCurrency(initial?.advanceCurrency ?? initial?.currency),
+    ),
   );
+  const [advanceBankId, setAdvanceBankId] = useState(initial?.advanceBankId ?? "");
+  const [advanceReferenceNumber, setAdvanceReferenceNumber] = useState(
+    initial?.advanceReferenceNumber ?? "",
+  );
+  const [advanceCurrency, setAdvanceCurrency] = useState<SupportedCurrency>(
+    normalizeCurrency(initial?.advanceCurrency ?? initial?.currency),
+  );
+  const [advanceDate, setAdvanceDate] = useState(
+    initial?.advanceDate ? String(initial.advanceDate).slice(0, 10) : "",
+  );
+  const [advancePaymentImageUrl, setAdvancePaymentImageUrl] = useState(
+    initial?.advancePaymentImageUrl ?? "",
+  );
+
+  const [hasClientApproval] = useState(true);
   const [clientApprovalBy, setClientApprovalBy] = useState(
     initial?.clientApprovalBy ?? "",
   );
@@ -389,6 +438,7 @@ export function PrefacturaForm({
   const totalWithholdings =
     withholdingTaxAmount + withholdingIcaAmount + withholdingIvaAmount;
   const totalAfterWithholdings = totalPrefactura - totalWithholdings;
+  const advanceReceivedValue = Math.max(0, Number(advanceReceived || 0));
 
   useEffect(() => {
     if (mode !== "edit" || !initial?.orderId) return;
@@ -400,6 +450,14 @@ export function PrefacturaForm({
       .catch(() => setProducts([]))
       .finally(() => setLoadingProducts(false));
   }, [mode, initial?.orderId]);
+
+  useEffect(() => {
+    apiJson<{ items: BankOption[] }>("/api/banks?page=1&pageSize=200")
+      .then((res) =>
+        setBanks((res.items ?? []).filter((bank) => bank.isActive !== false)),
+      )
+      .catch(() => setBanks([]));
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit" || !initial?.orderId) return;
@@ -512,10 +570,43 @@ export function PrefacturaForm({
       }
     }
 
-    if (hasClientApproval && !clientApprovalImageUrl.trim()) {
+    if (!clientApprovalImageUrl.trim()) {
       toast.error("Debes adjuntar la captura/evidencia del aval del cliente");
 
       return;
+    }
+
+    if (
+      mode === "edit" &&
+      Number.isFinite(advanceReceivedValue) &&
+      advanceReceivedValue > 0
+    ) {
+      if (!advanceMethod) {
+        toast.error("Selecciona el metodo del anticipo");
+
+        return;
+      }
+
+      if (advanceMethod === "TRANSFERENCIA" && !advanceBankId.trim()) {
+        toast.error("Selecciona el banco de la transferencia");
+
+        return;
+      }
+
+      if (
+        advanceMethod === "TRANSFERENCIA" &&
+        !advanceReferenceNumber.trim()
+      ) {
+        toast.error("Ingresa el numero de referencia de la transferencia");
+
+        return;
+      }
+
+      if (advanceMethod === "TRANSFERENCIA" && !advancePaymentImageUrl.trim()) {
+        toast.error("Adjunta el comprobante de la transferencia");
+
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -534,16 +625,10 @@ export function PrefacturaForm({
           convenioType: null,
           convenioNotes: null,
           convenioImageUrl: null,
-          hasClientApproval,
-          clientApprovalBy: hasClientApproval
-            ? clientApprovalBy.trim() || null
-            : null,
-          clientApprovalNotes: hasClientApproval
-            ? clientApprovalNotes.trim() || null
-            : null,
-          clientApprovalImageUrl: hasClientApproval
-            ? clientApprovalImageUrl || null
-            : null,
+          hasClientApproval: true,
+          clientApprovalBy: clientApprovalBy.trim() || null,
+          clientApprovalNotes: clientApprovalNotes.trim() || null,
+          clientApprovalImageUrl: clientApprovalImageUrl || null,
           municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
           taxZoneSnapshot,
           withholdingTaxRate,
@@ -596,16 +681,24 @@ export function PrefacturaForm({
             convenioType: null,
             convenioNotes: null,
             convenioImageUrl: null,
-            hasClientApproval,
-            clientApprovalBy: hasClientApproval
-              ? clientApprovalBy.trim() || null
-              : null,
-            clientApprovalNotes: hasClientApproval
-              ? clientApprovalNotes.trim() || null
-              : null,
-            clientApprovalImageUrl: hasClientApproval
-              ? clientApprovalImageUrl || null
-              : null,
+            hasClientApproval: true,
+            clientApprovalBy: clientApprovalBy.trim() || null,
+            clientApprovalNotes: clientApprovalNotes.trim() || null,
+            clientApprovalImageUrl: clientApprovalImageUrl || null,
+            advanceReceived: advanceReceivedValue,
+            advanceStatus: resolveAdvanceStatus(
+              advanceReceivedValue,
+              totalPrefactura,
+            ),
+            advanceBankId:
+              advanceMethod === "TRANSFERENCIA" ? advanceBankId || null : null,
+            advanceReferenceNumber:
+              advanceMethod === "TRANSFERENCIA"
+                ? advanceReferenceNumber.trim() || null
+                : null,
+            advanceCurrency,
+            advanceDate: advanceDate || null,
+            advancePaymentImageUrl: advancePaymentImageUrl || null,
             municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
             taxZoneSnapshot,
             withholdingTaxRate,
@@ -1062,56 +1155,153 @@ export function PrefacturaForm({
                   Registra evidencia de aprobación comercial.
                 </p>
               </div>
-              <div className="flex items-center gap-3">
-                <Chip
-                  color={hasClientApproval ? "success" : "default"}
-                  size="sm"
-                  variant="flat"
-                >
-                  {hasClientApproval ? "true" : "false"}
-                </Chip>
-                <Switch
-                  isSelected={hasClientApproval}
-                  size="sm"
-                  onValueChange={setHasClientApproval}
-                />
-              </div>
+              <Chip color="success" size="sm" variant="flat">
+                Obligatorio
+              </Chip>
             </CardHeader>
             <Divider />
-            {hasClientApproval ? (
+            <CardBody className="space-y-3">
+              <Input
+                label="Fuente del aval"
+                placeholder="Ej: WhatsApp, correo, llamada..."
+                value={clientApprovalBy}
+                variant="bordered"
+                onValueChange={setClientApprovalBy}
+              />
+              <Textarea
+                label="Observaciones"
+                minRows={2}
+                placeholder="Detalles del aval, condiciones, acuerdos..."
+                value={clientApprovalNotes}
+                variant="bordered"
+                onValueChange={setClientApprovalNotes}
+              />
+              <FileUpload
+                acceptedFileTypes="image/*"
+                errorMessage={
+                  !clientApprovalImageUrl.trim()
+                    ? "La evidencia del aval es obligatoria"
+                    : undefined
+                }
+                isRequired
+                label="Imagen / evidencia del aval"
+                uploadFolder="prefacturas/avales"
+                value={clientApprovalImageUrl}
+                onChange={setClientApprovalImageUrl}
+                onClear={() => setClientApprovalImageUrl("")}
+              />
+            </CardBody>
+          </Card>
+
+          {mode === "edit" ? (
+            <Card
+              className="border border-default-200"
+              radius="md"
+              shadow="none"
+            >
+              <CardHeader className="text-sm font-semibold">
+                Anticipo y abono
+              </CardHeader>
+              <Divider />
               <CardBody className="space-y-3">
                 <Input
-                  label="Fuente del aval"
-                  placeholder="Ej: WhatsApp, correo, llamada..."
-                  value={clientApprovalBy}
+                  description="Valor total abonado para esta prefactura"
+                  label="Anticipo recibido"
+                  placeholder="0"
+                  value={advanceReceived}
                   variant="bordered"
-                  onValueChange={setClientApprovalBy}
+                  onValueChange={(value) =>
+                    setAdvanceReceived(normalizeAmountInput(value))
+                  }
                 />
-                <Textarea
-                  label="Observaciones"
-                  minRows={2}
-                  placeholder="Detalles del aval, condiciones, acuerdos..."
-                  value={clientApprovalNotes}
+
+                <Select
+                  label="Metodo de pago"
+                  selectedKeys={advanceMethod ? [advanceMethod] : []}
                   variant="bordered"
-                  onValueChange={setClientApprovalNotes}
+                  onSelectionChange={(keys) => {
+                    const first = String(Array.from(keys)[0] ?? "");
+
+                    setAdvanceMethod(
+                      first === "TRANSFERENCIA"
+                        ? "TRANSFERENCIA"
+                        : first === "EFECTIVO"
+                          ? "EFECTIVO"
+                          : "",
+                    );
+                  }}
+                >
+                  <SelectItem key="EFECTIVO">Efectivo</SelectItem>
+                  <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
+                </Select>
+
+                <Select
+                  label="Moneda del anticipo"
+                  selectedKeys={[advanceCurrency]}
+                  variant="bordered"
+                  onSelectionChange={(keys) => {
+                    const first = String(Array.from(keys)[0] ?? "COP");
+
+                    setAdvanceCurrency(first === "USD" ? "USD" : "COP");
+                  }}
+                >
+                  <SelectItem key="COP">COP</SelectItem>
+                  <SelectItem key="USD">USD</SelectItem>
+                </Select>
+
+                {advanceMethod === "TRANSFERENCIA" ? (
+                  <>
+                    <Select
+                      label="Banco"
+                      selectedKeys={advanceBankId ? [advanceBankId] : []}
+                      variant="bordered"
+                      onSelectionChange={(keys) => {
+                        setAdvanceBankId(String(Array.from(keys)[0] ?? ""));
+                      }}
+                    >
+                      {banks.map((bank) => (
+                        <SelectItem key={bank.id}>
+                          {[bank.code, bank.name].filter(Boolean).join(" - ")}
+                        </SelectItem>
+                      ))}
+                    </Select>
+
+                    <Input
+                      label="Numero de referencia"
+                      placeholder="Ej: 8457712201"
+                      value={advanceReferenceNumber}
+                      variant="bordered"
+                      onValueChange={setAdvanceReferenceNumber}
+                    />
+                  </>
+                ) : null}
+
+                <Input
+                  label="Fecha del pago"
+                  type="date"
+                  value={advanceDate}
+                  variant="bordered"
+                  onValueChange={setAdvanceDate}
                 />
+
                 <FileUpload
                   acceptedFileTypes="image/*"
-                  label="Imagen / evidencia del aval"
-                  uploadFolder="prefacturas/avales"
-                  value={clientApprovalImageUrl}
-                  onChange={setClientApprovalImageUrl}
-                  onClear={() => setClientApprovalImageUrl("")}
+                  errorMessage={
+                    advanceMethod === "TRANSFERENCIA" &&
+                    !advancePaymentImageUrl.trim()
+                      ? "El comprobante es obligatorio para transferencias"
+                      : undefined
+                  }
+                  isRequired={advanceMethod === "TRANSFERENCIA"}
+                  label="Comprobante de anticipo"
+                  uploadFolder="prefacturas/anticipos"
+                  value={advancePaymentImageUrl}
+                  onChange={setAdvancePaymentImageUrl}
+                  onClear={() => setAdvancePaymentImageUrl("")}
                 />
               </CardBody>
-            ) : (
-              <CardBody>
-                <p className="text-xs text-default-400">
-                  El cliente aún no ha dado aval formal.
-                </p>
-              </CardBody>
-            )}
-          </Card>
+            </Card>
+          ) : null}
         </div>
 
         <Card
@@ -1251,43 +1441,12 @@ export function PrefacturaForm({
                     <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
                   </Select>
 
-                  {mode === "edit" ? (
-                    <p className="rounded-lg border border-primary-200 bg-primary-50 p-3 text-xs text-primary-700">
-                      El pago del anticipo se registra desde el listado de
-                      prefacturas en Acciones &gt; Realizar anticipo.
-                    </p>
-                  ) : null}
                 </>
               ) : (
                 <p className="text-xs text-default-400">
                   Prefactura sin anticipo obligatorio.
                 </p>
               )}
-            </div>
-
-            <Divider />
-
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-default-500">Anticipo</span>
-                <Chip
-                  color={hasAdvance ? "success" : "default"}
-                  size="sm"
-                  variant="flat"
-                >
-                  {hasAdvance ? "true" : "false"}
-                </Chip>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-default-500">Aval cliente</span>
-                <Chip
-                  color={hasClientApproval ? "success" : "default"}
-                  size="sm"
-                  variant="flat"
-                >
-                  {hasClientApproval ? "true" : "false"}
-                </Chip>
-              </div>
             </div>
           </CardBody>
         </Card>

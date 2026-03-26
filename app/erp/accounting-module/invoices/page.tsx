@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function InvoicesPage() {
-  redirect("/erp/contabilidad-modulo/facturas");
+  redirect("/erp/accounting-module?tab=docs");
 }

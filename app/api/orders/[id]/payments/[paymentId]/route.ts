@@ -7,6 +7,7 @@ import {
   resolvePaymentBankById,
   validatePaymentBankCurrency,
 } from "@/src/utils/payment-banks";
+import { generatePaymentReferenceCode } from "@/src/utils/payment-reference-code";
 import { canSetPaymentStatusOnApproval } from "@/src/utils/payment-status";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -61,7 +62,6 @@ export async function PUT(
     body.amount !== undefined ||
     body.method !== undefined ||
     body.proofImageUrl !== undefined ||
-    body.referenceCode !== undefined ||
     body.depositAmount !== undefined ||
     body.bankId !== undefined ||
     body.transferCurrency !== undefined;
@@ -116,12 +116,8 @@ export async function PUT(
     patch.proofImageUrl = url ? url : null;
   }
 
-  if (body.referenceCode !== undefined) {
-    const code =
-      body.referenceCode === null ? null : String(body.referenceCode).trim();
-
-    patch.referenceCode = code ? code : null;
-  }
+  let effectiveBankForCode: Awaited<ReturnType<typeof resolvePaymentBankById>> |
+    null = null;
 
   if (body.depositAmount !== undefined) {
     const depositAmount = toPositiveNumericString(body.depositAmount);
@@ -164,9 +160,11 @@ export async function PUT(
   }
 
   const methodAfterPatch = patch.method ? String(patch.method) : null;
+  let effectiveMethodForCode: string | null = null;
 
   if (
-    methodAfterPatch === "TRANSFERENCIA" ||
+    methodAfterPatch !== null ||
+    patch.bankId !== undefined ||
     patch.transferBank !== undefined ||
     patch.transferCurrency !== undefined
   ) {
@@ -183,6 +181,7 @@ export async function PUT(
     if (!current) return new Response("Payment not found", { status: 404 });
 
     const effectiveMethod = methodAfterPatch ?? String(current.method ?? "");
+    effectiveMethodForCode = effectiveMethod;
     const effectiveBankId =
       patch.bankId !== undefined ? patch.bankId : current.bankId;
     const effectiveCurrency =
@@ -204,6 +203,7 @@ export async function PUT(
         return new Response(bankValidationError, { status: 400 });
       }
 
+      effectiveBankForCode = effectiveBank;
       patch.bankId = effectiveBank?.id ?? null;
       patch.transferBank = null;
     }
@@ -212,6 +212,17 @@ export async function PUT(
       patch.bankId = null;
       patch.transferBank = null;
       patch.transferCurrency = null;
+    }
+  }
+
+  if (body.method !== undefined || body.bankId !== undefined) {
+    const effectiveMethod = String(effectiveMethodForCode ?? "").toUpperCase();
+
+    if (methods.has(effectiveMethod)) {
+      patch.referenceCode = await generatePaymentReferenceCode(db, {
+        method: effectiveMethod as "EFECTIVO" | "TRANSFERENCIA" | "CREDITO",
+        bankIsOfficial: effectiveBankForCode?.isOfficial ?? null,
+      });
     }
   }
 
