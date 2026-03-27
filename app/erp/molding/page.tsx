@@ -32,8 +32,8 @@ export default async function MoldingPage() {
     <div className="container mx-auto max-w-7xl px-6 pt-16">
       <h1 className="text-2xl font-bold">Molding Templates</h1>
       <p className="mt-1 text-default-600">
-        Manage versioned molding templates, supply items (insumos), and track
-        purchase needs per order.
+        Manage versioned molding templates and expose purchase hints for
+        Compras. Automatic insumos remain disabled for now.
       </p>
 
       <div className="mt-6 space-y-8">
@@ -47,7 +47,7 @@ export default async function MoldingPage() {
         </section>
 
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Pending purchases</h2>
+          <h2 className="mb-3 text-lg font-semibold">Purchase hints</h2>
           <MoldingPurchaseNeedsTab />
         </section>
       </div>

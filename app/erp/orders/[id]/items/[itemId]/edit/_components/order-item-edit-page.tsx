@@ -196,70 +196,6 @@ function normalizeItemSleeve(v: unknown) {
   return null;
 }
 
-async function buildAutoMaterialsFromTemplateIds(args: {
-  templateIds: string[];
-  quantity: number;
-}) {
-  const { templateIds, quantity } = args;
-  const totals = new Map<
-    string,
-    { quantity: number; notes: Set<string> }
-  >();
-
-  for (const templateId of templateIds) {
-    const res = await fetch(`/api/molding/templates/${templateId}`);
-
-    if (!res.ok) throw new Error(await res.text());
-
-    const template = (await res.json()) as MoldingTemplateDetail;
-    const templateLabel = String(template.moldingCode ?? "MOLDERIA").trim();
-
-    for (const insumo of template.insumos ?? []) {
-      const inventoryItemId = String(insumo.inventoryItemId ?? "").trim();
-
-      if (!inventoryItemId) continue;
-
-      const perUnit = Number(insumo.qtyPerUnit ?? 0);
-
-      if (!Number.isFinite(perUnit) || perUnit <= 0) continue;
-
-      const required = perUnit * quantity;
-      const current =
-        totals.get(inventoryItemId) ??
-        ({ quantity: 0, notes: new Set<string>() } as {
-          quantity: number;
-          notes: Set<string>;
-        });
-
-      current.quantity += required;
-      current.notes.add(`AUTO ${templateLabel}`);
-      if (String(insumo.notes ?? "").trim()) {
-        current.notes.add(String(insumo.notes));
-      }
-      totals.set(inventoryItemId, current);
-    }
-  }
-
-  return Array.from(totals.entries()).map(([inventoryItemId, value]) => ({
-    inventoryItemId,
-    quantity: Number(value.quantity.toFixed(4)),
-    note: Array.from(value.notes).join(" | "),
-  }));
-}
-
-function normalizeMaterialsForCompare(
-  rows: Array<{ inventoryItemId: string; quantity?: number | string | null; note?: string | null }>,
-) {
-  return rows
-    .map((row) => ({
-      inventoryItemId: String(row.inventoryItemId ?? "").trim(),
-      quantity: Number(row.quantity ?? 0).toFixed(4),
-      note: String(row.note ?? "").trim(),
-    }))
-    .filter((row) => row.inventoryItemId)
-    .sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
-}
-
 function parseCompatibleFabrics(detail: MoldingTemplateDetail | null) {
   if (!detail) return [] as string[];
 
@@ -329,7 +265,6 @@ export function OrderItemEditPage(props: {
     "JUGADOR",
   );
   const skipNextMoldingAutofillRef = React.useRef(false);
-  const prevMaterialsNormRef = React.useRef<string>("");
 
   React.useEffect(() => {
     let active = true;
@@ -699,59 +634,6 @@ export function OrderItemEditPage(props: {
       active = false;
     };
   }, [moldingTemplateId, setItem]);
-
-  React.useEffect(() => {
-    const templateIds = Array.from(
-      new Set(
-        [
-          ...existingMoldingTemplateIds,
-          String(moldingTemplateId ?? "").trim(),
-          String(isConjunto ? moldingTemplateIdTwo ?? "" : "").trim(),
-        ]
-          .filter(Boolean),
-      ),
-    );
-
-    if (templateIds.length === 0) {
-      if (prevMaterialsNormRef.current !== "[]") {
-        prevMaterialsNormRef.current = "[]";
-        setMaterials([]);
-      }
-
-      return;
-    }
-
-    let active = true;
-    const quantity = Math.max(1, Math.floor(asNumber(item.quantity)));
-
-    buildAutoMaterialsFromTemplateIds({ templateIds, quantity })
-      .then((autoMaterials) => {
-        if (!active) return;
-
-        const nextNorm = normalizeMaterialsForCompare(autoMaterials);
-        const nextNormStr = JSON.stringify(nextNorm);
-
-        if (nextNormStr !== prevMaterialsNormRef.current) {
-          prevMaterialsNormRef.current = nextNormStr;
-          setMaterials(autoMaterials);
-        }
-      })
-      .catch((e) => {
-        if (!active) return;
-        toast.error(getErrorMessage(e));
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [
-    existingMoldingTemplateIds,
-    moldingTemplateId,
-    moldingTemplateIdTwo,
-    isConjunto,
-    item.quantity,
-    setMaterials,
-  ]);
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [loadingProducts, setLoadingProducts] = React.useState(false);

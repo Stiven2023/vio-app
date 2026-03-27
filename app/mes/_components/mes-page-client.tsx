@@ -8,6 +8,7 @@ import type {
 } from "@/app/mes/_components/mes-types";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import NextLink from "next/link";
 import { toast } from "react-hot-toast";
 import {
   Button,
@@ -64,6 +65,7 @@ import {
 } from "@/app/mes/_components/mes-envio-modal";
 import { MesEnvioStatusCard } from "@/app/mes/_components/mes-envio-status-card";
 import { MesItemTagsPanel } from "@/app/mes/_components/mes-item-tags-panel";
+import { MesDesignOverviewPanel } from "@/app/mes/_components/mes-design-overview-panel";
 
 export default function MesPageClient() {
   const [data, setData] = useState<PedidoGroup[]>([]);
@@ -940,6 +942,8 @@ export default function MesPageClient() {
                   orderId={selectedMontajeTicket.pedido}
                 />
 
+                <MesDesignOverviewPanel items={selectedEnvioItems} />
+
                 <div className="rounded-medium border border-default-200 p-3">
                   <p className="mb-2 text-xs font-semibold text-default-600">
                     Tags por diseno (ej. picada parcial)
@@ -947,12 +951,26 @@ export default function MesPageClient() {
                   <div className="space-y-3">
                     {selectedEnvioItems.length > 0 ? (
                       selectedEnvioItems.map((design) => (
-                        <MesItemTagsPanel
-                          key={design.orderItemId}
-                          designName={design.name}
-                          orderId={selectedMontajeTicket.pedido}
-                          orderItemId={design.orderItemId}
-                        />
+                        <div key={design.orderItemId} className="space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 rounded-medium border border-default-100 px-2 py-1">
+                            <div className="text-xs text-default-600">{design.name}</div>
+                            <Button
+                              as={NextLink}
+                              href={`/mes/designs/${design.orderItemId}`}
+                              rel="noreferrer"
+                              size="sm"
+                              target="_blank"
+                              variant="flat"
+                            >
+                              Abrir detalle
+                            </Button>
+                          </div>
+                          <MesItemTagsPanel
+                            designName={design.name}
+                            orderId={selectedMontajeTicket.pedido}
+                            orderItemId={design.orderItemId}
+                          />
+                        </div>
                       ))
                     ) : (
                       <p className="text-xs text-default-500">
