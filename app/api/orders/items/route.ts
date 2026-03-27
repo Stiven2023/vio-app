@@ -1,13 +1,16 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
   employees,
   inventoryItems,
   orderItemMaterials,
+  orderItemPositions,
   orderItemPackaging,
+  orderItemSpecialRequirements,
   orderItemSocks,
   orderItemStatusHistory,
+  orderItemTeams,
   orderItems,
   orders,
   prefacturas,
@@ -90,6 +93,111 @@ function normalizeOperationalProcess(v: unknown) {
   }
 
   return "PRODUCCION";
+}
+
+function normalizeDesignType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "PRODUCCION") return "PRODUCCION";
+  if (raw === "COMPRA" || raw === "COMPRAS") return "COMPRA";
+  if (raw === "BODEGA") return "BODEGA";
+
+  return "PRODUCCION";
+}
+
+function normalizeProductionTechnique(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "FONDO_ENTERO") return "FONDO_ENTERO";
+  if (raw === "SUBLIMACION") return "SUBLIMACION";
+
+  return "SUBLIMACION";
+}
+
+function normalizePosition(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    raw === "JUGADOR" ||
+    raw === "ARQUERO" ||
+    raw === "CAPITAN" ||
+    raw === "JUEZ" ||
+    raw === "ENTRENADOR" ||
+    raw === "LIBERO" ||
+    raw === "ADICIONAL"
+  ) {
+    return raw;
+  }
+
+  return null;
+}
+
+function normalizeSockLength(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "LARGA" || raw === "TRES_CUARTOS" || raw === "TALONERA") {
+    return raw;
+  }
+
+  return null;
+}
+
+function validatePositionsBusiness(
+  positionsInput: unknown,
+  designTypeInput: unknown,
+  teamsInput: unknown,
+) {
+  if (!Array.isArray(positionsInput) || positionsInput.length === 0) {
+    return "Debes configurar al menos una posición del diseño.";
+  }
+
+  const normalized = positionsInput
+    .map((row: any) => ({
+      position: normalizePosition(row?.position),
+      quantity: Number(row?.quantity ?? 0),
+    }))
+    .filter((row: any) => Boolean(row.position));
+
+  if (normalized.length === 0) {
+    return "Las posiciones del diseño son inválidas.";
+  }
+
+  if (normalized.some((row: any) => !Number.isFinite(row.quantity) || row.quantity < 0)) {
+    return "La cantidad por posición no puede ser negativa.";
+  }
+
+  if (normalized.length > 1) {
+    const set = new Set(normalized.map((row: any) => row.position));
+
+    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
+      return "Si defines más de una posición, debes incluir JUGADOR y ARQUERO.";
+    }
+  }
+
+  const designType = normalizeDesignType(designTypeInput);
+  const hasTeams = Array.isArray(teamsInput) && teamsInput.length > 0;
+
+  if (hasTeams) {
+    const set = new Set(normalized.map((row: any) => row.position));
+
+    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
+      return "Si configuras equipos, debes tener posiciones JUGADOR y ARQUERO.";
+    }
+  }
+
+  if (designType === "PRODUCCION" && normalized.length < 2) {
+    return "Para design type PRODUCCION debes definir al menos JUGADOR y ARQUERO.";
+  }
+
+  return null;
 }
 
 function sumGroupedPackagingQuantity(packagingInput: unknown) {
@@ -353,7 +461,7 @@ export async function GET(request: Request) {
     })
     .from(orderItems)
     .where(where)
-    .orderBy(desc(orderItems.createdAt))
+    .orderBy(asc(orderItems.createdAt))
     .limit(pageSize)
     .offset(offset);
 
@@ -390,6 +498,16 @@ export async function POST(request: Request) {
   if (!qty) return new Response("quantity must be positive", { status: 400 });
 
   const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
+
+  const positionsValidationError = validatePositionsBusiness(
+    body.positions,
+    body.designType ?? body.process,
+    body.teams,
+  );
+
+  if (positionsValidationError) {
+    return new Response(positionsValidationError, { status: 400 });
+  }
 
   if (groupedPackagingTotal > qty) {
     return new Response(
@@ -473,6 +591,19 @@ export async function POST(request: Request) {
       const hasAdditions =
         Boolean(body.hasAdditions) || Boolean(additionEvidence);
       const normalizedProcess = normalizeOperationalProcess(body.process);
+      const normalizedDesignType = normalizeDesignType(
+        body.designType ?? normalizedProcess,
+      );
+      const normalizedProductionTechnique = normalizeProductionTechnique(
+        body.productionTechnique,
+      );
+      if (normalizedProductionTechnique === "FONDO_ENTERO") {
+        const hasColor = Boolean(String(body.color ?? "").trim());
+
+        if (!hasColor) {
+          throw new Error("Color es obligatorio cuando la técnica es FONDO_ENTERO");
+        }
+      }
       const estimatedLeadDays = getItemLeadDays({
         orderType: resolveOrderTypeFromKind(orderRow.kind),
         process: normalizedProcess,
@@ -504,7 +635,15 @@ export async function POST(request: Request) {
           tag: Boolean(body.tag ?? false),
           flag: Boolean(body.flag ?? false),
           gender: toNullableString(body.gender),
+          designType: normalizedDesignType as any,
+          productionTechnique: normalizedProductionTechnique as any,
           process: normalizedProcess,
+          designerId: toNullableString(body.designerId),
+          discipline: toNullableString(body.discipline),
+          hasCordon: Boolean(body.hasCordon),
+          cordonColor: toNullableString(body.cordonColor),
+          category: toNullableString(body.category),
+          labelBrand: toNullableString(body.labelBrand),
           estimatedLeadDays,
           neckType: toNullableString(body.neckType),
           sleeve: toNullableString(body.sleeve),
@@ -531,6 +670,8 @@ export async function POST(request: Request) {
         await tx.insert(orderItemPackaging).values(
           packaging.map((p: any) => ({
             orderItemId,
+            teamId: toNullableString(p.teamId),
+            position: normalizePosition(p.position) as any,
             mode: String(p.mode ?? "AGRUPADO"),
             size: String(p.size ?? ""),
             quantity:
@@ -547,6 +688,10 @@ export async function POST(request: Request) {
         await tx.insert(orderItemSocks).values(
           socks.map((s: any) => ({
             orderItemId,
+            teamId: toNullableString(s.teamId),
+            position: normalizePosition(s.position) as any,
+            sockLength: normalizeSockLength(s.sockLength) as any,
+            color: toNullableString(s.color),
             size: String(s.size ?? ""),
             quantity:
               s.quantity === undefined ? null : toPositiveInt(s.quantity),
@@ -581,6 +726,70 @@ export async function POST(request: Request) {
               note: toNullableString(m.note),
             }))
             .filter((m: any) => existingSet.has(m.inventoryItemId)) as any,
+        );
+      }
+
+      const positions = Array.isArray(body.positions) ? body.positions : [];
+
+      if (positions.length > 0) {
+        await tx.insert(orderItemPositions).values(
+          positions
+            .map((p: any, idx: number) => ({
+              orderItemId,
+              position: normalizePosition(p.position) as any,
+              quantity:
+                p.quantity === undefined || p.quantity === null
+                  ? 0
+                  : Math.max(0, Number(p.quantity ?? 0)),
+              color: toNullableString(p.color),
+              sortOrder:
+                p.sortOrder === undefined || p.sortOrder === null
+                  ? idx + 1
+                  : Math.max(1, Math.floor(Number(p.sortOrder ?? idx + 1))),
+            }))
+            .filter((p: any) => Boolean(p.position)) as any,
+        );
+      }
+
+      const teams = Array.isArray(body.teams) ? body.teams : [];
+
+      if (teams.length > 0) {
+        await tx.insert(orderItemTeams).values(
+          teams
+            .map((t: any, idx: number) => ({
+              orderItemId,
+              name: String(t.name ?? "").trim(),
+              playerColor: toNullableString(t.playerColor),
+              goalkeeperColor: toNullableString(t.goalkeeperColor),
+              socksColor: toNullableString(t.socksColor),
+              playerImageUrl: toNullableString(t.playerImageUrl),
+              goalkeeperImageUrl: toNullableString(t.goalkeeperImageUrl),
+              fullSetImageUrl: toNullableString(t.fullSetImageUrl),
+              sortOrder:
+                t.sortOrder === undefined || t.sortOrder === null
+                  ? idx + 1
+                  : Math.max(1, Math.floor(Number(t.sortOrder ?? idx + 1))),
+            }))
+            .filter((t: any) => t.name) as any,
+        );
+      }
+
+      const specialRequirements = Array.isArray(body.specialRequirements)
+        ? body.specialRequirements
+        : [];
+
+      if (specialRequirements.length > 0) {
+        await tx.insert(orderItemSpecialRequirements).values(
+          specialRequirements.map((sr: any) => ({
+            orderItemId,
+            piece: toNullableString(sr.piece),
+            fabric: toNullableString(sr.fabric),
+            fabricColor: toNullableString(sr.fabricColor),
+            hasReflectiveTape: Boolean(sr.hasReflectiveTape),
+            reflectiveTapeLocation: toNullableString(sr.reflectiveTapeLocation),
+            hasSideStripes: Boolean(sr.hasSideStripes),
+            notes: toNullableString(sr.notes),
+          })) as any,
         );
       }
 

@@ -7,9 +7,11 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
+import { Switch } from "@heroui/switch";
 
 import { DesignSection } from "../../_components/order-item-modal/design-section";
 import { MaterialsSection } from "../../_components/order-item-modal/materials-section";
+import { OrderItemStructuresSection } from "../../_components/order-item-modal/order-item-structures-section";
 import { PackagingSection } from "../../_components/order-item-modal/packaging-section";
 import { SocksSection } from "../../_components/order-item-modal/socks-section";
 import { useOrderItemModalState } from "../../_components/order-item-modal/use-order-item-modal-state";
@@ -20,6 +22,11 @@ import type {
   MoldingTemplateDetail,
   MoldingTemplateRow,
 } from "@/app/erp/molding/_lib/types";
+import type {
+  OrderItemPositionInput,
+  OrderItemSpecialRequirementInput,
+  OrderItemTeamInput,
+} from "@/app/erp/orders/_lib/order-item-types";
 
 type Currency = "COP" | "USD";
 
@@ -46,6 +53,12 @@ type ProductPriceRow = {
   startDate: string | null;
   endDate: string | null;
   isActive: boolean | null;
+};
+
+type DesignerRow = {
+  id: string;
+  name: string;
+  isActive?: boolean | null;
 };
 
 type ImageMoldingAssignment = {
@@ -294,6 +307,14 @@ export function OrderItemCreatePage(props: {
     position: "ESPALDA",
     moldingTemplateId: null,
   });
+  const [isConjunto, setIsConjunto] = React.useState(false);
+  const [positions, setPositions] = React.useState<OrderItemPositionInput[]>([
+    { position: "JUGADOR", quantity: 0, color: "", sortOrder: 1 },
+  ]);
+  const [teams, setTeams] = React.useState<OrderItemTeamInput[]>([]);
+  const [specialRequirements, setSpecialRequirements] = React.useState<
+    OrderItemSpecialRequirementInput[]
+  >([]);
 
   const {
     inventoryItems,
@@ -314,6 +335,7 @@ export function OrderItemCreatePage(props: {
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [loadingProducts, setLoadingProducts] = React.useState(false);
+  const [designers, setDesigners] = React.useState<DesignerRow[]>([]);
 
   const [prices, setPrices] = React.useState<ProductPriceRow[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(false);
@@ -347,6 +369,58 @@ export function OrderItemCreatePage(props: {
       active = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    let active = true;
+
+    fetch(`/api/employees?page=1&pageSize=500`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+
+        return (await res.json()) as { items: DesignerRow[] };
+      })
+      .then((payload) => {
+        if (!active) return;
+        setDesigners(Array.isArray(payload.items) ? payload.items : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDesigners([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleTeamImageFileSelect = React.useCallback(
+    async (args: {
+      teamIndex: number;
+      field: "playerImageUrl" | "goalkeeperImageUrl" | "fullSetImageUrl";
+      file: File;
+    }) => {
+      const { teamIndex, field, file } = args;
+
+      setIsUploadingAssets(true);
+      try {
+        const url = await uploadToCloudinary({
+          file,
+          folder: `order-items/${orderId}/teams`,
+        });
+
+        setTeams((prev) =>
+          prev.map((team, idx) =>
+            idx === teamIndex ? { ...team, [field]: url } : team,
+          ),
+        );
+      } catch (e) {
+        toast.error(getErrorMessage(e));
+      } finally {
+        setIsUploadingAssets(false);
+      }
+    },
+    [orderId],
+  );
 
   React.useEffect(() => {
     const templateIds = Array.from(
@@ -545,6 +619,36 @@ export function OrderItemCreatePage(props: {
 
   const uiDisabled = isSaving;
   const canEditUnitPrice = priceClientType === "AUTORIZADO";
+  const moldingOneId = String(assignmentOne.moldingTemplateId ?? "").trim();
+  const moldingTwoId = String(assignmentTwo.moldingTemplateId ?? "").trim();
+  const hasRequiredMolding = isConjunto
+    ? Boolean(moldingOneId && moldingTwoId)
+    : Boolean(moldingOneId);
+
+  React.useEffect(() => {
+    setPositions((prev) => {
+      if (prev.length === 0) {
+        return [
+          {
+            position: "JUGADOR",
+            quantity: Math.max(0, Math.floor(asNumber(item.quantity))),
+            color: String(item.color ?? ""),
+            sortOrder: 1,
+          },
+        ];
+      }
+
+      return prev.map((row, idx) =>
+        idx === 0
+          ? {
+              ...row,
+              quantity: Math.max(0, Math.floor(asNumber(item.quantity))),
+              color: String(item.color ?? ""),
+            }
+          : row,
+      );
+    });
+  }, [item.color, item.quantity]);
 
   React.useEffect(() => {
     if (!selectedPrice) return;
@@ -643,6 +747,18 @@ export function OrderItemCreatePage(props: {
       return;
     }
 
+    if (!moldingOneId) {
+      setError("Selecciona la moldería principal (Prenda 1).");
+
+      return;
+    }
+
+    if (isConjunto && !moldingTwoId) {
+      setError("Para conjunto debes seleccionar también la moldería de Prenda 2.");
+
+      return;
+    }
+
     setIsSaving(true);
     try {
       let imageUrl = item.imageUrl ?? null;
@@ -694,6 +810,14 @@ export function OrderItemCreatePage(props: {
         logoImageUrl,
         gender: item.gender ?? null,
         process: item.process ?? null,
+        designType: (item.designType ?? item.process ?? "PRODUCCION") as any,
+        productionTechnique: (item.productionTechnique ?? "SUBLIMACION") as any,
+        designerId: item.designerId ?? null,
+        discipline: item.discipline ?? null,
+        hasCordon: Boolean(item.hasCordon),
+        cordonColor: item.cordonColor ?? null,
+        category: item.category ?? null,
+        labelBrand: item.labelBrand ?? null,
         neckType: item.neckType ?? null,
         sleeve: item.sleeve ?? null,
         color: item.color ?? null,
@@ -707,6 +831,9 @@ export function OrderItemCreatePage(props: {
         packaging,
         socks,
         materials,
+        positions,
+        teams,
+        specialRequirements,
       };
 
       const res = await fetch(`/api/orders/items`, {
@@ -908,9 +1035,192 @@ export function OrderItemCreatePage(props: {
 
       <Card>
         <CardHeader>
-          <div className="font-semibold">Molderia</div>
+          <div className="font-semibold">Diseño (Paso 1)</div>
+        </CardHeader>
+        <CardBody>
+          <DesignSection
+            canEditUnitPrice={canEditUnitPrice}
+            computedTotal={computedTotal}
+            imageOneFile={imageOneFile}
+            imageTwoFile={imageTwoFile}
+            isCreateBlocked={isCreateBlocked}
+            logoFile={logoFile}
+            orderKind={orderKind}
+            showAdvancedFields={hasRequiredMolding}
+            value={item}
+            onChange={setItem}
+            onSelectImageOneFile={setImageOneFile}
+            onSelectImageTwoFile={setImageTwoFile}
+            onSelectLogoFile={setLogoFile}
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Curvas y lista de empaque</div>
+        </CardHeader>
+        <CardBody>
+          <PackagingSection
+            disabled={uiDisabled}
+            garmentType={String(item.garmentType ?? "JUGADOR")}
+            maxCurveQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
+            mode={packagingMode}
+            packaging={packaging}
+            onError={(m) => setError(m)}
+            onModeChange={setPackagingMode}
+            onPackagingChange={setPackaging}
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Clasificación técnica</div>
+        </CardHeader>
+        <CardBody className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Select
+            isDisabled={uiDisabled}
+            label="Design type"
+            selectedKeys={item.designType ? [String(item.designType)] : ["PRODUCCION"]}
+            onSelectionChange={(keys: any) => {
+              const k = String(Array.from(keys as any)[0] ?? "PRODUCCION");
+
+              setItem((s) => ({ ...s, designType: k as any, process: k }));
+            }}
+          >
+            <SelectItem key="PRODUCCION">PRODUCCION</SelectItem>
+            <SelectItem key="COMPRA">COMPRA</SelectItem>
+            <SelectItem key="BODEGA">BODEGA</SelectItem>
+          </Select>
+
+          <Select
+            isDisabled={uiDisabled}
+            label="Production technique"
+            selectedKeys={
+              item.productionTechnique
+                ? [String(item.productionTechnique)]
+                : ["SUBLIMACION"]
+            }
+            onSelectionChange={(keys: any) => {
+              const k = String(Array.from(keys as any)[0] ?? "SUBLIMACION");
+
+              setItem((s) => ({ ...s, productionTechnique: k as any }));
+            }}
+          >
+            <SelectItem key="SUBLIMACION">SUBLIMACION</SelectItem>
+            <SelectItem key="FONDO_ENTERO">FONDO_ENTERO</SelectItem>
+          </Select>
+
+          <Select
+            isDisabled={uiDisabled}
+            label="Designer"
+            selectedKeys={item.designerId ? [String(item.designerId)] : []}
+            onSelectionChange={(keys: any) => {
+              const k = Array.from(keys as any)[0];
+
+              setItem((s) => ({ ...s, designerId: k ? String(k) : null }));
+            }}
+          >
+            {designers
+              .filter((d) => d.isActive !== false)
+              .map((designer) => (
+                <SelectItem key={designer.id}>{designer.name}</SelectItem>
+              ))}
+          </Select>
+
+          <Input
+            isDisabled={uiDisabled}
+            label="Discipline"
+            value={String(item.discipline ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, discipline: v || null }))
+            }
+          />
+
+          <Input
+            isDisabled={uiDisabled}
+            label="Category"
+            value={String(item.category ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, category: v || null }))
+            }
+          />
+
+          <Input
+            isDisabled={uiDisabled}
+            label="Label brand"
+            value={String(item.labelBrand ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, labelBrand: v || null }))
+            }
+          />
+
+          <Switch
+            isDisabled={uiDisabled}
+            isSelected={Boolean(item.hasCordon)}
+            onValueChange={(v: boolean) =>
+              setItem((s) => ({ ...s, hasCordon: v }))
+            }
+          >
+            Has cordon
+          </Switch>
+
+          <Input
+            isDisabled={uiDisabled || !Boolean(item.hasCordon)}
+            label="Cordon color"
+            value={String(item.cordonColor ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, cordonColor: v || null }))
+            }
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Estructura del diseño</div>
+        </CardHeader>
+        <CardBody>
+          <OrderItemStructuresSection
+            disabled={uiDisabled}
+            positions={positions}
+            specialRequirements={specialRequirements}
+            teams={teams}
+            onTeamImageFileSelect={handleTeamImageFileSelect}
+            onPositionsChange={setPositions}
+            onSpecialRequirementsChange={setSpecialRequirements}
+            onTeamsChange={setTeams}
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Moldería (Paso 2)</div>
         </CardHeader>
         <CardBody className="space-y-4">
+          <Switch
+            isDisabled={uiDisabled || isCreateBlocked || isApplyingMolding}
+            isSelected={isConjunto}
+            onValueChange={(next) => {
+              setIsConjunto(next);
+
+              if (!next) {
+                setAssignmentTwo((s) => ({
+                  ...s,
+                  moldingTemplateId: null,
+                }));
+              }
+            }}
+          >
+            Es conjunto (requiere 2 molderías)
+          </Switch>
+
+          <div className="text-xs text-default-500">
+            Selecciona la moldería para cargar sus valores base y habilitar tela,
+            proceso, manga, color y protecciones.
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-medium border border-default-200 p-3 space-y-3">
               <div className="text-sm font-semibold">Prenda 1</div>
@@ -993,7 +1303,8 @@ export function OrderItemCreatePage(props: {
               </Select>
             </div>
 
-            <div className="rounded-medium border border-default-200 p-3 space-y-3">
+            {isConjunto ? (
+              <div className="rounded-medium border border-default-200 p-3 space-y-3">
               <div className="text-sm font-semibold">Prenda 2</div>
               <Input
                 isDisabled={uiDisabled || isCreateBlocked}
@@ -1072,53 +1383,14 @@ export function OrderItemCreatePage(props: {
                   </SelectItem>
                 ))}
               </Select>
-            </div>
+              </div>
+            ) : null}
           </div>
           {isApplyingMolding ? (
             <div className="text-xs text-primary animate-pulse">
               Aplicando datos de molderia...
             </div>
           ) : null}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Detalles del diseño</div>
-        </CardHeader>
-        <CardBody>
-          <DesignSection
-            canEditUnitPrice={canEditUnitPrice}
-            computedTotal={computedTotal}
-            imageOneFile={imageOneFile}
-            imageTwoFile={imageTwoFile}
-            isCreateBlocked={isCreateBlocked}
-            logoFile={logoFile}
-            orderKind={orderKind}
-            value={item}
-            onChange={setItem}
-            onSelectImageOneFile={setImageOneFile}
-            onSelectImageTwoFile={setImageTwoFile}
-            onSelectLogoFile={setLogoFile}
-          />
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Empaque</div>
-        </CardHeader>
-        <CardBody>
-          <PackagingSection
-            disabled={uiDisabled}
-            garmentType={String(item.garmentType ?? "JUGADOR")}
-            maxCurveQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
-            mode={packagingMode}
-            packaging={packaging}
-            onError={(m) => setError(m)}
-            onModeChange={setPackagingMode}
-            onPackagingChange={setPackaging}
-          />
         </CardBody>
       </Card>
 

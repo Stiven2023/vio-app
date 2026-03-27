@@ -214,25 +214,7 @@ export const buildNavbarSections = ({
       label: labels.accounting,
       icon: FiDollarSign,
       visible: canSeeOrders,
-      items: [
-        { name: labels.accountingOverview, href: "/erp/accounting-module" },
-        {
-          name: labels.accountingDocuments,
-          href: "/erp/accounting-module?tab=docs",
-        },
-        {
-          name: labels.accountingCashBanks,
-          href: "/erp/accounting-module?tab=cash-banks",
-        },
-        {
-          name: labels.accountingReceivables,
-          href: "/erp/accounting-module?tab=receivables",
-        },
-        {
-          name: labels.accountingCloseControl,
-          href: "/erp/accounting-module?tab=close-control",
-        },
-      ],
+      items: [{ name: labels.accounting, href: "/contabilidad-modulo" }],
     },
     {
       key: "produccion",

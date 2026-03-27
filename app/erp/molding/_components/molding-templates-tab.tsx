@@ -64,18 +64,17 @@ type FormState = {
   gender: string;
   process: string;
   estimatedLeadDays: string;
-  manufacturingId: string;
   // Images
   clothingImageOneUrl: string;
-  clothingImageTwoUrl: string;
-  logoImageUrl: string;
   // Boolean features
   screenPrint: boolean;
   embroidery: boolean;
   buttonhole: boolean;
-  snap: boolean;
   tag: boolean;
-  flag: boolean;
+  printTechnique: string;
+  embroideryTechnique: string;
+  marquillaType: string;
+  pocketConfig: string;
   hasElastic: boolean;
   hasInnerLining: boolean;
   hasPocket: boolean;
@@ -84,9 +83,8 @@ type FormState = {
   hasTanca: boolean;
   hasProtection: boolean;
   hasEntretela: boolean;
-  // Neck & collar
+  // Neck
   neckType: string;
-  collarType: string;
   // Sesgo & thread
   sesgoType: string;
   sesgoColor: string;
@@ -95,7 +93,6 @@ type FormState = {
   // Sleeve & cuff
   sleeveType: string;
   cuffType: string;
-  cuffMaterial: string;
   // Zipper
   zipperLocation: string;
   zipperColor: string;
@@ -129,16 +126,15 @@ const emptyForm: FormState = {
   gender: "",
   process: "",
   estimatedLeadDays: "28",
-  manufacturingId: "",
   clothingImageOneUrl: "",
-  clothingImageTwoUrl: "",
-  logoImageUrl: "",
   screenPrint: false,
   embroidery: false,
   buttonhole: false,
-  snap: false,
   tag: false,
-  flag: false,
+  printTechnique: "NO",
+  embroideryTechnique: "NO",
+  marquillaType: "NO",
+  pocketConfig: "SIN BOLSILLOS",
   hasElastic: false,
   hasInnerLining: false,
   hasPocket: false,
@@ -148,14 +144,12 @@ const emptyForm: FormState = {
   hasProtection: false,
   hasEntretela: false,
   neckType: "",
-  collarType: "",
   sesgoType: "",
   sesgoColor: "",
   hiladillaColor: "",
   cordColor: "",
   sleeveType: "",
-  cuffType: "",
-  cuffMaterial: "",
+  cuffType: "NO APLICA",
   zipperLocation: "",
   zipperColor: "",
   zipperSizeCm: "",
@@ -185,16 +179,15 @@ function mapDetailToForm(detail: MoldingTemplateDetail): FormState {
     gender: detail.gender ?? "",
     process: detail.process ?? "",
     estimatedLeadDays: "28",
-    manufacturingId: detail.manufacturingId ?? "",
     clothingImageOneUrl: detail.clothingImageOneUrl ?? "",
-    clothingImageTwoUrl: detail.clothingImageTwoUrl ?? "",
-    logoImageUrl: detail.logoImageUrl ?? "",
     screenPrint: Boolean(detail.screenPrint),
     embroidery: Boolean(detail.embroidery),
     buttonhole: Boolean(detail.buttonhole),
-    snap: Boolean(detail.snap),
     tag: Boolean(detail.tag),
-    flag: Boolean(detail.flag),
+    printTechnique: detail.screenPrint ? "DTF" : "NO",
+    embroideryTechnique: detail.embroidery ? "HILO" : "NO",
+    marquillaType: detail.tag ? "VIOMAR" : "NO",
+    pocketConfig: detail.hasPocket ? "EN EL PECHO" : "SIN BOLSILLOS",
     hasElastic: Boolean(detail.hasElastic),
     hasInnerLining: Boolean(detail.hasInnerLining),
     hasPocket: Boolean(detail.hasPocket),
@@ -204,14 +197,12 @@ function mapDetailToForm(detail: MoldingTemplateDetail): FormState {
     hasProtection: Boolean(detail.hasProtection),
     hasEntretela: Boolean(detail.hasEntretela),
     neckType: detail.neckType ?? "",
-    collarType: detail.collarType ?? "",
     sesgoType: detail.sesgoType ?? "",
     sesgoColor: detail.sesgoColor ?? "",
     hiladillaColor: detail.hiladillaColor ?? "",
     cordColor: detail.cordColor ?? "",
     sleeveType: detail.sleeveType ?? "",
     cuffType: detail.cuffType ?? "",
-    cuffMaterial: detail.cuffMaterial ?? "",
     zipperLocation: detail.zipperLocation ?? "",
     zipperColor: detail.zipperColor ?? "",
     zipperSizeCm: detail.zipperSizeCm ?? "",
@@ -376,9 +367,13 @@ const SESGO_TYPE_OPTIONS = [
 ] as const;
 const SLEEVE_TYPE_OPTIONS = [
   ...CAMISETA_SLEEVE_OPTIONS,
-  "SISA",
   "SIN MANGA",
-  "OTRO",
+] as const;
+const CUFF_TYPE_OPTIONS = [
+  "NO APLICA",
+  "RIB",
+  "PUÑO TEJIDO",
+  "PUÑO EN LA MISMA TELA",
 ] as const;
 const LINING_TYPE_OPTIONS = [
   "SIN FORRO",
@@ -406,9 +401,28 @@ const BUTTONHOLE_TYPE_OPTIONS = [
   "REFORZADO",
   "OTRO",
 ] as const;
+const PRINT_TECHNIQUE_OPTIONS = ["NO", "DTF", "VINILO"] as const;
+const EMBROIDERY_TECHNIQUE_OPTIONS = ["NO", "HILO", "APLIQUE"] as const;
+const MARQUILLA_OPTIONS = ["NO", "VIOMAR", "CLIENTE"] as const;
+const POCKET_GENERIC_OPTIONS = [
+  "SIN BOLSILLOS",
+  "EN EL PECHO",
+] as const;
+const POCKET_PANTS_OPTIONS = [
+  "SIN BOLSILLOS",
+  "BOLSILLOS LATERALES",
+  "BOLSILLOS LATERALES + BOLSILLO TRASERO",
+] as const;
+const YES_NO_OPTIONS = ["NO", "SI"] as const;
+const PURCHASE_RULES_START = "[REGLAS_COMPRAS]";
+const PURCHASE_RULES_END = "[/REGLAS_COMPRAS]";
 
 function normalizeUpper(value: string | null | undefined) {
   return String(value ?? "").trim().toUpperCase();
+}
+
+function hasValue(value: string | null | undefined) {
+  return Boolean(String(value ?? "").trim());
 }
 
 function getCamisetaSubtypeOptions(sleeveType: string) {
@@ -431,13 +445,58 @@ function getPoloNeckOptions(sleeveType: string): string[] {
   return [...POLO_SHORT_SLEEVE_NECK_OPTIONS];
 }
 
+function getPocketOptions(garmentType: string): string[] {
+  const normalized = normalizeUpper(garmentType);
+
+  if (
+    normalized.includes("PANTALON") ||
+    normalized.includes("BERMUDA") ||
+    normalized.includes("PANTALOETA")
+  ) {
+    return [...POCKET_PANTS_OPTIONS];
+  }
+
+  return [...POCKET_GENERIC_OPTIONS];
+}
+
+function stripPurchaseRules(notes: string | null | undefined) {
+  const value = String(notes ?? "").trim();
+
+  if (!value.includes(PURCHASE_RULES_START)) {
+    return value;
+  }
+
+  const afterStart = value.split(PURCHASE_RULES_START)[1] ?? "";
+  const afterEnd = afterStart.split(PURCHASE_RULES_END)[1] ?? "";
+
+  return afterEnd.trim();
+}
+
+function composePurchaseRulesNotes(manualNotes: string, rulesSummary: string) {
+  const manual = String(manualNotes ?? "").trim();
+  const rules = String(rulesSummary ?? "").trim();
+
+  if (!rules) {
+    return manual || null;
+  }
+
+  return [
+    PURCHASE_RULES_START,
+    rules,
+    PURCHASE_RULES_END,
+    manual,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 const fieldHelps: Record<string, string> = {
   garmentType: "Tipo de prenda (ej: T-SHIRT, POLO, JERSEY)",
   fabric:
     "Composición y características de la tela (ej: LYCRA 90/10, ALGODÓN 100%)",
   color: "Color de la prenda (ej: WHITE, BLACK, NAVY)",
   estimatedLeadDays: "Días aproximados para confeccionar la prenda",
-  garmentSubtype: "Subtipo o variante de la prenda",
+  neckType: "Configuración del cuello según el tipo de prenda",
   gender: "Género de la prenda (ej: UNISEX, HOMBRE, MUJER)",
   process: "Proceso de confección (ej: CORTE-CONFECCION)",
 };
@@ -529,7 +588,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   const isPolo = normalizeUpper(form.garmentType) === "POLO";
   const isSublimacion = normalizeUpper(form.process) === "SUBLIMACION";
   const isCorte = normalizeUpper(form.process) === "CORTE";
-  const camisetaSubtypeOptions = useMemo(
+  const camisetaNeckOptions = useMemo(
     () => getCamisetaSubtypeOptions(form.sleeveType),
     [form.sleeveType],
   );
@@ -537,6 +596,112 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     () => getPoloNeckOptions(form.sleeveType),
     [form.sleeveType],
   );
+  const pocketOptions = useMemo(
+    () => getPocketOptions(form.garmentType),
+    [form.garmentType],
+  );
+  const hasSesgo =
+    hasValue(form.sesgoType) && normalizeUpper(form.sesgoType) !== "SIN SESGO";
+  const hasZipper = [
+    form.zipperLocation,
+    form.zipperColor,
+    form.zipperSizeCm,
+    form.invisibleZipperColor,
+    form.pocketZipperColor,
+  ].some((value) => hasValue(value));
+  const hasLining =
+    form.hasInnerLining ||
+    (hasValue(form.liningType) && normalizeUpper(form.liningType) !== "SIN FORRO") ||
+    hasValue(form.liningColor);
+  const hasButtons =
+    (hasValue(form.buttonType) && normalizeUpper(form.buttonType) !== "SIN BOTONES") ||
+    (hasValue(form.buttonholeType) &&
+      normalizeUpper(form.buttonholeType) !== "SIN OJAL") ||
+    hasValue(form.perillaColor) ||
+    form.buttonhole;
+  const hasPocketConfigured =
+    hasValue(form.pocketConfig) &&
+    normalizeUpper(form.pocketConfig) !== "SIN BOLSILLOS";
+  const purchaseRulesSummary = useMemo(() => {
+    const fabrics =
+      form.fabricChecklist.length > 0
+        ? form.fabricChecklist.join(", ")
+        : normalizeUpper(form.fabric) || "SIN DEFINIR";
+    const sleeve = normalizeUpper(form.sleeveType) || "NO LLEVA";
+    const neck = normalizeUpper(form.neckType) || "NO LLEVA";
+    const sesgo = hasSesgo
+      ? [form.sesgoType, form.sesgoColor, form.hiladillaColor, form.cordColor]
+          .map((item) => normalizeUpper(item))
+          .filter(Boolean)
+          .join(" / ")
+      : "NO LLEVA";
+    const zipper = hasZipper
+      ? [
+          form.zipperLocation,
+          form.zipperColor,
+          form.zipperSizeCm ? `${form.zipperSizeCm} CM` : "",
+          form.invisibleZipperColor,
+          form.pocketZipperColor,
+        ]
+          .map((item) => normalizeUpper(item))
+          .filter(Boolean)
+          .join(" / ")
+      : "NO LLEVA";
+    const lining = hasLining
+      ? [form.liningType, form.liningColor].map((item) => normalizeUpper(item)).filter(Boolean).join(" / ")
+      : "NO LLEVA";
+    const buttons = hasButtons
+      ? [form.buttonType, form.buttonholeType, form.perillaColor]
+          .map((item) => normalizeUpper(item))
+          .filter(Boolean)
+          .join(" / ")
+      : "NO LLEVA";
+
+    return [
+      `TELA: ${fabrics}`,
+      `PROCESO: ${normalizeUpper(form.process) || "SIN DEFINIR"}`,
+      `SERIGRAFIA: ${normalizeUpper(form.printTechnique) || "NO"}`,
+      `BORDADO: ${normalizeUpper(form.embroideryTechnique) || "NO"}`,
+      `MARQUILLA: ${normalizeUpper(form.marquillaType) || "NO"}`,
+      `MANGA: ${sleeve}`,
+      `CUELLO: ${neck}`,
+      `TIPO DE PUÑO: ${normalizeUpper(form.cuffType) || "NO APLICA"}`,
+      `BOLSILLOS: ${normalizeUpper(form.pocketConfig) || "SIN BOLSILLOS"}`,
+      `SESGO: ${sesgo}`,
+      `CREMALLERA: ${zipper}`,
+      `FORRO: ${lining}`,
+      `BOTONES: ${buttons}`,
+    ].join("\n");
+  }, [
+    form.buttonType,
+    form.buttonholeType,
+    form.cuffType,
+    form.cordColor,
+    form.embroideryTechnique,
+    form.fabric,
+    form.fabricChecklist,
+    form.hiladillaColor,
+    form.liningColor,
+    form.liningType,
+    form.neckType,
+    form.pocketConfig,
+    form.perillaColor,
+    form.printTechnique,
+    form.process,
+    form.marquillaType,
+    form.sesgoColor,
+    form.sesgoType,
+    form.sleeveType,
+    form.zipperColor,
+    form.zipperLocation,
+    form.zipperSizeCm,
+    form.invisibleZipperColor,
+    form.pocketZipperColor,
+    hasButtons,
+    hasLining,
+    hasSesgo,
+    hasZipper,
+  ]);
 
   useEffect(() => {
     if (!isCamiseta) return;
@@ -544,7 +709,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     setForm((prev) => {
       const patch: Partial<FormState> = {};
       const normalizedSleeve = normalizeUpper(prev.sleeveType);
-      const allowedSubtypeOptions = getCamisetaSubtypeOptions(prev.sleeveType);
+      const allowedNeckOptions = getCamisetaSubtypeOptions(prev.sleeveType);
 
       if (
         normalizedSleeve !== "MANGA CORTA" &&
@@ -553,11 +718,8 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         patch.sleeveType = "MANGA CORTA";
       }
 
-      if (
-        prev.garmentSubtype &&
-        !allowedSubtypeOptions.includes(prev.garmentSubtype as any)
-      ) {
-        patch.garmentSubtype = "";
+      if (prev.neckType && !allowedNeckOptions.includes(prev.neckType as any)) {
+        patch.neckType = "";
       }
 
       if (!normalizeUpper(prev.observations).includes(CAMISETA_OBSERVATION_NOTE)) {
@@ -606,7 +768,6 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     setForm((prev) => {
       const patch: Partial<FormState> = {};
 
-      if (prev.garmentSubtype) patch.garmentSubtype = "";
       if (prev.sleeveType) patch.sleeveType = "";
       if (prev.neckType) patch.neckType = "";
 
@@ -624,13 +785,6 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
       if (prev.sleeveType) patch.sleeveType = "";
       if (prev.neckType) patch.neckType = "";
-
-      if (
-        prev.garmentSubtype &&
-        !SHORT_SUBTYPE_OPTIONS.includes(prev.garmentSubtype as any)
-      ) {
-        patch.garmentSubtype = "";
-      }
 
       if (!Object.keys(patch).length) return prev;
 
@@ -654,13 +808,6 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       }
 
       if (
-        prev.garmentSubtype &&
-        !POLO_SUBTYPE_OPTIONS.includes(prev.garmentSubtype as any)
-      ) {
-        patch.garmentSubtype = "";
-      }
-
-      if (
         prev.neckType &&
         !allowedNecks.some((neck) => neck === String(prev.neckType))
       ) {
@@ -672,6 +819,32 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       return { ...prev, ...patch };
     });
   }, [isPolo]);
+
+  useEffect(() => {
+    setForm((prev) => {
+      const allowedPockets = getPocketOptions(prev.garmentType);
+      const normalizedPocket = normalizeUpper(prev.pocketConfig);
+
+      if (!allowedPockets.some((option) => normalizeUpper(option) === normalizedPocket)) {
+        const fallbackPocket = allowedPockets[0] ?? "SIN BOLSILLOS";
+
+        return {
+          ...prev,
+          pocketConfig: fallbackPocket,
+          hasPocket: normalizeUpper(fallbackPocket) !== "SIN BOLSILLOS",
+        };
+      }
+
+      const shouldHavePocket = normalizedPocket !== "SIN BOLSILLOS";
+
+      if (prev.hasPocket === shouldHavePocket) return prev;
+
+      return {
+        ...prev,
+        hasPocket: shouldHavePocket,
+      };
+    });
+  }, [form.garmentType, form.pocketConfig]);
 
   useEffect(() => {
     setForm((prev) => {
@@ -757,7 +930,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
   function openCreateInsumo() {
     setEditingInsumoId(null);
-    setInsumoForm(emptyInsumoForm);
+    setInsumoForm({ ...emptyInsumoForm, notes: stripPurchaseRules(emptyInsumoForm.notes) });
     setInsumoItemSearch("");
     setInsumoModalOpen(true);
   }
@@ -770,7 +943,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       qtyPerUnit: insumo.qtyPerUnit,
       unit: insumo.unit,
       variesBySize: insumo.variesBySize ?? false,
-      notes: insumo.notes ?? "",
+      notes: stripPurchaseRules(insumo.notes),
     });
     setInsumoItemSearch("");
     setInsumoModalOpen(true);
@@ -797,7 +970,10 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
               qtyPerUnit: insumoForm.qtyPerUnit,
               unit: insumoForm.unit,
               variesBySize: insumoForm.variesBySize,
-              notes: insumoForm.notes || null,
+              notes: composePurchaseRulesNotes(
+                insumoForm.notes,
+                purchaseRulesSummary,
+              ),
             }),
           },
         )) as MoldingTemplateInsumo;
@@ -818,7 +994,10 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
               qtyPerUnit: insumoForm.qtyPerUnit,
               unit: insumoForm.unit,
               variesBySize: insumoForm.variesBySize,
-              notes: insumoForm.notes || null,
+              notes: composePurchaseRulesNotes(
+                insumoForm.notes,
+                purchaseRulesSummary,
+              ),
             }),
           },
         );
@@ -866,10 +1045,101 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function setSesgoEnabled(enabled: boolean) {
+    setForm((prev) => {
+      if (!enabled) {
+        return {
+          ...prev,
+          sesgoType: "SIN SESGO",
+          sesgoColor: "",
+          hiladillaColor: "",
+          cordColor: "",
+        };
+      }
+
+      const defaultSesgo = isCamisilla
+        ? CAMISILLA_SESGO_OPTIONS[0]
+        : "SESGO NORMAL";
+
+      return {
+        ...prev,
+        sesgoType:
+          normalizeUpper(prev.sesgoType) === "SIN SESGO" || !prev.sesgoType
+            ? defaultSesgo
+            : prev.sesgoType,
+      };
+    });
+  }
+
+  function setZipperEnabled(enabled: boolean) {
+    setForm((prev) => {
+      if (enabled) return prev;
+
+      return {
+        ...prev,
+        zipperLocation: "",
+        zipperColor: "",
+        zipperSizeCm: "",
+        invisibleZipperColor: "",
+        pocketZipperColor: "",
+      };
+    });
+  }
+
+  function setLiningEnabled(enabled: boolean) {
+    setForm((prev) => {
+      if (!enabled) {
+        return {
+          ...prev,
+          hasInnerLining: false,
+          liningType: "SIN FORRO",
+          liningColor: "",
+        };
+      }
+
+      return {
+        ...prev,
+        hasInnerLining: true,
+        liningType:
+          normalizeUpper(prev.liningType) === "SIN FORRO" || !prev.liningType
+            ? "MALLA"
+            : prev.liningType,
+      };
+    });
+  }
+
+  function setButtonsEnabled(enabled: boolean) {
+    setForm((prev) => {
+      if (!enabled) {
+        return {
+          ...prev,
+          buttonhole: false,
+          buttonType: "SIN BOTONES",
+          buttonholeType: "SIN OJAL",
+          perillaColor: "",
+        };
+      }
+
+      return {
+        ...prev,
+        buttonhole: true,
+        buttonType:
+          normalizeUpper(prev.buttonType) === "SIN BOTONES" || !prev.buttonType
+            ? "2 BOTONES"
+            : prev.buttonType,
+        buttonholeType:
+          normalizeUpper(prev.buttonholeType) === "SIN OJAL" ||
+          !prev.buttonholeType
+            ? "SENCILLO"
+            : prev.buttonholeType,
+      };
+    });
+  }
+
   async function handleSave() {
     if (isCamiseta) {
       const normalizedSleeve = normalizeUpper(form.sleeveType);
-      const allowedSubtypeOptions = getCamisetaSubtypeOptions(form.sleeveType);
+      const allowedNeckOptions = getCamisetaSubtypeOptions(form.sleeveType);
 
       if (
         normalizedSleeve !== "MANGA CORTA" &&
@@ -880,14 +1150,14 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         return;
       }
 
-      if (!form.garmentSubtype) {
-        toast.error("Para CAMISETA debes seleccionar el subtipo de cuello");
+      if (!form.neckType) {
+        toast.error("Para CAMISETA debes seleccionar el cuello");
 
         return;
       }
 
-      if (!allowedSubtypeOptions.includes(form.garmentSubtype as any)) {
-        toast.error("El subtipo no corresponde al tipo de manga seleccionado");
+      if (!allowedNeckOptions.includes(form.neckType as any)) {
+        toast.error("El cuello no corresponde al tipo de manga seleccionado");
 
         return;
       }
@@ -913,12 +1183,6 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       return;
     }
 
-    if (isShort && !SHORT_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
-      toast.error("Para SHORT debes seleccionar un subtipo válido");
-
-      return;
-    }
-
     if (isPolo) {
       const normalizedSleeve = normalizeUpper(form.sleeveType);
       const allowedNecks = [...getPoloNeckOptions(form.sleeveType)] as string[];
@@ -932,17 +1196,29 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         return;
       }
 
-      if (!POLO_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
-        toast.error("Para POLO debes seleccionar un subtipo válido");
-
-        return;
-      }
-
       if (!allowedNecks.some((neck) => neck === String(form.neckType))) {
         toast.error("El cuello no corresponde al tipo de manga seleccionado");
 
         return;
       }
+    }
+
+    if (hasSesgo && !form.sesgoType) {
+      toast.error("Debes seleccionar la configuración del sesgo");
+
+      return;
+    }
+
+    if (hasLining && !form.liningType) {
+      toast.error("Debes seleccionar el tipo de revestimiento");
+
+      return;
+    }
+
+    if (hasButtons && !form.buttonType) {
+      toast.error("Debes seleccionar la configuración de botones");
+
+      return;
     }
 
     setSaving(true);
@@ -951,7 +1227,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         moldingCode: form.moldingCode.trim() || undefined,
         version: form.version ? Number(form.version) : 1,
         garmentType: form.garmentType || undefined,
-        garmentSubtype: form.garmentSubtype || undefined,
+        garmentSubtype: form.neckType || undefined,
         fabric:
           form.fabricChecklist.length > 0
             ? form.fabricChecklist.join(", ")
@@ -961,29 +1237,25 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         process: form.process || undefined,
         estimatedLeadDays: 28,
         clothingImageOneUrl: form.clothingImageOneUrl || undefined,
-        screenPrint: form.screenPrint,
-        embroidery: form.embroidery,
+        screenPrint: normalizeUpper(form.printTechnique) !== "NO",
+        embroidery: normalizeUpper(form.embroideryTechnique) !== "NO",
         buttonhole: form.buttonhole,
-        snap: form.snap,
-        tag: form.tag,
-        flag: form.flag,
+        tag: normalizeUpper(form.marquillaType) !== "NO",
         hasElastic: form.hasElastic,
         hasInnerLining: form.hasInnerLining,
-        hasPocket: form.hasPocket,
+        hasPocket: hasPocketConfigured,
         hasLateralMesh: form.hasLateralMesh,
         hasFajon: form.hasFajon,
         hasTanca: form.hasTanca,
         hasProtection: form.hasProtection,
         hasEntretela: form.hasEntretela,
         neckType: form.neckType || undefined,
-        collarType: form.collarType || undefined,
         sesgoType: form.sesgoType || undefined,
         sesgoColor: form.sesgoColor || undefined,
         hiladillaColor: form.hiladillaColor || undefined,
         cordColor: form.cordColor || undefined,
         sleeveType: form.sleeveType || undefined,
         cuffType: form.cuffType || undefined,
-        cuffMaterial: form.cuffMaterial || undefined,
         zipperLocation: form.zipperLocation || undefined,
         zipperColor: form.zipperColor || undefined,
         zipperSizeCm: form.zipperSizeCm || undefined,
@@ -1225,81 +1497,106 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       {isCamiseta ? (
                         <Select
                           isRequired
-                          label="Garment subtype"
-                          placeholder="Select camiseta neck type"
+                          label={
+                            <div className="flex items-center">
+                              Cuello
+                              <HelpIcon text={fieldHelps.neckType} />
+                            </div>
+                          }
+                          placeholder="Seleccionar cuello"
                           selectedKeys={
-                            form.garmentSubtype
-                              ? new Set([form.garmentSubtype])
-                              : new Set([])
+                            form.neckType ? new Set([form.neckType]) : new Set([])
                           }
                           selectionMode="single"
                           onSelectionChange={(keys) => {
                             const first = Array.from(keys)[0];
 
-                            setField("garmentSubtype", first ? String(first) : "");
+                            setField("neckType", first ? String(first) : "");
                           }}
                         >
-                          {camisetaSubtypeOptions.map((option) => (
+                          {camisetaNeckOptions.map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
-                      ) : isShort ? (
+                      ) : isCamisilla ? (
                         <Select
                           isRequired
-                          label="Garment subtype"
-                          placeholder="Select short subtype"
+                          label={
+                            <div className="flex items-center">
+                              Cuello
+                              <HelpIcon text={fieldHelps.neckType} />
+                            </div>
+                          }
+                          placeholder="Seleccionar cuello"
                           selectedKeys={
-                            form.garmentSubtype
-                              ? new Set([form.garmentSubtype])
-                              : new Set([])
+                            form.neckType ? new Set([form.neckType]) : new Set([])
                           }
                           selectionMode="single"
                           onSelectionChange={(keys) => {
                             const first = Array.from(keys)[0];
 
-                            setField("garmentSubtype", first ? String(first) : "");
+                            setField("neckType", first ? String(first) : "");
                           }}
                         >
-                          {SHORT_SUBTYPE_OPTIONS.map((option) => (
+                          {CAMISILLA_NECK_OPTIONS.map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
                       ) : isPolo ? (
                         <Select
                           isRequired
-                          label="Garment subtype"
-                          placeholder="Select polo subtype"
+                          label={
+                            <div className="flex items-center">
+                              Cuello
+                              <HelpIcon text={fieldHelps.neckType} />
+                            </div>
+                          }
+                          placeholder="Seleccionar cuello"
                           selectedKeys={
-                            form.garmentSubtype
-                              ? new Set([form.garmentSubtype])
-                              : new Set([])
+                            form.neckType ? new Set([form.neckType]) : new Set([])
                           }
                           selectionMode="single"
                           onSelectionChange={(keys) => {
                             const first = Array.from(keys)[0];
 
-                            setField("garmentSubtype", first ? String(first) : "");
+                            setField("neckType", first ? String(first) : "");
                           }}
                         >
-                          {POLO_SUBTYPE_OPTIONS.map((option) => (
+                          {poloNeckOptions.map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
-                      ) : isLicraCorta ? (
+                      ) : isLicraCorta || isShort ? (
                         <Input
                           isDisabled
-                          label="Garment subtype"
-                          placeholder="No aplica para LICRA CORTA"
-                          value={form.garmentSubtype}
-                          onValueChange={(v) => setField("garmentSubtype", v)}
+                          label="Cuello"
+                          placeholder="No aplica para este tipo de prenda"
+                          value={form.neckType}
+                          onValueChange={(v) => setField("neckType", v)}
                         />
                       ) : (
-                        <Input
-                          label="Garment subtype"
-                          placeholder="e.g. POLO"
-                          value={form.garmentSubtype}
-                          onValueChange={(v) => setField("garmentSubtype", v)}
-                        />
+                        <Select
+                          label={
+                            <div className="flex items-center">
+                              Cuello
+                              <HelpIcon text={fieldHelps.neckType} />
+                            </div>
+                          }
+                          placeholder="Seleccionar cuello"
+                          selectedKeys={
+                            form.neckType ? new Set([form.neckType]) : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("neckType", first ? String(first) : "");
+                          }}
+                        >
+                          {NECK_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
                       )}
                       <Select
                         label={
@@ -1408,29 +1705,26 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                     </div>
                   </div>
 
-                  {/* Images */}
+                  {/* Imagen de referencia */}
                   <div>
                     <p className="text-sm font-semibold text-default-600 mb-3">
                       Imagen de referencia
                     </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="flex flex-col gap-3">
                       <FileUpload
                         acceptedFileTypes="image/*"
-                        label="Subir imagen"
+                        label="Subir imagen de referencia"
                         uploadFolder="molding/templates"
                         value={form.clothingImageOneUrl}
                         onChange={(url) => setField("clothingImageOneUrl", url)}
                         onClear={() => setField("clothingImageOneUrl", "")}
                       />
                       {form.clothingImageOneUrl ? (
-                        <div className="rounded-medium border border-default-200 p-2">
-                          <div className="mb-2 text-xs text-default-500">Vista previa</div>
-                          <img
-                            alt="Vista previa de molderia"
-                            className="h-44 w-full rounded-medium object-cover"
-                            src={form.clothingImageOneUrl}
-                          />
-                        </div>
+                        <img
+                          alt="Vista previa de moldería"
+                          className="h-48 w-full rounded-medium object-cover border border-default-200"
+                          src={form.clothingImageOneUrl}
+                        />
                       ) : null}
                     </div>
                   </div>
@@ -1440,54 +1734,93 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                     <p className="text-sm font-semibold text-default-600 mb-3">
                       Features
                     </p>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                      <Checkbox
-                        isSelected={form.screenPrint}
-                        onValueChange={(v) => setField("screenPrint", v)}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                      <Select
+                        label="Serigrafía"
+                        selectedKeys={new Set([form.printTechnique || "NO"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = String(Array.from(keys)[0] ?? "NO");
+
+                          setForm((prev) => ({
+                            ...prev,
+                            printTechnique: first,
+                            screenPrint: first !== "NO",
+                          }));
+                        }}
                       >
-                        Screen print
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.embroidery}
-                        onValueChange={(v) => setField("embroidery", v)}
+                        {PRINT_TECHNIQUE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
+                        label="Bordado"
+                        selectedKeys={new Set([form.embroideryTechnique || "NO"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = String(Array.from(keys)[0] ?? "NO");
+
+                          setForm((prev) => ({
+                            ...prev,
+                            embroideryTechnique: first,
+                            embroidery: first !== "NO",
+                          }));
+                        }}
                       >
-                        Embroidery
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.buttonhole}
-                        onValueChange={(v) => setField("buttonhole", v)}
+                        {EMBROIDERY_TECHNIQUE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
+                        label="Marquilla"
+                        selectedKeys={new Set([form.marquillaType || "NO"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = String(Array.from(keys)[0] ?? "NO");
+
+                          setForm((prev) => ({
+                            ...prev,
+                            marquillaType: first,
+                            tag: first !== "NO",
+                          }));
+                        }}
                       >
-                        Buttonhole
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.tag}
-                        onValueChange={(v) => setField("tag", v)}
+                        {MARQUILLA_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
+                        label="Bolsillos"
+                        selectedKeys={
+                          new Set([
+                            form.pocketConfig ||
+                              (pocketOptions[0] ?? "SIN BOLSILLOS"),
+                          ])
+                        }
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = String(
+                            Array.from(keys)[0] ??
+                              pocketOptions[0] ??
+                              "SIN BOLSILLOS",
+                          );
+
+                          setForm((prev) => ({
+                            ...prev,
+                            pocketConfig: first,
+                            hasPocket: normalizeUpper(first) !== "SIN BOLSILLOS",
+                          }));
+                        }}
                       >
-                        Marquilla
-                      </Checkbox>
+                        {pocketOptions.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Checkbox
                         isSelected={form.hasElastic}
                         onValueChange={(v) => setField("hasElastic", v)}
                       >
                         Elastic
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.hasInnerLining}
-                        onValueChange={(v) => setField("hasInnerLining", v)}
-                      >
-                        Inner lining
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.hasPocket}
-                        onValueChange={(v) => setField("hasPocket", v)}
-                      >
-                        Pocket
-                      </Checkbox>
-                      <Checkbox
-                        isSelected={form.hasLateralMesh}
-                        onValueChange={(v) => setField("hasLateralMesh", v)}
-                      >
-                        Lateral mesh
                       </Checkbox>
                       <Checkbox
                         isSelected={form.hasFajon}
@@ -1502,96 +1835,14 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         Tanca
                       </Checkbox>
                       <Checkbox
-                        isSelected={form.hasProtection}
-                        onValueChange={(v) => setField("hasProtection", v)}
-                      >
-                        Protection
-                      </Checkbox>
-                      <Checkbox
                         isSelected={form.hasEntretela}
                         onValueChange={(v) => setField("hasEntretela", v)}
                       >
                         Entretela
                       </Checkbox>
-                    </div>
-                  </div>
-
-                  {/* Neck & Collar */}
-                  <div>
-                    <p className="text-sm font-semibold text-default-600 mb-3">
-                      Neck & Collar
-                    </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {isCamisilla ? (
-                        <Select
-                          isRequired
-                          label="Neck type"
-                          placeholder="Select camisilla neck type"
-                          selectedKeys={
-                            form.neckType ? new Set([form.neckType]) : new Set([])
-                          }
-                          selectionMode="single"
-                          onSelectionChange={(keys) => {
-                            const first = Array.from(keys)[0];
-
-                            setField("neckType", first ? String(first) : "");
-                          }}
-                        >
-                          {CAMISILLA_NECK_OPTIONS.map((option) => (
-                            <SelectItem key={option}>{option}</SelectItem>
-                          ))}
-                        </Select>
-                      ) : isPolo ? (
-                        <Select
-                          isRequired
-                          label="Neck type"
-                          placeholder="Select polo neck type"
-                          selectedKeys={
-                            form.neckType ? new Set([form.neckType]) : new Set([])
-                          }
-                          selectionMode="single"
-                          onSelectionChange={(keys) => {
-                            const first = Array.from(keys)[0];
-
-                            setField("neckType", first ? String(first) : "");
-                          }}
-                        >
-                          {poloNeckOptions.map((option) => (
-                            <SelectItem key={option}>{option}</SelectItem>
-                          ))}
-                        </Select>
-                      ) : isLicraCorta || isShort ? (
-                        <Input
-                          isDisabled
-                          label="Neck type"
-                          placeholder="No aplica para este tipo de prenda"
-                          value={form.neckType}
-                          onValueChange={(v) => setField("neckType", v)}
-                        />
-                      ) : (
-                        <Select
-                          label="Neck type"
-                          placeholder="Select neck type"
-                          selectedKeys={
-                            form.neckType ? new Set([form.neckType]) : new Set([])
-                          }
-                          selectionMode="single"
-                          onSelectionChange={(keys) => {
-                            const first = Array.from(keys)[0];
-
-                            setField("neckType", first ? String(first) : "");
-                          }}
-                        >
-                          {NECK_TYPE_OPTIONS.map((option) => (
-                            <SelectItem key={option}>{option}</SelectItem>
-                          ))}
-                        </Select>
-                      )}
-                      <Input
-                        label="Collar type"
-                        value={form.collarType}
-                        onValueChange={(v) => setField("collarType", v)}
-                      />
+                      <p className="text-xs text-default-500 sm:col-span-2 md:col-span-3">
+                        Usar principalmente para beisboleras o cuellos reforzados.
+                      </p>
                     </div>
                   </div>
 
@@ -1601,8 +1852,23 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Sesgo & Thread
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <Select
+                        label="Lleva sesgo"
+                        selectedKeys={new Set([hasSesgo ? "SI" : "NO"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setSesgoEnabled(String(first) === "SI");
+                        }}
+                      >
+                        {YES_NO_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       {isCamisilla ? (
                         <Select
+                          isDisabled={!hasSesgo}
                           isRequired
                           label="Sesgo type"
                           placeholder="Select camisilla sesgo type"
@@ -1622,6 +1888,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         </Select>
                       ) : (
                         <Select
+                          isDisabled={!hasSesgo}
                           label="Sesgo type"
                           placeholder="Select sesgo type"
                           selectedKeys={
@@ -1640,16 +1907,19 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         </Select>
                       )}
                       <Input
+                        isDisabled={!hasSesgo}
                         label="Sesgo color"
                         value={form.sesgoColor}
                         onValueChange={(v) => setField("sesgoColor", v)}
                       />
                       <Input
+                        isDisabled={!hasSesgo}
                         label="Hiladilla color"
                         value={form.hiladillaColor}
                         onValueChange={(v) => setField("hiladillaColor", v)}
                       />
                       <Input
+                        isDisabled={!hasSesgo}
                         label="Cord color"
                         value={form.cordColor}
                         onValueChange={(v) => setField("cordColor", v)}
@@ -1712,16 +1982,20 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           ))}
                         </Select>
                       )}
-                      <Input
-                        label="Cuff type"
-                        value={form.cuffType}
-                        onValueChange={(v) => setField("cuffType", v)}
-                      />
-                      <Input
-                        label="Cuff material"
-                        value={form.cuffMaterial}
-                        onValueChange={(v) => setField("cuffMaterial", v)}
-                      />
+                      <Select
+                        label="Tipo de puño"
+                        selectedKeys={new Set([form.cuffType || "NO APLICA"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setField("cuffType", first ? String(first) : "NO APLICA");
+                        }}
+                      >
+                        {CUFF_TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                     </div>
                   </div>
 
@@ -1731,23 +2005,41 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Zipper
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                      <Select
+                        label="Lleva cremallera"
+                        selectedKeys={new Set([hasZipper ? "SI" : "NO"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setZipperEnabled(String(first) === "SI");
+                        }}
+                      >
+                        {YES_NO_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
                       <Input
+                        isDisabled={!hasZipper}
                         label="Zipper location"
                         value={form.zipperLocation}
                         onValueChange={(v) => setField("zipperLocation", v)}
                       />
                       <Input
+                        isDisabled={!hasZipper}
                         label="Zipper color"
                         value={form.zipperColor}
                         onValueChange={(v) => setField("zipperColor", v)}
                       />
                       <Input
+                        isDisabled={!hasZipper}
                         label="Zipper size (cm)"
                         type="number"
                         value={form.zipperSizeCm}
                         onValueChange={(v) => setField("zipperSizeCm", v)}
                       />
                       <Input
+                        isDisabled={!hasZipper}
                         label="Invisible zipper color"
                         value={form.invisibleZipperColor}
                         onValueChange={(v) =>
@@ -1755,6 +2047,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         }
                       />
                       <Input
+                        isDisabled={!hasZipper}
                         label="Pocket zipper color"
                         value={form.pocketZipperColor}
                         onValueChange={(v) => setField("pocketZipperColor", v)}
@@ -1762,56 +2055,98 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                     </div>
                   </div>
 
-                  {/* Lining & Hood */}
+                  {/* Forro y capucha */}
                   <div>
                     <p className="text-sm font-semibold text-default-600 mb-3">
-                      Lining & Hood
+                      Forro y capucha
                     </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Select
-                        label="Lining type"
-                        placeholder="Select lining type"
-                        selectedKeys={
-                          form.liningType ? new Set([form.liningType]) : new Set([])
-                        }
-                        selectionMode="single"
-                        onSelectionChange={(keys) => {
-                          const first = Array.from(keys)[0];
+                    <div className="flex flex-col gap-4">
+                      {/* Forro */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <Select
+                          label="Lleva revestimiento"
+                          selectedKeys={new Set([hasLining ? "SI" : "NO"])}
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
 
-                          setField("liningType", first ? String(first) : "");
-                        }}
-                      >
-                        {LINING_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option}>{option}</SelectItem>
-                        ))}
-                      </Select>
-                      <Input
-                        label="Lining color"
-                        value={form.liningColor}
-                        onValueChange={(v) => setField("liningColor", v)}
-                      />
-                      <Select
-                        label="Hood type"
-                        placeholder="Select hood type"
-                        selectedKeys={
-                          form.hoodType ? new Set([form.hoodType]) : new Set([])
-                        }
-                        selectionMode="single"
-                        onSelectionChange={(keys) => {
-                          const first = Array.from(keys)[0];
+                            setLiningEnabled(String(first) === "SI");
+                          }}
+                        >
+                          {YES_NO_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                        <Select
+                          isDisabled={!hasLining}
+                          label="Tipo de revestimiento"
+                          placeholder="Seleccione el tipo"
+                          selectedKeys={
+                            form.liningType
+                              ? new Set([form.liningType])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
 
-                          setField("hoodType", first ? String(first) : "");
-                        }}
-                      >
-                        {HOOD_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option}>{option}</SelectItem>
-                        ))}
-                      </Select>
-                      <Input
-                        label="Lateral mesh color"
-                        value={form.lateralMeshColor}
-                        onValueChange={(v) => setField("lateralMeshColor", v)}
-                      />
+                            setField("liningType", first ? String(first) : "");
+                          }}
+                        >
+                          {LINING_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                        <Input
+                          isDisabled={!hasLining}
+                          label="Color del forro"
+                          value={form.liningColor}
+                          onValueChange={(v) => setField("liningColor", v)}
+                        />
+                      </div>
+                      {/* Capucha y protección */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Select
+                          label="Tipo de capucha"
+                          placeholder="Seleccione el tipo de capucha"
+                          selectedKeys={
+                            form.hoodType
+                              ? new Set([form.hoodType])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("hoodType", first ? String(first) : "");
+                          }}
+                        >
+                          {HOOD_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                        <Checkbox
+                          isSelected={form.hasProtection}
+                          onValueChange={(v) => setField("hasProtection", v)}
+                        >
+                          Protección
+                        </Checkbox>
+                      </div>
+                      {/* Malla lateral */}
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <Checkbox
+                          isSelected={form.hasLateralMesh}
+                          onValueChange={(v) => setField("hasLateralMesh", v)}
+                        >
+                          Malla lateral
+                        </Checkbox>
+                        <Input
+                          isDisabled={!form.hasLateralMesh}
+                          label="Color de la malla lateral"
+                          value={form.lateralMeshColor}
+                          onValueChange={(v) => setField("lateralMeshColor", v)}
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -1822,6 +2157,21 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       <Select
+                        label="Lleva botones"
+                        selectedKeys={new Set([hasButtons ? "SI" : "NO"])}
+                        selectionMode="single"
+                        onSelectionChange={(keys) => {
+                          const first = Array.from(keys)[0];
+
+                          setButtonsEnabled(String(first) === "SI");
+                        }}
+                      >
+                        {YES_NO_OPTIONS.map((option) => (
+                          <SelectItem key={option}>{option}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
+                        isDisabled={!hasButtons}
                         label="Button type"
                         placeholder="Select button type"
                         selectedKeys={
@@ -1839,6 +2189,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         ))}
                       </Select>
                       <Select
+                        isDisabled={!hasButtons}
                         label="Buttonhole type"
                         placeholder="Select buttonhole type"
                         selectedKeys={
@@ -1858,6 +2209,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         ))}
                       </Select>
                       <Input
+                        isDisabled={!hasButtons}
                         label="Perilla color"
                         value={form.perillaColor}
                         onValueChange={(v) => setField("perillaColor", v)}
@@ -1871,6 +2223,12 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Design & Notes
                     </p>
                     <div className="grid grid-cols-1 gap-3">
+                      <Textarea
+                        isReadOnly
+                        label="Reglas automáticas para compras"
+                        placeholder="Las reglas se construyen según la configuración elegida"
+                        value={purchaseRulesSummary}
+                      />
                       <Textarea
                         label="Design detail"
                         placeholder="Design notes..."
@@ -2133,8 +2491,13 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
               Varies by size
             </Checkbox>
             <Textarea
-              label="Notes"
-              placeholder="Additional notes..."
+              isReadOnly
+              label="Reglas visibles para compras"
+              value={purchaseRulesSummary}
+            />
+            <Textarea
+              label="Notas adicionales"
+              placeholder="Observaciones manuales para compras..."
               value={insumoForm.notes}
               onValueChange={(v) => setInsumoForm({ ...insumoForm, notes: v })}
             />

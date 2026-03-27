@@ -35,6 +35,28 @@ function normalizeOperationalProcess(v: unknown) {
   return "PRODUCCION";
 }
 
+function normalizeDesignType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "PRODUCCION") return "PRODUCCION";
+  if (raw === "COMPRA" || raw === "COMPRAS") return "COMPRA";
+  if (raw === "BODEGA") return "BODEGA";
+
+  return "PRODUCCION";
+}
+
+function normalizeProductionTechnique(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "FONDO_ENTERO") return "FONDO_ENTERO";
+
+  return "SUBLIMACION";
+}
+
 function normalizeGarmentType(v: unknown) {
   const raw = String(v ?? "")
     .trim()
@@ -96,7 +118,17 @@ export function useOrderItemModalState(options: {
       (initialValue?.item as any)?.clothingImageTwoUrl ?? null,
     logoImageUrl: (initialValue?.item as any)?.logoImageUrl ?? null,
     gender: initialValue?.item?.gender ?? null,
+    designType: normalizeDesignType((initialValue?.item as any)?.designType),
+    productionTechnique: normalizeProductionTechnique(
+      (initialValue?.item as any)?.productionTechnique,
+    ),
     process: normalizeOperationalProcess(initialValue?.item?.process),
+    designerId: (initialValue?.item as any)?.designerId ?? null,
+    discipline: (initialValue?.item as any)?.discipline ?? null,
+    hasCordon: Boolean((initialValue?.item as any)?.hasCordon ?? false),
+    cordonColor: (initialValue?.item as any)?.cordonColor ?? null,
+    category: (initialValue?.item as any)?.category ?? null,
+    labelBrand: (initialValue?.item as any)?.labelBrand ?? null,
     neckType: initialValue?.item?.neckType ?? null,
     sleeve: initialValue?.item?.sleeve ?? null,
     color: initialValue?.item?.color ?? null,

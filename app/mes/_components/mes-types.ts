@@ -23,6 +23,7 @@ export interface ProcessHistoryEntry {
 }
 
 export interface DisenoGroup {
+  orderItemId?: string;
   diseno: number;
   detalle: string;
   tela: string;
@@ -119,8 +120,16 @@ export type ProcessQueueRow = {
   cliente: string;
   diseno: number;
   detalle: string;
+  orderItemId?: string;
   ticket: string;
+  defaultDesignName?: string;
   tallas: TallaRow[];
+  designDetails?: Array<{
+    diseno: number;
+    detalle: string;
+    orderItemId?: string;
+    tallas: TallaRow[];
+  }>;
   totalUnidades: number;
   totalTallasPendientes: number;
   unidadesPendientes: number;

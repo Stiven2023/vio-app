@@ -40,6 +40,17 @@ const NECK_OPTIONS: Array<{ id: string; label: string; src: string }> = [
   },
 ];
 
+const COLOR_OPTIONS = [
+  "BLANCO",
+  "NEGRO",
+  "AZUL",
+  "AZUL OSCURO",
+  "ROJO",
+  "AMARILLO",
+] as const;
+
+const GARMENT_PROCESS_OPTIONS = ["SUBLIMACION", "FONDO_ENTERO"] as const;
+
 function getPastedImageFile(ev: React.ClipboardEvent) {
   const items = Array.from(ev.clipboardData?.items ?? []);
   const img = items.find(
@@ -224,6 +235,14 @@ export function DesignSection({
   orderKind,
   isCreateBlocked,
   canEditUnitPrice,
+  fabricOptions,
+  lockDecorationByMolding = false,
+  garmentProcessMode,
+  onGarmentProcessModeChange,
+  imageRoleOne = "JUGADOR",
+  imageRoleTwo = "ARQUERO",
+  afterGenderContent,
+  showAdvancedFields = true,
   onChange,
   onSelectImageOneFile,
   onSelectImageTwoFile,
@@ -237,6 +256,14 @@ export function DesignSection({
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   isCreateBlocked: boolean;
   canEditUnitPrice: boolean;
+  fabricOptions?: string[];
+  lockDecorationByMolding?: boolean;
+  garmentProcessMode?: "SUBLIMACION" | "FONDO_ENTERO";
+  onGarmentProcessModeChange?: (next: "SUBLIMACION" | "FONDO_ENTERO") => void;
+  imageRoleOne?: "JUGADOR" | "ARQUERO";
+  imageRoleTwo?: "JUGADOR" | "ARQUERO";
+  afterGenderContent?: React.ReactNode;
+  showAdvancedFields?: boolean;
   onChange: (next: OrderItemInput) => void;
   onSelectImageOneFile: (file: File | null) => void;
   onSelectImageTwoFile: (file: File | null) => void;
@@ -279,10 +306,14 @@ export function DesignSection({
     (value.clothingImageTwoUrl ? String(value.clothingImageTwoUrl) : "");
   const resolvedLogo =
     logoPreview ?? (value.logoImageUrl ? String(value.logoImageUrl) : "");
+  const [garmentProcess, setGarmentProcess] = React.useState<
+    "SUBLIMACION" | "FONDO_ENTERO"
+  >(() => {
+    const color = String(value.color ?? "").trim();
 
-  function setNeck(id: string) {
-    onChange({ ...value, neckType: value.neckType === id ? null : id });
-  }
+    return color ? "FONDO_ENTERO" : "SUBLIMACION";
+  });
+  const resolvedGarmentProcess = garmentProcessMode ?? garmentProcess;
 
   return (
     <div className="space-y-3">
@@ -328,6 +359,23 @@ export function DesignSection({
         />
       </div>
 
+      <Select
+        isDisabled={locked}
+        label="Género"
+        selectedKeys={value.gender ? [String(value.gender)] : []}
+        onSelectionChange={(keys: any) => {
+          const k = Array.from(keys as any)[0];
+
+          onChange({ ...value, gender: k ? String(k) : null });
+        }}
+      >
+        <SelectItem key="HOMBRE">Hombre</SelectItem>
+        <SelectItem key="MUJER">Mujer</SelectItem>
+        <SelectItem key="UNISEX">Unisex</SelectItem>
+      </Select>
+
+      {afterGenderContent}
+
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <Switch
           isDisabled={locked}
@@ -363,125 +411,163 @@ export function DesignSection({
         onValueChange={(v: string) => onChange({ ...value, observations: v })}
       />
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Input
-          isDisabled={locked}
-          label="Tela"
-          value={String(value.fabric ?? "")}
-          onValueChange={(v: string) => onChange({ ...value, fabric: v })}
-        />
+      {showAdvancedFields ? (
+        <>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Select
+              isDisabled={locked}
+              label="Tela"
+              selectedKeys={value.fabric ? [String(value.fabric)] : []}
+              onSelectionChange={(keys: any) => {
+                const k = Array.from(keys as any)[0];
 
-        <Input
-          isDisabled={locked}
-          label="Color"
-          value={String(value.color ?? "")}
-          onValueChange={(v: string) => onChange({ ...value, color: v })}
-        />
-      </div>
+                onChange({ ...value, fabric: k ? String(k) : null });
+              }}
+            >
+              {(fabricOptions ?? []).map((option) => (
+                <SelectItem key={option}>{option}</SelectItem>
+              ))}
+            </Select>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Select
-          isDisabled={locked}
-          label="Género"
-          selectedKeys={value.gender ? [String(value.gender)] : []}
-          onSelectionChange={(keys: any) => {
-            const k = Array.from(keys as any)[0];
+            <Select
+              isDisabled={locked}
+              label="Proceso prenda"
+              selectedKeys={[resolvedGarmentProcess]}
+              onSelectionChange={(keys: any) => {
+                const k = String(Array.from(keys as any)[0] ?? "SUBLIMACION");
+                const next =
+                  k === "FONDO_ENTERO" ? "FONDO_ENTERO" : "SUBLIMACION";
 
-            onChange({ ...value, gender: k ? String(k) : null });
-          }}
-        >
-          <SelectItem key="HOMBRE">Hombre</SelectItem>
-          <SelectItem key="MUJER">Mujer</SelectItem>
-          <SelectItem key="UNISEX">Unisex</SelectItem>
-        </Select>
+                setGarmentProcess(next);
+                onGarmentProcessModeChange?.(next);
 
-        <Select
-          isDisabled={locked}
-          label="Proceso creación"
-          selectedKeys={value.process ? [String(value.process)] : []}
-          onSelectionChange={(keys: any) => {
-            const k = Array.from(keys as any)[0];
+                if (next === "SUBLIMACION") {
+                  onChange({ ...value, color: null });
+                }
+              }}
+            >
+              {GARMENT_PROCESS_OPTIONS.map((option) => (
+                <SelectItem key={option}>
+                  {option === "SUBLIMACION" ? "Sublimación" : "Fondo entero"}
+                </SelectItem>
+              ))}
+            </Select>
 
-            onChange({ ...value, process: k ? String(k) : null });
-          }}
-        >
-          <SelectItem key="PRODUCCION">Producción</SelectItem>
-          <SelectItem key="BODEGA">Bodega</SelectItem>
-          <SelectItem key="COMPRAS">Compras</SelectItem>
-        </Select>
-      </div>
+            {resolvedGarmentProcess === "FONDO_ENTERO" ? (
+              <Select
+                isDisabled={locked}
+                label="Color"
+                selectedKeys={value.color ? [String(value.color).toUpperCase()] : []}
+                onSelectionChange={(keys: any) => {
+                  const k = Array.from(keys as any)[0];
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div className={locked ? "opacity-60" : ""}>
-          <div className="text-sm text-default-600 mb-2">Tipo de cuello</div>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-            {NECK_OPTIONS.map((opt) => {
-              const selected = String(value.neckType ?? "") === opt.id;
-
-              return (
-                <button
-                  key={opt.id}
-                  className={
-                    "flex flex-col items-center gap-2 rounded-medium border p-2 text-left " +
-                    (selected
-                      ? "border-primary bg-default-50"
-                      : "border-default-200 bg-content1") +
-                    (locked ? " cursor-not-allowed" : " hover:bg-default-50")
-                  }
-                  disabled={locked}
-                  type="button"
-                  onClick={() => setNeck(opt.id)}
-                >
-                  <img alt={opt.label} className="h-14 w-auto" src={opt.src} />
-                  <div className="text-xs text-default-600">{opt.label}</div>
-                </button>
-              );
-            })}
+                  onChange({ ...value, color: k ? String(k) : null });
+                }}
+              >
+                {COLOR_OPTIONS.map((option) => (
+                  <SelectItem key={option}>{option}</SelectItem>
+                ))}
+              </Select>
+            ) : (
+              <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2 text-xs text-default-600">
+                En sublimación no se requiere seleccionar color de fondo.
+              </div>
+            )}
           </div>
-          <div className="text-xs text-default-500 mt-1">Selección única.</div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Select
+              isDisabled={locked}
+              label="Proceso creación"
+              selectedKeys={value.process ? [String(value.process)] : []}
+              onSelectionChange={(keys: any) => {
+                const k = Array.from(keys as any)[0];
+
+                onChange({ ...value, process: k ? String(k) : null });
+              }}
+            >
+              <SelectItem key="PRODUCCION">Producción</SelectItem>
+              <SelectItem key="BODEGA">Bodega</SelectItem>
+              <SelectItem key="COMPRAS">Compras</SelectItem>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Select
+              isDisabled={locked}
+              label="Tipo de cuello"
+              selectedKeys={value.neckType ? [String(value.neckType)] : []}
+              onSelectionChange={(keys: any) => {
+                const k = Array.from(keys as any)[0];
+
+                onChange({ ...value, neckType: k ? String(k) : null });
+              }}
+            >
+              {NECK_OPTIONS.map((opt) => (
+                <SelectItem key={opt.id}>{opt.label}</SelectItem>
+              ))}
+            </Select>
+
+            <Select
+              isDisabled={locked}
+              label="Manga"
+              selectedKeys={value.sleeve ? [String(value.sleeve)] : []}
+              onSelectionChange={(keys: any) => {
+                const k = Array.from(keys as any)[0];
+
+                onChange({ ...value, sleeve: k ? String(k) : null });
+              }}
+            >
+              <SelectItem key="CORTA">Corta</SelectItem>
+              <SelectItem key="LARGA">Larga</SelectItem>
+              <SelectItem key="SISA">Sisa</SelectItem>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <Select
+              isDisabled={locked || lockDecorationByMolding}
+              label="Estampado"
+              selectedKeys={value.screenPrint ? ["SI"] : ["NO"]}
+              onSelectionChange={(keys: any) => {
+                const k = Array.from(keys as any)[0];
+
+                onChange({ ...value, screenPrint: String(k) === "SI" });
+              }}
+            >
+              <SelectItem key="NO">No</SelectItem>
+              <SelectItem key="SI">Sí</SelectItem>
+            </Select>
+            <Select
+              isDisabled={locked || lockDecorationByMolding}
+              label="Bordado"
+              selectedKeys={value.embroidery ? ["SI"] : ["NO"]}
+              onSelectionChange={(keys: any) => {
+                const k = Array.from(keys as any)[0];
+
+                onChange({ ...value, embroidery: String(k) === "SI" });
+              }}
+            >
+              <SelectItem key="NO">No</SelectItem>
+              <SelectItem key="SI">Sí</SelectItem>
+            </Select>
+            <Switch
+              isDisabled={locked}
+              isSelected={Boolean(value.requiresSocks)}
+              onValueChange={(v: boolean) =>
+                onChange({ ...value, requiresSocks: v })
+              }
+            >
+              Requiere medias
+            </Switch>
+          </div>
+        </>
+      ) : (
+        <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-700">
+          Paso 2: selecciona una moldería para habilitar tela, proceso,
+          manga, color y protecciones.
         </div>
-
-        <Select
-          isDisabled={locked}
-          label="Manga"
-          selectedKeys={value.sleeve ? [String(value.sleeve)] : []}
-          onSelectionChange={(keys: any) => {
-            const k = Array.from(keys as any)[0];
-
-            onChange({ ...value, sleeve: k ? String(k) : null });
-          }}
-        >
-          <SelectItem key="CORTA">Corta</SelectItem>
-          <SelectItem key="LARGA">Larga</SelectItem>
-          <SelectItem key="SISA">Sisa</SelectItem>
-        </Select>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Switch
-          isDisabled={locked}
-          isSelected={Boolean(value.screenPrint)}
-          onValueChange={(v: boolean) => onChange({ ...value, screenPrint: v })}
-        >
-          Estampado
-        </Switch>
-        <Switch
-          isDisabled={locked}
-          isSelected={Boolean(value.embroidery)}
-          onValueChange={(v: boolean) => onChange({ ...value, embroidery: v })}
-        >
-          Bordado
-        </Switch>
-        <Switch
-          isDisabled={locked}
-          isSelected={Boolean(value.requiresSocks)}
-          onValueChange={(v: boolean) =>
-            onChange({ ...value, requiresSocks: v })
-          }
-        >
-          Requiere medias
-        </Switch>
-      </div>
+      )}
 
       <div className="rounded-medium border border-default-200 bg-content1 p-2 md:p-3">
         <div className="grid grid-cols-[1fr_auto_1fr] items-stretch border border-default-200">
@@ -496,7 +582,7 @@ export function DesignSection({
               disabled={dropDisabled}
               minHeightClass="min-h-[280px]"
               previewSrc={resolvedImageOne}
-              subtitle="Tipo de prenda 1"
+              subtitle={`Imagen para ${imageRoleOne === "ARQUERO" ? "arquero" : "jugador"}`}
               title="Prenda 1"
               onSelectFile={onSelectImageOneFile}
             />
@@ -536,7 +622,7 @@ export function DesignSection({
               disabled={dropDisabled}
               minHeightClass="min-h-[280px]"
               previewSrc={resolvedImageTwo}
-              subtitle="Tipo de prenda 2"
+              subtitle={`Imagen para ${imageRoleTwo === "ARQUERO" ? "arquero" : "jugador"}`}
               title="Prenda 2"
               onSelectFile={onSelectImageTwoFile}
             />

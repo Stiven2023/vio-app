@@ -31,12 +31,9 @@ import {
   BsClockHistory,
   BsEye,
   BsPencilSquare,
-  BsPersonPlus,
   BsThreeDotsVertical,
   BsTrash,
 } from "react-icons/bs";
-
-import { ConfectionAssignModal } from "./confection-assign-modal";
 
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 
@@ -44,6 +41,7 @@ type OrderItemRow = {
   id: string;
   orderId: string | null;
   name: string | null;
+  designNumber?: number | null;
   quantity: number;
   unitPrice: string | null;
   totalPrice: string | null;
@@ -94,8 +92,6 @@ export function OrderItemsPage({
   );
   const [loadingItems, setLoadingItems] = useState(false);
 
-  const [assignOpen, setAssignOpen] = useState(false);
-  const [assigningId, setAssigningId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<
     Array<{
@@ -172,7 +168,6 @@ export function OrderItemsPage({
     !isAdvisor ||
     (Boolean(advisorEmployeeId) && order?.createdBy === advisorEmployeeId);
   const effectiveCanEdit = canEdit && canAccessOrder;
-  const effectiveCanAssign = canAssign && canAccessOrder;
 
   // Bloquear modificaciones desde PRODUCCION (montaje) en adelante
   const MONTAJE_LOCKED: Array<string> = [
@@ -183,15 +178,13 @@ export function OrderItemsPage({
     "CANCELADO",
   ];
   const isOrderLocked = MONTAJE_LOCKED.includes(order?.status ?? "");
-  const canCreate = effectiveCanEdit && orderKind === "NUEVO" && !isOrderLocked;
   const canModify = effectiveCanEdit && !isOrderLocked;
 
   const columns: ColumnDef[] = [
-    { key: "name", name: "Diseño" },
-    { key: "image", name: "Imagen" },
+    { key: "designNum", name: "#" },
+    { key: "name", name: "Descripción" },
     { key: "status", name: "Estado" },
-    { key: "statusHistory", name: "Ultimo cambio" },
-    { key: "confectionist", name: "Confeccionista" },
+    { key: "statusHistory", name: "Último cambio" },
     { key: "quantity", name: "Cantidad" },
     { key: "additions", name: "Adiciones" },
     { key: "actions", name: "Acciones" },
@@ -224,11 +217,6 @@ export function OrderItemsPage({
     }
   }
 
-  function openAssign(id: string) {
-    if (!effectiveCanAssign) return;
-    setAssigningId(id);
-    setAssignOpen(true);
-  }
 
   async function openHistory(itemId: string) {
     if (!canSeeHistory) return;
@@ -270,14 +258,6 @@ export function OrderItemsPage({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            as={NextLink}
-            href={`/orders/${orderId}/items/new`}
-            isDisabled={!canCreate}
-            variant="flat"
-          >
-            Nuevo diseño
-          </Button>
           <Button as={NextLink} href="/orders" variant="flat">
             Volver
           </Button>
@@ -289,8 +269,7 @@ export function OrderItemsPage({
           <div className="min-w-0">
             <div className="font-semibold">Información</div>
             <div className="text-sm text-default-500">
-              Pedido: {orderId} {loadingOrder ? "(cargando...)" : null}
-              <span className="ml-2">Kind: {orderKind}</span>
+              Pedido: {order?.orderCode ?? orderId} {loadingOrder ? "(cargando...)" : null}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -361,6 +340,19 @@ export function OrderItemsPage({
               {(row) => (
                 <TableRow key={row.id}>
                   {(columnKey) => {
+                    const rowIndex = rows.indexOf(row);
+                    const designNum = (page - 1) * pageSize + rowIndex + 1;
+
+                    if (columnKey === "designNum") {
+                      return (
+                        <TableCell>
+                          <span className="text-xs font-mono font-semibold text-default-500">
+                            D{designNum}
+                          </span>
+                        </TableCell>
+                      );
+                    }
+
                     if (columnKey === "actions") {
                       return (
                         <TableCell>
@@ -392,17 +384,6 @@ export function OrderItemsPage({
                               </DropdownItem>
 
                               <DropdownItem
-                                key="assign"
-                                isDisabled={
-                                  !effectiveCanAssign || isOrderLocked
-                                }
-                                startContent={<BsPersonPlus />}
-                                onPress={() => openAssign(row.id)}
-                              >
-                                Asignar
-                              </DropdownItem>
-
-                              <DropdownItem
                                 key="edit"
                                 as={NextLink}
                                 href={`/orders/${orderId}/items/${row.id}/edit`}
@@ -427,12 +408,8 @@ export function OrderItemsPage({
                       );
                     }
 
-                    if (columnKey === "confectionist") {
-                      return (
-                        <TableCell className="text-default-600">
-                          {row.confectionistName ?? "-"}
-                        </TableCell>
-                      );
+                    if (columnKey === "name") {
+                      return <TableCell>{String(row.name ?? "-")}</TableCell>;
                     }
 
                     if (columnKey === "status") {
@@ -458,22 +435,6 @@ export function OrderItemsPage({
                               </Button>
                             </div>
                           ) : null}
-                        </TableCell>
-                      );
-                    }
-
-                    if (columnKey === "image") {
-                      return (
-                        <TableCell>
-                          {row.imageUrl ? (
-                            <img
-                              alt="Imagen del diseño"
-                              className="h-10 w-10 rounded-small border border-default-200 object-cover"
-                              src={row.imageUrl}
-                            />
-                          ) : (
-                            "-"
-                          )}
                         </TableCell>
                       );
                     }
@@ -528,18 +489,6 @@ export function OrderItemsPage({
           </div>
         </CardBody>
       </Card>
-
-      <ConfectionAssignModal
-        isOpen={assignOpen}
-        orderItemId={assigningId}
-        onOpenChange={(open) => {
-          if (!open) setAssigningId(null);
-          setAssignOpen(open);
-        }}
-        onSaved={() => {
-          refresh();
-        }}
-      />
 
       <Modal isOpen={historyOpen} onOpenChange={setHistoryOpen}>
         <ModalContent>

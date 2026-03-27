@@ -118,6 +118,18 @@ export function OrdersTab({
     }).format(amount);
   };
 
+  const formatDate = (value: string | null | undefined) => {
+    const raw = String(value ?? "").trim();
+
+    if (!raw) return "-";
+
+    const date = new Date(raw);
+
+    if (Number.isNaN(date.getTime())) return raw;
+
+    return date.toLocaleDateString("es-CO");
+  };
+
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
@@ -392,6 +404,7 @@ export function OrdersTab({
             "Code",
             "Client",
             "Type",
+            "Delivery",
             "Status",
             "Last update",
             "Total",
@@ -405,6 +418,7 @@ export function OrdersTab({
             <TableColumn>Code</TableColumn>
             <TableColumn>Client</TableColumn>
             <TableColumn>Type</TableColumn>
+            <TableColumn>Delivery</TableColumn>
             <TableColumn>Status</TableColumn>
             <TableColumn>Last update</TableColumn>
             <TableColumn>Total</TableColumn>
@@ -417,6 +431,7 @@ export function OrdersTab({
                 <TableCell className="font-medium">{o.orderCode}</TableCell>
                 <TableCell>{o.clientName ?? "-"}</TableCell>
                 <TableCell>{o.type}</TableCell>
+                <TableCell>{formatDate(o.deliveryDate)}</TableCell>
                 <TableCell>{o.status}</TableCell>
                 <TableCell className="text-default-600">
                   {(() => {

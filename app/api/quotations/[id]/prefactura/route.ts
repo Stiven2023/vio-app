@@ -620,6 +620,27 @@ export async function POST(
         }
       }
 
+      // Auto-set delivery date from the longest estimated lead time in the order.
+      {
+        const maxLeadDays = designValues.reduce((max, item) => {
+          const days = Number(item.estimatedLeadDays ?? 0);
+
+          return Number.isFinite(days) ? Math.max(max, days) : max;
+        }, 0);
+
+        if (maxLeadDays > 0) {
+          const deliveryDeadline = new Date();
+
+          deliveryDeadline.setDate(deliveryDeadline.getDate() + maxLeadDays);
+          const autoDeliveryDate = deliveryDeadline.toISOString().slice(0, 10);
+
+          await tx
+            .update(orders)
+            .set({ deliveryDate: autoDeliveryDate } as any)
+            .where(eq(orders.id, createdOrder.id));
+        }
+      }
+
       const insertedByQuotationItem = new Map<string, string>();
 
       if (designValues.length > 0) {

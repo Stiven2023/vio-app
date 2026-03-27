@@ -12,6 +12,9 @@ import {
   employees,
   inventoryItems,
   orderItemAdditions,
+  orderItemPositions,
+  orderItemSpecialRequirements,
+  orderItemTeams,
   stockMovements,
   orderItemMaterials,
   orderItemPackaging,
@@ -243,12 +246,30 @@ export async function GET(
     .leftJoin(additions, eq(orderItemAdditions.additionId, additions.id))
     .where(eq(orderItemAdditions.orderItemId, orderItemId));
 
+  const positions = await db
+    .select()
+    .from(orderItemPositions)
+    .where(eq(orderItemPositions.orderItemId, orderItemId));
+
+  const teams = await db
+    .select()
+    .from(orderItemTeams)
+    .where(eq(orderItemTeams.orderItemId, orderItemId));
+
+  const specialRequirements = await db
+    .select()
+    .from(orderItemSpecialRequirements)
+    .where(eq(orderItemSpecialRequirements.orderItemId, orderItemId));
+
   return Response.json({
     item,
     packaging,
     socks,
     materials,
     additions: additionsRows,
+    positions,
+    teams,
+    specialRequirements,
   });
 }
 
@@ -286,6 +307,111 @@ function normalizeOperationalProcess(v: unknown) {
   }
 
   return "PRODUCCION";
+}
+
+function normalizeDesignType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "PRODUCCION") return "PRODUCCION";
+  if (raw === "COMPRA" || raw === "COMPRAS") return "COMPRA";
+  if (raw === "BODEGA") return "BODEGA";
+
+  return "PRODUCCION";
+}
+
+function normalizeProductionTechnique(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "FONDO_ENTERO") return "FONDO_ENTERO";
+  if (raw === "SUBLIMACION") return "SUBLIMACION";
+
+  return "SUBLIMACION";
+}
+
+function normalizePosition(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    raw === "JUGADOR" ||
+    raw === "ARQUERO" ||
+    raw === "CAPITAN" ||
+    raw === "JUEZ" ||
+    raw === "ENTRENADOR" ||
+    raw === "LIBERO" ||
+    raw === "ADICIONAL"
+  ) {
+    return raw;
+  }
+
+  return null;
+}
+
+function normalizeSockLength(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "LARGA" || raw === "TRES_CUARTOS" || raw === "TALONERA") {
+    return raw;
+  }
+
+  return null;
+}
+
+function validatePositionsBusiness(
+  positionsInput: unknown,
+  designTypeInput: unknown,
+  teamsInput: unknown,
+) {
+  if (!Array.isArray(positionsInput) || positionsInput.length === 0) {
+    return "Debes configurar al menos una posición del diseño.";
+  }
+
+  const normalized = positionsInput
+    .map((row: any) => ({
+      position: normalizePosition(row?.position),
+      quantity: Number(row?.quantity ?? 0),
+    }))
+    .filter((row: any) => Boolean(row.position));
+
+  if (normalized.length === 0) {
+    return "Las posiciones del diseño son inválidas.";
+  }
+
+  if (normalized.some((row: any) => !Number.isFinite(row.quantity) || row.quantity < 0)) {
+    return "La cantidad por posición no puede ser negativa.";
+  }
+
+  if (normalized.length > 1) {
+    const set = new Set(normalized.map((row: any) => row.position));
+
+    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
+      return "Si defines más de una posición, debes incluir JUGADOR y ARQUERO.";
+    }
+  }
+
+  const designType = normalizeDesignType(designTypeInput);
+  const hasTeams = Array.isArray(teamsInput) && teamsInput.length > 0;
+
+  if (hasTeams) {
+    const set = new Set(normalized.map((row: any) => row.position));
+
+    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
+      return "Si configuras equipos, debes tener posiciones JUGADOR y ARQUERO.";
+    }
+  }
+
+  if (designType === "PRODUCCION" && normalized.length < 2) {
+    return "Para design type PRODUCCION debes definir al menos JUGADOR y ARQUERO.";
+  }
+
+  return null;
 }
 
 function sumGroupedPackagingQuantity(packagingInput: unknown) {
@@ -479,6 +605,9 @@ export async function PUT(
       unitPrice: orderItems.unitPrice,
       hasAdditions: orderItems.hasAdditions,
       additionEvidence: orderItems.additionEvidence,
+      designType: orderItems.designType,
+      productionTechnique: orderItems.productionTechnique,
+      color: orderItems.color,
       process: orderItems.process,
     })
     .from(orderItems)
@@ -550,6 +679,58 @@ export async function PUT(
     }
   }
 
+  if (body.positions !== undefined) {
+    const positionsValidationError = validatePositionsBusiness(
+      body.positions,
+      body.designType ?? body.process,
+      body.teams,
+    );
+
+    if (positionsValidationError) {
+      return new Response(positionsValidationError, { status: 400 });
+    }
+  }
+
+  if (
+    body.positions === undefined &&
+    (body.designType !== undefined ||
+      body.process !== undefined ||
+      body.teams !== undefined)
+  ) {
+    const desiredDesignType = normalizeDesignType(
+      body.designType ?? body.process ?? existing.designType ?? existing.process,
+    );
+
+    const existingPositions = await db
+      .select({
+        position: orderItemPositions.position,
+        quantity: orderItemPositions.quantity,
+      })
+      .from(orderItemPositions)
+      .where(eq(orderItemPositions.orderItemId, orderItemId));
+
+    const teamsForValidation =
+      body.teams !== undefined
+        ? body.teams
+        : await db
+            .select({ id: orderItemTeams.id })
+            .from(orderItemTeams)
+            .where(eq(orderItemTeams.orderItemId, orderItemId));
+
+    const positionsValidationError = validatePositionsBusiness(
+      existingPositions,
+      desiredDesignType,
+      teamsForValidation,
+    );
+
+    if (positionsValidationError) {
+      return new Response(
+        `${positionsValidationError} Si cambias design type o equipos sin enviar positions, las posiciones actuales deben cumplir la regla.`,
+        { status: 400 },
+      );
+    }
+  }
+
   // Bloquear edición de contenido desde PRODUCCION (montaje) en adelante.
   // Solo se permiten cambios de estado (status-only).
   const ORDER_MONTAJE_LOCKED_STATUSES = new Set<string>([
@@ -599,6 +780,8 @@ export async function PUT(
           await tx.insert(orderItemPackaging).values(
             packaging.map((p) => ({
               orderItemId,
+              teamId: toNullableString(p.teamId),
+              position: normalizePosition(p.position) as any,
               mode: String(p.mode ?? "AGRUPADO"),
               size: String(p.size ?? ""),
               quantity:
@@ -712,6 +895,14 @@ export async function PUT(
   if (body.observations !== undefined)
     patch.observations = toNullableString(body.observations);
   if (body.fabric !== undefined) patch.fabric = toNullableString(body.fabric);
+  if (body.designType !== undefined) {
+    patch.designType = normalizeDesignType(body.designType) as any;
+  }
+  if (body.productionTechnique !== undefined) {
+    patch.productionTechnique = normalizeProductionTechnique(
+      body.productionTechnique,
+    ) as any;
+  }
   if (body.imageUrl !== undefined)
     patch.imageUrl = toNullableString(body.imageUrl);
   if (body.clothingImageOneUrl !== undefined) {
@@ -732,6 +923,16 @@ export async function PUT(
   if (body.tag !== undefined) patch.tag = Boolean(body.tag);
   if (body.flag !== undefined) patch.flag = Boolean(body.flag);
   if (body.gender !== undefined) patch.gender = toNullableString(body.gender);
+  if (body.designerId !== undefined)
+    patch.designerId = toNullableString(body.designerId);
+  if (body.discipline !== undefined)
+    patch.discipline = toNullableString(body.discipline);
+  if (body.hasCordon !== undefined) patch.hasCordon = Boolean(body.hasCordon);
+  if (body.cordonColor !== undefined)
+    patch.cordonColor = toNullableString(body.cordonColor);
+  if (body.category !== undefined) patch.category = toNullableString(body.category);
+  if (body.labelBrand !== undefined)
+    patch.labelBrand = toNullableString(body.labelBrand);
   if (body.process !== undefined) {
     patch.process = normalizeOperationalProcess(body.process);
   }
@@ -757,9 +958,37 @@ export async function PUT(
     return new Response("logoImageUrl es obligatorio", { status: 400 });
   }
 
+  const effectiveTechnique = normalizeProductionTechnique(
+    patch.productionTechnique !== undefined
+      ? patch.productionTechnique
+      : body.productionTechnique ?? existing.productionTechnique,
+  );
+
+  if (effectiveTechnique === "FONDO_ENTERO") {
+    const effectiveColor =
+      patch.color !== undefined
+        ? patch.color
+        : toNullableString((body as any).color ?? existing.color);
+
+    if (!toNullableString(effectiveColor)) {
+      return new Response(
+        "Color es obligatorio cuando la técnica es FONDO_ENTERO",
+        { status: 400 },
+      );
+    }
+  }
+
   const effectiveProcess = normalizeOperationalProcess(
     patch.process !== undefined ? patch.process : existing.process,
   );
+  if (patch.designType === undefined) {
+    patch.designType = normalizeDesignType(effectiveProcess) as any;
+  }
+  if (patch.productionTechnique === undefined && body.productionTechnique !== undefined) {
+    patch.productionTechnique = normalizeProductionTechnique(
+      body.productionTechnique,
+    ) as any;
+  }
   const effectiveHasAdditions =
     patch.hasAdditions !== undefined
       ? Boolean(patch.hasAdditions)
@@ -812,6 +1041,14 @@ export async function PUT(
       "neckType",
       "sleeve",
       "color",
+      "designType",
+      "productionTechnique",
+      "designerId",
+      "discipline",
+      "hasCordon",
+      "cordonColor",
+      "category",
+      "labelBrand",
       "garmentType",
       "process",
       "hasAdditions",
@@ -937,6 +1174,10 @@ export async function PUT(
         await tx.insert(orderItemSocks).values(
           socks.map((s) => ({
             orderItemId,
+            teamId: toNullableString(s.teamId),
+            position: normalizePosition(s.position) as any,
+            sockLength: normalizeSockLength(s.sockLength) as any,
+            color: toNullableString(s.color),
             size: String(s.size ?? ""),
             quantity:
               s.quantity === undefined ? null : toPositiveInt(s.quantity),
@@ -976,6 +1217,86 @@ export async function PUT(
               note: toNullableString(m.note),
             }))
             .filter((m) => existingSet.has(m.inventoryItemId)) as any,
+        );
+      }
+    }
+
+    if (Array.isArray(body.positions)) {
+      await tx
+        .delete(orderItemPositions)
+        .where(eq(orderItemPositions.orderItemId, orderItemId));
+
+      const positions = body.positions as any[];
+
+      if (positions.length > 0) {
+        await tx.insert(orderItemPositions).values(
+          positions
+            .map((p, idx) => ({
+              orderItemId,
+              position: normalizePosition(p.position) as any,
+              quantity:
+                p.quantity === undefined || p.quantity === null
+                  ? 0
+                  : Math.max(0, Number(p.quantity ?? 0)),
+              color: toNullableString(p.color),
+              sortOrder:
+                p.sortOrder === undefined || p.sortOrder === null
+                  ? idx + 1
+                  : Math.max(1, Math.floor(Number(p.sortOrder ?? idx + 1))),
+            }))
+            .filter((p) => Boolean(p.position)) as any,
+        );
+      }
+    }
+
+    if (Array.isArray(body.teams)) {
+      await tx
+        .delete(orderItemTeams)
+        .where(eq(orderItemTeams.orderItemId, orderItemId));
+
+      const teams = body.teams as any[];
+
+      if (teams.length > 0) {
+        await tx.insert(orderItemTeams).values(
+          teams
+            .map((t, idx) => ({
+              orderItemId,
+              name: String(t.name ?? "").trim(),
+              playerColor: toNullableString(t.playerColor),
+              goalkeeperColor: toNullableString(t.goalkeeperColor),
+              socksColor: toNullableString(t.socksColor),
+              playerImageUrl: toNullableString(t.playerImageUrl),
+              goalkeeperImageUrl: toNullableString(t.goalkeeperImageUrl),
+              fullSetImageUrl: toNullableString(t.fullSetImageUrl),
+              sortOrder:
+                t.sortOrder === undefined || t.sortOrder === null
+                  ? idx + 1
+                  : Math.max(1, Math.floor(Number(t.sortOrder ?? idx + 1))),
+            }))
+            .filter((t) => t.name) as any,
+        );
+      }
+    }
+
+    if (Array.isArray(body.specialRequirements)) {
+      await tx
+        .delete(orderItemSpecialRequirements)
+        .where(eq(orderItemSpecialRequirements.orderItemId, orderItemId));
+
+      const specialRequirements = body.specialRequirements as any[];
+
+      if (specialRequirements.length > 0) {
+        await tx.insert(orderItemSpecialRequirements).values(
+          specialRequirements.map((sr) => ({
+            orderItemId,
+            piece: toNullableString(sr.piece),
+            fabric: toNullableString(sr.fabric),
+            fabricColor: toNullableString(sr.fabricColor),
+            hasReflectiveTape: Boolean(sr.hasReflectiveTape),
+            reflectiveTapeLocation: toNullableString(sr.reflectiveTapeLocation),
+            hasSideStripes: Boolean(sr.hasSideStripes),
+            notes: toNullableString(sr.notes),
+          })) as any,
         );
       }
     }

@@ -32,6 +32,7 @@ export type OrderListItem = {
   currency: string | null;
   shippingFee?: string | null;
   paidTotal?: string | null;
+  deliveryDate?: string | null;
   lastStatusAt?: string | null;
   lastStatusBy?: string | null;
   createdAt: string | null;
@@ -45,6 +46,14 @@ export type OrderItemInput = {
   name?: string;
   quantity: number;
   unitPrice?: string;
+  designType?: "PRODUCCION" | "COMPRA" | "BODEGA";
+  productionTechnique?: "SUBLIMACION" | "FONDO_ENTERO";
+  designerId?: string | null;
+  discipline?: string | null;
+  hasCordon?: boolean;
+  cordonColor?: string | null;
+  category?: string | null;
+  labelBrand?: string | null;
 };
 
 export type OrderInput = {

@@ -7,9 +7,11 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
+import { Switch } from "@heroui/switch";
 
 import { DesignSection } from "../../../_components/order-item-modal/design-section";
 import { MaterialsSection } from "../../../_components/order-item-modal/materials-section";
+import { OrderItemStructuresSection } from "../../../_components/order-item-modal/order-item-structures-section";
 import { PackagingSection } from "../../../_components/order-item-modal/packaging-section";
 import { SocksSection } from "../../../_components/order-item-modal/socks-section";
 import {
@@ -23,6 +25,11 @@ import type {
   MoldingTemplateDetail,
   MoldingTemplateRow,
 } from "@/app/erp/molding/_lib/types";
+import type {
+  OrderItemPositionInput,
+  OrderItemSpecialRequirementInput,
+  OrderItemTeamInput,
+} from "@/app/erp/orders/_lib/order-item-types";
 
 type Currency = "COP" | "USD";
 
@@ -49,6 +56,12 @@ type ProductPriceRow = {
   startDate: string | null;
   endDate: string | null;
   isActive: boolean | null;
+};
+
+type DesignerRow = {
+  id: string;
+  name: string;
+  isActive?: boolean | null;
 };
 
 function asNumber(v: unknown) {
@@ -247,6 +260,32 @@ function normalizeMaterialsForCompare(
     .sort((a, b) => a.inventoryItemId.localeCompare(b.inventoryItemId));
 }
 
+function parseCompatibleFabrics(detail: MoldingTemplateDetail | null) {
+  if (!detail) return [] as string[];
+
+  try {
+    const parsed = JSON.parse(detail.compatibleFabrics ?? "[]");
+
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item ?? "").trim()).filter(Boolean);
+    }
+  } catch {
+    // Ignore parse errors and fall back to fabric.
+  }
+
+  return String(detail.fabric ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseFabricListFromText(value: unknown) {
+  return String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function OrderItemEditPage(props: {
   orderId: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
@@ -269,11 +308,28 @@ export function OrderItemEditPage(props: {
   >(undefined);
   const [moldingTemplateId, setMoldingTemplateId] = React.useState<string | null>(null);
   const [initialMoldingTemplateId, setInitialMoldingTemplateId] = React.useState<string | null>(null);
+  const [moldingTemplateIdTwo, setMoldingTemplateIdTwo] = React.useState<string | null>(null);
+  const [initialMoldingTemplateIdTwo, setInitialMoldingTemplateIdTwo] = React.useState<string | null>(null);
   const [existingMoldingTemplateIds, setExistingMoldingTemplateIds] = React.useState<string[]>([]);
   const [moldingTemplates, setMoldingTemplates] = React.useState<MoldingTemplateRow[]>([]);
+  const [historicalMoldingOptions, setHistoricalMoldingOptions] = React.useState<MoldingTemplateRow[]>([]);
+  const [selectedMoldingDetails, setSelectedMoldingDetails] = React.useState<Record<string, MoldingTemplateDetail>>({});
   const [loadingMoldings, setLoadingMoldings] = React.useState(false);
   const [isApplyingMolding, setIsApplyingMolding] = React.useState(false);
+  const [isConjunto, setIsConjunto] = React.useState(false);
+  const [positions, setPositions] = React.useState<OrderItemPositionInput[]>([]);
+  const [teams, setTeams] = React.useState<OrderItemTeamInput[]>([]);
+  const [specialRequirements, setSpecialRequirements] = React.useState<
+    OrderItemSpecialRequirementInput[]
+  >([]);
+  const [garmentProcessMode, setGarmentProcessMode] = React.useState<
+    "SUBLIMACION" | "FONDO_ENTERO"
+  >("SUBLIMACION");
+  const [imageOneRole, setImageOneRole] = React.useState<"JUGADOR" | "ARQUERO">(
+    "JUGADOR",
+  );
   const skipNextMoldingAutofillRef = React.useRef(false);
+  const prevMaterialsNormRef = React.useRef<string>("");
 
   React.useEffect(() => {
     let active = true;
@@ -288,6 +344,13 @@ export function OrderItemEditPage(props: {
       .then((payload) => {
         if (!active) return;
         setInitialValue(payload);
+        setPositions(Array.isArray((payload as any).positions) ? (payload as any).positions : []);
+        setTeams(Array.isArray((payload as any).teams) ? (payload as any).teams : []);
+        setSpecialRequirements(
+          Array.isArray((payload as any).specialRequirements)
+            ? (payload as any).specialRequirements
+            : [],
+        );
       })
       .catch((e) => {
         if (!active) return;
@@ -337,21 +400,65 @@ export function OrderItemEditPage(props: {
       .then(async (r) => {
         if (!r.ok) return null;
 
-        return (await r.json()) as { items: Array<{ moldingTemplateId: string | null }> };
+        return (await r.json()) as {
+          items: Array<{
+            moldingTemplateId: string | null;
+            moldingCode?: string | null;
+            version?: number | null;
+            garmentType?: string | null;
+            garmentSubtype?: string | null;
+            designDetail?: string | null;
+            fabric?: string | null;
+            color?: string | null;
+            gender?: string | null;
+            process?: string | null;
+            estimatedLeadDays?: number | null;
+            createdAt?: string | null;
+          }>;
+        };
       })
       .then((d) => {
         if (!active || !d) return;
+        const historicalOptions = (d.items ?? [])
+          .map((row) => {
+            const id = String(row?.moldingTemplateId ?? "").trim();
+
+            if (!id) return null;
+
+            return {
+              id,
+              moldingCode: String(row?.moldingCode ?? "MOLDERIA ASIGNADA"),
+              version: Number(row?.version ?? 1),
+              garmentType: row?.garmentType ?? null,
+              garmentSubtype: row?.garmentSubtype ?? null,
+              designDetail: row?.designDetail ?? null,
+              fabric: row?.fabric ?? null,
+              color: row?.color ?? null,
+              gender: row?.gender ?? null,
+              process: row?.process ?? null,
+              estimatedLeadDays: row?.estimatedLeadDays ?? null,
+              isActive: false,
+              createdAt: row?.createdAt ?? null,
+              createdByName: null,
+            } as MoldingTemplateRow;
+          })
+          .filter((row): row is MoldingTemplateRow => Boolean(row));
         const templateIds = (d.items ?? [])
           .map((row) => String(row?.moldingTemplateId ?? "").trim())
           .filter(Boolean);
         const firstTemplateId = templateIds[0] ?? null;
+        const secondTemplateId = templateIds[1] ?? null;
 
         if (firstTemplateId) {
           skipNextMoldingAutofillRef.current = true;
         }
         setMoldingTemplateId(firstTemplateId);
         setInitialMoldingTemplateId(firstTemplateId);
+        setMoldingTemplateIdTwo(secondTemplateId);
+        setInitialMoldingTemplateIdTwo(secondTemplateId);
+        setIsConjunto(Boolean(secondTemplateId));
         setExistingMoldingTemplateIds(templateIds);
+        setHistoricalMoldingOptions(historicalOptions);
       })
       .catch(() => {
         // non-critical
@@ -404,6 +511,62 @@ export function OrderItemEditPage(props: {
     orderId,
     initialValue,
   });
+
+  React.useEffect(() => {
+    if (!String(item.color ?? "").trim()) {
+      setGarmentProcessMode("SUBLIMACION");
+
+      return;
+    }
+
+    setGarmentProcessMode("FONDO_ENTERO");
+  }, [item.color]);
+
+  React.useEffect(() => {
+    const ids = Array.from(
+      new Set(
+        [moldingTemplateId, moldingTemplateIdTwo]
+          .map((id) => String(id ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    if (ids.length === 0) {
+      setSelectedMoldingDetails({});
+
+      return;
+    }
+
+    let active = true;
+
+    Promise.all(
+      ids.map(async (id) => {
+        const res = await fetch(`/api/molding/templates/${id}`);
+
+        if (!res.ok) throw new Error(await res.text());
+
+        return (await res.json()) as MoldingTemplateDetail;
+      }),
+    )
+      .then((details) => {
+        if (!active) return;
+
+        const next: Record<string, MoldingTemplateDetail> = {};
+
+        for (const detail of details) {
+          next[String(detail.id)] = detail;
+        }
+        setSelectedMoldingDetails(next);
+      })
+      .catch((e) => {
+        if (!active) return;
+        toast.error(getErrorMessage(e));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [moldingTemplateId, moldingTemplateIdTwo]);
 
   React.useEffect(() => {
     const selectedId = String(moldingTemplateId ?? "").trim();
@@ -540,13 +703,20 @@ export function OrderItemEditPage(props: {
   React.useEffect(() => {
     const templateIds = Array.from(
       new Set(
-        [...existingMoldingTemplateIds, String(moldingTemplateId ?? "").trim()]
+        [
+          ...existingMoldingTemplateIds,
+          String(moldingTemplateId ?? "").trim(),
+          String(isConjunto ? moldingTemplateIdTwo ?? "" : "").trim(),
+        ]
           .filter(Boolean),
       ),
     );
 
     if (templateIds.length === 0) {
-      setMaterials([]);
+      if (prevMaterialsNormRef.current !== "[]") {
+        prevMaterialsNormRef.current = "[]";
+        setMaterials([]);
+      }
 
       return;
     }
@@ -559,15 +729,10 @@ export function OrderItemEditPage(props: {
         if (!active) return;
 
         const nextNorm = normalizeMaterialsForCompare(autoMaterials);
-        const currentNorm = normalizeMaterialsForCompare(
-          (materials ?? []) as Array<{
-            inventoryItemId: string;
-            quantity?: number | string | null;
-            note?: string | null;
-          }>,
-        );
+        const nextNormStr = JSON.stringify(nextNorm);
 
-        if (JSON.stringify(nextNorm) !== JSON.stringify(currentNorm)) {
+        if (nextNormStr !== prevMaterialsNormRef.current) {
+          prevMaterialsNormRef.current = nextNormStr;
           setMaterials(autoMaterials);
         }
       })
@@ -582,13 +747,15 @@ export function OrderItemEditPage(props: {
   }, [
     existingMoldingTemplateIds,
     moldingTemplateId,
+    moldingTemplateIdTwo,
+    isConjunto,
     item.quantity,
-    materials,
     setMaterials,
   ]);
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [loadingProducts, setLoadingProducts] = React.useState(false);
+  const [designers, setDesigners] = React.useState<DesignerRow[]>([]);
 
   const [prices, setPrices] = React.useState<ProductPriceRow[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(false);
@@ -621,6 +788,58 @@ export function OrderItemEditPage(props: {
       active = false;
     };
   }, []);
+
+  React.useEffect(() => {
+    let active = true;
+
+    fetch(`/api/employees?page=1&pageSize=500`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await res.text());
+
+        return (await res.json()) as { items: DesignerRow[] };
+      })
+      .then((payload) => {
+        if (!active) return;
+        setDesigners(Array.isArray(payload.items) ? payload.items : []);
+      })
+      .catch(() => {
+        if (!active) return;
+        setDesigners([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleTeamImageFileSelect = React.useCallback(
+    async (args: {
+      teamIndex: number;
+      field: "playerImageUrl" | "goalkeeperImageUrl" | "fullSetImageUrl";
+      file: File;
+    }) => {
+      const { teamIndex, field, file } = args;
+
+      setIsUploadingAssets(true);
+      try {
+        const url = await uploadToCloudinary({
+          file,
+          folder: `order-items/${orderId}/teams`,
+        });
+
+        setTeams((prev) =>
+          prev.map((team, idx) =>
+            idx === teamIndex ? { ...team, [field]: url } : team,
+          ),
+        );
+      } catch (e) {
+        toast.error(getErrorMessage(e));
+      } finally {
+        setIsUploadingAssets(false);
+      }
+    },
+    [orderId],
+  );
 
   React.useEffect(() => {
     const productId = String(item.productId ?? "").trim();
@@ -706,6 +925,136 @@ export function OrderItemEditPage(props: {
   const uiDisabled = isSaving || loadingItem;
   const isRestricted = orderKind === "COMPLETACION";
   const canEditUnitPrice = priceClientType === "AUTORIZADO";
+  const moldingOneId = String(moldingTemplateId ?? "").trim();
+  const moldingTwoId = String(moldingTemplateIdTwo ?? "").trim();
+  const hasRequiredMolding = isConjunto
+    ? Boolean(moldingOneId)
+    : Boolean(moldingOneId);
+  const availableFabricOptions = React.useMemo(() => {
+    const ids = [moldingOneId, isConjunto ? moldingTwoId : ""].filter(Boolean);
+
+    return Array.from(
+      new Set(
+        ids.flatMap((id) => parseCompatibleFabrics(selectedMoldingDetails[id] ?? null)),
+      ),
+    );
+  }, [isConjunto, moldingOneId, moldingTwoId, selectedMoldingDetails]);
+  const allFabricOptions = React.useMemo(() => {
+    const fromTemplates = moldingTemplates.flatMap((row) => {
+      const fromList = parseFabricListFromText(row.fabric);
+
+      if (fromList.length > 0) return fromList;
+
+      return [] as string[];
+    });
+    const fromHistorical = historicalMoldingOptions.flatMap((row) =>
+      parseFabricListFromText(row.fabric),
+    );
+    const fromSelected = Object.values(selectedMoldingDetails).flatMap((detail) => {
+      const compat = parseCompatibleFabrics(detail);
+
+      if (compat.length > 0) return compat;
+
+      return parseFabricListFromText(detail.fabric);
+    });
+    const currentFabric = String(item.fabric ?? "").trim();
+
+    return Array.from(
+      new Set([
+        ...fromTemplates,
+        ...fromHistorical,
+        ...fromSelected,
+        ...(currentFabric ? [currentFabric] : []),
+      ]),
+    ).sort((a, b) => a.localeCompare(b));
+  }, [historicalMoldingOptions, item.fabric, moldingTemplates, selectedMoldingDetails]);
+  const availableMoldingOptions = React.useMemo(() => {
+    const map = new Map<string, MoldingTemplateRow>();
+
+    for (const row of moldingTemplates) {
+      map.set(String(row.id), row);
+    }
+    for (const row of historicalMoldingOptions) {
+      const id = String(row.id ?? "").trim();
+
+      if (!id || map.has(id)) continue;
+      map.set(id, row);
+    }
+
+    for (const detail of Object.values(selectedMoldingDetails)) {
+      const id = String(detail.id ?? "").trim();
+
+      if (!id || map.has(id)) continue;
+      map.set(id, {
+        id,
+        moldingCode: detail.moldingCode,
+        version: detail.version,
+        garmentType: detail.garmentType,
+        garmentSubtype: detail.garmentSubtype,
+        designDetail: detail.designDetail,
+        fabric: detail.fabric,
+        color: detail.color,
+        gender: detail.gender,
+        process: detail.process,
+        estimatedLeadDays: detail.estimatedLeadDays,
+        isActive: false,
+        createdAt: detail.createdAt,
+        createdByName: null,
+      });
+    }
+
+    return Array.from(map.values());
+  }, [historicalMoldingOptions, moldingTemplates, selectedMoldingDetails]);
+
+    React.useEffect(() => {
+      if (!isConjunto) {
+        if (moldingTemplateIdTwo !== null) {
+          setMoldingTemplateIdTwo(null);
+        }
+
+        return;
+      }
+
+      const first = String(moldingTemplateId ?? "").trim();
+      const second = String(moldingTemplateIdTwo ?? "").trim();
+
+      if (first && second !== first) {
+        setMoldingTemplateIdTwo(first);
+      }
+    }, [isConjunto, moldingTemplateId, moldingTemplateIdTwo]);
+  const decorationFromMolding = React.useMemo(() => {
+    const ids = [moldingOneId, isConjunto ? moldingTwoId : ""].filter(Boolean);
+
+    if (ids.length === 0) return { screenPrint: false, embroidery: false };
+
+    return {
+      screenPrint: ids.some(
+        (id) => Boolean(selectedMoldingDetails[id]?.screenPrint),
+      ),
+      embroidery: ids.some(
+        (id) => Boolean(selectedMoldingDetails[id]?.embroidery),
+      ),
+    };
+  }, [isConjunto, moldingOneId, moldingTwoId, selectedMoldingDetails]);
+
+  React.useEffect(() => {
+    if (!hasRequiredMolding) return;
+
+    setItem((prev) => {
+      if (
+        Boolean(prev.screenPrint) === decorationFromMolding.screenPrint &&
+        Boolean(prev.embroidery) === decorationFromMolding.embroidery
+      ) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        screenPrint: decorationFromMolding.screenPrint,
+        embroidery: decorationFromMolding.embroidery,
+      };
+    });
+  }, [decorationFromMolding, hasRequiredMolding, setItem]);
 
   React.useEffect(() => {
     if (!selectedPrice) return;
@@ -763,6 +1112,20 @@ export function OrderItemEditPage(props: {
       return;
     }
 
+    if (!isRestricted && !moldingOneId) {
+      setError("Selecciona la moldería principal (Prenda 1).");
+
+      return;
+    }
+
+    if (!isRestricted && isConjunto && garmentProcessMode !== "SUBLIMACION") {
+      setError(
+        "Cuando el conjunto no es sublimado debes crear otro diseño. El conjunto con una sola moldería aplica solo para proceso de prenda: Sublimación.",
+      );
+
+      return;
+    }
+
     setIsSaving(true);
     try {
       let imageUrl = item.imageUrl ?? null;
@@ -815,7 +1178,15 @@ export function OrderItemEditPage(props: {
         clothingImageTwoUrl,
         logoImageUrl,
         gender: item.gender ?? null,
+        designType: (item.designType ?? item.process ?? "PRODUCCION") as any,
+        productionTechnique: (item.productionTechnique ?? "SUBLIMACION") as any,
         process: item.process ?? null,
+        designerId: item.designerId ?? null,
+        discipline: item.discipline ?? null,
+        hasCordon: Boolean(item.hasCordon),
+        cordonColor: item.cordonColor ?? null,
+        category: item.category ?? null,
+        labelBrand: item.labelBrand ?? null,
         neckType: item.neckType ?? null,
         sleeve: item.sleeve ?? null,
         color: item.color ?? null,
@@ -831,7 +1202,15 @@ export function OrderItemEditPage(props: {
       const payload: any =
         orderKind === "COMPLETACION"
           ? { orderId, quantity, packaging }
-          : { ...base, packaging, socks, materials };
+          : {
+              ...base,
+              packaging,
+              socks,
+              materials,
+              positions,
+              teams,
+              specialRequirements,
+            };
 
       const res = await fetch(`/api/orders/items/${itemId}`, {
         method: "PUT",
@@ -841,11 +1220,48 @@ export function OrderItemEditPage(props: {
 
       if (!res.ok) throw new Error(await res.text());
 
-      if (moldingTemplateId && moldingTemplateId !== initialMoldingTemplateId) {
+      const sizeList = Array.from(
+        new Set(
+          (packaging ?? [])
+            .map((row) => String(row?.size ?? "").trim().toUpperCase())
+            .filter(Boolean),
+        ),
+      );
+      const moldingAssignments = [
+        {
+          currentId: moldingTemplateId,
+          combinationOrder: 1,
+          imageSlot: 1,
+          imageUrl: clothingImageOneUrl,
+        },
+        {
+          currentId: isConjunto ? moldingTemplateId : null,
+          combinationOrder: 2,
+          imageSlot: 2,
+          imageUrl: clothingImageTwoUrl,
+        },
+      ].filter((entry) => String(entry.currentId ?? "").trim());
+
+      if (!isRestricted) {
+        const clearRes = await fetch(`/api/molding/order-items/${itemId}/moldings`, {
+          method: "DELETE",
+        });
+
+        if (!clearRes.ok) {
+          throw new Error(await clearRes.text());
+        }
+      }
+
+      for (const entry of moldingAssignments) {
         const assignRes = await fetch(`/api/molding/order-items/${itemId}/moldings`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ moldingTemplateId }),
+          body: JSON.stringify({
+            moldingTemplateId: entry.currentId,
+            combinationOrder: entry.combinationOrder,
+            imageSlot: entry.imageSlot,
+            imageUrl: entry.imageUrl,
+          }),
         });
 
         if (!assignRes.ok) {
@@ -853,28 +1269,21 @@ export function OrderItemEditPage(props: {
         }
 
         const createdMolding = (await assignRes.json()) as { id?: string };
-        const sizeList = Array.from(
-          new Set(
-            (packaging ?? [])
-              .map((row) => String(row?.size ?? "").trim().toUpperCase())
-              .filter(Boolean),
-          ),
-        );
 
-        if (createdMolding.id) {
-          const calcRes = await fetch(
-            `/api/molding/order-items/${itemId}/moldings/${createdMolding.id}/insumos`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ sizes: sizeList }),
-            },
-          );
-
-          if (!calcRes.ok) {
-            throw new Error(await calcRes.text());
-          }
-        }
+        // TODO: insumos auto-calculation disabled until rules are defined
+        // if (createdMolding.id) {
+        //   const calcRes = await fetch(
+        //     `/api/molding/order-items/${itemId}/moldings/${createdMolding.id}/insumos`,
+        //     {
+        //       method: "POST",
+        //       headers: { "Content-Type": "application/json" },
+        //       body: JSON.stringify({ sizes: sizeList }),
+        //     },
+        //   );
+        //   if (!calcRes.ok) {
+        //     throw new Error(await calcRes.text());
+        //   }
+        // }
       }
 
       toast.success("Diseño actualizado");
@@ -962,50 +1371,128 @@ export function OrderItemEditPage(props: {
 
       <Card>
         <CardHeader>
-          <div className="font-semibold">Molderia</div>
-        </CardHeader>
-        <CardBody className="space-y-2">
-          <Select
-            isDisabled={
-              uiDisabled || loadingMoldings || isRestricted || isApplyingMolding
-            }
-            label="Plantilla de molderia (opcional)"
-            selectedKeys={moldingTemplateId ? [moldingTemplateId] : []}
-            onSelectionChange={(keys: any) => {
-              const k = Array.from(keys as any)[0];
-
-              setMoldingTemplateId(k ? String(k) : null);
-            }}
-          >
-            {moldingTemplates.map((t) => (
-              <SelectItem key={t.id}>
-                {t.moldingCode}
-                {t.garmentType ? ` — ${t.garmentType}` : ""}
-                {t.color ? ` / ${t.color}` : ""}
-              </SelectItem>
-            ))}
-          </Select>
-          {isApplyingMolding ? (
-            <div className="text-xs text-primary animate-pulse">
-              Aplicando datos de molderia...
-            </div>
-          ) : null}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Detalles del diseño</div>
+          <div className="font-semibold">Diseño (Paso 1)</div>
         </CardHeader>
         <CardBody>
           <DesignSection
+            afterGenderContent={
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,220px)_1fr] md:items-start">
+                  <Select
+                    isDisabled={uiDisabled || isRestricted || isApplyingMolding}
+                    label="Configuración"
+                    selectedKeys={[isConjunto ? "CONJUNTO" : "SIMPLE"]}
+                    onSelectionChange={(keys: any) => {
+                      const k = String(Array.from(keys as any)[0] ?? "SIMPLE");
+                      const nextIsConjunto = k === "CONJUNTO";
+
+                      setIsConjunto(nextIsConjunto);
+                      if (!nextIsConjunto) {
+                        setMoldingTemplateIdTwo(null);
+                      } else {
+                        setGarmentProcessMode("SUBLIMACION");
+                      }
+                    }}
+                  >
+                    <SelectItem key="SIMPLE">Una prenda</SelectItem>
+                    <SelectItem key="CONJUNTO">Conjunto (2 prendas)</SelectItem>
+                  </Select>
+
+                  <div className="text-xs text-default-500 rounded-medium border border-default-200 bg-default-50 px-3 py-2">
+                    En conjunto se usa la misma moldería para las 2 prendas; si no es sublimación, crea otro diseño.
+                  </div>
+                </div>
+
+                {isConjunto ? (
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <Select
+                      isDisabled={uiDisabled || isRestricted || isApplyingMolding}
+                      label="Imagen prenda 1 corresponde a"
+                      selectedKeys={[imageOneRole]}
+                      onSelectionChange={(keys: any) => {
+                        const k = String(Array.from(keys as any)[0] ?? "JUGADOR");
+
+                        setImageOneRole(k === "ARQUERO" ? "ARQUERO" : "JUGADOR");
+                      }}
+                    >
+                      <SelectItem key="JUGADOR">Jugador</SelectItem>
+                      <SelectItem key="ARQUERO">Arquero</SelectItem>
+                    </Select>
+                    <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2 text-xs text-default-600">
+                      La imagen de prenda 2 quedará como {imageOneRole === "JUGADOR" ? "Arquero" : "Jugador"} automáticamente.
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="rounded-medium border border-default-200 p-3 space-y-3">
+                    <div className="text-sm font-semibold">Prenda 1</div>
+                    <Select
+                      isDisabled={
+                        uiDisabled || loadingMoldings || isRestricted || isApplyingMolding
+                      }
+                      label="Moldería"
+                      selectedKeys={moldingTemplateId ? [moldingTemplateId] : []}
+                      onSelectionChange={(keys: any) => {
+                        const k = Array.from(keys as any)[0];
+
+                        setMoldingTemplateId(k ? String(k) : null);
+                        if (isConjunto) {
+                          setMoldingTemplateIdTwo(k ? String(k) : null);
+                        }
+                      }}
+                    >
+                      {availableMoldingOptions.map((t) => (
+                        <SelectItem key={t.id}>
+                          {t.moldingCode}
+                          {t.garmentType ? ` — ${t.garmentType}` : ""}
+                          {t.color ? ` / ${t.color}` : ""}
+                          {t.isActive === false ? " / INACTIVA" : ""}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </div>
+
+                  {isConjunto ? (
+                    <div className="rounded-medium border border-default-200 p-3 space-y-3">
+                      <div className="text-sm font-semibold">Prenda 2</div>
+                      <Input
+                        isDisabled
+                        label="Moldería"
+                        value={
+                          availableMoldingOptions.find((t) => t.id === moldingTemplateId)
+                            ?.moldingCode ??
+                          "Se usará la misma moldería de Prenda 1"
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                {isApplyingMolding ? (
+                  <div className="text-xs text-primary animate-pulse">
+                    Aplicando datos de moldería...
+                  </div>
+                ) : null}
+              </div>
+            }
             canEditUnitPrice={canEditUnitPrice}
             computedTotal={computedTotal}
+            fabricOptions={
+              availableFabricOptions.length > 0
+                ? availableFabricOptions
+                : allFabricOptions
+            }
             imageOneFile={imageOneFile}
             imageTwoFile={imageTwoFile}
             isCreateBlocked={false}
+            imageRoleOne={imageOneRole}
+            imageRoleTwo={imageOneRole === "JUGADOR" ? "ARQUERO" : "JUGADOR"}
+            lockDecorationByMolding={hasRequiredMolding}
             logoFile={logoFile}
             orderKind={orderKind}
+            onGarmentProcessModeChange={setGarmentProcessMode}
+            showAdvancedFields={hasRequiredMolding}
             value={item}
             onChange={setItem}
             onSelectImageOneFile={setImageOneFile}
@@ -1017,9 +1504,14 @@ export function OrderItemEditPage(props: {
 
       <Card>
         <CardHeader>
-          <div className="font-semibold">Empaque</div>
+          <div className="font-semibold">Curvas y lista de empaque</div>
         </CardHeader>
-        <CardBody>
+        <CardBody className="space-y-3">
+          {isConjunto ? (
+            <div className="rounded-medium border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700">
+              El empaque se sigue editando en una sola lista, pero ahora se conserva junto con las 2 molderías del conjunto.
+            </div>
+          ) : null}
           <PackagingSection
             disabled={uiDisabled}
             garmentType={String(item.garmentType ?? "JUGADOR")}
@@ -1029,6 +1521,127 @@ export function OrderItemEditPage(props: {
             onError={(m) => setError(m)}
             onModeChange={setPackagingMode}
             onPackagingChange={setPackaging}
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Clasificación técnica</div>
+        </CardHeader>
+        <CardBody className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <Select
+            isDisabled={uiDisabled}
+            label="Design type"
+            selectedKeys={item.designType ? [String(item.designType)] : ["PRODUCCION"]}
+            onSelectionChange={(keys: any) => {
+              const k = String(Array.from(keys as any)[0] ?? "PRODUCCION");
+
+              setItem((s) => ({ ...s, designType: k as any, process: k }));
+            }}
+          >
+            <SelectItem key="PRODUCCION">PRODUCCION</SelectItem>
+            <SelectItem key="COMPRA">COMPRA</SelectItem>
+            <SelectItem key="BODEGA">BODEGA</SelectItem>
+          </Select>
+
+          <Select
+            isDisabled={uiDisabled}
+            label="Production technique"
+            selectedKeys={
+              item.productionTechnique
+                ? [String(item.productionTechnique)]
+                : ["SUBLIMACION"]
+            }
+            onSelectionChange={(keys: any) => {
+              const k = String(Array.from(keys as any)[0] ?? "SUBLIMACION");
+
+              setItem((s) => ({ ...s, productionTechnique: k as any }));
+            }}
+          >
+            <SelectItem key="SUBLIMACION">SUBLIMACION</SelectItem>
+            <SelectItem key="FONDO_ENTERO">FONDO_ENTERO</SelectItem>
+          </Select>
+
+          <Select
+            isDisabled={uiDisabled}
+            label="Designer"
+            selectedKeys={item.designerId ? [String(item.designerId)] : []}
+            onSelectionChange={(keys: any) => {
+              const k = Array.from(keys as any)[0];
+
+              setItem((s) => ({ ...s, designerId: k ? String(k) : null }));
+            }}
+          >
+            {designers
+              .filter((d) => d.isActive !== false)
+              .map((designer) => (
+                <SelectItem key={designer.id}>{designer.name}</SelectItem>
+              ))}
+          </Select>
+
+          <Input
+            isDisabled={uiDisabled}
+            label="Discipline"
+            value={String(item.discipline ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, discipline: v || null }))
+            }
+          />
+
+          <Input
+            isDisabled={uiDisabled}
+            label="Category"
+            value={String(item.category ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, category: v || null }))
+            }
+          />
+
+          <Input
+            isDisabled={uiDisabled}
+            label="Label brand"
+            value={String(item.labelBrand ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, labelBrand: v || null }))
+            }
+          />
+
+          <Switch
+            isDisabled={uiDisabled}
+            isSelected={Boolean(item.hasCordon)}
+            onValueChange={(v: boolean) =>
+              setItem((s) => ({ ...s, hasCordon: v }))
+            }
+          >
+            Has cordon
+          </Switch>
+
+          <Input
+            isDisabled={uiDisabled || !Boolean(item.hasCordon)}
+            label="Cordon color"
+            value={String(item.cordonColor ?? "")}
+            onValueChange={(v: string) =>
+              setItem((s) => ({ ...s, cordonColor: v || null }))
+            }
+          />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="font-semibold">Estructura del diseño</div>
+        </CardHeader>
+        <CardBody>
+          <OrderItemStructuresSection
+            disabled={uiDisabled}
+            positions={positions}
+            specialRequirements={specialRequirements}
+            teams={teams}
+            onTeamImageFileSelect={handleTeamImageFileSelect}
+            onPositionsChange={setPositions}
+            onSpecialRequirementsChange={setSpecialRequirements}
+            onTeamsChange={setTeams}
           />
         </CardBody>
       </Card>
@@ -1060,6 +1673,12 @@ export function OrderItemEditPage(props: {
             <div className="font-semibold">Materiales</div>
           </CardHeader>
           <CardBody>
+            <div className="mb-3 rounded-medium border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700">
+              Reglas informativas: tela {item.fabric ? `(${item.fabric})` : "(pendiente)"}, cantidad {Math.max(1, Math.floor(asNumber(item.quantity)))},
+              medias {item.requiresSocks ? "sí" : "no"}, color {item.color ? item.color : "no aplica / pendiente"},
+              estampado {item.screenPrint ? "sí" : "no"}, bordado {item.embroidery ? "sí" : "no"}.
+              Verifica tallas en curvas y detalle de medias cuando aplique.
+            </div>
             <MaterialsSection
               disabled={uiDisabled}
               inventoryItems={inventoryItems}

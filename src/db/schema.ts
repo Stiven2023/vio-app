@@ -52,6 +52,14 @@ export {
   OrderStatusEnum,
   OrderItemStatus,
   OrderItemStatusEnum,
+  DesignType,
+  DesignTypeEnum,
+  ProductionTechnique,
+  ProductionTechniqueEnum,
+  Position,
+  PositionEnum,
+  SockLength,
+  SockLengthEnum,
   PaymentMethod,
   PaymentMethodEnum,
   PaymentStatus,
@@ -119,6 +127,10 @@ export {
   orderKindValues,
   orderStatusValues,
   orderItemStatusValues,
+  designTypeValues,
+  productionTechniqueValues,
+  positionValues,
+  sockLengthValues,
   paymentMethodValues,
   paymentStatusValues,
   inventoryLocationValues,
@@ -141,6 +153,10 @@ export {
   mesRepoReasonValues,
   pettyCashTransactionTypeValues,
   pettyCashFundStatusValues,
+  mesItemTagValues,
+  mesShipmentAreaValues,
+  mesTransportTypeValues,
+  mesEnvioStatusValues,
 } from "./enums";
 
 import {
@@ -183,6 +199,10 @@ import {
   orderKindValues,
   orderStatusValues,
   orderItemStatusValues,
+  designTypeValues,
+  productionTechniqueValues,
+  positionValues,
+  sockLengthValues,
   paymentMethodValues,
   paymentStatusValues,
   inventoryLocationValues,
@@ -205,6 +225,10 @@ import {
   mesRepoReasonValues,
   pettyCashTransactionTypeValues,
   pettyCashFundStatusValues,
+  mesItemTagValues,
+  mesShipmentAreaValues,
+  mesTransportTypeValues,
+  mesEnvioStatusValues,
 } from "./enums";
 
 /* ========================= */
@@ -274,6 +298,13 @@ export const orderItemStatusPgEnum = pgEnum(
   "order_item_status",
   orderItemStatusValues,
 );
+export const designTypePgEnum = pgEnum("design_type", designTypeValues);
+export const productionTechniquePgEnum = pgEnum(
+  "production_technique",
+  productionTechniqueValues,
+);
+export const positionPgEnum = pgEnum("position", positionValues);
+export const sockLengthPgEnum = pgEnum("sock_length", sockLengthValues);
 export const paymentMethodPgEnum = pgEnum(
   "payment_method",
   paymentMethodValues,
@@ -356,6 +387,10 @@ export const pettyCashFundStatusPgEnum = pgEnum(
   "petty_cash_fund_status",
   pettyCashFundStatusValues,
 );
+export const mesItemTagPgEnum = pgEnum("mes_item_tag", mesItemTagValues);
+export const mesShipmentAreaPgEnum = pgEnum("mes_shipment_area", mesShipmentAreaValues);
+export const mesTransportTypePgEnum = pgEnum("mes_transport_type", mesTransportTypeValues);
+export const mesEnvioStatusPgEnum = pgEnum("mes_envio_status", mesEnvioStatusValues);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -382,6 +417,10 @@ export const orderTypeEnum = orderTypePgEnum;
 export const orderKindEnum = orderKindPgEnum;
 export const orderStatusEnum = orderStatusPgEnum;
 export const orderItemStatusEnum = orderItemStatusPgEnum;
+export const designTypeEnum = designTypePgEnum;
+export const productionTechniqueEnum = productionTechniquePgEnum;
+export const positionEnum = positionPgEnum;
+export const sockLengthEnum = sockLengthPgEnum;
 export const paymentMethodEnum = paymentMethodPgEnum;
 export const paymentStatusEnum = paymentStatusPgEnum;
 export const inventoryLocationEnum = inventoryLocationPgEnum;
@@ -404,6 +443,10 @@ export const mesRepoItemTypeEnum = mesRepoItemTypePgEnum;
 export const mesRepoReasonEnum = mesRepoReasonPgEnum;
 export const pettyCashTransactionTypeEnum = pettyCashTransactionTypePgEnum;
 export const pettyCashFundStatusEnum = pettyCashFundStatusPgEnum;
+export const mesItemTagEnum = mesItemTagPgEnum;
+export const mesShipmentAreaEnum = mesShipmentAreaPgEnum;
+export const mesTransportTypeEnum = mesTransportTypePgEnum;
+export const mesEnvioStatusEnum = mesEnvioStatusPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -808,6 +851,7 @@ export const orders = pgTable("orders", {
   kind: orderKindEnum("kind").default("NUEVO"),
   sourceOrderId: uuid("source_order_id"),
   status: orderStatusEnum("status").notNull(),
+  deliveryDate: date("delivery_date"),
   total: numeric("total", { precision: 14, scale: 2 }).default("0"),
   ivaEnabled: boolean("iva_enabled").default(false),
   discount: numeric("discount", { precision: 14, scale: 2 }).default("0"),
@@ -956,7 +1000,15 @@ export const orderItems = pgTable("order_items", {
   tag: boolean("tag").default(false),
   flag: boolean("flag").default(false),
   gender: varchar("gender", { length: 50 }),
+  designType: designTypeEnum("design_type"),
+  productionTechnique: productionTechniqueEnum("production_technique"),
   process: varchar("process", { length: 100 }),
+  designerId: uuid("designer_id").references(() => employees.id),
+  discipline: varchar("discipline", { length: 100 }),
+  hasCordon: boolean("has_cordon").default(false),
+  cordonColor: varchar("cordon_color", { length: 80 }),
+  category: varchar("category", { length: 80 }),
+  labelBrand: varchar("label_brand", { length: 100 }),
   estimatedLeadDays: integer("estimated_lead_days"),
   neckType: varchar("neck_type", { length: 100 }),
   sleeve: varchar("sleeve", { length: 100 }),
@@ -973,6 +1025,34 @@ export const orderItems = pgTable("order_items", {
   designDeadline: date("design_deadline"),
 });
 
+export const orderItemPositions = pgTable("order_item_positions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id")
+    .notNull()
+    .references(() => orderItems.id, { onDelete: "cascade" }),
+  position: positionEnum("position").notNull(),
+  quantity: integer("quantity").notNull().default(0),
+  color: varchar("color", { length: 80 }),
+  sortOrder: integer("sort_order").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const orderItemTeams = pgTable("order_item_teams", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderItemId: uuid("order_item_id")
+    .notNull()
+    .references(() => orderItems.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 150 }).notNull(),
+  playerColor: varchar("player_color", { length: 80 }),
+  goalkeeperColor: varchar("goalkeeper_color", { length: 80 }),
+  socksColor: varchar("socks_color", { length: 80 }),
+  playerImageUrl: text("player_image_url"),
+  goalkeeperImageUrl: text("goalkeeper_image_url"),
+  fullSetImageUrl: text("full_set_image_url"),
+  sortOrder: integer("sort_order").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
 export const orderItemAdditions = pgTable("order_item_additions", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderItemId: uuid("order_item_id")
@@ -987,12 +1067,17 @@ export const orderItemAdditions = pgTable("order_item_additions", {
   unitPrice: numeric("unit_price", { precision: 14, scale: 2 })
     .notNull()
     .default("0"),
+  position: positionEnum("position"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const orderItemPackaging = pgTable("order_item_packaging", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  teamId: uuid("team_id").references(() => orderItemTeams.id, {
+    onDelete: "set null",
+  }),
+  position: positionEnum("position"),
   mode: varchar("mode", { length: 20 }).default("AGRUPADO"),
   size: varchar("size", { length: 50 }).default(""),
   quantity: integer("quantity"),
@@ -1003,11 +1088,37 @@ export const orderItemPackaging = pgTable("order_item_packaging", {
 export const orderItemSocks = pgTable("order_item_socks", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderItemId: uuid("order_item_id").references(() => orderItems.id),
+  teamId: uuid("team_id").references(() => orderItemTeams.id, {
+    onDelete: "set null",
+  }),
+  position: positionEnum("position"),
+  sockLength: sockLengthEnum("sock_length"),
+  color: varchar("color", { length: 80 }),
   size: varchar("size", { length: 50 }).default(""),
   quantity: integer("quantity"),
   description: text("description"),
   imageUrl: text("image_url"),
 });
+
+export const orderItemSpecialRequirements = pgTable(
+  "order_item_special_requirements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    piece: varchar("piece", { length: 30 }),
+    fabric: varchar("fabric", { length: 100 }),
+    fabricColor: varchar("fabric_color", { length: 80 }),
+    hasReflectiveTape: boolean("has_reflective_tape").default(false),
+    reflectiveTapeLocation: varchar("reflective_tape_location", {
+      length: 150,
+    }),
+    hasSideStripes: boolean("has_side_stripes").default(false),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+);
 
 export const orderItemMaterials = pgTable("order_item_materials", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -2096,6 +2207,75 @@ export const mesTicketAssignments = pgTable("mes_ticket_assignments", {
 
 /* =========================
    ESTADO JURÍDICO ACTUAL DE CLIENTES
+  /* =========================
+     MES — TAGS POR DISEÑO
+  ========================= */
+
+  export const mesItemTags = pgTable("mes_item_tags", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    tag: mesItemTagEnum("tag").notNull(),
+    notes: text("notes"),
+    setBy: uuid("set_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  });
+
+  /* =========================
+     MES — ENVÍOS ENTRE ÁREAS
+  ========================= */
+
+  export const mesEnvios = pgTable("mes_envios", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    origenArea: mesShipmentAreaEnum("origen_area").notNull(),
+    origenNombre: varchar("origen_nombre", { length: 150 }),
+    destinoArea: mesShipmentAreaEnum("destino_area").notNull(),
+    destinoNombre: varchar("destino_nombre", { length: 150 }),
+    transporteTipo: mesTransportTypeEnum("transporte_tipo").notNull(),
+    transportistaEmpleadoId: uuid("transportista_empleado_id").references(
+      () => employees.id,
+    ),
+    transportistaNombre: varchar("transportista_nombre", { length: 150 }),
+    empresaTercero: varchar("empresa_tercero", { length: 150 }),
+    guiaNumero: varchar("guia_numero", { length: 80 }),
+    placa: varchar("placa", { length: 20 }),
+    requiereSegundaParada: boolean("requiere_segunda_parada")
+      .notNull()
+      .default(false),
+    segundaParadaTipo: varchar("segunda_parada_tipo", { length: 80 }),
+    segundaParadaDestino: varchar("segunda_parada_destino", { length: 200 }),
+    observaciones: text("observaciones"),
+    evidenciaUrl: text("evidencia_url"),
+    status: mesEnvioStatusEnum("status").notNull().default("CREADO"),
+    salidaAt: timestamp("salida_at", { withTimezone: true }),
+    llegadaAt: timestamp("llegada_at", { withTimezone: true }),
+    retornoAt: timestamp("retorno_at", { withTimezone: true }),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  });
+
+  export const mesEnvioItems = pgTable("mes_envio_items", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    envioId: uuid("envio_id")
+      .notNull()
+      .references(() => mesEnvios.id, { onDelete: "cascade" }),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(0),
+    notes: text("notes"),
+  });
+
+  /* =========================
+     ESTADO JURÍDICO ACTUAL DE CLIENTES
 ========================= */
 
 export const clientLegalStatus = pgTable("client_legal_status", {

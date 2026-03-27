@@ -11,6 +11,7 @@ type MontajeExcelDownloadProps = {
   orderCode: string;
   designName: string;
   tallas: TallaRow[];
+  label?: string;
 };
 
 /**
@@ -21,6 +22,7 @@ export function MontajeExcelDownload({
   orderCode,
   designName,
   tallas,
+  label = "Descargar Excel",
 }: MontajeExcelDownloadProps) {
   const handleDownload = () => {
     const headers = ["Número", "Nombre del diseño", "Talla", "Cantidad"];
@@ -42,7 +44,12 @@ export function MontajeExcelDownload({
     XLSX.utils.book_append_sheet(workbook, worksheet, "Montaje");
 
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const filename = `Montaje_${orderCode}_${today}.xlsx`;
+    const safeDesign = String(designName ?? "PEDIDO")
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_\-]/g, "")
+      .slice(0, 40);
+    const filename = `Montaje_${orderCode}_${safeDesign || "PEDIDO"}_${today}.xlsx`;
 
     XLSX.writeFile(workbook, filename);
   };
@@ -58,7 +65,7 @@ export function MontajeExcelDownload({
       variant="flat"
       onPress={handleDownload}
     >
-      Descargar Excel
+      {label}
     </Button>
   );
 }

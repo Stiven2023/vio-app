@@ -58,6 +58,12 @@ import { MesProductionQueueTab } from "@/app/mes/_components/mes-production-queu
 import { MontajeExcelDownload } from "@/app/mes/_components/mes-montaje-excel";
 import { PlotterRepoWizard } from "@/app/mes/_components/mes-plotter-repo-wizard";
 import { DespachoLegalStatusAlert } from "@/app/mes/_components/mes-despacho-legal";
+import {
+  MesEnvioModal,
+  type EnvioArea,
+} from "@/app/mes/_components/mes-envio-modal";
+import { MesEnvioStatusCard } from "@/app/mes/_components/mes-envio-status-card";
+import { MesItemTagsPanel } from "@/app/mes/_components/mes-item-tags-panel";
 
 export default function MesPageClient() {
   const [data, setData] = useState<PedidoGroup[]>([]);
@@ -68,9 +74,17 @@ export default function MesPageClient() {
   const [selectedMontajeTicket, setSelectedMontajeTicket] = useState<{
     pedido: string;
     detalle: string;
+    defaultDesignName?: string;
     totalUnidades: number;
     ticketMontaje: string;
+    orderItemId?: string;
     tallas: TallaRow[];
+    designDetails?: Array<{
+      diseno: number;
+      detalle: string;
+      orderItemId?: string;
+      tallas: TallaRow[];
+    }>;
     clientId?: string | null;
   } | null>(null);
   const [montajeAssignments, setMontajeAssignments] = useState<
@@ -81,6 +95,13 @@ export default function MesPageClient() {
     expected: number;
     produced: number;
   }>({ expected: 0, produced: 0 });
+  const [envioModalOpen, setEnvioModalOpen] = useState(false);
+  const [envioConfig, setEnvioConfig] = useState<{
+    origenArea: EnvioArea;
+    destinoArea: EnvioArea;
+    origenLabel: string;
+    destinoLabel: string;
+  } | null>(null);
 
   const sessionUser = useSessionStore((state) => state.user);
   const currentUserId = String(sessionUser?.id ?? "").trim();
@@ -90,6 +111,14 @@ export default function MesPageClient() {
     currentUserRole === "ADMINISTRADOR";
   const activeProcessConfig =
     PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
+  const usesTicketFlow = [
+    "montaje",
+    "plotter",
+    "sublimacion",
+    "corte",
+    "integracion",
+  ].includes(activeProceso);
+  const usesTurnGate = usesTicketFlow && activeProceso !== "corte";
 
   const mesOrderStatuses = useMemo(() => {
     if (activeProceso === "programacion") return ["PROGRAMACION"];
@@ -107,7 +136,6 @@ export default function MesPageClient() {
         includeActualizacion: activeProceso !== "programacion",
       },
     );
-
     if (activeProceso !== "programacion") {
       return pedidos;
     }
@@ -192,9 +220,12 @@ export default function MesPageClient() {
         setSelectedMontajeTicket({
           pedido: row.pedido,
           detalle: row.detalle,
+          defaultDesignName: row.defaultDesignName,
           totalUnidades: row.totalUnidades,
           ticketMontaje: row.ticket,
+          orderItemId: row.orderItemId,
           tallas: row.tallas,
+          designDetails: row.designDetails,
         });
         toast.success("Pedido tomado en montaje");
       } catch (error) {
@@ -264,6 +295,69 @@ export default function MesPageClient() {
     );
   };
 
+  const selectedEnvioItems = useMemo(() => {
+    if (!selectedMontajeTicket) return [];
+
+    const details =
+      selectedMontajeTicket.designDetails?.length
+        ? selectedMontajeTicket.designDetails
+        : [
+            {
+              diseno: 0,
+              detalle: selectedMontajeTicket.detalle,
+              orderItemId: selectedMontajeTicket.orderItemId,
+              tallas: selectedMontajeTicket.tallas,
+            },
+          ];
+
+    return details
+      .filter((detail) => String(detail.orderItemId ?? "").trim())
+      .map((detail) => ({
+        orderItemId: String(detail.orderItemId),
+        name:
+          detail.diseno > 0
+            ? `Diseno ${detail.diseno} - ${detail.detalle}`
+            : detail.detalle,
+        quantity: (detail.tallas ?? []).reduce((sum, t) => sum + t.cantidad, 0),
+      }));
+  }, [selectedMontajeTicket]);
+
+  const openEnvioByProcess = useCallback(() => {
+    if (!selectedMontajeTicket) return;
+
+    if (activeProceso === "integracion") {
+      setEnvioConfig({
+        origenArea: "INTEGRACION",
+        destinoArea: "CONFECCION_EXTERNA",
+        origenLabel: "Integracion / Viomar",
+        destinoLabel: "Confeccionista",
+      });
+      setEnvioModalOpen(true);
+      return;
+    }
+
+    if (activeProceso === "confeccion") {
+      setEnvioConfig({
+        origenArea: "CONFECCION_EXTERNA",
+        destinoArea: "VIOMAR",
+        origenLabel: "Confeccionista",
+        destinoLabel: "Viomar",
+      });
+      setEnvioModalOpen(true);
+      return;
+    }
+
+    if (activeProceso === "despacho") {
+      setEnvioConfig({
+        origenArea: "DESPACHO",
+        destinoArea: "DESPACHO",
+        origenLabel: "Despacho Viomar",
+        destinoLabel: "Cliente final",
+      });
+      setEnvioModalOpen(true);
+    }
+  }, [activeProceso, selectedMontajeTicket]);
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
       <header className="space-y-1">
@@ -318,7 +412,7 @@ export default function MesPageClient() {
           onSelectionChange={(k) => setActiveProceso(k as string)}
         >
           {[
-            ...(isLider ? [{ key: "pre-proceso", label: "Pre-proceso" }] : []),
+            ...(isLider ? [{ key: "workflow", label: "Workflow" }] : []),
             { key: "programacion", label: "Scheduling" },
             { key: "montaje", label: "Montaje" },
             { key: "plotter", label: "Plotter" },
@@ -333,7 +427,7 @@ export default function MesPageClient() {
               key={tab.key}
               title={
                 <span className="text-xs px-1">
-                  {tab.key !== "programacion" && tab.key !== "pre-proceso" && (
+                  {tab.key !== "programacion" && tab.key !== "workflow" && (
                     <span className="mr-1 text-[9px] font-mono text-default-400">
                       [
                       {PROCESO_PREFIX[tab.key] ??
@@ -351,7 +445,7 @@ export default function MesPageClient() {
 
       <Divider className="opacity-60" />
 
-      {activeProceso === "pre-proceso" ? (
+      {activeProceso === "workflow" ? (
         <MesProductionQueueTab />
       ) : activeProceso === "programacion" ? (
         <section className="rounded-medium border border-default-200 bg-content1 p-4">
@@ -453,7 +547,7 @@ export default function MesPageClient() {
         </section>
       ) : (
         <section className="space-y-4 rounded-medium border border-default-200 bg-content1 p-4">
-          {nextProcessTurn ? (
+          {usesTurnGate && nextProcessTurn ? (
             <Card className="border border-divider" radius="sm" shadow="none">
               <CardBody className="py-3 px-4">
                 <div className="flex flex-wrap items-center gap-2">
@@ -474,6 +568,14 @@ export default function MesPageClient() {
             </Card>
           ) : null}
 
+          {!usesTicketFlow ? (
+            <Card className="border border-default-200" radius="sm" shadow="none">
+              <CardBody className="py-2 px-3 text-xs text-default-600">
+                Seguimiento sin ticket: desde Confección en adelante se registra por pedido y avance del área.
+              </CardBody>
+            </Card>
+          ) : null}
+
           {processQueue.length === 0 ? (
             <Card
               className="border border-dashed border-divider"
@@ -483,7 +585,7 @@ export default function MesPageClient() {
               <CardBody className="py-10 text-center text-default-400">
                 <MdError className="mx-auto mb-2 opacity-40" size={32} />
                 <p className="text-sm">
-                  No {activeProcessConfig.label.toLowerCase()} tickets to show
+                  No hay registros para {activeProcessConfig.label.toLowerCase()}
                 </p>
               </CardBody>
             </Card>
@@ -494,11 +596,11 @@ export default function MesPageClient() {
                 aria-label={`Cola de ${activeProcessConfig.label.toLowerCase()}`}
               >
                 <TableHeader>
-                  <TableColumn>Turn</TableColumn>
-                  <TableColumn>Ticket</TableColumn>
+                  <TableColumn>{usesTicketFlow ? "Turn" : "Orden"}</TableColumn>
+                  <TableColumn>{usesTicketFlow ? "Ticket" : "Seguimiento"}</TableColumn>
                   <TableColumn>Order</TableColumn>
                   <TableColumn>Client</TableColumn>
-                  <TableColumn>Design</TableColumn>
+                  <TableColumn>Detalle</TableColumn>
                   <TableColumn>Total units</TableColumn>
                   <TableColumn>Pending sizes</TableColumn>
                   <TableColumn>Action</TableColumn>
@@ -525,28 +627,38 @@ export default function MesPageClient() {
                     const canTakePedido =
                       isMontaje &&
                       !assignment &&
-                      nextProcessTurn?.ticket === row.ticket;
+                      (!usesTurnGate || nextProcessTurn?.ticket === row.ticket);
 
                     return (
                       <TableRow
                         key={`${row.pedido}-${row.diseno}-${row.ticket}`}
                       >
-                        <TableCell>{row.turno}</TableCell>
+                        <TableCell>
+                          {usesTicketFlow ? row.turno : row.pedido}
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <Chip color="secondary" size="sm" variant="flat">
-                              {row.ticket}
-                            </Chip>
-                            {nextProcessTurn?.ticket === row.ticket ? (
-                              <Chip color="warning" size="sm" variant="flat">
-                                Next
+                            {usesTicketFlow ? (
+                              <>
+                                <Chip color="secondary" size="sm" variant="flat">
+                                  {row.ticket}
+                                </Chip>
+                                {usesTurnGate && nextProcessTurn?.ticket === row.ticket ? (
+                                  <Chip color="warning" size="sm" variant="flat">
+                                    Next
+                                  </Chip>
+                                ) : null}
+                              </>
+                            ) : (
+                              <Chip color="default" size="sm" variant="flat">
+                                SIN TICKET
                               </Chip>
-                            ) : null}
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>{row.pedido}</TableCell>
                         <TableCell>{row.cliente}</TableCell>
-                        <TableCell>{`Design ${row.diseno}`}</TableCell>
+                        <TableCell>{row.detalle}</TableCell>
                         <TableCell>{row.totalUnidades}</TableCell>
                         <TableCell>
                           <Chip color="warning" size="sm" variant="flat">
@@ -580,9 +692,12 @@ export default function MesPageClient() {
                                   setSelectedMontajeTicket({
                                     pedido: row.pedido,
                                     detalle: row.detalle,
+                                    defaultDesignName: row.defaultDesignName,
                                     totalUnidades: row.totalUnidades,
                                     ticketMontaje: row.ticket,
+                                    orderItemId: row.orderItemId,
                                     tallas: row.tallas,
+                                    designDetails: row.designDetails,
                                   })
                                 }
                               >
@@ -599,7 +714,11 @@ export default function MesPageClient() {
                             <Button
                               color="primary"
                               isDisabled={
-                                nextProcessTurn?.ticket !== row.ticket
+                                usesTicketFlow
+                                  ? usesTurnGate
+                                    ? nextProcessTurn?.ticket !== row.ticket
+                                    : false
+                                  : false
                               }
                               size="sm"
                               variant={
@@ -612,13 +731,18 @@ export default function MesPageClient() {
                                 setSelectedMontajeTicket({
                                   pedido: row.pedido,
                                   detalle: row.detalle,
+                                  defaultDesignName: row.defaultDesignName,
                                   totalUnidades: row.totalUnidades,
                                   ticketMontaje: row.ticket,
+                                  orderItemId: row.orderItemId,
                                   tallas: row.tallas,
+                                  designDetails: row.designDetails,
                                 })
                               }
                             >
-                              Atender ticket
+                              {usesTicketFlow
+                                ? "Atender ticket"
+                                : "Registrar seguimiento"}
                             </Button>
                           )}
                         </TableCell>
@@ -648,21 +772,73 @@ export default function MesPageClient() {
                         Produccion - {activeProcessConfig.label}
                       </div>
                       <div className="text-sm text-default-500">
-                        Ticket {selectedMontajeTicket.ticketMontaje} · Order{" "}
-                        {selectedMontajeTicket.pedido}
+                        {usesTicketFlow
+                          ? `Ticket ${selectedMontajeTicket.ticketMontaje} · Order ${selectedMontajeTicket.pedido}`
+                          : `Seguimiento · Pedido ${selectedMontajeTicket.pedido}`}
                       </div>
                     </div>
                     {activeProceso === "montaje" && (
-                      <MontajeExcelDownload
-                        designName={selectedMontajeTicket.detalle}
-                        orderCode={selectedMontajeTicket.pedido}
-                        tallas={selectedMontajeTicket.tallas}
-                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <MontajeExcelDownload
+                          designName="PEDIDO COMPLETO"
+                          label="Descargar pedido completo"
+                          orderCode={selectedMontajeTicket.pedido}
+                          tallas={selectedMontajeTicket.tallas}
+                        />
+                        {(
+                          selectedMontajeTicket.designDetails?.length
+                            ? selectedMontajeTicket.designDetails
+                            : [
+                                {
+                                  diseno: 0,
+                                  detalle: selectedMontajeTicket.detalle,
+                                  tallas: selectedMontajeTicket.tallas,
+                                },
+                              ]
+                        ).map((design) => (
+                          <MontajeExcelDownload
+                            key={`${selectedMontajeTicket.pedido}-${design.diseno}-${design.detalle}`}
+                            designName={`${
+                              design.diseno > 0 ? `Diseno ${design.diseno} - ` : ""
+                            }${design.detalle}`}
+                            label={`Descargar diseno ${design.diseno > 0 ? design.diseno : ""}`.trim()}
+                            orderCode={selectedMontajeTicket.pedido}
+                            tallas={design.tallas}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               </CardHeader>
               <CardBody className="space-y-3">
+                {activeProceso === "montaje" &&
+                (selectedMontajeTicket.designDetails?.length ?? 0) > 0 ? (
+                  <div className="rounded-medium border border-default-200 p-3">
+                    <p className="mb-2 text-sm font-semibold text-default-700">
+                      Disenos y tallas del pedido
+                    </p>
+                    <div className="space-y-2">
+                      {selectedMontajeTicket.designDetails?.map((design) => (
+                        <div
+                          key={`${selectedMontajeTicket.pedido}-${design.diseno}-${design.detalle}`}
+                          className="rounded-medium border border-default-100 px-3 py-2"
+                        >
+                          <p className="text-xs font-medium text-default-700">
+                            {design.diseno > 0
+                              ? `Diseno ${design.diseno}: ${design.detalle}`
+                              : design.detalle}
+                          </p>
+                          <p className="mt-1 text-xs text-default-500">
+                            {(design.tallas ?? [])
+                              .map((t) => `${t.talla}: ${t.cantidad}`)
+                              .join(" | ") || "Sin tallas"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {activeProceso === "despacho" &&
                   selectedMontajeTicket.clientId && (
                     <DespachoLegalStatusAlert
@@ -672,16 +848,126 @@ export default function MesPageClient() {
                 {activeProceso === "plotter" && (
                   <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2">
                     <p className="text-xs text-warning-700">
-                      Si la cantidad producida no coincide con lo esperado, usa
-                      el botón <strong>Alerta parcial / Reposición</strong> que
-                      aparece al guardar el registro.
+                      Plotter opera por pedido y puede solicitar reposición por
+                      diseño, talla, prenda completa o parcial de pieza.
                     </p>
                   </div>
                 )}
+                {activeProceso === "sublimacion" && (
+                  <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2">
+                    <p className="text-xs text-warning-700">
+                      Sublimación opera por pedido, diseño y talla; también
+                      permite ticket de reposición completo o parcial.
+                    </p>
+                  </div>
+                )}
+                {activeProceso === "corte" && (
+                  <div className="rounded-medium border border-primary-200 bg-primary-50 px-3 py-2">
+                    <p className="text-xs text-primary-700">
+                      Corte manual (picada) trabaja por diseño y puede avanzar
+                      en paralelo con montaje sin bloqueo por turno.
+                    </p>
+                  </div>
+                )}
+                {activeProceso === "integracion" && (
+                  <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2">
+                    <p className="text-xs text-warning-700">
+                      Integración valida insumos y piezas; si falta algo, se
+                      notifica a compras y bodega para continuar el seguimiento.
+                    </p>
+                  </div>
+                )}
+                {activeProceso === "confeccion" && (
+                  <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2">
+                    <p className="text-xs text-default-700">
+                      Confección registra avance por pedido y puede solicitar
+                      reposición o insumos por faltante o daño.
+                    </p>
+                  </div>
+                )}
+                {activeProceso === "empaque" && (
+                  <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2">
+                    <p className="text-xs text-default-700">
+                      Empaque registra avance por pedido y puede solicitar
+                      reposición o insumos por faltante o daño.
+                    </p>
+                  </div>
+                )}
+                {activeProceso === "despacho" && (
+                  <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2">
+                    <p className="text-xs text-default-700">
+                      Despacho permite entrega completa o parcial con aprobación
+                      de vendedor, cartera y contabilidad.
+                    </p>
+                  </div>
+                )}
+
+                {[
+                  "integracion",
+                  "confeccion",
+                  "despacho",
+                ].includes(activeProceso) ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-medium border border-default-200 bg-content2 px-3 py-2">
+                    <Button
+                      color="primary"
+                      isDisabled={selectedEnvioItems.length === 0}
+                      size="sm"
+                      variant="flat"
+                      onPress={openEnvioByProcess}
+                    >
+                      {activeProceso === "integracion"
+                        ? "Enviar a confeccionista"
+                        : activeProceso === "confeccion"
+                          ? "Registrar retorno a Viomar"
+                          : "Registrar envio de despacho"}
+                    </Button>
+                    <span className="text-xs text-default-500">
+                      {selectedEnvioItems.length} disenos seleccionables para envio
+                    </span>
+                  </div>
+                ) : null}
+
+                <MesEnvioStatusCard
+                  areaFilter={
+                    activeProceso === "integracion"
+                      ? "INTEGRACION"
+                      : activeProceso === "confeccion"
+                        ? "CONFECCION_EXTERNA"
+                        : activeProceso === "despacho"
+                          ? "DESPACHO"
+                          : undefined
+                  }
+                  orderId={selectedMontajeTicket.pedido}
+                />
+
+                <div className="rounded-medium border border-default-200 p-3">
+                  <p className="mb-2 text-xs font-semibold text-default-600">
+                    Tags por diseno (ej. picada parcial)
+                  </p>
+                  <div className="space-y-3">
+                    {selectedEnvioItems.length > 0 ? (
+                      selectedEnvioItems.map((design) => (
+                        <MesItemTagsPanel
+                          key={design.orderItemId}
+                          designName={design.name}
+                          orderId={selectedMontajeTicket.pedido}
+                          orderItemId={design.orderItemId}
+                        />
+                      ))
+                    ) : (
+                      <p className="text-xs text-default-500">
+                        Sin orderItemId en la selección actual; no se pueden asignar tags por diseño.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <OperarioWorklogTable
                   prefill={{
                     orderCode: selectedMontajeTicket.pedido,
-                    designName: selectedMontajeTicket.detalle,
+                    designName:
+                      selectedMontajeTicket.defaultDesignName ||
+                      selectedMontajeTicket.detalle,
                     quantityOp: selectedMontajeTicket.totalUnidades,
                     tallas: (selectedMontajeTicket.tallas ?? [])
                       .filter((item) => item.estado !== "completado")
@@ -713,6 +999,22 @@ export default function MesPageClient() {
               );
             }}
           />
+
+          {selectedMontajeTicket && envioConfig ? (
+            <MesEnvioModal
+              availableItems={selectedEnvioItems}
+              destinoArea={envioConfig.destinoArea}
+              destinoLabel={envioConfig.destinoLabel}
+              isOpen={envioModalOpen}
+              orderId={selectedMontajeTicket.pedido}
+              origenArea={envioConfig.origenArea}
+              origenLabel={envioConfig.origenLabel}
+              onCreated={() => {
+                void refreshData(true);
+              }}
+              onOpenChange={setEnvioModalOpen}
+            />
+          ) : null}
         </section>
       )}
     </div>

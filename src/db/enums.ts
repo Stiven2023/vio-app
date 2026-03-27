@@ -769,6 +769,72 @@ Object.defineProperty(OrderItemStatusEnum, "enumValues", {
   value: orderItemStatusValues,
 });
 
+export const DesignType = {
+  PRODUCCION: "PRODUCCION",
+  COMPRA: "COMPRA",
+  BODEGA: "BODEGA",
+} as const;
+
+export const designTypeValues = ["PRODUCCION", "COMPRA", "BODEGA"] as const;
+
+export const DesignTypeEnum = z.enum(designTypeValues);
+Object.defineProperty(DesignTypeEnum, "enumValues", {
+  value: designTypeValues,
+});
+
+export const ProductionTechnique = {
+  SUBLIMACION: "SUBLIMACION",
+  FONDO_ENTERO: "FONDO_ENTERO",
+} as const;
+
+export const productionTechniqueValues = [
+  "SUBLIMACION",
+  "FONDO_ENTERO",
+] as const;
+
+export const ProductionTechniqueEnum = z.enum(productionTechniqueValues);
+Object.defineProperty(ProductionTechniqueEnum, "enumValues", {
+  value: productionTechniqueValues,
+});
+
+export const Position = {
+  JUGADOR: "JUGADOR",
+  ARQUERO: "ARQUERO",
+  CAPITAN: "CAPITAN",
+  JUEZ: "JUEZ",
+  ENTRENADOR: "ENTRENADOR",
+  LIBERO: "LIBERO",
+  ADICIONAL: "ADICIONAL",
+} as const;
+
+export const positionValues = [
+  "JUGADOR",
+  "ARQUERO",
+  "CAPITAN",
+  "JUEZ",
+  "ENTRENADOR",
+  "LIBERO",
+  "ADICIONAL",
+] as const;
+
+export const PositionEnum = z.enum(positionValues);
+Object.defineProperty(PositionEnum, "enumValues", {
+  value: positionValues,
+});
+
+export const SockLength = {
+  LARGA: "LARGA",
+  TRES_CUARTOS: "TRES_CUARTOS",
+  TALONERA: "TALONERA",
+} as const;
+
+export const sockLengthValues = ["LARGA", "TRES_CUARTOS", "TALONERA"] as const;
+
+export const SockLengthEnum = z.enum(sockLengthValues);
+Object.defineProperty(SockLengthEnum, "enumValues", {
+  value: sockLengthValues,
+});
+
 /* ========================= */
 /*     PAYMENT ENUMS        */
 /* ========================= */
@@ -1173,3 +1239,51 @@ export const MesRepoReasonEnum = z.enum(mesRepoReasonValues);
 Object.defineProperty(MesRepoReasonEnum, "enumValues", {
   value: mesRepoReasonValues,
 });
+
+/* ===========================
+   MES — TAGS DE DISEÑO
+=========================== */
+export const mesItemTagValues = [
+  "REQUIERE_PICADA",
+  "URGENTE",
+  "CONTROL_CALIDAD_EXTRA",
+  "MATERIAL_ESPECIAL",
+  "SEGUNDA_REVISION",
+  "DESPACHO_PARCIAL",
+] as const;
+export type MesItemTag = (typeof mesItemTagValues)[number];
+export const MesItemTagEnum = z.enum(mesItemTagValues);
+Object.defineProperty(MesItemTagEnum, "enumValues", { value: mesItemTagValues });
+
+/* ===========================
+   MES — ENVÍOS ENTRE ÁREAS
+=========================== */
+export const mesShipmentAreaValues = [
+  "VIOMAR",
+  "INTEGRACION",
+  "CONFECCION_EXTERNA",
+  "DESPACHO",
+] as const;
+export type MesShipmentArea = (typeof mesShipmentAreaValues)[number];
+export const MesShipmentAreaEnum = z.enum(mesShipmentAreaValues);
+Object.defineProperty(MesShipmentAreaEnum, "enumValues", { value: mesShipmentAreaValues });
+
+export const mesTransportTypeValues = [
+  "MENSAJERO",
+  "CONDUCTOR_PROPIO",
+  "LINEA_TERCERO",
+] as const;
+export type MesTransportType = (typeof mesTransportTypeValues)[number];
+export const MesTransportTypeEnum = z.enum(mesTransportTypeValues);
+Object.defineProperty(MesTransportTypeEnum, "enumValues", { value: mesTransportTypeValues });
+
+export const mesEnvioStatusValues = [
+  "CREADO",
+  "EN_RUTA",
+  "ENTREGADO",
+  "RETORNADO",
+  "INCIDENTE",
+] as const;
+export type MesEnvioStatus = (typeof mesEnvioStatusValues)[number];
+export const MesEnvioStatusEnum = z.enum(mesEnvioStatusValues);
+Object.defineProperty(MesEnvioStatusEnum, "enumValues", { value: mesEnvioStatusValues });

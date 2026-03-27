@@ -77,6 +77,19 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
+function toNullableDate(v: unknown) {
+  const text = String(v ?? "").trim();
+
+  if (!text) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+
+  const date = new Date(text);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toISOString().slice(0, 10);
+}
+
 function isUniqueViolation(e: unknown) {
   const code = (e as any)?.code;
 
@@ -291,6 +304,7 @@ export async function GET(request: Request) {
       paidTotal: sql<string>`coalesce((select sum(op.amount) from order_payments op where op.order_id = ${orders.id} and op.status in ('PAGADO', 'CONFIRMADO_CAJA')), 0)::text`,
       provisionalCode: (orders as any).provisionalCode,
       operationalApprovedAt: (orders as any).operationalApprovedAt,
+      deliveryDate: (orders as any).deliveryDate,
       lastStatusAt: sql<string | null>`(
         select osh.created_at
         from order_status_history osh
@@ -340,6 +354,7 @@ export async function POST(request: Request) {
     kind,
     sourceOrderCode,
     status,
+    deliveryDate,
     ivaEnabled,
     discount,
     currency,
@@ -415,6 +430,7 @@ export async function POST(request: Request) {
             kind: orderKind as any,
             sourceOrderId: sourceOrderId as any,
             status: String(status ?? "PENDIENTE") as any,
+            deliveryDate: toNullableDate(deliveryDate),
             ivaEnabled: Boolean(ivaEnabled ?? false),
             discount: String(discountPercent),
             currency: String(currency ?? "COP"),

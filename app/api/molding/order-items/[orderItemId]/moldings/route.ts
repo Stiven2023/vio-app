@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
@@ -34,15 +34,67 @@ export async function GET(
       .select()
       .from(orderItemMoldings)
       .where(eq(orderItemMoldings.orderItemId, orderItemId))
-      .orderBy(orderItemMoldings.combinationOrder);
+      .orderBy(
+        asc(orderItemMoldings.combinationOrder),
+        desc(orderItemMoldings.createdAt),
+      );
 
-    return Response.json({ items: moldings });
+    const latestByCombination = new Map<number, (typeof moldings)[number]>();
+
+    for (const molding of moldings) {
+      const combinationOrder = Number(molding.combinationOrder ?? 0);
+
+      if (!latestByCombination.has(combinationOrder)) {
+        latestByCombination.set(combinationOrder, molding);
+      }
+    }
+
+    return Response.json({
+      items: Array.from(latestByCombination.values()).sort(
+        (left, right) => left.combinationOrder - right.combinationOrder,
+      ),
+    });
   } catch (error) {
     const response = dbErrorResponse(error);
 
     if (response) return response;
 
     return new Response("Could not retrieve order item moldings", {
+      status: 500,
+    });
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ orderItemId: string }> },
+) {
+  const limited = rateLimit(request, {
+    key: "order-item-moldings:delete",
+    limit: 30,
+    windowMs: 60_000,
+  });
+
+  if (limited) return limited;
+
+  const forbidden = await requirePermission(request, "EDITAR_MOLDERIA");
+
+  if (forbidden) return forbidden;
+
+  const { orderItemId } = await params;
+
+  try {
+    await db
+      .delete(orderItemMoldings)
+      .where(eq(orderItemMoldings.orderItemId, orderItemId));
+
+    return Response.json({ ok: true });
+  } catch (error) {
+    const response = dbErrorResponse(error);
+
+    if (response) return response;
+
+    return new Response("Could not delete order item moldings", {
       status: 500,
     });
   }

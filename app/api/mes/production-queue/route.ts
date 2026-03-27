@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  employees,
   clients,
   mesProductionQueue,
   orderItemPackaging,
@@ -47,7 +48,7 @@ async function ensureQueueFromProgramacionOrders() {
       design: orderItems.name,
       itemQuantity: orderItems.quantity,
       orderDate: orders.createdAt,
-      deliveryDate: quotations.deliveryDate,
+      deliveryDate: sql<string | null>`coalesce(${orders.deliveryDate}, ${quotations.deliveryDate})`,
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
@@ -221,17 +222,25 @@ export async function GET(request: Request) {
         finalOrder: mesProductionQueue.finalOrder,
         status: mesProductionQueue.status,
         confirmedAt: mesProductionQueue.confirmedAt,
+        confirmedBy: mesProductionQueue.confirmedBy,
         createdAt: mesProductionQueue.createdAt,
         updatedAt: mesProductionQueue.updatedAt,
         orderCode: orders.orderCode,
         clientName: clients.name,
-        deliveryDate: quotations.deliveryDate,
+        deliveryDate: sql<string | null>`coalesce(${orders.deliveryDate}, ${quotations.deliveryDate})`,
+        orderCreatedAt: orders.createdAt,
+        shippingEnabled: quotations.shippingEnabled,
+        accountingStatus: prefacturas.status,
+        advanceReceived: prefacturas.advanceReceived,
+        advanceStatus: prefacturas.advanceStatus,
+        productionLeaderName: employees.name,
       })
       .from(mesProductionQueue)
       .innerJoin(orders, eq(mesProductionQueue.orderId, orders.id))
       .leftJoin(clients, eq(orders.clientId, clients.id))
       .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
       .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
+      .leftJoin(employees, eq(mesProductionQueue.confirmedBy, employees.id))
       .where(eq(mesProductionQueue.status, "EN_COLA"))
       .orderBy(
         // URGENTE always first
@@ -294,7 +303,7 @@ export async function POST(request: Request) {
     // Calculate suggested order by delivery date (from quotation via prefactura)
     const [orderRow] = await db
       .select({
-        deliveryDate: quotations.deliveryDate,
+        deliveryDate: sql<string | null>`coalesce(${orders.deliveryDate}, ${quotations.deliveryDate})`,
         createdAt: orders.createdAt,
       })
       .from(orders)

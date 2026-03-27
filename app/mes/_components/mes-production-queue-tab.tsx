@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import {
   Button,
@@ -39,15 +39,28 @@ type QueueItem = {
   orderCode: string;
   clientName: string | null;
   deliveryDate: string | null;
+  orderCreatedAt?: string | null;
+  shippingEnabled?: boolean | null;
+  accountingStatus?: string | null;
+  advanceReceived?: string | number | null;
+  advanceStatus?: string | null;
+  productionLeaderName?: string | null;
 };
 
-const PRIORITY_CONFIG: Record<
-  "URGENTE" | "NORMAL" | "BAJA",
-  { label: string; color: "danger" | "warning" | "default" }
-> = {
-  URGENTE: { label: "URGENTE", color: "danger" },
-  NORMAL: { label: "NORMAL", color: "warning" },
-  BAJA: { label: "BAJA", color: "default" },
+type QueueOrderRow = {
+  orderCode: string;
+  clientName: string | null;
+  deliveryDate: string | null;
+  deliveryDateEffective: string | null;
+  orderCreatedAt: string | null;
+  deliveryType: "ENVIO" | "RETIRO" | "-";
+  totalQuantity: number;
+  finalOrder: number;
+  accountingOk: boolean;
+  productionLeader: string;
+  productionLeaderOk: boolean;
+  isHighPriority: boolean;
+  itemIds: string[];
 };
 
 export function MesProductionQueueTab() {
@@ -55,7 +68,173 @@ export function MesProductionQueueTab() {
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [settingUrgent, setSettingUrgent] = useState<string | null>(null);
+  const [nowTs, setNowTs] = useState<number | null>(null);
   const isConfirmed = items.some((item) => item.confirmedAt !== null);
+
+  useEffect(() => {
+    setNowTs(Date.now());
+
+    const timer = window.setInterval(() => {
+      setNowTs(Date.now());
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const toDateMs = (value: string | null | undefined, endOfDay = false): number | null => {
+    const raw = String(value ?? "").trim();
+
+    if (!raw) return null;
+
+    const normalized = endOfDay ? `${raw}T23:59:59` : raw;
+    const ms = new Date(normalized).getTime();
+
+    return Number.isFinite(ms) ? ms : null;
+  };
+
+  const toHourLabel = (hours: number | null): string => {
+    if (hours === null || !Number.isFinite(hours)) return "-";
+
+    return `${Math.max(0, Math.round(hours)).toLocaleString("es-CO")} h`;
+  };
+
+  const toIsoDateFromUnixSeconds = (seconds: number | null | undefined) => {
+    const sec = Number(seconds ?? NaN);
+
+    if (!Number.isFinite(sec) || sec <= 0) return null;
+
+    const d = new Date(sec * 1000);
+
+    if (Number.isNaN(d.getTime())) return null;
+
+    return d.toISOString().slice(0, 10);
+  };
+
+  const toAdvanceAmount = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    const raw = String(value)
+      .trim()
+      .replace(/\./g, "")
+      .replace(/,/g, ".");
+    const amount = Number(raw);
+
+    return Number.isFinite(amount) ? amount : 0;
+  };
+  const groupedOrders = useMemo<QueueOrderRow[]>(() => {
+    const byOrder = new Map<string, QueueOrderRow>();
+
+    for (const item of items) {
+      const orderCode = String(item.orderCode ?? "").trim();
+
+      if (!orderCode) continue;
+
+      const existing = byOrder.get(orderCode);
+      const itemPriority = String(item.priority ?? "NORMAL").toUpperCase();
+      const accountingStatus = String(item.accountingStatus ?? "")
+        .trim()
+        .toUpperCase();
+      const advanceStatus = String(item.advanceStatus ?? "")
+        .trim()
+        .toUpperCase();
+      const hasFirstAdvance = toAdvanceAmount(item.advanceReceived) > 0;
+      const accountingOk =
+        hasFirstAdvance ||
+        advanceStatus === "RECIBIDO" ||
+        advanceStatus === "PAGADO" ||
+        (accountingStatus.length > 0 && accountingStatus !== "PENDIENTE_CONTABILIDAD");
+      const rawDeliveryDate =
+        String(item.deliveryDate ?? "").trim() ||
+        toIsoDateFromUnixSeconds(item.suggestedOrder) ||
+        null;
+      const createdMs = toDateMs(item.orderCreatedAt);
+      const rawDeliveryMs = toDateMs(rawDeliveryDate, true);
+      const deliveryDateEffective =
+        createdMs !== null && rawDeliveryMs !== null && rawDeliveryMs < createdMs
+          ? new Date(createdMs).toISOString().slice(0, 10)
+          : rawDeliveryDate;
+      const productionLeader =
+        String(item.productionLeaderName ?? "").trim() || "-";
+
+      if (!existing) {
+        byOrder.set(orderCode, {
+          orderCode,
+          clientName: item.clientName ?? null,
+          deliveryDate: item.deliveryDate ?? null,
+          deliveryDateEffective,
+          orderCreatedAt: item.orderCreatedAt ?? null,
+          deliveryType:
+            item.shippingEnabled === true
+              ? "ENVIO"
+              : item.shippingEnabled === false
+                ? "RETIRO"
+                : "-",
+          totalQuantity: Math.max(0, Number(item.quantityTotal ?? 0)),
+          finalOrder: Number(item.finalOrder ?? Number.POSITIVE_INFINITY),
+          accountingOk,
+          productionLeader,
+          productionLeaderOk: productionLeader !== "-",
+          isHighPriority: itemPriority === "URGENTE",
+          itemIds: [item.id],
+        });
+        continue;
+      }
+
+      existing.totalQuantity += Math.max(0, Number(item.quantityTotal ?? 0));
+      existing.finalOrder = Math.min(
+        existing.finalOrder,
+        Number(item.finalOrder ?? Number.POSITIVE_INFINITY),
+      );
+      if (!existing.orderCreatedAt && item.orderCreatedAt) {
+        existing.orderCreatedAt = item.orderCreatedAt;
+      }
+      if (!existing.deliveryDateEffective && deliveryDateEffective) {
+        existing.deliveryDateEffective = deliveryDateEffective;
+      }
+      if (existing.deliveryType === "-" && item.shippingEnabled !== null && item.shippingEnabled !== undefined) {
+        existing.deliveryType = item.shippingEnabled ? "ENVIO" : "RETIRO";
+      }
+      existing.accountingOk = existing.accountingOk || accountingOk;
+      if (existing.productionLeader === "-") {
+        existing.productionLeader = productionLeader || existing.productionLeader;
+      }
+      existing.productionLeaderOk = existing.productionLeader !== "-";
+      existing.isHighPriority = existing.isHighPriority || itemPriority === "URGENTE";
+      existing.itemIds.push(item.id);
+    }
+
+    return Array.from(byOrder.values()).sort((a, b) => {
+      if (a.isHighPriority !== b.isHighPriority) {
+        return a.isHighPriority ? -1 : 1;
+      }
+
+      if (a.finalOrder !== b.finalOrder) {
+        return a.finalOrder - b.finalOrder;
+      }
+
+      return a.orderCode.localeCompare(b.orderCode);
+    });
+  }, [items]);
+
+  const timedOrders = useMemo(() => {
+    return groupedOrders.map((row) => {
+      const createdMs = toDateMs(row.orderCreatedAt);
+      const deliveryMs = toDateMs(row.deliveryDateEffective, true);
+      const totalHours =
+        createdMs !== null && deliveryMs !== null
+          ? (deliveryMs - createdMs) / (1000 * 60 * 60)
+          : null;
+      const remainingHours =
+        deliveryMs !== null && nowTs !== null
+          ? (deliveryMs - nowTs) / (1000 * 60 * 60)
+          : null;
+
+      return {
+        ...row,
+        totalHours,
+        remainingHours,
+      };
+    });
+  }, [groupedOrders, nowTs]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,7 +244,7 @@ export function MesProductionQueueTab() {
       if (!res.ok) throw new Error("No se pudo cargar la cola");
       const data = await res.json();
 
-      setItems(data.items ?? []);
+      setItems(Array.isArray(data?.items) ? data.items : []);
     } catch {
       toast.error("No se pudo cargar la cola de producción");
     } finally {
@@ -77,18 +256,25 @@ export function MesProductionQueueTab() {
     void load();
   }, [load]);
 
-  const markUrgent = async (itemId: string) => {
+  const markUrgent = async (order: QueueOrderRow) => {
     if (settingUrgent) return;
-    setSettingUrgent(itemId);
+    setSettingUrgent(order.orderCode);
     try {
-      const res = await fetch(`/api/mes/production-queue/${itemId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priority: "URGENTE" }),
-      });
+      const updates = await Promise.all(
+        order.itemIds.map((id) =>
+          fetch(`/api/mes/production-queue/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ priority: "URGENTE" }),
+          }),
+        ),
+      );
 
-      if (!res.ok) throw new Error("No se pudo actualizar la prioridad");
-      toast.success("Marcado como URGENTE");
+      if (updates.some((res) => !res.ok)) {
+        throw new Error("No se pudo actualizar la prioridad");
+      }
+
+      toast.success(`Pedido ${order.orderCode} marcado como ALTA prioridad`);
       await load();
     } catch {
       toast.error("No se pudo marcar como urgente");
@@ -114,7 +300,7 @@ export function MesProductionQueueTab() {
       const data = await res.json();
 
       toast.success(
-        `Cola confirmada. ${data.confirmed} tickets activados para Montaje.`,
+        `Cola confirmada. ${data.confirmed} tickets activados para Montaje inicial/final.`,
       );
       await load();
     } catch {
@@ -141,10 +327,12 @@ export function MesProductionQueueTab() {
     <section className="space-y-4 rounded-medium border border-default-200 bg-content1 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 className="text-base font-semibold">Cola de Producción</h2>
+          <h2 className="text-base font-semibold">
+            WORK FLOW - FLUXO DE TRABALHO - TRAVAIL - FLUJO DE TRABAJO
+          </h2>
           <p className="text-xs text-default-500">
-            Define el orden de los pedidos antes de activar el proceso de
-            Montaje.
+            Cola por pedido para definir prioridad, validación contable y líder
+            de producción antes de iniciar tickets.
           </p>
         </div>
         <div className="flex gap-2">
@@ -179,8 +367,8 @@ export function MesProductionQueueTab() {
           <CardBody className="flex flex-row items-center gap-2 py-2 px-3">
             <MdCheckCircle className="text-success shrink-0" size={16} />
             <p className="text-xs text-success-700">
-              La cola fue confirmada. Los tickets de Montaje están activos. Los
-              URGENTES siempre aparecen primero.
+              La cola fue confirmada. Montaje inicial/final ya puede operar por
+              pedido y descargar la lista de empaque para macro.
             </p>
           </CardBody>
         </Card>
@@ -202,6 +390,19 @@ export function MesProductionQueueTab() {
 
       <Divider className="opacity-60" />
 
+      <Card className="border border-default-200" radius="sm" shadow="none">
+        <CardBody className="py-2 px-3 text-xs text-default-600 space-y-1">
+          <p>
+            Aprobación base por pedido. Si hay modificación de diseño, solo se
+            actualiza ese registro mientras no haya pasado por montaje.
+          </p>
+          <p>
+            Prioridad: <strong>-</strong> normal, <strong>ALTA</strong> para
+            urgentes definidos por líder de producción.
+          </p>
+        </CardBody>
+      </Card>
+
       {loading ? (
         <Card
           className="border border-dashed border-divider"
@@ -215,7 +416,7 @@ export function MesProductionQueueTab() {
             </div>
           </CardBody>
         </Card>
-      ) : items.length === 0 ? (
+      ) : timedOrders.length === 0 ? (
         <Card
           className="border border-dashed border-divider"
           radius="md"
@@ -230,20 +431,25 @@ export function MesProductionQueueTab() {
         </Card>
       ) : (
         <div className="rounded-medium border border-default-200 overflow-x-auto">
-          <Table removeWrapper aria-label="Cola de producción">
+          <Table removeWrapper aria-label="Workflow de producción por pedido">
             <TableHeader>
               <TableColumn>Orden</TableColumn>
               <TableColumn>Pedido</TableColumn>
-              <TableColumn>Diseño</TableColumn>
-              <TableColumn>Talla</TableColumn>
-              <TableColumn>Cantidad</TableColumn>
+              <TableColumn>Tipo entrega</TableColumn>
+              <TableColumn>Creación</TableColumn>
+              <TableColumn>Cantidad total</TableColumn>
               <TableColumn>F. Entrega</TableColumn>
+              <TableColumn>Horas plan</TableColumn>
+              <TableColumn>Horas restantes</TableColumn>
+              <TableColumn>OK Contabilidad</TableColumn>
+              <TableColumn>OK Líder prod.</TableColumn>
+              <TableColumn>Líder producción</TableColumn>
               <TableColumn>Prioridad</TableColumn>
               <TableColumn>Acciones</TableColumn>
             </TableHeader>
-            <TableBody items={items}>
+            <TableBody items={timedOrders}>
               {(item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.orderCode}>
                   <TableCell>
                     <span className="text-sm font-mono font-semibold text-default-600">
                       #{item.finalOrder}
@@ -258,40 +464,71 @@ export function MesProductionQueueTab() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <p className="text-xs">{item.design}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-xs">{item.size ?? "-"}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-xs font-medium">{item.quantityTotal}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-xs">{formatDate(item.deliveryDate)}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      color={PRIORITY_CONFIG[item.priority].color}
-                      size="sm"
-                      variant="flat"
-                    >
-                      {PRIORITY_CONFIG[item.priority].label}
+                    <Chip color="primary" size="sm" variant="flat">
+                      {item.deliveryType}
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    {item.priority !== "URGENTE" ? (
+                    <p className="text-xs">{formatDate(item.orderCreatedAt)}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-xs font-medium">{item.totalQuantity}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-xs">{formatDate(item.deliveryDateEffective)}</p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-xs">{toHourLabel(item.totalHours)}</p>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      color={
+                        (item.remainingHours ?? 0) <= 0
+                          ? "danger"
+                          : (item.remainingHours ?? 0) <= 24
+                            ? "warning"
+                            : "success"
+                      }
+                      size="sm"
+                      variant="flat"
+                    >
+                      {toHourLabel(item.remainingHours)}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <Chip color={item.accountingOk ? "success" : "default"} size="sm" variant="flat">
+                      {item.accountingOk ? "OK" : "-"}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <Chip color={item.productionLeaderOk ? "success" : "default"} size="sm" variant="flat">
+                      {item.productionLeaderOk ? "OK" : "-"}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-xs">{item.productionLeader}</p>
+                  </TableCell>
+                  <TableCell>
+                    <Chip color={item.isHighPriority ? "danger" : "default"} size="sm" variant="flat">
+                      {item.isHighPriority ? "ALTA" : "-"}
+                    </Chip>
+                  </TableCell>
+                  <TableCell>
+                    {!item.isHighPriority ? (
                       <Button
                         color="danger"
                         isDisabled={Boolean(settingUrgent)}
                         size="sm"
                         variant="flat"
-                        onPress={() => void markUrgent(item.id)}
+                        onPress={() => void markUrgent(item)}
                       >
-                        {settingUrgent === item.id ? "..." : "Marcar URGENTE"}
+                        {settingUrgent === item.orderCode
+                          ? "..."
+                          : "Marcar ALTA"}
                       </Button>
                     ) : (
                       <Chip color="danger" size="sm" variant="flat">
-                        URGENTE ↑
+                        ALTA ↑
                       </Chip>
                     )}
                   </TableCell>

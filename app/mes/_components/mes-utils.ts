@@ -187,6 +187,7 @@ export function buildPedidoGroups(
       const idx = orderEntry.disenosByItem.size;
 
       diseno = {
+        orderItemId: itemId,
         diseno: row.designNumber ?? idx + 1,
         detalle: row.design ?? "Sin detalle",
         tela: row.fabric ?? "-",
@@ -249,41 +250,136 @@ export function buildProcessQueue(
   data: PedidoGroup[],
   activeProceso: string,
 ): ProcessQueueRow[] {
-  const queue = data
-    .flatMap((pedido) =>
-      pedido.disenos.map((diseno, idx) => {
-        const tallasPendientes = diseno.tallas.filter(
-          (t) => t.estado !== "completado",
-        );
-        const totalUnidades = diseno.tallas.reduce(
-          (sum, t) => sum + t.cantidad,
-          0,
-        );
-        const unidadesPendientes = tallasPendientes.reduce(
-          (sum, t) => sum + t.cantidad,
-          0,
-        );
-        const ticket = buildProcessTicket(activeProceso, diseno, idx);
+  const process = String(activeProceso ?? "")
+    .trim()
+    .toLowerCase();
+  const pedidoLevelProcesses = new Set([
+    "montaje",
+    "plotter",
+    "integracion",
+    "confeccion",
+    "empaque",
+    "despacho",
+  ]);
+  const isPedidoLevel = pedidoLevelProcesses.has(process);
+  const isSublimacionLevel = process === "sublimacion";
 
-        return {
+  const queue = data.flatMap((pedido, pedidoIdx) => {
+    if (isPedidoLevel) {
+      const allTallas = pedido.disenos.flatMap((diseno) => diseno.tallas);
+      const tallasPendientes = allTallas.filter((t) => t.estado !== "completado");
+      const totalUnidades = allTallas.reduce((sum, t) => sum + t.cantidad, 0);
+      const unidadesPendientes = tallasPendientes.reduce(
+        (sum, t) => sum + t.cantidad,
+        0,
+      );
+      const ticket =
+        process === "confeccion" || process === "empaque" || process === "despacho"
+          ? `SEG-${pedido.pedido}`
+          : generateTicket(process, pedidoIdx);
+      const turno =
+        process === "confeccion" || process === "empaque" || process === "despacho"
+          ? pedidoIdx + 1
+          : extractTurnFromTicket(ticket);
+
+      return [
+        {
           pedido: pedido.pedido,
           cliente: pedido.cliente,
-          diseno: diseno.diseno,
-          detalle: diseno.detalle,
-          ticket: String(ticket),
-          tallas: diseno.tallas,
+          diseno: 0,
+          detalle: "PEDIDO COMPLETO",
+          ticket,
+          defaultDesignName:
+            pedido.disenos.find((d) => String(d.detalle ?? "").trim())?.detalle ??
+            "PEDIDO COMPLETO",
+          tallas: allTallas,
+          designDetails: pedido.disenos.map((diseno) => ({
+            diseno: diseno.diseno,
+            detalle: diseno.detalle,
+            orderItemId: diseno.orderItemId,
+            tallas: diseno.tallas,
+          })),
           totalUnidades,
           totalTallasPendientes: tallasPendientes.length,
           unidadesPendientes,
-          turno: extractTurnFromTicket(String(ticket)),
-        };
-      }),
-    )
-    .filter(
-      (row) => Number.isFinite(row.turno) && row.totalTallasPendientes > 0,
-    );
+          turno,
+        },
+      ];
+    }
 
-  queue.sort((a, b) => a.turno - b.turno);
+    if (isSublimacionLevel) {
+      return pedido.disenos.flatMap((diseno, disenoIdx) =>
+        diseno.tallas
+          .filter((t) => t.estado !== "completado")
+          .map((talla, tallaIdx) => {
+            const turnIndex = pedidoIdx * 1000 + disenoIdx * 100 + tallaIdx;
+            const ticket = generateTicket(process, turnIndex);
 
-  return queue;
+            return {
+              pedido: pedido.pedido,
+              cliente: pedido.cliente,
+              diseno: diseno.diseno,
+              detalle: `${diseno.detalle} · Talla ${talla.talla}`,
+              orderItemId: diseno.orderItemId,
+              ticket,
+              defaultDesignName: diseno.detalle,
+              tallas: [talla],
+              designDetails: [
+                {
+                  diseno: diseno.diseno,
+                  detalle: diseno.detalle,
+                  orderItemId: diseno.orderItemId,
+                  tallas: [talla],
+                },
+              ],
+              totalUnidades: talla.cantidad,
+              totalTallasPendientes: 1,
+              unidadesPendientes: talla.cantidad,
+              turno: extractTurnFromTicket(ticket),
+            };
+          }),
+      );
+    }
+
+    return pedido.disenos.map((diseno, idx) => {
+      const tallasPendientes = diseno.tallas.filter(
+        (t) => t.estado !== "completado",
+      );
+      const totalUnidades = diseno.tallas.reduce((sum, t) => sum + t.cantidad, 0);
+      const unidadesPendientes = tallasPendientes.reduce(
+        (sum, t) => sum + t.cantidad,
+        0,
+      );
+      const ticket = buildProcessTicket(process, diseno, pedidoIdx * 100 + idx);
+
+      return {
+        pedido: pedido.pedido,
+        cliente: pedido.cliente,
+        diseno: diseno.diseno,
+        detalle: diseno.detalle,
+        orderItemId: diseno.orderItemId,
+        ticket: String(ticket),
+        defaultDesignName: diseno.detalle,
+        tallas: diseno.tallas,
+        designDetails: [
+          {
+            diseno: diseno.diseno,
+            detalle: diseno.detalle,
+            orderItemId: diseno.orderItemId,
+            tallas: diseno.tallas,
+          },
+        ],
+        totalUnidades,
+        totalTallasPendientes: tallasPendientes.length,
+        unidadesPendientes,
+        turno: extractTurnFromTicket(String(ticket)),
+      };
+    });
+  });
+
+  const filtered = queue.filter((row) => row.totalTallasPendientes > 0);
+
+  filtered.sort((a, b) => a.turno - b.turno);
+
+  return filtered;
 }
