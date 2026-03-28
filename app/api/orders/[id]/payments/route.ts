@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { banks, orderPayments, orders } from "@/src/db/schema";
+import { assertAdvisorOwnsOrder } from "@/src/utils/advisor-scope";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -58,6 +59,10 @@ export async function GET(
     const orderId = String(id ?? "").trim();
 
     if (!orderId) return new Response("Order ID is required", { status: 400 });
+
+    const advisorForbidden = await assertAdvisorOwnsOrder(request, orderId);
+
+    if (advisorForbidden) return advisorForbidden;
 
     const where = and(eq(orderPayments.orderId, orderId));
 
@@ -149,6 +154,10 @@ export async function POST(
   const orderId = String(id ?? "").trim();
 
   if (!orderId) return new Response("Order ID is required", { status: 400 });
+
+  const advisorForbidden = await assertAdvisorOwnsOrder(request, orderId);
+
+  if (advisorForbidden) return advisorForbidden;
 
   const body = (await request.json()) as any;
 

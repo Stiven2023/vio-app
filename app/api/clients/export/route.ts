@@ -3,6 +3,9 @@ import { clients } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { and, eq, ilike, or, SQL } from "drizzle-orm";
+
+const EXPORT_MAX_ROWS = 10_000;
 
 function escapeCsvCell(val: string | null | undefined): string {
   const str = String(val ?? "");
@@ -15,7 +18,7 @@ function escapeCsvCell(val: string | null | undefined): string {
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
     key: "clients:export:get",
-    limit: 30,
+    limit: 10,
     windowMs: 60_000,
   });
 
@@ -25,7 +28,30 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
+  const sp = new URL(request.url).searchParams;
+  const isActiveParam = sp.get("isActive");
+  const search = sp.get("search")?.trim() ?? "";
+
+  const filters: SQL[] = [];
+
+  if (isActiveParam === "true") {
+    filters.push(eq(clients.isActive, true));
+  } else if (isActiveParam === "false") {
+    filters.push(eq(clients.isActive, false));
+  }
+
+  if (search) {
+    filters.push(
+      or(
+        ilike(clients.name, `%${search}%`),
+        ilike(clients.clientCode, `%${search}%`),
+        ilike(clients.identification, `%${search}%`)
+      ) as SQL
+    );
+  }
+
   try {
+    // Fetch one extra row to detect truncation without a separate COUNT query
     const rows = await db
       .select({
         clientCode: clients.clientCode,
@@ -45,9 +71,14 @@ export async function GET(request: Request) {
         isActive: clients.isActive,
       })
       .from(clients)
-      .orderBy(clients.clientCode);
+      .where(filters.length ? and(...filters) : undefined)
+      .orderBy(clients.clientCode)
+      .limit(EXPORT_MAX_ROWS + 1);
 
-    const headers = [
+    const truncated = rows.length > EXPORT_MAX_ROWS;
+    const exportRows = truncated ? rows.slice(0, EXPORT_MAX_ROWS) : rows;
+
+    const csvHeaders = [
       "clientCode",
       "clientType",
       "name",
@@ -65,7 +96,7 @@ export async function GET(request: Request) {
       "isActive",
     ].join(";");
 
-    const dataLines = rows.map((row) =>
+    const dataLines = exportRows.map((row) =>
       [
         escapeCsvCell(row.clientCode),
         escapeCsvCell(row.clientType),
@@ -85,13 +116,15 @@ export async function GET(request: Request) {
       ].join(";")
     );
 
-    const csv = [headers, ...dataLines].join("\n");
+    const csv = [csvHeaders, ...dataLines].join("\n");
 
     return new Response(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": "attachment; filename=clients-export.csv",
         "Cache-Control": "no-store",
+        "X-Export-Row-Count": String(exportRows.length),
+        "X-Export-Truncated": String(truncated),
       },
     });
   } catch (error) {

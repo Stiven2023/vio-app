@@ -22,8 +22,11 @@ import {
 import {
   getEmployeeIdFromRequest,
   getUserIdFromRequest,
-  getRoleFromRequest,
 } from "@/src/utils/auth-middleware";
+import {
+  advisorWhereScope,
+  assertAdvisorOwnsOrder,
+} from "@/src/utils/advisor-scope";
 import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 import {
   calculateOrderPaymentPercent,
@@ -112,42 +115,6 @@ async function resolveEmployeeId(request: Request) {
     .limit(1);
 
   return row?.id ?? null;
-}
-
-async function resolveAdvisorFilter(request: Request) {
-  const role = getRoleFromRequest(request);
-
-  if (role !== "ASESOR") return null;
-
-  const employeeId = await resolveEmployeeId(request);
-
-  if (!employeeId) return "forbidden";
-
-  return employeeId;
-}
-
-async function assertAdvisorOwnsOrder(request: Request, orderId: string) {
-  const advisorScope = await resolveAdvisorFilter(request);
-
-  if (advisorScope === "forbidden") {
-    return new Response("Forbidden", { status: 403 });
-  }
-
-  if (!advisorScope) return null;
-
-  const [row] = await db
-    .select({ createdBy: orders.createdBy })
-    .from(orders)
-    .where(eq(orders.id, orderId))
-    .limit(1);
-
-  if (!row) return new Response("Not found", { status: 404 });
-
-  if (row.createdBy !== advisorScope) {
-    return new Response("Forbidden", { status: 403 });
-  }
-
-  return null;
 }
 
 type OrderTypeCode = "VN" | "VI" | "VT" | "VW";
@@ -243,7 +210,7 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const advisorScope = await resolveAdvisorFilter(request);
+  const advisorScope = await advisorWhereScope(request, orders.createdBy);
 
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });
@@ -269,7 +236,7 @@ export async function GET(request: Request) {
     type === "VN" || type === "VI" || type === "VT" || type === "VW"
       ? eq(orders.type, type as any)
       : undefined,
-    advisorScope ? eq(orders.createdBy, advisorScope) : undefined,
+    advisorScope || undefined,
   ].filter(Boolean);
 
   const where = filters.length ? and(...filters) : undefined;

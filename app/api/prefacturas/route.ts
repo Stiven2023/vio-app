@@ -15,9 +15,9 @@ import {
 } from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
-  getRoleFromRequest,
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
+import { advisorWhereScope } from "@/src/utils/advisor-scope";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -30,18 +30,6 @@ const CLIENT_PRICE_TYPES = new Set([
   "VIOMAR",
   "COLANTA",
 ]);
-
-async function resolveAdvisorFilter(request: Request) {
-  const role = getRoleFromRequest(request);
-
-  if (role !== "ASESOR") return null;
-
-  const employeeId = getEmployeeIdFromRequest(request);
-
-  if (!employeeId) return "forbidden";
-
-  return employeeId;
-}
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -196,7 +184,7 @@ export async function GET(request: Request) {
 
   if (forbidden) return forbidden;
 
-  const advisorScope = await resolveAdvisorFilter(request);
+  const advisorScope = await advisorWhereScope(request, orders.createdBy);
 
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });
@@ -234,7 +222,7 @@ export async function GET(request: Request) {
     }
 
     if (advisorScope) {
-      filters.push(eq(orders.createdBy, advisorScope));
+      filters.push(advisorScope);
     }
 
     if (q) {

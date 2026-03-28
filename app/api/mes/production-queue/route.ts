@@ -247,9 +247,10 @@ export async function GET(request: Request) {
         sql`case when ${mesProductionQueue.priority} = 'URGENTE' then 0 when ${mesProductionQueue.priority} = 'NORMAL' then 1 else 2 end`,
         asc(mesProductionQueue.finalOrder),
         asc(mesProductionQueue.suggestedOrder),
-      );
+      )
+      .limit(1_000);
 
-    return Response.json({ items });
+    return Response.json({ items, truncated: items.length === 1_000 });
   } catch (error) {
     const resp = dbErrorResponse(error);
 

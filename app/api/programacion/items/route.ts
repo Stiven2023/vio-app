@@ -12,7 +12,10 @@ import {
   quotations,
 } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
-import { parsePagination } from "@/src/utils/pagination";
+import {
+  ensureDateRange,
+  parsePaginationStrict,
+} from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 type ProcessType = "PRODUCCION" | "BODEGA" | "COMPRAS";
@@ -44,6 +47,10 @@ const PROGRAMACION_CACHE_HEADERS = {
   Vary: "Cookie",
 };
 
+// Hard ceiling to prevent unbounded in-memory expansion (1 DB item → N size rows).
+// With the 30-day default date window this is rarely hit in practice.
+const MAX_BASE_ITEMS = 2_000;
+
 function buildMontajeTicket(designNumber: number) {
   const next = 1000 + Math.max(1, designNumber || 1);
 
@@ -64,7 +71,26 @@ export async function GET(request: Request) {
   if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
-  const { page, pageSize, offset } = parsePagination(searchParams);
+  const { page, pageSize, offset } = parsePaginationStrict(searchParams, {
+    defaultPageSize: 20,
+    maxPageSize: 100,
+  });
+  let dateRange: { dateFrom: string; dateTo: string };
+
+  try {
+    dateRange = ensureDateRange(searchParams, {
+      defaultDays: 30,
+      maxDays: 365,
+      fromKey: "startDate",
+      toKey: "endDate",
+    });
+  } catch (error) {
+    return new Response(
+      error instanceof Error ? error.message : "Invalid date range.",
+      { status: 400 },
+    );
+  }
+
   const processRaw = String(searchParams.get("process") ?? "PRODUCCION")
     .trim()
     .toUpperCase();
@@ -89,8 +115,6 @@ export async function GET(request: Request) {
   const genderRaw = String(searchParams.get("gender") ?? "")
     .trim()
     .toUpperCase();
-  const startDateRaw = String(searchParams.get("startDate") ?? "").trim();
-  const endDateRaw = String(searchParams.get("endDate") ?? "").trim();
 
   if (!VALID_PROCESSES.includes(processRaw as ProcessType)) {
     return new Response("process inválido. Usa: PRODUCCION, BODEGA, COMPRAS", {
@@ -181,12 +205,8 @@ export async function GET(request: Request) {
   const genderFilter = gender
     ? eq(orderItems.gender, gender as any)
     : undefined;
-  const dateStartFilter = startDateRaw
-    ? sql`date(${orders.createdAt}) >= ${startDateRaw}::date`
-    : undefined;
-  const dateEndFilter = endDateRaw
-    ? sql`date(${orders.createdAt}) <= ${endDateRaw}::date`
-    : undefined;
+  const dateStartFilter = sql`date(${orders.createdAt}) >= ${dateRange.dateFrom}::date`;
+  const dateEndFilter = sql`date(${orders.createdAt}) <= ${dateRange.dateTo}::date`;
 
   const where =
     view === "ACTUALIZACION"
@@ -242,7 +262,9 @@ export async function GET(request: Request) {
     .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
     .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
     .where(where)
-    .orderBy(desc(orders.createdAt), desc(orderItems.createdAt));
+    .orderBy(desc(orders.createdAt), desc(orderItems.createdAt))
+    .limit(MAX_BASE_ITEMS);
+  const baseItemsTruncated = baseItems.length === MAX_BASE_ITEMS;
   const baseItemIds = baseItems.map((item) => item.id);
 
   const packagingSizes = baseItemIds.length
@@ -643,6 +665,9 @@ export async function GET(request: Request) {
       pageSize,
       total,
       hasNextPage,
+      truncated: baseItemsTruncated,
+      dateFrom: dateRange.dateFrom,
+      dateTo: dateRange.dateTo,
     },
     {
       headers: PROGRAMACION_CACHE_HEADERS,

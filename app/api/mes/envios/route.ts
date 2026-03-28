@@ -2,7 +2,7 @@
  * GET    /api/mes/envios?orderId=<uuid>   - list envios for an order
  * POST   /api/mes/envios                  - create a new envio (with items)
  */
-import { desc, eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { mesEnvios, mesEnvioItems, orderItems } from "@/src/db/schema";
@@ -12,6 +12,7 @@ import {
 } from "@/src/db/enums";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import { parsePaginationStrict } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function toStr(v: unknown) {
@@ -25,8 +26,17 @@ export async function GET(request: Request) {
   if (forbidden) return forbidden;
 
   const { searchParams } = new URL(request.url);
+  const { page, pageSize, offset } = parsePaginationStrict(searchParams, {
+    defaultPageSize: 20,
+    maxPageSize: 100,
+  });
   const orderId = String(searchParams.get("orderId") ?? "").trim();
   if (!orderId) return new Response("orderId required", { status: 400 });
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(mesEnvios)
+    .where(eq(mesEnvios.orderId, orderId));
 
   const rows = await db
     .select({
@@ -54,7 +64,9 @@ export async function GET(request: Request) {
     })
     .from(mesEnvios)
     .where(eq(mesEnvios.orderId, orderId))
-    .orderBy(desc(mesEnvios.createdAt));
+    .orderBy(desc(mesEnvios.createdAt))
+    .limit(pageSize)
+    .offset(offset);
 
   const envioIds = rows.map((r) => r.id);
   const allItems = envioIds.length
@@ -80,6 +92,10 @@ export async function GET(request: Request) {
 
   return Response.json({
     items: rows.map((row) => ({ ...row, items: itemsByEnvio.get(row.id) ?? [] })),
+    page,
+    pageSize,
+    total,
+    hasNextPage: offset + rows.length < total,
   });
 }
 

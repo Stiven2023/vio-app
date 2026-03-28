@@ -9,10 +9,7 @@ import {
   prefacturas,
   quotations,
 } from "@/src/db/schema";
-import {
-  getEmployeeIdFromRequest,
-  getRoleFromRequest,
-} from "@/src/utils/auth-middleware";
+import { resolveAdvisorEmployeeId } from "@/src/utils/advisor-scope";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {
   resolvePaymentBankById,
@@ -143,18 +140,6 @@ async function applyPrefacturaPatchWithFallback(
   }
 
   throw new Error("prefactura_patch_fallback_exhausted");
-}
-
-async function resolveAdvisorFilter(request: Request) {
-  const role = getRoleFromRequest(request);
-
-  if (role !== "ASESOR") return null;
-
-  const employeeId = getEmployeeIdFromRequest(request);
-
-  if (!employeeId) return "forbidden";
-
-  return employeeId;
 }
 
 async function hydrateAdvanceFromFirstConsignation<T extends Record<string, any>>(
@@ -416,7 +401,7 @@ export async function GET(
 
   if (forbidden) return forbidden;
 
-  const advisorScope = await resolveAdvisorFilter(request);
+  const advisorScope = await resolveAdvisorEmployeeId(request);
 
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });
@@ -461,7 +446,7 @@ export async function PUT(
 
   if (forbidden) return forbidden;
 
-  const advisorScope = await resolveAdvisorFilter(request);
+  const advisorScope = await resolveAdvisorEmployeeId(request);
 
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });
@@ -643,7 +628,7 @@ export async function PATCH(
 
   if (forbidden) return forbidden;
 
-  const advisorScope = await resolveAdvisorFilter(request);
+  const advisorScope = await resolveAdvisorEmployeeId(request);
 
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });
@@ -1006,7 +991,7 @@ export async function DELETE(
 
   if (forbidden) return forbidden;
 
-  const advisorScope = await resolveAdvisorFilter(request);
+  const advisorScope = await resolveAdvisorEmployeeId(request);
 
   if (advisorScope === "forbidden") {
     return new Response("Forbidden", { status: 403 });

@@ -21,7 +21,10 @@ import {
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
-import { parsePagination } from "@/src/utils/pagination";
+import {
+  ensureDateRange,
+  parsePaginationStrict,
+} from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 const ROLE_AREAS = [
@@ -356,7 +359,14 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const { page, pageSize, offset } = parsePagination(searchParams);
+    const { page, pageSize, offset } = parsePaginationStrict(searchParams, {
+      defaultPageSize: 20,
+      maxPageSize: 100,
+    });
+    const range = ensureDateRange(searchParams, {
+      defaultDays: 7,
+      maxDays: 90,
+    });
     const rawRoleArea = String(searchParams.get("roleArea") ?? "").trim();
     const rawOperationType = String(
       searchParams.get("operationType") ?? "",
@@ -394,6 +404,8 @@ export async function GET(request: Request) {
       !includeAssignments && assignmentType !== "TAKE_ORDER"
         ? sql`coalesce(${operativeDashboardLogs.details}, '') <> ${MONTAJE_TAKE_ORDER_MARKER}`
         : undefined,
+      sql`date(${operativeDashboardLogs.createdAt}) >= ${range.dateFrom}::date`,
+      sql`date(${operativeDashboardLogs.createdAt}) <= ${range.dateTo}::date`,
     ].filter(Boolean);
 
     const where = filters.length ? and(...filters) : undefined;
@@ -437,11 +449,17 @@ export async function GET(request: Request) {
       pageSize,
       total,
       hasNextPage: offset + itemsWithLinkedStatus.length < total,
+      dateFrom: range.dateFrom,
+      dateTo: range.dateTo,
     });
   } catch (error) {
     const response = dbErrorResponse(error);
 
     if (response) return response;
+
+    if (error instanceof RangeError) {
+      return new Response(error.message, { status: 400 });
+    }
 
     return new Response("No se pudo consultar dashboard operativo", {
       status: 500,

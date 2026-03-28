@@ -1,4 +1,4 @@
-import { eq, sql, desc } from "drizzle-orm";
+import { desc, eq, getTableColumns, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { clients, employees, clientLegalStatusHistory } from "@/src/db/schema";
@@ -14,6 +14,8 @@ import {
   detectCriticalFieldChanges,
   registerAutoRevisionOnClientChange,
 } from "@/app/erp/admin/_lib/sync-client-legal-status";
+
+const clientColumns = getTableColumns(clients);
 
 /**
  * Formatea un número de teléfono móvil con código internacional
@@ -176,7 +178,16 @@ export async function GET(request: Request) {
 
     const maxAutocompleteRows = Math.min(300, Math.max(pageSize * 5, 60));
     const itemsQuery = db
-      .select()
+      .select({
+        ...clientColumns,
+        legalStatus: sql<string | null>`(
+          select ${clientLegalStatusHistory.status}
+          from ${clientLegalStatusHistory}
+          where ${clientLegalStatusHistory.clientId} = ${clients.id}
+          order by ${clientLegalStatusHistory.createdAt} desc
+          limit 1
+        )`,
+      })
       .from(clients)
       .orderBy(desc(clients.createdAt))
       .limit(forAutocomplete ? maxAutocompleteRows : pageSize)
@@ -186,30 +197,13 @@ export async function GET(request: Request) {
       ? await itemsQuery.where(whereClause)
       : await itemsQuery;
 
-    // Para cada cliente, obtener su estado jurídico más reciente
-    const itemsWithStatus = await Promise.all(
-      pageClients.map(async (client) => {
-        const latestStatus = await db.query.clientLegalStatusHistory.findFirst({
-          where: eq(clientLegalStatusHistory.clientId, client.id),
-          orderBy: desc(clientLegalStatusHistory.createdAt),
-          columns: { status: true },
-        });
-
-        return {
-          ...client,
-          isActive: client.isActive,
-          legalStatus: latestStatus?.status || null,
-        };
-      }),
-    );
-
     const filteredByLegalStatus = onlyVigente
-      ? itemsWithStatus.filter((item) =>
+      ? pageClients.filter((item) =>
           item.legalStatus
             ? item.legalStatus === "VIGENTE"
             : Boolean(item.isActive),
         )
-      : itemsWithStatus;
+      : pageClients;
 
     const pagedItems = forAutocomplete
       ? filteredByLegalStatus.slice(offset, offset + pageSize)
