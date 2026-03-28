@@ -163,6 +163,7 @@ import {
   boolean,
   date,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -1158,6 +1159,8 @@ export const orderStatusHistory = pgTable("order_status_history", {
   orderId: uuid("order_id").references(() => orders.id),
   status: orderStatusEnum("status"),
   changedBy: uuid("changed_by").references(() => employees.id),
+  reasonCode: varchar("reason_code", { length: 80 }),
+  meta: jsonb("meta"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
@@ -1466,6 +1469,70 @@ export const banks = pgTable("banks", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+export const purchaseRequirements = pgTable(
+  "purchase_requirements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    orderItemId: uuid("order_item_id")
+      .notNull()
+      .references(() => orderItems.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 30 }).notNull().default("BORRADOR"),
+    hintsSnapshot: jsonb("hints_snapshot"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    approvedBy: uuid("approved_by").references(() => employees.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    uniqueOrderItem: uniqueIndex("purchase_requirements_order_item_unique").on(
+      t.orderItemId,
+    ),
+  }),
+);
+
+export const purchaseRequirementLines = pgTable("purchase_requirement_lines", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  purchaseRequirementId: uuid("purchase_requirement_id")
+    .notNull()
+    .references(() => purchaseRequirements.id, { onDelete: "cascade" }),
+  category: varchar("category", { length: 40 }).notNull().default("INSUMO"),
+  description: text("description").notNull(),
+  qtyPlanned: numeric("qty_planned", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  unit: varchar("unit", { length: 30 }).default("UN"),
+  qtyOrdered: numeric("qty_ordered", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  qtyReceived: numeric("qty_received", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  coverageStatus: varchar("coverage_status", { length: 30 })
+    .notNull()
+    .default("PENDIENTE"),
+  inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
+export const siigoSyncJobs = pgTable("siigo_sync_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  jobType: varchar("job_type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("PENDIENTE"),
+  bankId: uuid("bank_id").references(() => banks.id),
+  requestedBy: uuid("requested_by").references(() => employees.id),
+  payload: jsonb("payload"),
+  result: jsonb("result"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const purchaseOrders = pgTable("purchase_orders", {
   id: uuid("id").defaultRandom().primaryKey(),
   purchaseOrderCode: varchar("purchase_order_code", { length: 20 }).unique(),
@@ -1493,6 +1560,9 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   purchaseOrderId: uuid("purchase_order_id")
     .notNull()
     .references(() => purchaseOrders.id),
+  purchaseRequirementLineId: uuid("purchase_requirement_line_id").references(
+    () => purchaseRequirementLines.id,
+  ),
   inventoryItemId: uuid("inventory_item_id")
     .notNull()
     .references(() => inventoryItems.id),
@@ -1507,6 +1577,39 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   lineTotal: numeric("line_total", { precision: 14, scale: 2 })
     .notNull()
     .default("0"),
+});
+
+export const purchaseOrderReceipts = pgTable("purchase_order_receipts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  purchaseOrderId: uuid("purchase_order_id")
+    .notNull()
+    .references(() => purchaseOrders.id, { onDelete: "cascade" }),
+  receiptCode: varchar("receipt_code", { length: 30 }).notNull().unique(),
+  notes: text("notes"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow(),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const purchaseOrderReceiptLines = pgTable("purchase_order_receipt_lines", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  receiptId: uuid("receipt_id")
+    .notNull()
+    .references(() => purchaseOrderReceipts.id, { onDelete: "cascade" }),
+  purchaseOrderItemId: uuid("purchase_order_item_id")
+    .notNull()
+    .references(() => purchaseOrderItems.id, { onDelete: "cascade" }),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItems.id),
+  receivedQty: numeric("received_qty", { precision: 12, scale: 2 })
+    .notNull()
+    .default("0"),
+  unitCost: numeric("unit_cost", { precision: 14, scale: 2 })
+    .notNull()
+    .default("0"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const purchaseOrderHistory = pgTable("purchase_order_history", {

@@ -43,6 +43,8 @@ export async function GET(request: Request) {
         status: orderStatusHistory.status,
         changedBy: orderStatusHistory.changedBy,
         changedByName: employees.name,
+        reasonCode: orderStatusHistory.reasonCode,
+        meta: orderStatusHistory.meta,
         createdAt: orderStatusHistory.createdAt,
       })
       .from(orderStatusHistory)

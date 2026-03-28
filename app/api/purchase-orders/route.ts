@@ -109,6 +109,7 @@ type CreatePurchaseOrderBody = {
   notes?: string | null;
   items?: Array<{
     inventoryItemId: string;
+    purchaseRequirementLineId?: string | null;
     variantId?: string | null;
     quantity: unknown;
     unitPrice: unknown;
@@ -164,6 +165,8 @@ export async function POST(request: Request) {
         const inventoryItemId = String(
           (it as any)?.inventoryItemId ?? "",
         ).trim();
+        const purchaseRequirementLineId =
+          String((it as any)?.purchaseRequirementLineId ?? "").trim() || null;
         const variantId = String((it as any)?.variantId ?? "").trim() || null;
         const quantity = toPositiveNumber((it as any)?.quantity);
         const unitPrice = toPositiveNumber((it as any)?.unitPrice);
@@ -171,6 +174,7 @@ export async function POST(request: Request) {
         return inventoryItemId && quantity && unitPrice
           ? {
               inventoryItemId,
+              purchaseRequirementLineId,
               variantId,
               quantity: formatDecimal(quantity),
               unitPrice: formatDecimal(unitPrice),
@@ -179,6 +183,7 @@ export async function POST(request: Request) {
       })
       .filter(Boolean) as Array<{
       inventoryItemId: string;
+      purchaseRequirementLineId: string | null;
       variantId: string | null;
       quantity: string;
       unitPrice: string;
@@ -235,6 +240,7 @@ export async function POST(request: Request) {
 
       return {
         inventoryItemId: item.inventoryItemId,
+        purchaseRequirementLineId: item.purchaseRequirementLineId,
         variantId: item.variantId ?? null,
         itemCode: source.itemCode,
         itemName: source.name,
@@ -274,6 +280,7 @@ export async function POST(request: Request) {
         orderItems.map((it) => ({
           purchaseOrderId: order.id,
           inventoryItemId: it.inventoryItemId,
+          purchaseRequirementLineId: it.purchaseRequirementLineId,
           variantId: it.variantId,
           itemCode: it.itemCode,
           itemName: it.itemName,

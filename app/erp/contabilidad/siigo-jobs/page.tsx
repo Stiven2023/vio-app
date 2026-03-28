@@ -1,9 +1,9 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { BanksTab } from "@/app/erp/maestros/bancos/_components/banks-tab";
-import { checkPermissions } from "@/src/utils/permission-middleware";
+import { SiigoJobsTab } from "@/app/erp/contabilidad/siigo-jobs/_components/siigo-jobs-tab";
 import { verifyAuthToken } from "@/src/utils/auth";
+import { checkPermissions } from "@/src/utils/permission-middleware";
 
 const ACCOUNTING_ROLES = new Set([
   "ADMINISTRADOR",
@@ -12,7 +12,7 @@ const ACCOUNTING_ROLES = new Set([
   "TESORERIA_Y_CARTERA",
 ]);
 
-export default async function BanksPage() {
+export default async function SiigoJobsPage() {
   const token = (await cookies()).get("auth_token")?.value;
 
   if (!token) redirect("/login");
@@ -27,26 +27,22 @@ export default async function BanksPage() {
     headers: new Headers(await headers()),
   });
 
-  const perms = await checkPermissions(req, ["VER_PAGO", "CREAR_PAGO"]);
+  const perms = await checkPermissions(req, ["VER_PAGO"]);
 
   if (!perms.VER_PAGO) redirect("/unauthorized");
 
-  const canManage = perms.CREAR_PAGO;
-  const canManageOfficial =
-    typeof role === "string" && ACCOUNTING_ROLES.has(role);
+  if (!(typeof role === "string" && ACCOUNTING_ROLES.has(role))) {
+    redirect("/unauthorized");
+  }
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
-      <h1 className="text-2xl font-bold">Banks</h1>
+      <h1 className="text-2xl font-bold">Siigo sync jobs</h1>
       <p className="mt-1 text-default-600">
-        View, create, edit and review the history of bank-to-payment
-        associations.
+        Monitor synchronization jobs and retry failed executions.
       </p>
       <div className="mt-6">
-        <BanksTab
-          canManage={canManage}
-          canManageOfficial={canManageOfficial}
-        />
+        <SiigoJobsTab />
       </div>
     </div>
   );

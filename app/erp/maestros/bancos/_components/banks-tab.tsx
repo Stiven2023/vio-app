@@ -93,7 +93,13 @@ const EMPTY_DRAFT: Draft = {
   isActive: true,
 };
 
-export function BanksTab({ canManage }: { canManage: boolean }) {
+export function BanksTab({
+  canManage,
+  canManageOfficial,
+}: {
+  canManage: boolean;
+  canManageOfficial: boolean;
+}) {
   const { data, loading, page, setPage, refresh } = usePaginatedApi<Bank>(
     "/api/banks",
     10,
@@ -380,6 +386,7 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
               }
             />
             <Switch
+              isDisabled={!canManageOfficial}
               isSelected={draft.isOfficial}
               onValueChange={(value) =>
                 setDraft((prev) => ({ ...prev, isOfficial: value }))
@@ -387,6 +394,11 @@ export function BanksTab({ canManage }: { canManage: boolean }) {
             >
               Official bank
             </Switch>
+            {!canManageOfficial ? (
+              <p className="text-xs text-default-500">
+                Solo contabilidad puede cambiar este campo.
+              </p>
+            ) : null}
             <Switch
               isSelected={draft.isActive}
               onValueChange={(value) =>

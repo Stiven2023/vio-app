@@ -1,10 +1,28 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clientLegalStatusHistory, clients } from "@/src/db/schema";
+import {
+  clientLegalStatusHistory,
+  clients,
+  siigoSyncJobs,
+} from "@/src/db/schema";
+import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { requireOfficialBankForSiigo } from "@/src/utils/siigo-bank-guard";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
+
+const ACCOUNTING_ROLES = new Set([
+  "ADMINISTRADOR",
+  "LIDER_FINANCIERA",
+  "AUXILIAR_CONTABLE",
+  "TESORERIA_Y_CARTERA",
+]);
+
+function isAccountingRole(role: string | null) {
+  return Boolean(role && ACCOUNTING_ROLES.has(role));
+}
 
 // ── Tipos raw de Siigo ─────────────────────────────────────────────────────────
 
@@ -414,13 +432,44 @@ export async function POST(request: Request) {
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "CREAR_CLIENTE");
+  const retryMode =
+    String(request.headers.get("x-siigo-job-retry") ?? "") === "1";
+  const role = getRoleFromRequest(request);
 
-  if (forbidden) return forbidden;
+  if (retryMode) {
+    if (!isAccountingRole(role)) {
+      return new Response("Forbidden", { status: 403 });
+    }
+  } else {
+    const forbidden = await requirePermission(request, "CREAR_CLIENTE");
+
+    if (forbidden) return forbidden;
+  }
 
   const startMs = Date.now();
+  const employeeId = getEmployeeIdFromRequest(request);
+
+  let syncJobId: string | null = null;
 
   try {
+    const officialBank = await requireOfficialBankForSiigo(request);
+
+    const [createdJob] = await db
+      .insert(siigoSyncJobs)
+      .values({
+        jobType: "SYNC_CUSTOMERS",
+        status: "RUNNING",
+        bankId: officialBank.id,
+        requestedBy: employeeId,
+        payload: {
+          source: "api/siigo/sync-customers",
+        },
+        startedAt: new Date(),
+      })
+      .returning({ id: siigoSyncJobs.id });
+
+    syncJobId = createdJob?.id ?? null;
+
     // 1. Descargar todos los clientes paginados de Siigo
     const allRaw: unknown[] = [];
     let page = 1;
@@ -589,15 +638,46 @@ export async function POST(request: Request) {
       }
     }
 
-    return Response.json({
+    const payload = {
       ok: true,
       total: normalized.length,
       created,
       updated,
       errors,
       durationMs: Date.now() - startMs,
-    } satisfies SyncStats);
+    } satisfies SyncStats;
+
+    if (syncJobId) {
+      await db
+        .update(siigoSyncJobs)
+        .set({
+          status: "SUCCESS",
+          result: {
+            ...payload,
+            bankId: officialBank.id,
+          },
+          finishedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(siigoSyncJobs.id, syncJobId));
+    }
+
+    return Response.json(payload);
   } catch (err) {
+    if (syncJobId) {
+      await db
+        .update(siigoSyncJobs)
+        .set({
+          status: "FAILED",
+          result: {
+            error: err instanceof Error ? err.message : "unknown",
+          },
+          finishedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(siigoSyncJobs.id, syncJobId));
+    }
+
     if (err instanceof SiigoApiError) {
       return Response.json(
         { ok: false, error: err.message },

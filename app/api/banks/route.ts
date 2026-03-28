@@ -2,10 +2,22 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { banks, purchaseOrders } from "@/src/db/schema";
+import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+
+const ACCOUNTING_ROLES = new Set([
+  "ADMINISTRADOR",
+  "LIDER_FINANCIERA",
+  "AUXILIAR_CONTABLE",
+  "TESORERIA_Y_CARTERA",
+]);
+
+function canManageOfficialBank(role: string | null) {
+  return Boolean(role && ACCOUNTING_ROLES.has(role));
+}
 
 function normalizeCode(value: string) {
   return value.trim().toUpperCase().replace(/\s+/g, "-").slice(0, 30);
@@ -168,6 +180,7 @@ export async function POST(request: Request) {
   if (forbidden) return forbidden;
 
   const body = await request.json();
+  const role = getRoleFromRequest(request);
 
   const code = normalizeCode(String(body?.code ?? ""));
   const name = String(body?.name ?? "").trim();
@@ -179,6 +192,12 @@ export async function POST(request: Request) {
   if (!code) return new Response("code required", { status: 400 });
   if (!name) return new Response("name required", { status: 400 });
   if (!accountRef) return new Response("accountRef required", { status: 400 });
+
+  if (isOfficial && !canManageOfficialBank(role)) {
+    return new Response("Solo contabilidad puede marcar bancos oficiales", {
+      status: 403,
+    });
+  }
 
   try {
     const created = await db
@@ -217,6 +236,7 @@ export async function PUT(request: Request) {
   if (forbidden) return forbidden;
 
   const body = await request.json();
+  const role = getRoleFromRequest(request);
 
   const id = String(body?.id ?? "").trim();
   const code = normalizeCode(String(body?.code ?? ""));
@@ -230,6 +250,12 @@ export async function PUT(request: Request) {
   if (!code) return new Response("code required", { status: 400 });
   if (!name) return new Response("name required", { status: 400 });
   if (!accountRef) return new Response("accountRef required", { status: 400 });
+
+  if (body?.isOfficial !== undefined && !canManageOfficialBank(role)) {
+    return new Response("Solo contabilidad puede cambiar bancos oficiales", {
+      status: 403,
+    });
+  }
 
   try {
     const [existingCode] = await db

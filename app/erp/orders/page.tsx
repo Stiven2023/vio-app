@@ -20,6 +20,8 @@ export default async function OrdersPage() {
       ? (payload as { employeeId?: unknown }).employeeId
       : null;
   const isAdvisor = role === "ASESOR";
+  const canCommercialDecision =
+    role === "ADMINISTRADOR" || role === "LIDER_COMERCIAL";
 
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),
@@ -50,6 +52,7 @@ export default async function OrdersPage() {
         <OrdersTab
           advisorEmployeeId={typeof employeeId === "string" ? employeeId : null}
           canChangeStatus={canChangeStatus}
+          canCommercialDecision={canCommercialDecision}
           canCreate={canCreate}
           canDelete={canDelete}
           canEdit={canEdit}

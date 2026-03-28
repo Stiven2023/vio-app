@@ -1,5 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@heroui/button";
 
 import { PurchaseOrdersTab } from "./_components/purchase-orders-tab";
 
@@ -30,6 +32,11 @@ export default async function PurchaseOrdersPage() {
         Purchasing operations center: documentation, approval, routes and
         logistics coordination.
       </p>
+      <div className="mt-4">
+        <Button as={Link} color="primary" href="/erp/purchase-orders/requirements" variant="flat">
+          Open purchase requirements
+        </Button>
+      </div>
       <div className="mt-6">
         <PurchaseOrdersTab canFinalize={canFinalize} />
       </div>

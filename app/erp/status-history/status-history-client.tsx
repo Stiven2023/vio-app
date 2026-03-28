@@ -18,6 +18,7 @@ import {
 } from "@heroui/table";
 
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
+import { formatOrderStatusReason } from "@/src/utils/order-status-reason";
 
 type OrderHistoryRow = {
   id: string;
@@ -26,6 +27,8 @@ type OrderHistoryRow = {
   status: string | null;
   changedBy: string | null;
   changedByName: string | null;
+  reasonCode: string | null;
+  meta: Record<string, unknown> | null;
   createdAt: string | null;
 };
 
@@ -118,6 +121,7 @@ function formatRelative(value: string | null | undefined) {
 
 export function StatusHistoryClient() {
   const [tab, setTab] = useState<TabKey>("orders");
+  const [uiLocale, setUiLocale] = useState<"en" | "es">("en");
 
   const [orderId, setOrderId] = useState("");
   const [orderItemId, setOrderItemId] = useState("");
@@ -132,6 +136,42 @@ export function StatusHistoryClient() {
   );
   const [loading, setLoading] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const readLocale = () => {
+      const fromStorage =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("preferredLanguage")
+          : null;
+      const fromCookie =
+        typeof document !== "undefined"
+          ? document.cookie
+              .split(";")
+              .map((part) => part.trim())
+              .find((part) => part.startsWith("NEXT_LOCALE="))
+              ?.split("=")[1] ?? null
+          : null;
+      const fromHtml =
+        typeof document !== "undefined"
+          ? document.documentElement.lang
+          : null;
+      const value = String(fromStorage || fromCookie || fromHtml || "en")
+        .trim()
+        .toLowerCase();
+
+      setUiLocale(value.startsWith("es") ? "es" : "en");
+    };
+
+    readLocale();
+
+    const onLocaleChange = () => readLocale();
+
+    window.addEventListener("viomar:locale-change", onLocaleChange);
+
+    return () => {
+      window.removeEventListener("viomar:locale-change", onLocaleChange);
+    };
+  }, []);
 
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search);
@@ -188,6 +228,7 @@ export function StatusHistoryClient() {
       return [
         { key: "order", name: "Order" },
         { key: "status", name: "Status" },
+        { key: "reason", name: "Reason" },
         { key: "user", name: "User" },
         { key: "date", name: "Date" },
       ];
@@ -290,6 +331,34 @@ export function StatusHistoryClient() {
 
                 if (columnKey === "user") {
                   return <TableCell>{row.changedByName ?? "System"}</TableCell>;
+                }
+
+                if (columnKey === "reason") {
+                  const pairs = [
+                    row?.meta?.fromStatus
+                      ? `from: ${String(row.meta.fromStatus)}`
+                      : null,
+                    row?.meta?.toStatus
+                      ? `to: ${String(row.meta.toStatus)}`
+                      : null,
+                    row?.meta?.paidPercent !== undefined &&
+                    row?.meta?.paidPercent !== null
+                      ? `paid: ${Number(row.meta.paidPercent).toFixed(0)}%`
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" • ");
+
+                  return (
+                    <TableCell>
+                      <div className="text-sm">
+                        {formatOrderStatusReason(row.reasonCode, uiLocale)}
+                      </div>
+                      <div className="text-xs text-default-500">
+                        {pairs || "Sin metadatos"}
+                      </div>
+                    </TableCell>
+                  );
                 }
 
                 if (columnKey === "date") {

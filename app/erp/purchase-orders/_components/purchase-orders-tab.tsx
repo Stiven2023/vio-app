@@ -85,6 +85,39 @@ type ShipmentRow = {
   createdAt: string | null;
 };
 
+type PurchaseOrderDetailItem = {
+  id: string;
+  itemCode: string | null;
+  itemName: string;
+  quantity: string;
+  unitPrice: string | null;
+};
+
+type ReceiptLine = {
+  id: string;
+  purchaseOrderItemId: string;
+  receivedQty: string;
+  notes: string | null;
+};
+
+type ReceiptRow = {
+  id: string;
+  receiptCode: string;
+  notes: string | null;
+  receivedAt: string | null;
+  lines: ReceiptLine[];
+};
+
+type ReceiptDraftLine = {
+  purchaseOrderItemId: string;
+  itemName: string;
+  orderedQty: number;
+  alreadyReceived: number;
+  pendingQty: number;
+  receiveNow: string;
+  notes: string;
+};
+
 function formatMoney(value: string | null) {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
@@ -92,6 +125,12 @@ function formatMoney(value: string | null) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Number(value ?? 0));
+}
+
+function parseNumber(value: string | number | null | undefined) {
+  const n = Number(value ?? 0);
+
+  return Number.isFinite(n) ? n : 0;
 }
 
 export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
@@ -104,6 +143,14 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
   const [shipments, setShipments] = useState<ShipmentRow[]>([]);
   const [routeOptions, setRouteOptions] = useState<RouteOptionsResponse>({});
   const [savingRoute, setSavingRoute] = useState(false);
+  const [receiptsOpen, setReceiptsOpen] = useState(false);
+  const [loadingReceipts, setLoadingReceipts] = useState(false);
+  const [savingReceipt, setSavingReceipt] = useState(false);
+  const [receiptNotes, setReceiptNotes] = useState("");
+  const [receiptDraftLines, setReceiptDraftLines] = useState<ReceiptDraftLine[]>(
+    [],
+  );
+  const [receiptRows, setReceiptRows] = useState<ReceiptRow[]>([]);
   const [routeForm, setRouteForm] = useState({
     routeType: "COMPRA_APROBADA",
     partyType: "PROVEEDOR",
@@ -128,7 +175,7 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
     return "Sin órdenes";
   }, [loading]);
 
-  const finalize = async (id: string) => {
+  const openReceipts = async (row: PurchaseOrderListRow) => {
     if (!canFinalize) {
       toast.error("No tienes permiso para registrar entrada");
 
@@ -136,14 +183,116 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
     }
 
     try {
-      await apiJson(`/api/purchase-orders/${id}`, {
-        method: "PUT",
-        body: JSON.stringify({ action: "FINALIZAR" }),
+      setLoadingReceipts(true);
+
+      const [detail, receipts] = await Promise.all([
+        apiJson<{ items: PurchaseOrderDetailItem[] }>(
+          `/api/purchase-orders/${row.id}`,
+        ),
+        apiJson<{ items: ReceiptRow[] }>(`/api/purchase-orders/${row.id}/receipts`),
+      ]);
+
+      const rows = Array.isArray(receipts.items) ? receipts.items : [];
+      const receivedByItem = new Map<string, number>();
+
+      for (const receipt of rows) {
+        for (const line of receipt.lines ?? []) {
+          const key = String(line.purchaseOrderItemId);
+          const next =
+            (receivedByItem.get(key) ?? 0) + parseNumber(line.receivedQty);
+
+          receivedByItem.set(key, next);
+        }
+      }
+
+      const draft = (detail.items ?? []).map((item) => {
+        const orderedQty = parseNumber(item.quantity);
+        const alreadyReceived = receivedByItem.get(String(item.id)) ?? 0;
+        const pendingQty = Math.max(0, orderedQty - alreadyReceived);
+
+        return {
+          purchaseOrderItemId: String(item.id),
+          itemName: `${item.itemCode ?? "-"} · ${item.itemName}`,
+          orderedQty,
+          alreadyReceived,
+          pendingQty,
+          receiveNow: "",
+          notes: "",
+        } satisfies ReceiptDraftLine;
       });
-      toast.success("Orden finalizada");
-      refresh();
+
+      setSelectedOrder(row);
+      setReceiptRows(rows);
+      setReceiptDraftLines(draft);
+      setReceiptNotes("");
+      setReceiptsOpen(true);
     } catch (e) {
       toast.error(getErrorMessage(e));
+    } finally {
+      setLoadingReceipts(false);
+    }
+  };
+
+  const updateReceiptLine = (
+    purchaseOrderItemId: string,
+    patch: Partial<Pick<ReceiptDraftLine, "receiveNow" | "notes">>,
+  ) => {
+    setReceiptDraftLines((prev) =>
+      prev.map((line) =>
+        line.purchaseOrderItemId === purchaseOrderItemId
+          ? { ...line, ...patch }
+          : line,
+      ),
+    );
+  };
+
+  const submitReceipt = async () => {
+    if (!selectedOrder || savingReceipt) return;
+
+    const items = receiptDraftLines
+      .map((line) => {
+        const value = Number(String(line.receiveNow || "").replace(/,/g, "."));
+
+        if (!Number.isFinite(value) || value <= 0) return null;
+
+        if (value > line.pendingQty) {
+          throw new Error(
+            `La cantidad para ${line.itemName} supera el pendiente (${line.pendingQty}).`,
+          );
+        }
+
+        return {
+          purchaseOrderItemId: line.purchaseOrderItemId,
+          receivedQty: value,
+          notes: line.notes.trim() || null,
+        };
+      })
+      .filter(Boolean);
+
+    if (items.length === 0) {
+      toast.error("Ingresa al menos una cantidad a recibir");
+
+      return;
+    }
+
+    try {
+      setSavingReceipt(true);
+
+      await apiJson(`/api/purchase-orders/${selectedOrder.id}/receipts`, {
+        method: "POST",
+        body: JSON.stringify({
+          notes: receiptNotes.trim() || null,
+          items,
+        }),
+      });
+
+      toast.success("Recepción registrada");
+      await openReceipts(selectedOrder);
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSavingReceipt(false);
     }
   };
 
@@ -428,10 +577,10 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
                       {row.status === "APROBADA" ||
                       row.status === "EN_PROCESO" ? (
                         <DropdownItem
-                          key="finalize"
-                          onPress={() => finalize(row.id)}
+                          key="receipts"
+                          onPress={() => openReceipts(row)}
                         >
-                          Finalizar (registrar entrada)
+                          Registrar recepción
                         </DropdownItem>
                       ) : null}
                     </DropdownMenu>
@@ -742,6 +891,151 @@ export function PurchaseOrdersTab({ canFinalize }: { canFinalize: boolean }) {
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setRouteOpen(false)}>
+              Cerrar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        disableAnimation
+        isOpen={receiptsOpen}
+        size="5xl"
+        onOpenChange={(open) => {
+          setReceiptsOpen(open);
+          if (!open) {
+            setReceiptNotes("");
+            setReceiptDraftLines([]);
+            setReceiptRows([]);
+          }
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>
+            Recepciones - {selectedOrder?.purchaseOrderCode ?? ""}
+          </ModalHeader>
+          <ModalBody className="space-y-4">
+            {loadingReceipts ? (
+              <p className="text-sm text-default-500">Cargando...</p>
+            ) : (
+              <>
+                <div className="rounded-xl border border-default-200 bg-default-50 p-4">
+                  <h4 className="text-sm font-semibold text-default-800">
+                    Registrar recepción parcial
+                  </h4>
+                  <p className="mt-1 text-xs text-default-600">
+                    Ingresa únicamente las cantidades recibidas en esta entrega.
+                  </p>
+
+                  <div className="mt-3 space-y-3">
+                    {receiptDraftLines.length === 0 ? (
+                      <p className="text-xs text-default-500">
+                        No hay ítems para esta orden.
+                      </p>
+                    ) : (
+                      receiptDraftLines.map((line) => (
+                        <div
+                          key={line.purchaseOrderItemId}
+                          className="grid gap-2 rounded-lg border border-default-200 bg-white p-3 md:grid-cols-12"
+                        >
+                          <div className="md:col-span-5">
+                            <p className="text-xs font-medium text-default-800">
+                              {line.itemName}
+                            </p>
+                            <p className="text-[11px] text-default-500">
+                              Ordenado: {line.orderedQty.toFixed(2)} · Recibido: {" "}
+                              {line.alreadyReceived.toFixed(2)} · Pendiente: {" "}
+                              {line.pendingQty.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="md:col-span-3">
+                            <Input
+                              label="Recibir ahora"
+                              placeholder="0"
+                              value={line.receiveNow}
+                              onValueChange={(value) =>
+                                updateReceiptLine(line.purchaseOrderItemId, {
+                                  receiveNow: value,
+                                })
+                              }
+                            />
+                          </div>
+                          <div className="md:col-span-4">
+                            <Input
+                              label="Nota de línea"
+                              placeholder="Opcional"
+                              value={line.notes}
+                              onValueChange={(value) =>
+                                updateReceiptLine(line.purchaseOrderItemId, {
+                                  notes: value,
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+
+                    <Input
+                      label="Nota general"
+                      placeholder="Observaciones de la recepción"
+                      value={receiptNotes}
+                      onValueChange={setReceiptNotes}
+                    />
+
+                    <div className="flex justify-end">
+                      <Button
+                        color="primary"
+                        isDisabled={savingReceipt || receiptDraftLines.length === 0}
+                        onPress={submitReceipt}
+                      >
+                        {savingReceipt ? "Guardando..." : "Registrar recepción"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-default-200 bg-default-50 p-4">
+                  <h4 className="text-sm font-semibold text-default-800">
+                    Recepciones registradas
+                  </h4>
+                  <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {receiptRows.length === 0 ? (
+                      <p className="text-xs text-default-500">
+                        No hay recepciones registradas.
+                      </p>
+                    ) : (
+                      receiptRows.map((receipt) => (
+                        <div
+                          key={receipt.id}
+                          className="rounded-lg border border-default-200 bg-white p-3"
+                        >
+                          <p className="text-xs font-medium text-default-800">
+                            {receipt.receiptCode} · {" "}
+                            {receipt.receivedAt
+                              ? new Date(receipt.receivedAt).toLocaleString()
+                              : "-"}
+                          </p>
+                          <p className="mt-1 text-[11px] text-default-600">
+                            {receipt.notes ?? "Sin notas"}
+                          </p>
+                          <div className="mt-2 space-y-1 text-[11px] text-default-500">
+                            {(receipt.lines ?? []).map((line) => (
+                              <p key={line.id}>
+                                Item {line.purchaseOrderItemId}: {line.receivedQty}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setReceiptsOpen(false)}>
               Cerrar
             </Button>
           </ModalFooter>

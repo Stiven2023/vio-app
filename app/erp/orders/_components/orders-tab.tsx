@@ -24,6 +24,8 @@ import {
   BsCheck2Circle,
   BsClockHistory,
   BsEye,
+  BsHandThumbsUp,
+  BsPauseCircle,
   BsReceipt,
   BsThreeDotsVertical,
   BsTrash,
@@ -47,10 +49,13 @@ import { FilterSelect } from "@/app/erp/catalog/_components/ui/filter-select";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { formatOrderStatusReason } from "@/src/utils/order-status-reason";
 
 const statusOptions: Array<{ value: string; label: string }> = [
   { value: "all", label: "All" },
   { value: "PENDIENTE", label: "Pending" },
+  { value: "PENDIENTE_CONTABILIDAD", label: "Pending accounting" },
+  { value: "APROBADO_CONTABILIDAD", label: "Accounting approved" },
   { value: "APROBACION", label: "Approval" },
   { value: "PROGRAMACION", label: "Scheduling" },
   { value: "PRODUCCION", label: "Production" },
@@ -73,6 +78,7 @@ export function OrdersTab({
   canEdit,
   canDelete,
   canChangeStatus,
+  canCommercialDecision,
   canSeeHistory,
   isAdvisor,
   advisorEmployeeId,
@@ -81,10 +87,49 @@ export function OrdersTab({
   canEdit: boolean;
   canDelete: boolean;
   canChangeStatus: boolean;
+  canCommercialDecision: boolean;
   canSeeHistory: boolean;
   isAdvisor: boolean;
   advisorEmployeeId: string | null;
 }) {
+  const [uiLocale, setUiLocale] = useState<"en" | "es">("en");
+
+  useEffect(() => {
+    const readLocale = () => {
+      const fromStorage =
+        typeof window !== "undefined"
+          ? window.localStorage.getItem("preferredLanguage")
+          : null;
+      const fromCookie =
+        typeof document !== "undefined"
+          ? document.cookie
+              .split(";")
+              .map((part) => part.trim())
+              .find((part) => part.startsWith("NEXT_LOCALE="))
+              ?.split("=")[1] ?? null
+          : null;
+      const fromHtml =
+        typeof document !== "undefined"
+          ? document.documentElement.lang
+          : null;
+      const value = String(fromStorage || fromCookie || fromHtml || "en")
+        .trim()
+        .toLowerCase();
+
+      setUiLocale(value.startsWith("es") ? "es" : "en");
+    };
+
+    readLocale();
+
+    const onLocaleChange = () => readLocale();
+
+    window.addEventListener("viomar:locale-change", onLocaleChange);
+
+    return () => {
+      window.removeEventListener("viomar:locale-change", onLocaleChange);
+    };
+  }, []);
+
   const canShowReadyDispatchAction = (currentStatusRaw: string | null | undefined) => {
     const currentStatus = String(currentStatusRaw ?? "")
       .trim()
@@ -166,6 +211,8 @@ export function OrdersTab({
       id: string;
       status: string | null;
       changedByName: string | null;
+      reasonCode: string | null;
+      meta: Record<string, unknown> | null;
       createdAt: string | null;
     }>
   >([]);
@@ -180,6 +227,15 @@ export function OrdersTab({
   const [readyOpen, setReadyOpen] = useState(false);
   const [readySubmitting, setReadySubmitting] = useState(false);
   const [readyOrder, setReadyOrder] = useState<OrderListItem | null>(null);
+  const [commercialOpen, setCommercialOpen] = useState(false);
+  const [commercialSubmitting, setCommercialSubmitting] = useState(false);
+  const [commercialOrder, setCommercialOrder] = useState<OrderListItem | null>(
+    null,
+  );
+  const [commercialAction, setCommercialAction] = useState<
+    "APPROVE" | "WAIT_FOR_PAYMENT"
+  >("APPROVE");
+  const [commercialNote, setCommercialNote] = useState("");
 
   const resolveTargetStatus = (
     order: OrderListItem,
@@ -207,6 +263,14 @@ export function OrdersTab({
     }
 
     if (isPaidAtLeast50) {
+      if (currentStatus === "APROBADO_CONTABILIDAD") {
+        return {
+          targetStatus: "PROGRAMACION",
+          reason:
+            "Accounting already approved the advance and payment is at least 50%; it should be sent to Scheduling.",
+        };
+      }
+
       if (currentStatus === "APROBACION") {
         return {
           targetStatus: "PROGRAMACION",
@@ -219,6 +283,14 @@ export function OrdersTab({
         targetStatus: "APROBACION",
         reason:
           "Although the advance is 50% or more, workflow requires passing through Approval before Scheduling.",
+      };
+    }
+
+    if (currentStatus === "PENDIENTE_CONTABILIDAD") {
+      return {
+        targetStatus: "APROBACION",
+        reason:
+          "Accounting approval is still pending, so this action only sends the order to Approval.",
       };
     }
 
@@ -303,6 +375,8 @@ export function OrdersTab({
           id: string;
           status: string | null;
           changedByName: string | null;
+          reasonCode: string | null;
+          meta: Record<string, unknown> | null;
           createdAt: string | null;
         }>;
       }>(
@@ -322,38 +396,87 @@ export function OrdersTab({
     setReadyOpen(true);
   };
 
-  const confirmReadyDispatch = async () => {
-    if (!readyOrder || readySubmitting || !canChangeStatus) return;
+  const canShowCommercialDecision = (
+    currentStatusRaw: string | null | undefined,
+  ) => {
+    const currentStatus = String(currentStatusRaw ?? "")
+      .trim()
+      .toUpperCase();
 
-    const total = Number(readyOrder.total ?? 0);
-    const shipping = Number(readyOrder.shippingFee ?? 0);
-    const paid = Number(readyOrder.paidTotal ?? 0);
-    const denominator = Math.max(0, total) + Math.max(0, shipping);
-    const paidPercent =
-      denominator > 0 ? Math.max(0, (paid / denominator) * 100) : 0;
-    const target = resolveTargetStatus(readyOrder, paidPercent);
+    return currentStatus === "APROBACION";
+  };
 
-    if (!target.targetStatus) {
-      toast.error(target.reason);
+  const openCommercialModal = (
+    order: OrderListItem,
+    action: "APPROVE" | "WAIT_FOR_PAYMENT",
+  ) => {
+    setCommercialOrder(order);
+    setCommercialAction(action);
+    setCommercialNote("");
+    setCommercialOpen(true);
+  };
 
+  const submitCommercialDecision = async () => {
+    if (!commercialOrder || commercialSubmitting || !canCommercialDecision)
       return;
-    }
 
     try {
-      setReadySubmitting(true);
-      await apiJson("/api/orders", {
-        method: "PUT",
+      setCommercialSubmitting(true);
+
+      await apiJson(`/api/orders/${commercialOrder.id}/commercial-approval`, {
+        method: "POST",
         body: JSON.stringify({
-          id: readyOrder.id,
-          status: target.targetStatus,
+          action: commercialAction,
+          note: commercialNote.trim() || null,
         }),
       });
 
       toast.success(
-        target.targetStatus === "PROGRAMACION"
+        commercialAction === "APPROVE"
+          ? "Commercial approval recorded"
+          : "Marked as waiting for payment",
+      );
+      setCommercialOpen(false);
+      setCommercialOrder(null);
+      setCommercialNote("");
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setCommercialSubmitting(false);
+    }
+  };
+
+  const confirmReadyDispatch = async () => {
+    if (!readyOrder || readySubmitting || !canChangeStatus) return;
+
+    try {
+      setReadySubmitting(true);
+      const result = await apiJson<{
+        changed: boolean;
+        fromStatus: string;
+        toStatus: "APROBACION" | "PROGRAMACION" | null;
+        reason: string;
+      }>(`/api/orders/${readyOrder.id}/request-scheduling`, {
+        method: "POST",
+      });
+
+      if (!result.toStatus) {
+        toast.error(result.reason || "No applicable destination status.");
+
+        return;
+      }
+
+      toast.success(
+        result.toStatus === "PROGRAMACION"
           ? "Order sent to Scheduling"
           : "Order sent to Approval",
       );
+
+      if (!result.changed && result.reason) {
+        toast(result.reason);
+      }
+
       setReadyOpen(false);
       setReadyOrder(null);
       refresh();
@@ -564,6 +687,32 @@ export function OrdersTab({
                         </DropdownItem>
                       ) : null}
 
+                      {canCommercialDecision &&
+                      canAccessOrder(o) &&
+                      canShowCommercialDecision(o.status) ? (
+                        <DropdownItem
+                          key="commercial-approve"
+                          startContent={<BsHandThumbsUp />}
+                          onPress={() => openCommercialModal(o, "APPROVE")}
+                        >
+                          Commercial approve
+                        </DropdownItem>
+                      ) : null}
+
+                      {canCommercialDecision &&
+                      canAccessOrder(o) &&
+                      canShowCommercialDecision(o.status) ? (
+                        <DropdownItem
+                          key="commercial-wait"
+                          startContent={<BsPauseCircle />}
+                          onPress={() =>
+                            openCommercialModal(o, "WAIT_FOR_PAYMENT")
+                          }
+                        >
+                          Wait for payment
+                        </DropdownItem>
+                      ) : null}
+
                       {canDelete && canAccessOrder(o) ? (
                         <DropdownItem
                           key="delete"
@@ -630,6 +779,33 @@ export function OrdersTab({
                   >
                     <div>
                       <div className="font-medium">{item.status ?? "-"}</div>
+                      {item.reasonCode ? (
+                        <div className="text-xs text-default-600">
+                          {formatOrderStatusReason(item.reasonCode, uiLocale)}
+                        </div>
+                      ) : null}
+                      {item.meta ? (
+                        <div className="text-xs text-default-500">
+                          {[
+                            item.meta.fromStatus
+                              ? `from: ${String(item.meta.fromStatus)}`
+                              : null,
+                            item.meta.toStatus
+                              ? `to: ${String(item.meta.toStatus)}`
+                              : null,
+                            item.meta.paidPercent !== undefined &&
+                            item.meta.paidPercent !== null
+                              ? `paid: ${Number(item.meta.paidPercent).toFixed(0)}%`
+                              : null,
+                            item.meta.prefacturaId
+                              ? `pref: ${String(item.meta.prefacturaId)}`
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ") || "Sin metadatos"
+                          }
+                        </div>
+                      ) : null}
                       <div className="text-xs text-default-500">
                         {item.changedByName ?? "System"}
                       </div>
@@ -726,6 +902,65 @@ export function OrdersTab({
               onPress={confirmReadyDispatch}
             >
               {readySubmitting ? "Confirmando..." : "Confirm dispatch"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        disableAnimation
+        isOpen={commercialOpen}
+        onOpenChange={(open) => {
+          setCommercialOpen(open);
+          if (!open) {
+            setCommercialOrder(null);
+            setCommercialNote("");
+          }
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>
+            {commercialAction === "APPROVE"
+              ? "Commercial approval"
+              : "Wait for payment"}
+          </ModalHeader>
+          <ModalBody>
+            <div className="space-y-2 text-sm">
+              <div>
+                <span className="text-default-500">Order:</span>{" "}
+                <strong>{commercialOrder?.orderCode ?? "-"}</strong>
+              </div>
+              <div>
+                <span className="text-default-500">Client:</span>{" "}
+                <strong>{commercialOrder?.clientName ?? "-"}</strong>
+              </div>
+              <div>
+                <span className="text-default-500">Current status:</span>{" "}
+                <strong>{commercialOrder?.status ?? "-"}</strong>
+              </div>
+              <div className="rounded-medium border border-default-200 bg-default-50 p-2 text-default-700">
+                {commercialAction === "APPROVE"
+                  ? "This records commercial approval and keeps the order in Approval until next workflow action."
+                  : "This records a commercial pause because payment is still pending."}
+              </div>
+              <textarea
+                className="min-h-24 w-full rounded-medium border border-default-300 bg-content1 px-3 py-2 text-sm outline-none"
+                placeholder="Optional note"
+                value={commercialNote}
+                onChange={(event) => setCommercialNote(event.target.value)}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setCommercialOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!commercialOrder || commercialSubmitting}
+              onPress={submitCommercialDecision}
+            >
+              {commercialSubmitting ? "Saving..." : "Save decision"}
             </Button>
           </ModalFooter>
         </ModalContent>

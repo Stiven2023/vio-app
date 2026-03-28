@@ -39,6 +39,7 @@ import { canRoleChangeStatus } from "@/src/utils/role-status";
 import { shouldRouteDesignUpdateToApproval } from "@/src/utils/design-workflow";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
 import { getItemLeadDays } from "@/src/utils/quotation-delivery";
+import { ensurePurchaseRequirementsForOrder } from "@/src/utils/purchase-requirements";
 
 const orderItemStatuses = new Set<string>(ORDER_ITEM_STATUS_VALUES);
 
@@ -116,6 +117,12 @@ async function syncOrderStatusFromItems(
       .update(orders)
       .set({ status: ORDER_STATUS.PROGRAMACION as any })
       .where(eq(orders.id, orderId));
+
+    await ensurePurchaseRequirementsForOrder({
+      dbOrTx: tx,
+      orderId,
+      createdBy: changedBy,
+    });
 
     await tx.insert(orderStatusHistory).values({
       orderId,

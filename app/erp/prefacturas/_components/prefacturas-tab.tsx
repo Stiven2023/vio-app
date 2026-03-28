@@ -109,6 +109,25 @@ type ReadyDispatchPreview = {
   orderTotal: number;
 };
 
+type ApproveAdvanceResult = {
+  ok: boolean;
+  prefacturaId: string;
+  orderId: string | null;
+  accountingApproved: boolean;
+  fromOrderStatus: string;
+  toOrderStatus: string | null;
+  paidPercent: number;
+  autoScheduled: boolean;
+  message: string;
+};
+
+type RequestSchedulingResult = {
+  changed: boolean;
+  fromStatus: string;
+  toStatus: "APROBACION" | "PROGRAMACION" | null;
+  reason: string;
+};
+
 const documentTypeOptions = [
   { value: "all", label: "All" },
   { value: "F", label: "F" },
@@ -118,6 +137,7 @@ const documentTypeOptions = [
 const statusOptions = [
   { value: "all", label: "All" },
   { value: "PENDIENTE_CONTABILIDAD", label: "Pending accounting" },
+  { value: "APROBADO_CONTABILIDAD", label: "Accounting approved" },
   { value: "APROBACION", label: "Approval" },
   { value: "PROGRAMACION", label: "Scheduling" },
   { value: "PENDIENTE", label: "Pending" },
@@ -296,6 +316,12 @@ export function PrefacturasTab({
   const [readyPreview, setReadyPreview] = useState<ReadyDispatchPreview | null>(
     null,
   );
+
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [approveSubmitting, setApproveSubmitting] = useState(false);
+  const [approveTarget, setApproveTarget] = useState<PrefacturaRow | null>(null);
+  const [approveNote, setApproveNote] = useState("");
+  const [approveReference, setApproveReference] = useState("");
 
   const resolveTargetStatus = (
     currentStatusRaw: string,
@@ -549,24 +575,70 @@ export function PrefacturasTab({
     }
   };
 
+  const openApproveAdvanceModal = (row: PrefacturaRow) => {
+    setApproveTarget(row);
+    setApproveModalOpen(true);
+    setApproveNote("");
+    setApproveReference("");
+  };
+
+  const confirmApproveAdvance = async () => {
+    if (!approveTarget || approveSubmitting) return;
+
+    try {
+      setApproveSubmitting(true);
+
+      const result = await apiJson<ApproveAdvanceResult>(
+        `/api/prefacturas/${approveTarget.id}/approve-advance`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            note: approveNote.trim() || null,
+            reference: approveReference.trim() || null,
+          }),
+        },
+      );
+
+      toast.success(result.message || "Advance approved successfully.");
+      setApproveModalOpen(false);
+      setApproveTarget(null);
+      setApproveNote("");
+      setApproveReference("");
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setApproveSubmitting(false);
+    }
+  };
+
   const confirmReadyDispatch = async () => {
-    if (!readyPreview || !readyPreview.targetStatus || readySubmitting) return;
+    if (!readyPreview || readySubmitting) return;
 
     try {
       setReadySubmitting(true);
-      await apiJson("/api/orders", {
-        method: "PUT",
-        body: JSON.stringify({
-          id: readyPreview.orderId,
-          status: readyPreview.targetStatus,
-        }),
-      });
+      const result = await apiJson<RequestSchedulingResult>(
+        `/api/orders/${readyPreview.orderId}/request-scheduling`,
+        {
+          method: "POST",
+        },
+      );
+
+      if (!result.toStatus) {
+        toast.error(result.reason || "No applicable destination status.");
+
+        return;
+      }
 
       toast.success(
-        readyPreview.targetStatus === "PROGRAMACION"
+        result.toStatus === "PROGRAMACION"
           ? "Order sent to Scheduling"
           : "Order sent to Approval",
       );
+
+      if (!result.changed && result.reason) {
+        toast(result.reason);
+      }
 
       setReadyModalOpen(false);
       setReadyPreview(null);
@@ -576,6 +648,17 @@ export function PrefacturasTab({
     } finally {
       setReadySubmitting(false);
     }
+  };
+
+  const canApproveAdvanceAction = (row: PrefacturaRow) => {
+    const status = String(row.status ?? "")
+      .trim()
+      .toUpperCase();
+
+    return (
+      Boolean(row.orderId) &&
+      ["PENDIENTE_CONTABILIDAD", "PENDIENTE", "APROBACION"].includes(status)
+    );
   };
 
   return (
@@ -700,6 +783,15 @@ export function PrefacturasTab({
                           onPress={() => openAdvanceModal(row)}
                         >
                           Pay advance
+                        </DropdownItem>
+                      ) : null}
+                      {canChangeStatus && canApproveAdvanceAction(row) ? (
+                        <DropdownItem
+                          key="approve-advance"
+                          startContent={<BsCheck2Circle />}
+                          onPress={() => openApproveAdvanceModal(row)}
+                        >
+                          Approve advance (Accounting)
                         </DropdownItem>
                       ) : null}
                       {canChangeStatus &&
@@ -921,6 +1013,73 @@ export function PrefacturasTab({
 
       <Modal
         disableAnimation
+        isOpen={approveModalOpen}
+        onOpenChange={(open) => {
+          setApproveModalOpen(open);
+          if (!open) {
+            setApproveTarget(null);
+            setApproveNote("");
+            setApproveReference("");
+          }
+        }}
+      >
+        <ModalContent>
+          <ModalHeader>Approve advance (Accounting)</ModalHeader>
+          <ModalBody>
+            <div className="space-y-3">
+              <p className="text-sm text-default-600">
+                This action confirms the advance in accounting and may auto-move
+                the order to Scheduling if it already meets Option B rules.
+              </p>
+              <div className="rounded-medium border border-default-200 bg-default-50 p-3 text-sm">
+                <div>
+                  <span className="text-default-500">Prefacture:</span>{" "}
+                  <strong>{approveTarget?.prefacturaCode ?? "-"}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Order:</span>{" "}
+                  <strong>{approveTarget?.orderCode ?? "-"}</strong>
+                </div>
+                <div>
+                  <span className="text-default-500">Current status:</span>{" "}
+                  <strong>{approveTarget?.status ?? "-"}</strong>
+                </div>
+              </div>
+
+              <Input
+                label="Reference (optional)"
+                placeholder="Accounting approval reference"
+                value={approveReference}
+                variant="bordered"
+                onValueChange={setApproveReference}
+              />
+
+              <Input
+                label="Note (optional)"
+                placeholder="Approval note"
+                value={approveNote}
+                variant="bordered"
+                onValueChange={setApproveNote}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="flat" onPress={() => setApproveModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!approveTarget || approveSubmitting}
+              onPress={confirmApproveAdvance}
+            >
+              {approveSubmitting ? "Approving..." : "Approve advance"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        disableAnimation
         isOpen={readyModalOpen}
         onOpenChange={(open) => {
           setReadyModalOpen(open);
@@ -981,10 +1140,7 @@ export function PrefacturasTab({
             <Button
               color="primary"
               isDisabled={
-                readyLoading ||
-                readySubmitting ||
-                !readyPreview ||
-                !readyPreview.targetStatus
+                readyLoading || readySubmitting || !readyPreview
               }
               onPress={confirmReadyDispatch}
             >

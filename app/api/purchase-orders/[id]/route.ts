@@ -126,6 +126,7 @@ export async function GET(
     const items = await db
       .select({
         id: purchaseOrderItems.id,
+        purchaseRequirementLineId: purchaseOrderItems.purchaseRequirementLineId,
         inventoryItemId: purchaseOrderItems.inventoryItemId,
         variantId: purchaseOrderItems.variantId,
         itemCode: purchaseOrderItems.itemCode,

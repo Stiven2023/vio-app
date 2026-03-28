@@ -20,6 +20,8 @@ import { getAllowedNextOrderStatuses } from "@/src/utils/order-workflow";
 
 const statusOptions: Array<{ value: OrderStatus; label: string }> = [
   { value: "PENDIENTE", label: "Pendiente" },
+  { value: "PENDIENTE_CONTABILIDAD", label: "Pendiente contabilidad" },
+  { value: "APROBADO_CONTABILIDAD", label: "Aprobado contabilidad" },
   { value: "APROBACION", label: "Aprobación" },
   { value: "PROGRAMACION", label: "Programación" },
   { value: "PRODUCCION", label: "Produccion" },
