@@ -40,6 +40,12 @@ export {
   ContractTypeEnum,
   LeaveType,
   LeaveTypeEnum,
+  EmployeeRequestType,
+  EmployeeRequestTypeEnum,
+  EmployeeRequestStatus,
+  EmployeeRequestStatusEnum,
+  EmployeeRequestPriority,
+  EmployeeRequestPriorityEnum,
   Role,
   RoleEnum,
   Permission,
@@ -121,6 +127,9 @@ export {
   factoringStatusValues,
   contractTypeValues,
   leaveTypeValues,
+  employeeRequestTypeValues,
+  employeeRequestStatusValues,
+  employeeRequestPriorityValues,
   roleValues,
   permissionValues,
   orderTypeValues,
@@ -292,6 +301,18 @@ export const factoringStatusPgEnum = pgEnum(
 );
 export const contractTypePgEnum = pgEnum("contract_type", contractTypeValues);
 export const leaveTypePgEnum = pgEnum("leave_type", leaveTypeValues);
+export const employeeRequestTypePgEnum = pgEnum(
+  "employee_request_type",
+  employeeRequestTypeValues,
+);
+export const employeeRequestStatusPgEnum = pgEnum(
+  "employee_request_status",
+  employeeRequestStatusValues,
+);
+export const employeeRequestPriorityPgEnum = pgEnum(
+  "employee_request_priority",
+  employeeRequestPriorityValues,
+);
 export const orderTypePgEnum = pgEnum("order_type", orderTypeValues);
 export const orderKindPgEnum = pgEnum("order_kind", orderKindValues);
 export const orderStatusPgEnum = pgEnum("order_status", orderStatusValues);
@@ -414,6 +435,9 @@ export const reconciliationItemTypeEnum = reconciliationItemTypePgEnum;
 export const factoringStatusEnum = factoringStatusPgEnum;
 export const contractTypeEnum = contractTypePgEnum;
 export const leaveTypeEnum = leaveTypePgEnum;
+export const employeeRequestTypeEnum = employeeRequestTypePgEnum;
+export const employeeRequestStatusEnum = employeeRequestStatusPgEnum;
+export const employeeRequestPriorityEnum = employeeRequestPriorityPgEnum;
 export const orderTypeEnum = orderTypePgEnum;
 export const orderKindEnum = orderKindPgEnum;
 export const orderStatusEnum = orderStatusPgEnum;
@@ -1923,6 +1947,25 @@ export const employeeLeaves = pgTable("employee_leaves", {
   notes: text("notes"),
   approvedBy: uuid("approved_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+});
+
+export const employeeRequests = pgTable("employee_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  employeeId: uuid("employee_id")
+    .notNull()
+    .references(() => employees.id),
+  type: employeeRequestTypeEnum("type").notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  requestDate: date("request_date"),
+  requestHours: numeric("request_hours", { precision: 4, scale: 2 }),
+  priority: employeeRequestPriorityEnum("priority").notNull().default("MEDIA"),
+  status: employeeRequestStatusEnum("status").notNull().default("PENDIENTE"),
+  responseNotes: text("response_notes"),
+  resolvedBy: uuid("resolved_by").references(() => employees.id),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const operativeDashboardLogs = pgTable("operative_dashboard_logs", {
