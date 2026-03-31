@@ -6,6 +6,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Input, Textarea } from "@heroui/input";
+import { Select, SelectItem } from "@heroui/select";
 import { Spinner } from "@heroui/spinner";
 import { Tab, Tabs } from "@heroui/tabs";
 import {
@@ -21,6 +22,9 @@ import {
   BsArrowLeft,
   BsCalendar2Check,
   BsCalendarDate,
+  BsChatLeftText,
+  BsClipboardCheck,
+  BsExclamationTriangle,
   BsFileEarmarkText,
   BsPatchCheck,
   BsPersonBadge,
@@ -46,6 +50,26 @@ type EmployeeInfo = {
 type SolicitudesData = {
   employee: EmployeeInfo | null;
   items: LeaveItem[];
+  total: number;
+};
+
+type RequestItem = {
+  id: string;
+  type: string;
+  subject: string;
+  description: string;
+  requestDate: string | null;
+  requestHours: string | null;
+  priority: string;
+  status: string;
+  responseNotes: string | null;
+  resolvedByName: string | null;
+  resolvedAt: string | null;
+  createdAt: string | null;
+};
+
+type PeticionesData = {
+  items: RequestItem[];
   total: number;
 };
 
@@ -92,6 +116,56 @@ const COURSES = [
   },
 ];
 
+const REQUEST_TYPES = [
+  { value: "PERMISO", label: "Permiso de ausencia" },
+  { value: "RECLAMO", label: "Reclamo" },
+  { value: "SOLICITUD", label: "Solicitud general" },
+  { value: "SUGERENCIA", label: "Sugerencia" },
+  { value: "PQR", label: "PQR (Petición, Queja o Reclamo)" },
+];
+
+const REQUEST_PRIORITIES = [
+  { value: "BAJA", label: "Baja" },
+  { value: "MEDIA", label: "Media" },
+  { value: "ALTA", label: "Alta" },
+];
+
+function requestTypeLabel(type: string) {
+  return REQUEST_TYPES.find((t) => t.value === type)?.label ?? type;
+}
+
+function requestStatusChip(status: string) {
+  const map: Record<string, { color: "default" | "warning" | "primary" | "success" | "danger"; label: string }> = {
+    PENDIENTE: { color: "warning", label: "Pendiente" },
+    EN_REVISION: { color: "primary", label: "En revisión" },
+    APROBADO: { color: "success", label: "Aprobado" },
+    RECHAZADO: { color: "danger", label: "Rechazado" },
+    RESUELTO: { color: "success", label: "Resuelto" },
+  };
+  const entry = map[status] ?? { color: "default" as const, label: status };
+
+  return (
+    <Chip color={entry.color} size="sm" variant="flat">
+      {entry.label}
+    </Chip>
+  );
+}
+
+function priorityChip(priority: string) {
+  const map: Record<string, { color: "default" | "warning" | "danger"; label: string }> = {
+    BAJA: { color: "default", label: "Baja" },
+    MEDIA: { color: "warning", label: "Media" },
+    ALTA: { color: "danger", label: "Alta" },
+  };
+  const entry = map[priority] ?? { color: "default" as const, label: priority };
+
+  return (
+    <Chip color={entry.color} size="sm" variant="flat">
+      {entry.label}
+    </Chip>
+  );
+}
+
 function formatDate(value: string | null) {
   if (!value) return "-";
   const d = new Date(value);
@@ -124,6 +198,7 @@ function StatusChip({ approved }: { approved: string | null }) {
 export default function PortalHrPage() {
   const router = useRouter();
 
+  // ── Vacaciones ──
   const [employee, setEmployee] = useState<EmployeeInfo | null>(null);
   const [requests, setRequests] = useState<LeaveItem[]>([]);
   const [totalRequests, setTotalRequests] = useState(0);
@@ -134,30 +209,55 @@ export default function PortalHrPage() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // ── Peticiones (permiso, reclamo, solicitud, PQR) ──
+  const [peticiones, setPeticiones] = useState<RequestItem[]>([]);
+  const [totalPeticiones, setTotalPeticiones] = useState(0);
+
+  // Permiso form
+  const [permisoDate, setPermisoDate] = useState("");
+  const [permisoHours, setPermisoHours] = useState("");
+  const [permisoNotes, setPermisoNotes] = useState("");
+  const [submittingPermiso, setSubmittingPermiso] = useState(false);
+
+  // PQR / Reclamo form
+  const [pqrType, setPqrType] = useState("RECLAMO");
+  const [pqrSubject, setPqrSubject] = useState("");
+  const [pqrDescription, setPqrDescription] = useState("");
+  const [pqrPriority, setPqrPriority] = useState("MEDIA");
+  const [submittingPqr, setSubmittingPqr] = useState(false);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/hr/mis-solicitudes", {
-        credentials: "include",
-      });
+      const [res1, res2] = await Promise.all([
+        fetch("/api/hr/mis-solicitudes", { credentials: "include" }),
+        fetch("/api/hr/mis-peticiones", { credentials: "include" }),
+      ]);
 
-      if (res.status === 401) {
+      if (res1.status === 401 || res2.status === 401) {
         router.push("/login");
 
         return;
       }
 
-      if (!res.ok) {
-        toast.error("No se pudieron cargar las solicitudes");
+      if (res1.ok) {
+        const data = (await res1.json()) as SolicitudesData;
 
-        return;
+        setEmployee(data.employee);
+        setRequests(data.items ?? []);
+        setTotalRequests(data.total ?? 0);
+      } else {
+        toast.error("No se pudieron cargar las solicitudes de vacaciones");
       }
 
-      const data = (await res.json()) as SolicitudesData;
+      if (res2.ok) {
+        const data2 = (await res2.json()) as PeticionesData;
 
-      setEmployee(data.employee);
-      setRequests(data.items ?? []);
-      setTotalRequests(data.total ?? 0);
+        setPeticiones(data2.items ?? []);
+        setTotalPeticiones(data2.total ?? 0);
+      } else {
+        toast.error("No se pudieron cargar las peticiones");
+      }
     } catch {
       toast.error("Error de conexión");
     } finally {
@@ -203,6 +303,99 @@ export default function PortalHrPage() {
       toast.error("Error al enviar la solicitud");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handlePermisoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!permisoDate) {
+      toast.error("La fecha del permiso es requerida");
+
+      return;
+    }
+
+    setSubmittingPermiso(true);
+    try {
+      const res = await fetch("/api/hr/mis-peticiones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          type: "PERMISO",
+          subject: `Permiso del ${permisoDate}`,
+          description: permisoNotes || "Solicitud de permiso de ausencia",
+          requestDate: permisoDate,
+          requestHours: permisoHours || null,
+          priority: "MEDIA",
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+
+        toast.error(text || "No se pudo enviar el permiso");
+
+        return;
+      }
+
+      toast.success("Solicitud de permiso enviada correctamente");
+      setPermisoDate("");
+      setPermisoHours("");
+      setPermisoNotes("");
+      void loadData();
+    } catch {
+      toast.error("Error al enviar la solicitud");
+    } finally {
+      setSubmittingPermiso(false);
+    }
+  };
+
+  const handlePqrSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pqrSubject.trim()) {
+      toast.error("El asunto es requerido");
+
+      return;
+    }
+
+    if (!pqrDescription.trim()) {
+      toast.error("La descripción es requerida");
+
+      return;
+    }
+
+    setSubmittingPqr(true);
+    try {
+      const res = await fetch("/api/hr/mis-peticiones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          type: pqrType,
+          subject: pqrSubject,
+          description: pqrDescription,
+          priority: pqrPriority,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+
+        toast.error(text || "No se pudo enviar la petición");
+
+        return;
+      }
+
+      toast.success("Petición enviada correctamente");
+      setPqrSubject("");
+      setPqrDescription("");
+      setPqrType("RECLAMO");
+      setPqrPriority("MEDIA");
+      void loadData();
+    } catch {
+      toast.error("Error al enviar la petición");
+    } finally {
+      setSubmittingPqr(false);
     }
   };
 
@@ -424,7 +617,308 @@ export default function PortalHrPage() {
               </div>
             </Tab>
 
-            {/* ── TAB 3: Certificados y Cursos ── */}
+            {/* ── TAB 3: Solicitar Permiso ── */}
+            <Tab
+              key="permiso"
+              title={
+                <div className="flex items-center gap-2">
+                  <BsClipboardCheck />
+                  <span>Solicitar Permiso</span>
+                </div>
+              }
+            >
+              <div className="grid gap-6 md:grid-cols-2 mt-4">
+                <Card>
+                  <CardHeader>
+                    <div className="font-semibold">Nuevo permiso de ausencia</div>
+                  </CardHeader>
+                  <CardBody>
+                    <form className="space-y-4" onSubmit={handlePermisoSubmit}>
+                      <Input
+                        isRequired
+                        label="Fecha del permiso"
+                        type="date"
+                        value={permisoDate}
+                        onValueChange={setPermisoDate}
+                      />
+                      <Input
+                        label="Horas de ausencia (opcional)"
+                        max="24"
+                        min="0.5"
+                        placeholder="Ej: 4"
+                        step="0.5"
+                        type="number"
+                        value={permisoHours}
+                        onValueChange={setPermisoHours}
+                      />
+                      <Textarea
+                        label="Motivo del permiso"
+                        maxRows={4}
+                        placeholder="Describe brevemente el motivo de tu ausencia..."
+                        value={permisoNotes}
+                        onValueChange={setPermisoNotes}
+                      />
+                      <Button
+                        fullWidth
+                        color="primary"
+                        isLoading={submittingPermiso}
+                        type="submit"
+                      >
+                        Enviar solicitud de permiso
+                      </Button>
+                    </form>
+                  </CardBody>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="font-semibold">¿Qué es un permiso?</div>
+                  </CardHeader>
+                  <CardBody className="space-y-4 text-sm text-default-600">
+                    <div className="flex gap-3">
+                      <BsClipboardCheck className="mt-0.5 shrink-0 text-primary" />
+                      <p>
+                        Un permiso es una ausencia puntual de horas o un día por
+                        motivos personales, médicos, familiares u otros. Es
+                        diferente a las vacaciones.
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <BsPersonBadge className="mt-0.5 shrink-0 text-primary" />
+                      <p>
+                        El permiso debe ser aprobado por tu supervisor o el área
+                        de RR.HH. antes de ausentarte.
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <BsFileEarmarkText className="mt-0.5 shrink-0 text-primary" />
+                      <p>
+                        Puedes hacer seguimiento a todos tus permisos y
+                        peticiones en la pestaña{" "}
+                        <strong>Mis Peticiones</strong>.
+                      </p>
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
+            </Tab>
+
+            {/* ── TAB 4: Reclamos y PQR ── */}
+            <Tab
+              key="pqr"
+              title={
+                <div className="flex items-center gap-2">
+                  <BsExclamationTriangle />
+                  <span>Reclamos y PQR</span>
+                </div>
+              }
+            >
+              <div className="grid gap-6 md:grid-cols-2 mt-4">
+                <Card>
+                  <CardHeader>
+                    <div className="font-semibold">Nueva petición / reclamo</div>
+                  </CardHeader>
+                  <CardBody>
+                    <form className="space-y-4" onSubmit={handlePqrSubmit}>
+                      <Select
+                        isRequired
+                        label="Tipo de petición"
+                        selectedKeys={[pqrType]}
+                        onSelectionChange={(keys) => {
+                          const val = Array.from(keys)[0];
+
+                          if (typeof val === "string") setPqrType(val);
+                        }}
+                      >
+                        {REQUEST_TYPES.filter(
+                          (t) => t.value !== "PERMISO",
+                        ).map((t) => (
+                          <SelectItem key={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </Select>
+                      <Select
+                        label="Prioridad"
+                        selectedKeys={[pqrPriority]}
+                        onSelectionChange={(keys) => {
+                          const val = Array.from(keys)[0];
+
+                          if (typeof val === "string") setPqrPriority(val);
+                        }}
+                      >
+                        {REQUEST_PRIORITIES.map((p) => (
+                          <SelectItem key={p.value}>{p.label}</SelectItem>
+                        ))}
+                      </Select>
+                      <Input
+                        isRequired
+                        label="Asunto"
+                        maxLength={255}
+                        placeholder="Resume tu petición en pocas palabras..."
+                        value={pqrSubject}
+                        onValueChange={setPqrSubject}
+                      />
+                      <Textarea
+                        isRequired
+                        label="Descripción detallada"
+                        maxRows={6}
+                        placeholder="Describe con detalle tu reclamo, solicitud o sugerencia..."
+                        value={pqrDescription}
+                        onValueChange={setPqrDescription}
+                      />
+                      <Button
+                        fullWidth
+                        color="primary"
+                        isLoading={submittingPqr}
+                        type="submit"
+                      >
+                        Enviar petición
+                      </Button>
+                    </form>
+                  </CardBody>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="font-semibold">Tipos de peticiones</div>
+                  </CardHeader>
+                  <CardBody className="space-y-4 text-sm text-default-600">
+                    <div className="flex gap-3">
+                      <BsExclamationTriangle className="mt-0.5 shrink-0 text-warning" />
+                      <div>
+                        <p className="font-medium text-foreground">Reclamo</p>
+                        <p>
+                          Manifiesta tu inconformidad ante una situación laboral
+                          que consideras injusta o incorrecta.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <BsFileEarmarkText className="mt-0.5 shrink-0 text-primary" />
+                      <div>
+                        <p className="font-medium text-foreground">Solicitud</p>
+                        <p>
+                          Pide elementos, permisos especiales, ajustes de
+                          horario, certificados laborales u otros.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <BsChatLeftText className="mt-0.5 shrink-0 text-success" />
+                      <div>
+                        <p className="font-medium text-foreground">Sugerencia</p>
+                        <p>
+                          Propón mejoras en procesos, ambiente laboral o
+                          cualquier aspecto de la empresa.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <BsPersonBadge className="mt-0.5 shrink-0 text-secondary" />
+                      <div>
+                        <p className="font-medium text-foreground">PQR</p>
+                        <p>
+                          Peticiones, Quejas y Reclamos formales que requieren
+                          respuesta oficial por parte de la empresa.
+                        </p>
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
+              </div>
+            </Tab>
+
+            {/* ── TAB 5: Mis Peticiones ── */}
+            <Tab
+              key="peticiones"
+              title={
+                <div className="flex items-center gap-2">
+                  <BsFileEarmarkText />
+                  <span>
+                    Mis Peticiones
+                    {totalPeticiones > 0 ? (
+                      <Chip
+                        className="ml-1"
+                        color="primary"
+                        size="sm"
+                        variant="flat"
+                      >
+                        {totalPeticiones}
+                      </Chip>
+                    ) : null}
+                  </span>
+                </div>
+              }
+            >
+              <div className="mt-4">
+                <Card>
+                  <CardBody>
+                    <Table removeWrapper aria-label="Mis peticiones y reclamos">
+                      <TableHeader>
+                        <TableColumn>TIPO</TableColumn>
+                        <TableColumn>ASUNTO</TableColumn>
+                        <TableColumn>FECHA SOLICITADA</TableColumn>
+                        <TableColumn>PRIORIDAD</TableColumn>
+                        <TableColumn>ESTADO</TableColumn>
+                        <TableColumn>RESPUESTA</TableColumn>
+                        <TableColumn>REGISTRADO</TableColumn>
+                      </TableHeader>
+                      <TableBody
+                        emptyContent="No tienes peticiones registradas"
+                        items={peticiones}
+                      >
+                        {(row) => (
+                          <TableRow key={row.id}>
+                            <TableCell>
+                              <Chip color="default" size="sm" variant="flat">
+                                {requestTypeLabel(row.type)}
+                              </Chip>
+                            </TableCell>
+                            <TableCell>
+                              <div className="max-w-[180px]">
+                                <p className="font-medium text-sm truncate">
+                                  {row.subject}
+                                </p>
+                                {row.requestDate ? (
+                                  <p className="text-xs text-default-500">
+                                    Fecha: {formatDate(row.requestDate)}
+                                    {row.requestHours
+                                      ? ` · ${row.requestHours}h`
+                                      : ""}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {row.requestDate
+                                ? formatDate(row.requestDate)
+                                : "-"}
+                            </TableCell>
+                            <TableCell>
+                              {priorityChip(row.priority)}
+                            </TableCell>
+                            <TableCell>
+                              {requestStatusChip(row.status)}
+                            </TableCell>
+                            <TableCell>
+                              {row.responseNotes ? (
+                                <span className="text-sm">
+                                  {row.responseNotes}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell>{formatDate(row.createdAt)}</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardBody>
+                </Card>
+              </div>
+            </Tab>
+
+            {/* ── TAB 6: Certificados y Cursos ── */}
             <Tab
               key="cursos"
               title={
