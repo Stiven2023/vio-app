@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/erp/hr/incumplimiento");
+  redirect("/erp/hcm/incumplimiento");
 }

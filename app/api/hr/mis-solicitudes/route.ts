@@ -168,6 +168,24 @@ export async function POST(request: Request) {
       return new Response("Empleado no encontrado o inactivo", { status: 404 });
     }
 
+    const [overlap] = await db
+      .select({ id: employeeLeaves.id })
+      .from(employeeLeaves)
+      .where(
+        and(
+          eq(employeeLeaves.employeeId, employeeId),
+          sql`${employeeLeaves.startDate}::date <= ${endDate}::date and ${employeeLeaves.endDate}::date >= ${startDate}::date`,
+        ),
+      )
+      .limit(1);
+
+    if (overlap) {
+      return new Response(
+        "Ya tienes una solicitud registrada que se cruza con ese rango de fechas",
+        { status: 409 },
+      );
+    }
+
     const [created] = await db
       .insert(employeeLeaves)
       .values({

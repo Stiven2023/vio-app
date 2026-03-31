@@ -313,7 +313,7 @@ export async function POST(request: Request) {
     void createNotificationsForPermission("VER_PROVISIONES_NOMINA", {
       title: "Provisiones de nómina generadas",
       message: `Se generaron ${toInsert.length} provisiones de nómina para el período ${period}.`,
-      href: `/erp/rh/provisiones-nomina`,
+      href: `/erp/hcm/provisiones-nomina`,
     });
 
     return Response.json({

@@ -123,6 +123,15 @@ export async function POST(request: Request) {
       });
     }
 
+    // Validate that each orderId appears only once (prevent double-payment)
+    const orderIdSet = new Set(allocations.map((a) => a.orderId));
+    if (orderIdSet.size !== allocations.length) {
+      return new Response(
+        "Duplicate orderId in allocations (each order can only be paid once per deposit)",
+        { status: 400 },
+      );
+    }
+
     const assignedTotal = allocations.reduce(
       (acc, item) => acc + Number(item.amount),
       0,
@@ -139,9 +148,7 @@ export async function POST(request: Request) {
       });
     }
 
-    const uniqueOrderIds = Array.from(
-      new Set(allocations.map((a) => a.orderId)),
-    );
+    const uniqueOrderIds = Array.from(orderIdSet);
 
     const existingOrders = await db
       .select({ id: orders.id, clientId: orders.clientId })

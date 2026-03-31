@@ -1,3 +1,5 @@
+import { validatePassword } from "@/src/utils/password-validator";
+
 export function validateUserRegister({
   email,
   password,
@@ -6,14 +8,10 @@ export function validateUserRegister({
   password: string;
 }): string {
   if (!email) return "El correo es obligatorio.";
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return "Correo inválido.";
-  if (!password) return "La contraseña es obligatoria.";
-  if (password.length < 7)
-    return "La contraseña debe tener al menos 7 caracteres.";
-  if (!/[A-Z]/.test(password))
-    return "La contraseña debe contener al menos una mayúscula.";
-  if (/[^A-Za-z0-9.*]/.test(password))
-    return "La contraseña solo puede contener letras, números, . y *.";
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) return "Correo inválido.";
+  
+  const passwordError = validatePassword(password);
+  if (passwordError) return passwordError;
 
   return "";
 }
@@ -45,7 +43,7 @@ export function validateLogin({
   if (!email) return "El usuario/correo es obligatorio.";
   const value = String(email ?? "").trim();
 
-  if (value.includes("@") && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+  if (value.includes("@") && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(value)) {
     return "Correo inválido.";
   }
   if (!password) return "La contraseña es obligatoria.";

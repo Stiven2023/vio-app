@@ -275,7 +275,7 @@ export async function POST(request: Request) {
     void createNotificationsForPermission("VER_PERMISOS_EMPLEADO", {
       title: "Permiso/ausencia registrado",
       message: `Se registró un permiso ${leaveTypeLabel} para el empleado ${employeeExists.name ?? employeeId} (${startDate} – ${endDate}).`,
-      href: `/erp/rh/permisos-ausencias`,
+      href: `/erp/hcm/permisos-ausencias`,
     });
 
     return Response.json(

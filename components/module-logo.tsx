@@ -1,6 +1,6 @@
 import clsx from "clsx";
 
-type ModuleId = "erp" | "mes" | "crm" | "hr";
+type ModuleId = "erp" | "mes" | "crm" | "hr" | "hcm";
 
 export function ModuleLogo({
   module,
@@ -117,7 +117,7 @@ export function ModuleLogo({
         </>
       ) : null}
 
-      {module === "hr" ? (
+      {module === "hr" || module === "hcm" ? (
         <>
           <circle cx="64" cy="38" fill={accent} r="16" />
           <path

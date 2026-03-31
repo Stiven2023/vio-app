@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/erp/hr/provisiones-nomina");
+  redirect("/erp/hcm/provisiones-nomina");
 }

@@ -173,7 +173,7 @@ export function PilaTab({ canGenerate }: { canGenerate: boolean }) {
     if (period) params.set("period", period);
     if (employeeId) params.set("employeeId", employeeId);
 
-    return `/api/hr/pila?${params.toString()}`;
+    return `/api/hcm/pila?${params.toString()}`;
   }, [employeeId, period]);
 
   const { data, loading, page, setPage, refresh } = usePaginatedApi<PilaRow>(
@@ -198,7 +198,7 @@ export function PilaTab({ canGenerate }: { canGenerate: boolean }) {
 
     try {
       setPreviewLoading(true);
-      const response = await apiJson<PilaPreview>("/api/hr/pila", {
+      const response = await apiJson<PilaPreview>("/api/hcm/pila", {
         method: "POST",
         body: JSON.stringify({ period, confirm: false }),
       });
@@ -217,7 +217,7 @@ export function PilaTab({ canGenerate }: { canGenerate: boolean }) {
 
     try {
       setConfirmLoading(true);
-      const response = await apiJson<PilaPreview>("/api/hr/pila", {
+      const response = await apiJson<PilaPreview>("/api/hcm/pila", {
         method: "POST",
         body: JSON.stringify({ period: preview.period, confirm: true }),
       });

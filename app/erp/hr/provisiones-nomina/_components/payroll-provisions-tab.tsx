@@ -242,7 +242,7 @@ function GenerateModal({ open, onClose, onSuccess }: GenerateModalProps) {
           lastArlRatePct: number;
         }>;
       }>(
-        `/api/hr/provisiones-nomina/employees?period=${encodeURIComponent(period)}`,
+        `/api/hcm/provisiones-nomina/employees?period=${encodeURIComponent(period)}`,
       );
 
       setRows(
@@ -317,7 +317,7 @@ function GenerateModal({ open, onClose, onSuccess }: GenerateModalProps) {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/hr/provisiones-nomina", {
+      const res = await fetch("/api/hcm/provisiones-nomina", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -610,7 +610,7 @@ function EditModal({ provision, onClose, onSuccess }: EditModalProps) {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/hr/provisiones-nomina/${provision.id}`, {
+      const res = await fetch(`/api/hcm/provisiones-nomina/${provision.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -752,7 +752,7 @@ export function PayrollProvisionsTab({ canCreate }: { canCreate: boolean }) {
     if (employeeId) params.set("employeeId", employeeId);
     if (contractType) params.set("contractType", contractType);
 
-    return `/api/hr/provisiones-nomina?${params.toString()}`;
+    return `/api/hcm/provisiones-nomina?${params.toString()}`;
   }, [period, employeeId, contractType]);
 
   const { data, loading, page, setPage, refresh } =

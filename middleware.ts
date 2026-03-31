@@ -5,18 +5,36 @@ import createIntlMiddleware from "next-intl/middleware";
 
 import { routing } from "@/src/i18n/routing";
 
-const PUBLIC_PATHS = new Set(["/login"]);
+const PUBLIC_PATHS = new Set(["/login", "/hcm-legacy-retired"]);
 
 const LEGACY_PREFIX_MAPPINGS: Array<[string, string]> = [
   ["/en-construccion", "/under-construction"],
   ["/costos", "/costs"],
-  ["/rh", "/hr"],
+  ["/portal/rrhh", "/portal/hcm"],
+  ["/portal/rh", "/portal/hcm"],
+  ["/portal/hr", "/portal/hcm"],
+  ["/rrhh", "/hcm"],
+  ["/rh", "/hcm"],
+  ["/hr", "/hcm"],
   ["/molderia", "/patterns"],
   ["/juridica", "/legal"],
 ];
 
 const INTERNAL_PATH_PREFIXES = ["/erp", "/mes", "/crm", "/portal"];
 const LOCALE_PATH_REGEX = /^\/(es|en)(?=\/|$)/;
+const LEGACY_HCM_PATHS = [
+  "/rrhh",
+  "/rh",
+  "/hr",
+  "/portal/rrhh",
+  "/portal/rh",
+  "/portal/hr",
+] as const;
+const DEFAULT_LEGACY_HCM_RETIRE_AT = "2026-12-31T00:00:00.000Z";
+const LEGACY_HCM_RETIRE_AT =
+  process.env.LEGACY_HCM_RETIRE_AT ?? DEFAULT_LEGACY_HCM_RETIRE_AT;
+const LEGACY_HCM_RETIRE_MODE =
+  process.env.LEGACY_HCM_RETIRE_MODE ?? "block";
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
@@ -46,6 +64,21 @@ function mapLegacyPrefix(pathname: string) {
   }
 
   return pathname;
+}
+
+function isLegacyHcmPath(pathname: string) {
+  return LEGACY_HCM_PATHS.some(
+    (legacyPath) =>
+      pathname === legacyPath || pathname.startsWith(`${legacyPath}/`),
+  );
+}
+
+function isLegacyHcmRetired() {
+  const retireAtMs = Date.parse(LEGACY_HCM_RETIRE_AT);
+
+  if (Number.isNaN(retireAtMs)) return false;
+
+  return Date.now() >= retireAtMs;
 }
 
 export function middleware(request: NextRequest) {
@@ -83,10 +116,42 @@ export function middleware(request: NextRequest) {
 
   if (mappedNormalizedPath !== normalizedPath) {
     const legacyRedirectUrl = request.nextUrl.clone();
+    const legacySourcePath = isErpPrefixed
+      ? `/erp${normalizedPath}`
+      : normalizedPath;
 
     legacyRedirectUrl.pathname = isErpPrefixed
       ? `/erp${mappedNormalizedPath}`
       : mappedNormalizedPath;
+
+    if (isLegacyHcmPath(normalizedPath)) {
+      if (isLegacyHcmRetired()) {
+        if (LEGACY_HCM_RETIRE_MODE === "redirect") {
+          console.warn(
+            `[middleware] Legacy HCM route retired but redirected by mode=redirect: ${legacySourcePath} -> ${legacyRedirectUrl.pathname}`,
+          );
+
+          return NextResponse.redirect(legacyRedirectUrl);
+        }
+
+        console.warn(
+          `[middleware] Legacy HCM route blocked (retired): ${legacySourcePath}`,
+        );
+
+        const retiredUrl = request.nextUrl.clone();
+
+        retiredUrl.pathname = "/hcm-legacy-retired";
+        retiredUrl.search = "";
+        retiredUrl.searchParams.set("from", legacySourcePath);
+
+        return NextResponse.rewrite(retiredUrl, { status: 410 });
+      }
+
+      legacyRedirectUrl.searchParams.set("legacy_hcm", "1");
+      console.info(
+        `[middleware] Legacy HCM route redirected: ${legacySourcePath} -> ${legacyRedirectUrl.pathname}`,
+      );
+    }
 
     return NextResponse.redirect(legacyRedirectUrl);
   }

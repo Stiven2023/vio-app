@@ -77,7 +77,8 @@ const COURSES = [
   {
     id: "1",
     title: "Seguridad y Salud en el Trabajo (SST)",
-    description: "Curso obligatorio para todos los empleados. Duración: 8 horas.",
+    description:
+      "Curso obligatorio para todos los empleados. Duración: 8 horas.",
     category: "Obligatorio",
     duration: "8h",
     status: "disponible",
@@ -85,7 +86,8 @@ const COURSES = [
   {
     id: "2",
     title: "Manejo de Maquinaria Industrial",
-    description: "Capacitación en el uso seguro de máquinas de confección y corte.",
+    description:
+      "Capacitación en el uso seguro de máquinas de confección y corte.",
     category: "Operativo",
     duration: "12h",
     status: "disponible",
@@ -101,7 +103,8 @@ const COURSES = [
   {
     id: "4",
     title: "Excel Básico para Operarios",
-    description: "Introducción a herramientas ofimáticas para gestión de datos.",
+    description:
+      "Introducción a herramientas ofimáticas para gestión de datos.",
     category: "Tecnología",
     duration: "10h",
     status: "próximamente",
@@ -135,7 +138,13 @@ function requestTypeLabel(type: string) {
 }
 
 function requestStatusChip(status: string) {
-  const map: Record<string, { color: "default" | "warning" | "primary" | "success" | "danger"; label: string }> = {
+  const map: Record<
+    string,
+    {
+      color: "default" | "warning" | "primary" | "success" | "danger";
+      label: string;
+    }
+  > = {
     PENDIENTE: { color: "warning", label: "Pendiente" },
     EN_REVISION: { color: "primary", label: "En revisión" },
     APROBADO: { color: "success", label: "Aprobado" },
@@ -152,7 +161,10 @@ function requestStatusChip(status: string) {
 }
 
 function priorityChip(priority: string) {
-  const map: Record<string, { color: "default" | "warning" | "danger"; label: string }> = {
+  const map: Record<
+    string,
+    { color: "default" | "warning" | "danger"; label: string }
+  > = {
     BAJA: { color: "default", label: "Baja" },
     MEDIA: { color: "warning", label: "Media" },
     ALTA: { color: "danger", label: "Alta" },
@@ -230,8 +242,8 @@ export default function PortalHrPage() {
     setLoading(true);
     try {
       const [res1, res2] = await Promise.all([
-        fetch("/api/hr/mis-solicitudes", { credentials: "include" }),
-        fetch("/api/hr/mis-peticiones", { credentials: "include" }),
+        fetch("/api/hcm/mis-solicitudes", { credentials: "include" }),
+        fetch("/api/hcm/mis-peticiones", { credentials: "include" }),
       ]);
 
       if (res1.status === 401 || res2.status === 401) {
@@ -279,7 +291,7 @@ export default function PortalHrPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/hr/mis-solicitudes", {
+      const res = await fetch("/api/hcm/mis-solicitudes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -314,9 +326,21 @@ export default function PortalHrPage() {
       return;
     }
 
+    const hoursValue = permisoHours.trim();
+
+    if (hoursValue) {
+      const parsedHours = Number(hoursValue);
+
+      if (!Number.isFinite(parsedHours) || parsedHours <= 0 || parsedHours > 24) {
+        toast.error("Las horas del permiso deben estar entre 0.5 y 24");
+
+        return;
+      }
+    }
+
     setSubmittingPermiso(true);
     try {
-      const res = await fetch("/api/hr/mis-peticiones", {
+      const res = await fetch("/api/hcm/mis-peticiones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -366,7 +390,7 @@ export default function PortalHrPage() {
 
     setSubmittingPqr(true);
     try {
-      const res = await fetch("/api/hr/mis-peticiones", {
+      const res = await fetch("/api/hcm/mis-peticiones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -421,7 +445,7 @@ export default function PortalHrPage() {
             <BsArrowLeft />
           </Button>
           <div>
-            <h1 className="text-lg font-bold">Portal del Empleado — RR.HH.</h1>
+            <h1 className="text-lg font-bold">Portal del Empleado — HCM</h1>
             {employee ? (
               <p className="text-sm text-default-500">
                 {employee.name ?? "Empleado"}{" "}
@@ -438,11 +462,7 @@ export default function PortalHrPage() {
             <Spinner />
           </div>
         ) : (
-          <Tabs
-            aria-label="Portal RR.HH."
-            color="primary"
-            variant="underlined"
-          >
+          <Tabs aria-label="Portal HCM" color="primary" variant="underlined">
             {/* ── TAB 1: Solicitar Vacaciones ── */}
             <Tab
               key="solicitar"
@@ -511,8 +531,8 @@ export default function PortalHrPage() {
                     <div className="flex gap-3">
                       <BsCalendar2Check className="mt-0.5 shrink-0 text-primary" />
                       <p>
-                        Selecciona las fechas de inicio y fin de tus vacaciones y
-                        envía la solicitud. El equipo de RR.HH. la revisará a la
+                        Selecciona las fechas de inicio y fin de tus vacaciones
+                        y envía la solicitud. El equipo de HCM la revisará a la
                         brevedad.
                       </p>
                     </div>
@@ -520,7 +540,7 @@ export default function PortalHrPage() {
                       <BsPersonBadge className="mt-0.5 shrink-0 text-primary" />
                       <p>
                         Recibirás confirmación del estado una vez sea procesada
-                        por tu supervisor o el área de RR.HH.
+                        por tu supervisor o el área de HCM.
                       </p>
                     </div>
                     <div className="flex gap-3">
@@ -560,10 +580,7 @@ export default function PortalHrPage() {
               <div className="mt-4">
                 <Card>
                   <CardBody>
-                    <Table
-                      removeWrapper
-                      aria-label="Solicitudes de vacaciones"
-                    >
+                    <Table removeWrapper aria-label="Solicitudes de vacaciones">
                       <TableHeader>
                         <TableColumn>TIPO</TableColumn>
                         <TableColumn>FECHA INICIO</TableColumn>
@@ -630,7 +647,9 @@ export default function PortalHrPage() {
               <div className="grid gap-6 md:grid-cols-2 mt-4">
                 <Card>
                   <CardHeader>
-                    <div className="font-semibold">Nuevo permiso de ausencia</div>
+                    <div className="font-semibold">
+                      Nuevo permiso de ausencia
+                    </div>
                   </CardHeader>
                   <CardBody>
                     <form className="space-y-4" onSubmit={handlePermisoSubmit}>
@@ -687,15 +706,15 @@ export default function PortalHrPage() {
                       <BsPersonBadge className="mt-0.5 shrink-0 text-primary" />
                       <p>
                         El permiso debe ser aprobado por tu supervisor o el área
-                        de RR.HH. antes de ausentarte.
+                        de HCM antes de ausentarte.
                       </p>
                     </div>
                     <div className="flex gap-3">
                       <BsFileEarmarkText className="mt-0.5 shrink-0 text-primary" />
                       <p>
                         Puedes hacer seguimiento a todos tus permisos y
-                        peticiones en la pestaña{" "}
-                        <strong>Mis Peticiones</strong>.
+                        peticiones en la pestaña <strong>Mis Peticiones</strong>
+                        .
                       </p>
                     </div>
                   </CardBody>
@@ -716,7 +735,9 @@ export default function PortalHrPage() {
               <div className="grid gap-6 md:grid-cols-2 mt-4">
                 <Card>
                   <CardHeader>
-                    <div className="font-semibold">Nueva petición / reclamo</div>
+                    <div className="font-semibold">
+                      Nueva petición / reclamo
+                    </div>
                   </CardHeader>
                   <CardBody>
                     <form className="space-y-4" onSubmit={handlePqrSubmit}>
@@ -730,11 +751,11 @@ export default function PortalHrPage() {
                           if (typeof val === "string") setPqrType(val);
                         }}
                       >
-                        {REQUEST_TYPES.filter(
-                          (t) => t.value !== "PERMISO",
-                        ).map((t) => (
-                          <SelectItem key={t.value}>{t.label}</SelectItem>
-                        ))}
+                        {REQUEST_TYPES.filter((t) => t.value !== "PERMISO").map(
+                          (t) => (
+                            <SelectItem key={t.value}>{t.label}</SelectItem>
+                          ),
+                        )}
                       </Select>
                       <Select
                         label="Prioridad"
@@ -805,7 +826,9 @@ export default function PortalHrPage() {
                     <div className="flex gap-3">
                       <BsChatLeftText className="mt-0.5 shrink-0 text-success" />
                       <div>
-                        <p className="font-medium text-foreground">Sugerencia</p>
+                        <p className="font-medium text-foreground">
+                          Sugerencia
+                        </p>
                         <p>
                           Propón mejoras en procesos, ambiente laboral o
                           cualquier aspecto de la empresa.
@@ -893,9 +916,7 @@ export default function PortalHrPage() {
                                 ? formatDate(row.requestDate)
                                 : "-"}
                             </TableCell>
-                            <TableCell>
-                              {priorityChip(row.priority)}
-                            </TableCell>
+                            <TableCell>{priorityChip(row.priority)}</TableCell>
                             <TableCell>
                               {requestStatusChip(row.status)}
                             </TableCell>

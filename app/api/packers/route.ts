@@ -361,7 +361,6 @@ export async function PUT(request: Request) {
     patch.department = payload.department
       ? String(payload.department).trim()
       : null;
-  patch.isActive = false;
   if (payload.dailyCapacity !== undefined)
     patch.dailyCapacity =
       payload.dailyCapacity === "" || payload.dailyCapacity === null

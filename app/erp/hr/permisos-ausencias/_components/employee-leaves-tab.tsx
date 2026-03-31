@@ -310,7 +310,7 @@ export function EmployeeLeavesTab({ canManage }: { canManage: boolean }) {
     if (payrollFilter !== "ALL") params.set("payrollDeduction", payrollFilter);
     if (summaryPeriod) params.set("summaryPeriod", summaryPeriod);
 
-    return `/api/hr/permisos-ausencias?${params.toString()}`;
+    return `/api/hcm/permisos-ausencias?${params.toString()}`;
   }, [
     dateFrom,
     dateTo,
@@ -404,7 +404,7 @@ export function EmployeeLeavesTab({ canManage }: { canManage: boolean }) {
 
     setSubmitLoading(true);
     try {
-      await apiJson("/api/hr/permisos-ausencias", {
+      await apiJson("/api/hcm/permisos-ausencias", {
         method: "POST",
         body: JSON.stringify({
           employeeId: draft.employeeId,
@@ -444,7 +444,7 @@ export function EmployeeLeavesTab({ canManage }: { canManage: boolean }) {
 
     setSubmitLoading(true);
     try {
-      await apiJson(`/api/hr/permisos-ausencias/${editingId}`, {
+      await apiJson(`/api/hcm/permisos-ausencias/${editingId}`, {
         method: "PATCH",
         body: JSON.stringify({
           employeeId: draft.employeeId,
@@ -479,7 +479,7 @@ export function EmployeeLeavesTab({ canManage }: { canManage: boolean }) {
     if (!confirmDelete) return;
 
     try {
-      await apiJson(`/api/hr/permisos-ausencias/${id}`, {
+      await apiJson(`/api/hcm/permisos-ausencias/${id}`, {
         method: "DELETE",
       });
       toast.success("Leave deleted");

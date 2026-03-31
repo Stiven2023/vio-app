@@ -4,7 +4,49 @@
     "description": "Choose the module you want to work with in this session.",
     "localeLabel": "Current language",
     "localeValue": "English",
-    "switchLabel": "Switch language"
+    "switchLabel": "Switch language",
+    "enterpriseSystemLabel": "Enterprise System",
+    "selectModuleLabel": "▸ Select your module",
+    "logoutLabel": "Log out",
+    "languageEnglish": "English (ENG)",
+    "languageSpanish": "Español (ESP)",
+    "copyrightText": "© {year} Viomar App. All rights reserved.",
+    "timeZone": "COL",
+    "enterButtonLabel": "Enter"
+  },
+  "HomeModules": {
+    "erp": {
+      "title": "ERP",
+      "fullTitle": "Enterprise Resource Planning",
+      "description": "Accounting, inventory, and enterprise operations in one unified system.",
+      "accentWord": "MANAGEMENT",
+      "statLabel": "Total visibility",
+      "statValue": "360°"
+    },
+    "mes": {
+      "title": "MES",
+      "fullTitle": "Manufacturing Execution System",
+      "description": "Production control, industrial efficiency, and real-time plant monitoring.",
+      "accentWord": "PRODUCTION",
+      "statLabel": "More efficiency",
+      "statValue": "40%"
+    },
+    "crm": {
+      "title": "CRM",
+      "fullTitle": "Customer Relationship Management",
+      "description": "Clients, sales, commercial opportunities, and a fully integrated pipeline.",
+      "accentWord": "CLIENTS",
+      "statLabel": "Conversion",
+      "statValue": "3x"
+    },
+    "hcm": {
+      "title": "HCM",
+      "fullTitle": "Human Capital Management",
+      "description": "Request vacation, check your requests, and access certificates and courses.",
+      "accentWord": "EMPLOYEES",
+      "statLabel": "Response",
+      "statValue": "24h"
+    }
   },
   "Nav": {
     "dashboard": "Dashboard",
@@ -15,7 +57,7 @@
     "masterData": "Master Data",
     "costs": "Costs",
     "legal": "Legal",
-    "hr": "HR",
+    "hr": "HCM",
     "admin": "Admin"
   },
   "Common": {

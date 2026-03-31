@@ -4,7 +4,49 @@
     "description": "Selecciona el módulo con el que quieres trabajar en esta sesión.",
     "localeLabel": "Idioma actual",
     "localeValue": "Español",
-    "switchLabel": "Cambiar idioma"
+    "switchLabel": "Cambiar idioma",
+    "enterpriseSystemLabel": "Enterprise System",
+    "selectModuleLabel": "▸ Selecciona tu módulo",
+    "logoutLabel": "Cerrar sesión",
+    "languageEnglish": "English (ENG)",
+    "languageSpanish": "Español (ESP)",
+    "copyrightText": "© {year} Viomar App. Todos los derechos reservados.",
+    "timeZone": "COL",
+    "enterButtonLabel": "Ingresar"
+  },
+  "HomeModules": {
+    "erp": {
+      "title": "ERP",
+      "fullTitle": "Enterprise Resource Planning",
+      "description": "Contabilidad, inventario y operaciones empresariales en un sistema unificado.",
+      "accentWord": "GESTIÓN",
+      "statLabel": "Visibilidad total",
+      "statValue": "360°"
+    },
+    "mes": {
+      "title": "MES",
+      "fullTitle": "Manufacturing Execution System",
+      "description": "Control de producción, eficiencia industrial y monitoreo en tiempo real de planta.",
+      "accentWord": "PRODUCCIÓN",
+      "statLabel": "Mayor eficiencia",
+      "statValue": "40%"
+    },
+    "crm": {
+      "title": "CRM",
+      "fullTitle": "Customer Relationship Management",
+      "description": "Clientes, ventas, oportunidades comerciales y pipeline completamente integrado.",
+      "accentWord": "CLIENTES",
+      "statLabel": "Conversión",
+      "statValue": "3x"
+    },
+    "hcm": {
+      "title": "HCM",
+      "fullTitle": "Human Capital Management",
+      "description": "Solicita vacaciones, consulta tus solicitudes y accede a certificados y cursos.",
+      "accentWord": "EMPLEADOS",
+      "statLabel": "Respuesta",
+      "statValue": "24h"
+    }
   },
   "Nav": {
     "dashboard": "Panel",
@@ -15,7 +57,7 @@
     "masterData": "Maestros",
     "costs": "Costos",
     "legal": "Jurídica",
-    "hr": "RH",
+    "hr": "HCM",
     "admin": "Admin"
   },
   "Common": {

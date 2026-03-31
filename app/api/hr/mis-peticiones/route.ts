@@ -169,6 +169,23 @@ export async function POST(request: Request) {
         ? Number(requestHoursRaw)
         : null;
 
+    if (type === "PERMISO" && requestHours !== null) {
+      if (!Number.isFinite(requestHours) || requestHours <= 0 || requestHours > 24) {
+        return new Response(
+          "Las horas del permiso deben estar entre 0.5 y 24",
+          { status: 400 },
+        );
+      }
+    }
+
+    const normalizedRequestHours =
+      type === "PERMISO" &&
+      requestHours !== null &&
+      Number.isFinite(requestHours) &&
+      requestHours > 0
+        ? requestHours.toFixed(2)
+        : null;
+
     const [employeeExists] = await db
       .select({ id: employees.id })
       .from(employees)
@@ -187,10 +204,7 @@ export async function POST(request: Request) {
         subject,
         description,
         requestDate: isIsoDate(requestDate) ? requestDate : null,
-        requestHours:
-          requestHours !== null && Number.isFinite(requestHours) && requestHours > 0
-            ? requestHours.toFixed(2)
-            : null,
+        requestHours: normalizedRequestHours,
         priority: resolvedPriority,
         status: "PENDIENTE",
       })

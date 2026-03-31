@@ -1,4 +1,4 @@
-import { HomeModuleSelector } from "@/app/_components/home-module-selector";
+import { HomeModuleSelector } from "./components/HomeModuleSelector";
 
 export default function HomePage() {
   return <HomeModuleSelector />;

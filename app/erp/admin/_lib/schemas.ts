@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { PASSWORD_REQUIREMENTS } from "@/src/utils/password-validator";
 
 const passwordSchema = z
   .string()
-  .min(7, "Mínimo 7 caracteres")
+  .min(PASSWORD_REQUIREMENTS.minLength, `Mínimo ${PASSWORD_REQUIREMENTS.minLength} caracteres`)
   .regex(/[A-Z]/, "Debe incluir al menos 1 mayúscula")
-  .regex(/^[A-Za-z0-9.*]+$/, "Solo letras, números, . y *");
+  .regex(PASSWORD_REQUIREMENTS.allowedCharactersRegex, `Solo ${PASSWORD_REQUIREMENTS.allowedCharactersDescription}`);
 
 export const createUserSchema = z.object({
   email: z.string().email("Email inválido"),

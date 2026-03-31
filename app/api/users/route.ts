@@ -13,6 +13,7 @@ import {
 } from "@/src/utils/gmail";
 import { signAuthToken } from "@/src/utils/auth";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { validatePassword } from "@/src/utils/password-validator";
 
 // Registro
 export async function POST(request: Request) {
@@ -32,22 +33,12 @@ export async function POST(request: Request) {
   if (!normalizedEmail || !password) {
     return new Response("Email and password required", { status: 400 });
   }
-  // Validación avanzada de contraseña
-  if (password.length < 7) {
-    return new Response("Password must be at least 7 characters", {
-      status: 400,
-    });
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    return new Response(passwordError, { status: 400 });
   }
-  if (!/[A-Z]/.test(password)) {
-    return new Response("Password must contain at least one uppercase letter", {
-      status: 400,
-    });
-  }
-  if (/[^A-Za-z0-9.*]/.test(password)) {
-    return new Response("Password can only contain letters, numbers, . and *", {
-      status: 400,
-    });
-  }
+
   const exists = await db
     .select()
     .from(users)

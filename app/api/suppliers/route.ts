@@ -206,6 +206,14 @@ export async function POST(request: Request) {
       sourceClientDocuments.bankCertificateUrl,
   };
 
+  const promissoryNoteDateIso = body.promissoryNoteDate
+    ? new Date(body.promissoryNoteDate)
+    : null;
+
+  if (promissoryNoteDateIso && Number.isNaN(promissoryNoteDateIso.getTime())) {
+    return new Response("Fecha de pagaré inválida", { status: 400 });
+  }
+
   const created = await db
     .insert(suppliers)
     .values({
@@ -233,8 +241,8 @@ export async function POST(request: Request) {
       isActive: false,
       hasCredit: body.hasCredit || false,
       promissoryNoteNumber: body.promissoryNoteNumber,
-      promissoryNoteDate: body.promissoryNoteDate
-        ? new Date(body.promissoryNoteDate).toISOString()
+      promissoryNoteDate: promissoryNoteDateIso
+        ? promissoryNoteDateIso.toISOString()
         : undefined,
       // Documentos del formulario o copiados del cliente
       identityDocumentUrl: mergedPayload.identityDocumentUrl,
@@ -343,16 +351,24 @@ export async function PUT(request: Request) {
     patch.fullLandline = data.fullLandline
       ? String(data.fullLandline).trim()
       : null;
-  patch.isActive = false;
   if (data.hasCredit !== undefined) patch.hasCredit = data.hasCredit;
   if (data.promissoryNoteNumber !== undefined)
     patch.promissoryNoteNumber = data.promissoryNoteNumber
       ? String(data.promissoryNoteNumber).trim()
       : null;
-  if (data.promissoryNoteDate !== undefined)
-    patch.promissoryNoteDate = data.promissoryNoteDate
-      ? new Date(data.promissoryNoteDate).toISOString()
-      : null;
+  if (data.promissoryNoteDate !== undefined) {
+    if (!data.promissoryNoteDate) {
+      patch.promissoryNoteDate = null;
+    } else {
+      const parsedPromissoryNoteDate = new Date(data.promissoryNoteDate);
+
+      if (Number.isNaN(parsedPromissoryNoteDate.getTime())) {
+        return new Response("Fecha de pagaré inválida", { status: 400 });
+      }
+
+      patch.promissoryNoteDate = parsedPromissoryNoteDate.toISOString();
+    }
+  }
 
   // Manejar campos de documentos
   if (data.identityDocumentUrl !== undefined)

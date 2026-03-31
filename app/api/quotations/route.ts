@@ -324,6 +324,24 @@ export async function POST(request: Request) {
     return new Response("items required", { status: 400 });
   }
 
+  // Validate that client exists and is active
+  const [existingClient] = await db
+    .select({
+      id: clients.id,
+      isActive: clients.isActive,
+    })
+    .from(clients)
+    .where(eq(clients.id, clientId))
+    .limit(1);
+
+  if (!existingClient) {
+    return new Response("Client not found", { status: 400 });
+  }
+
+  if (!existingClient.isActive) {
+    return new Response("Client is not active", { status: 400 });
+  }
+
   let validatedPromissoryNoteNumber: string | null = null;
 
   if (paymentTerms === "CREDITO") {

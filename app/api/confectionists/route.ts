@@ -381,7 +381,6 @@ export async function PUT(request: Request) {
       : null;
   if (payload.city !== undefined)
     patch.city = payload.city ? String(payload.city).trim() : null;
-  patch.isActive = false;
   if (payload.dailyCapacity !== undefined)
     patch.dailyCapacity =
       payload.dailyCapacity === "" || payload.dailyCapacity === null
