@@ -999,15 +999,14 @@ export const prefacturas = pgTable("prefacturas", {
     precision: 14,
     scale: 2,
   }).default("0"),
-  // SIIGO electronic invoicing tracking
-  siigoStatus: varchar("siigo_status", { length: 30 }),
-  siigoInvoiceId: varchar("siigo_invoice_id", { length: 100 }),
-  siigoInvoiceNumber: varchar("siigo_invoice_number", { length: 50 }),
+  // SIIGO integration tracking
+  siigoStatus: varchar("siigo_status", { length: 20 }),
+  siigoInvoiceId: varchar("siigo_invoice_id", { length: 80 }),
+  siigoInvoiceNumber: varchar("siigo_invoice_number", { length: 80 }),
   siigoIssuedAt: timestamp("siigo_issued_at", { withTimezone: true }),
   siigoSentAt: timestamp("siigo_sent_at", { withTimezone: true }),
   siigoLastSyncAt: timestamp("siigo_last_sync_at", { withTimezone: true }),
   siigoErrorMessage: text("siigo_error_message"),
-  siigoCufe: varchar("siigo_cufe", { length: 255 }),
 });
 
 /* =========================

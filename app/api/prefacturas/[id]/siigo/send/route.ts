@@ -1,78 +1,41 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import {
-  clients,
-  orderItems,
-  orders,
-  prefacturas,
-  products,
-  quotationItems,
-  quotations,
-} from "@/src/db/schema";
+import { clients, orders, prefacturas, quotations } from "@/src/db/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
 
-// Blocked statuses (no resend without admin reset)
-const BLOCKED_STATUSES = new Set([
-  "SENT",
-  "ACCEPTED",
-  "REJECTED",
-]);
+// SIIGO statuses that block re-sending
+const BLOCKING_SIIGO_STATUSES = new Set(["SENT", "INVOICED"]);
+
+// SIIGO document type ID for "Factura de venta electrónica".
+// Configure via SIIGO_INVOICE_DOCUMENT_ID env var or keep the default (5743).
+const SIIGO_INVOICE_DOCUMENT_ID = Number(
+  process.env.SIIGO_INVOICE_DOCUMENT_ID ?? 5743,
+);
+
+// SIIGO tax code ID for IVA 19%.
+// Configure via SIIGO_IVA_TAX_ID env var or keep the default (15329).
+const SIIGO_IVA_TAX_ID = Number(process.env.SIIGO_IVA_TAX_ID ?? 15329);
+
+// SIIGO product code used in the consolidated concept line.
+// Configure via SIIGO_DEFAULT_PRODUCT_CODE env var or keep the default.
+const SIIGO_DEFAULT_PRODUCT_CODE = String(
+  process.env.SIIGO_DEFAULT_PRODUCT_CODE ?? "SVC001",
+);
 
 type SiigoInvoiceResponse = {
   id?: unknown;
-  name?: unknown;
+  number?: unknown;
   date?: unknown;
+  [key: string]: unknown;
 };
-
-function getRequiredEnvInt(name: string): number | null {
-  const raw = process.env[name];
-
-  if (!raw?.trim()) return null;
-  const value = parseInt(raw.trim(), 10);
-
-  return Number.isFinite(value) && value > 0 ? value : null;
-}
-
-function getInvoiceConfig() {
-  const missing: string[] = [];
-
-  const accountGroup = getRequiredEnvInt("SIIGO_INVOICE_ACCOUNT_GROUP");
-  const sellerId = getRequiredEnvInt("SIIGO_SELLER_ID");
-  const taxId19 = getRequiredEnvInt("SIIGO_TAX_ID_19");
-  const paymentCashId = getRequiredEnvInt("SIIGO_PAYMENT_CASH_ID");
-  const paymentCreditId = getRequiredEnvInt("SIIGO_PAYMENT_CREDIT_ID");
-
-  if (!accountGroup) missing.push("SIIGO_INVOICE_ACCOUNT_GROUP");
-  if (!sellerId) missing.push("SIIGO_SELLER_ID");
-  if (!taxId19) missing.push("SIIGO_TAX_ID_19");
-  if (!paymentCashId) missing.push("SIIGO_PAYMENT_CASH_ID");
-
-  if (missing.length > 0) {
-    throw new Error(
-      `Faltan variables de entorno requeridas para facturación electrónica: ${missing.join(", ")}. Configúralas y reinicia el servidor.`,
-    );
-  }
-
-  return {
-    accountGroup: accountGroup!,
-    sellerId: sellerId!,
-    taxId19: taxId19!,
-    paymentCashId: paymentCashId!,
-    paymentCreditId: paymentCreditId ?? paymentCashId!,
-  };
-}
-
-// ── POST /api/prefacturas/[id]/siigo/send ─────────────────────────────────────
 
 export async function POST(
   request: Request,
-  props: { params: Promise<{ id: string }> },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const params = await props.params;
-
   const limited = rateLimit(request, {
     key: "prefacturas:siigo:send",
     limit: 30,
@@ -85,320 +48,217 @@ export async function POST(
 
   if (forbidden) return forbidden;
 
-  const prefacturaId = String(params.id ?? "").trim();
+  const { id } = await params;
 
-  if (!prefacturaId) {
-    return Response.json({ error: "ID de prefactura requerido." }, { status: 400 });
+  if (!id) {
+    return new Response("Missing prefactura id", { status: 400 });
   }
 
-  // ── 1. Load prefactura ────────────────────────────────────────────────────
+  try {
+    // Load prefactura with joined data needed for SIIGO payload
+    const [row] = await db
+      .select({
+        id: prefacturas.id,
+        prefacturaCode: prefacturas.prefacturaCode,
+        status: prefacturas.status,
+        subtotal: prefacturas.subtotal,
+        ivaAmount: prefacturas.ivaAmount,
+        ivaRate: prefacturas.ivaRate,
+        total: prefacturas.total,
+        totalAfterWithholdings: prefacturas.totalAfterWithholdings,
+        siigoStatus: prefacturas.siigoStatus,
+        orderId: prefacturas.orderId,
+        quotationId: prefacturas.quotationId,
+        clientId: prefacturas.clientId,
+        currency: sql<
+          string | null
+        >`coalesce(${orders.currency}, ${quotations.currency}, 'COP')`,
+        documentType: sql<string | null>`coalesce(
+          cast(${quotations.documentType} as text),
+          case when ${orders.ivaEnabled} then 'F' else 'R' end
+        )`,
+        clientIdentification: sql<
+          string | null
+        >`coalesce(${clients.identification}, (select c2.identification from clients c2 where c2.id = ${quotations.clientId}))`,
+        clientName: sql<
+          string | null
+        >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,
+      })
+      .from(prefacturas)
+      .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
+      .leftJoin(orders, eq(prefacturas.orderId, orders.id))
+      .leftJoin(
+        clients,
+        sql`${clients.id} = coalesce(${orders.clientId}, ${quotations.clientId})`,
+      )
+      .where(eq(prefacturas.id, id))
+      .limit(1);
 
-  const [pf] = await db
-    .select({
-      id: prefacturas.id,
-      prefacturaCode: prefacturas.prefacturaCode,
-      orderId: prefacturas.orderId,
-      quotationId: prefacturas.quotationId,
-      status: prefacturas.status,
-      total: prefacturas.total,
-      subtotal: prefacturas.subtotal,
-      ivaAmount: prefacturas.ivaAmount,
-      ivaRate: prefacturas.ivaRate,
-      paymentType: prefacturas.paymentType,
-      dueDate: prefacturas.dueDate,
-      approvedAt: prefacturas.approvedAt,
-      siigoStatus: prefacturas.siigoStatus,
-      // documentType computed from quotation or order
-      documentType: sql<string>`coalesce(
-        cast(${quotations.documentType} as text),
-        case when ${orders.ivaEnabled} then 'F' else 'R' end
-      )`,
-      clientIdentification: sql<string | null>`coalesce(
-        ${clients.identification},
-        (select c2.identification from clients c2 where c2.id = ${quotations.clientId})
-      )`,
-      clientName: sql<string | null>`coalesce(
-        ${clients.name},
-        (select c2.name from clients c2 where c2.id = ${quotations.clientId})
-      )`,
-    })
-    .from(prefacturas)
-    .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
-    .leftJoin(orders, eq(prefacturas.orderId, orders.id))
-    .leftJoin(clients, eq(orders.clientId, clients.id))
-    .where(eq(prefacturas.id, prefacturaId))
-    .limit(1);
-
-  if (!pf) {
-    return Response.json(
-      { error: "Prefactura no encontrada." },
-      { status: 404 },
-    );
-  }
-
-  // ── 2. Validate documentType (only F can be sent) ─────────────────────────
-
-  if (pf.documentType !== "F") {
-    // Mark as NOT_APPLICABLE if not already
-    if (pf.siigoStatus !== "NOT_APPLICABLE") {
-      await db
-        .update(prefacturas)
-        .set({ siigoStatus: "NOT_APPLICABLE" })
-        .where(eq(prefacturas.id, prefacturaId));
+    if (!row) {
+      return new Response("Prefactura not found", { status: 404 });
     }
 
-    return Response.json(
-      {
-        error:
-          "Solo las prefacturas tipo F (con IVA) pueden enviarse a SIIGO.",
-        siigoStatus: "NOT_APPLICABLE",
-      },
-      { status: 400 },
-    );
-  }
+    // Only documentType = "F" can be sent to SIIGO
+    if (row.documentType !== "F") {
+      // Mark as NOT_APPLICABLE and return
+      await db
+        .update(prefacturas)
+        .set({
+          siigoStatus: "NOT_APPLICABLE",
+          siigoLastSyncAt: new Date(),
+        })
+        .where(eq(prefacturas.id, id));
 
-  // ── 3. Check blocked states ───────────────────────────────────────────────
-
-  if (pf.siigoStatus && BLOCKED_STATUSES.has(pf.siigoStatus)) {
-    return Response.json(
-      {
-        error: `Esta prefactura ya está en estado SIIGO "${pf.siigoStatus}" y no puede reenviarse sin un reset administrativo.`,
-        siigoStatus: pf.siigoStatus,
-      },
-      { status: 409 },
-    );
-  }
-
-  // ── 4. Validate client identification ─────────────────────────────────────
-
-  if (!pf.clientIdentification) {
-    return Response.json(
-      {
-        error:
-          "El cliente de la prefactura no tiene número de identificación configurado. Actualiza el cliente antes de enviar a SIIGO.",
-      },
-      { status: 422 },
-    );
-  }
-
-  // ── 5. Get invoice line items ─────────────────────────────────────────────
-
-  type LineItem = {
-    productCode: string;
-    productName: string;
-    quantity: number;
-    unitPrice: number;
-    siigoSynced: boolean;
-    siigoId: string | null;
-  };
-
-  let lineItems: LineItem[] = [];
-
-  if (pf.orderId) {
-    const rows = await db
-      .select({
-        productCode: products.productCode,
-        productName: products.name,
-        quantity: orderItems.quantity,
-        unitPrice: orderItems.unitPrice,
-        siigoSynced: products.siigoSynced,
-        siigoId: products.siigoId,
-      })
-      .from(orderItems)
-      .innerJoin(products, eq(orderItems.productId, products.id))
-      .where(
-        and(
-          eq(orderItems.orderId, pf.orderId),
-          eq(orderItems.isActive, true),
-        ),
+      return Response.json(
+        {
+          ok: false,
+          reason: "NOT_APPLICABLE",
+          message:
+            "Esta prefactura es de tipo R (sin IVA) y no aplica para envío a SIIGO.",
+        },
+        { status: 400 },
       );
+    }
 
-    lineItems = rows.map((r) => ({
-      productCode: r.productCode,
-      productName: r.productName,
-      quantity: r.quantity,
-      unitPrice: parseFloat(String(r.unitPrice ?? "0")) || 0,
-      siigoSynced: Boolean(r.siigoSynced),
-      siigoId: r.siigoId,
-    }));
-  } else if (pf.quotationId) {
-    const rows = await db
-      .select({
-        productCode: products.productCode,
-        productName: products.name,
-        quantity: quotationItems.quantity,
-        unitPrice: quotationItems.unitPrice,
-        siigoSynced: products.siigoSynced,
-        siigoId: products.siigoId,
-      })
-      .from(quotationItems)
-      .innerJoin(products, eq(quotationItems.productId, products.id))
-      .where(eq(quotationItems.quotationId, pf.quotationId));
+    // Block if already SENT or INVOICED
+    if (row.siigoStatus && BLOCKING_SIIGO_STATUSES.has(row.siigoStatus)) {
+      return Response.json(
+        {
+          ok: false,
+          reason: "ALREADY_SENT",
+          message: `La prefactura ya fue enviada a SIIGO (estado: ${row.siigoStatus}). Para modificarla, primero anula el envío.`,
+        },
+        { status: 409 },
+      );
+    }
 
-    lineItems = rows.map((r) => ({
-      productCode: r.productCode,
-      productName: r.productName,
-      quantity: parseFloat(String(r.quantity ?? "1")) || 1,
-      unitPrice: parseFloat(String(r.unitPrice ?? "0")) || 0,
-      siigoSynced: Boolean(r.siigoSynced),
-      siigoId: r.siigoId,
-    }));
-  }
+    const clientIdentification = String(
+      row.clientIdentification ?? "",
+    ).trim();
 
-  if (lineItems.length === 0) {
-    return Response.json(
-      {
-        error:
-          "La prefactura no tiene productos asociados. Verifica el pedido o cotización.",
+    if (!clientIdentification) {
+      return Response.json(
+        {
+          ok: false,
+          reason: "MISSING_CLIENT_IDENTIFICATION",
+          message:
+            "El cliente de esta prefactura no tiene número de identificación registrado. Completa los datos del cliente antes de enviar a SIIGO.",
+        },
+        { status: 422 },
+      );
+    }
+
+    const subtotal = Number(row.subtotal ?? 0);
+    const ivaAmount = Number(row.ivaAmount ?? 0);
+    const total = Number(row.total ?? subtotal + ivaAmount);
+    const ivaRate = Number(row.ivaRate ?? 19);
+    const currency = String(row.currency ?? "COP").toUpperCase();
+
+    // Build consolidated concept payload for SIIGO
+    // Siigo requires document_type, customer, items, date
+    const today = new Date().toISOString().slice(0, 10);
+
+    const siigoPayload = {
+      document: {
+        id: SIIGO_INVOICE_DOCUMENT_ID,
       },
-      { status: 422 },
-    );
-  }
-
-  // ── 6. Verify all products are synced with SIIGO ──────────────────────────
-
-  const unsyncedProducts = lineItems.filter((item) => !item.siigoSynced);
-
-  if (unsyncedProducts.length > 0) {
-    return Response.json(
-      {
-        error: `Los siguientes productos no están sincronizados con SIIGO: ${unsyncedProducts.map((p) => p.productCode).join(", ")}. Sincronízalos primero antes de enviar la factura.`,
-        unsyncedProducts: unsyncedProducts.map((p) => p.productCode),
+      date: today,
+      customer: {
+        identification: clientIdentification,
+        branch_office: 0,
       },
-      { status: 422 },
-    );
-  }
-
-  // ── 7. Load invoice configuration from env ────────────────────────────────
-
-  let config: ReturnType<typeof getInvoiceConfig>;
-
-  try {
-    config = getInvoiceConfig();
-  } catch (err) {
-    return Response.json(
-      { error: String((err as Error)?.message ?? "Configuración inválida.") },
-      { status: 503 },
-    );
-  }
-
-  // ── 8. Build SIIGO invoice payload ────────────────────────────────────────
-
-  const invoiceDate =
-    pf.approvedAt
-      ? new Date(pf.approvedAt).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0];
-
-  const isCredit = String(pf.paymentType ?? "CASH").toUpperCase() === "CREDIT";
-  const dueDate =
-    isCredit && pf.dueDate
-      ? String(pf.dueDate).split("T")[0]
-      : invoiceDate;
-
-  const totalValue = parseFloat(String(pf.total ?? "0")) || 0;
-
-  const siigoItems = lineItems.map((item) => ({
-    code: item.productCode,
-    description: item.productName.substring(0, 250),
-    quantity: item.quantity,
-    price: item.unitPrice,
-    discount: 0,
-    taxes: [{ id: config.taxId19 }],
-  }));
-
-  const invoicePayload = {
-    document: { id: config.accountGroup },
-    date: invoiceDate,
-    customer: {
-      identification: pf.clientIdentification,
-      branch_office: 0,
-    },
-    seller: config.sellerId,
-    items: siigoItems,
-    payments: [
-      {
-        id: isCredit ? config.paymentCreditId : config.paymentCashId,
-        value: totalValue,
-        due_date: dueDate,
+      currency: {
+        code: currency === "USD" ? "USD" : "COP",
+        exchange_rate: currency === "USD" ? 1 : 0,
       },
-    ],
-    observations: `Prefactura ${pf.prefacturaCode}`,
-  };
+      items: [
+        {
+          code: SIIGO_DEFAULT_PRODUCT_CODE,
+          description: `Venta según prefactura ${row.prefacturaCode}`,
+          quantity: 1,
+          price: subtotal,
+          taxes:
+            ivaRate > 0
+              ? [
+                  {
+                    id: SIIGO_IVA_TAX_ID,
+                  },
+                ]
+              : [],
+        },
+      ],
+      observations: `Prefactura ${row.prefacturaCode} - Total: ${total.toFixed(2)} ${currency}`,
+    };
 
-  // ── 9. Send to SIIGO ──────────────────────────────────────────────────────
+    // Call SIIGO to create the invoice
+    let siigoResponse: SiigoInvoiceResponse;
 
-  try {
-    const result = await siigoJson<SiigoInvoiceResponse>("/v1/invoices", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(invoicePayload),
-    });
+    try {
+      siigoResponse = await siigoJson<SiigoInvoiceResponse>("/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(siigoPayload),
+      });
+    } catch (siigoErr) {
+      const errMsg =
+        siigoErr instanceof SiigoApiError
+          ? siigoErr.message
+          : siigoErr instanceof Error
+            ? siigoErr.message
+            : "Error desconocido al contactar SIIGO";
 
-    const siigoInvoiceId = String(result.id ?? "").trim();
-    const siigoInvoiceNumber = String(result.name ?? "").trim();
-
-    if (!siigoInvoiceId) {
+      // Mark as ERROR
       await db
         .update(prefacturas)
         .set({
           siigoStatus: "ERROR",
-          siigoErrorMessage: "SIIGO no devolvió un ID de factura.",
+          siigoErrorMessage: errMsg,
           siigoLastSyncAt: new Date(),
         })
-        .where(eq(prefacturas.id, prefacturaId));
+        .where(eq(prefacturas.id, id));
 
       return Response.json(
-        { error: "SIIGO no devolvió un ID de factura." },
+        { ok: false, reason: "SIIGO_ERROR", message: errMsg },
         { status: 502 },
       );
     }
 
+    const siigoInvoiceId = String(siigoResponse?.id ?? "").trim() || null;
+    const siigoInvoiceNumber =
+      String(siigoResponse?.number ?? "").trim() || null;
+
+    // Update prefactura as SENT
     await db
       .update(prefacturas)
       .set({
         siigoStatus: "SENT",
         siigoInvoiceId,
-        siigoInvoiceNumber: siigoInvoiceNumber || null,
+        siigoInvoiceNumber,
         siigoSentAt: new Date(),
         siigoLastSyncAt: new Date(),
         siigoErrorMessage: null,
       })
-      .where(eq(prefacturas.id, prefacturaId));
+      .where(eq(prefacturas.id, id));
 
     return Response.json({
       ok: true,
       siigoStatus: "SENT",
       siigoInvoiceId,
-      siigoInvoiceNumber: siigoInvoiceNumber || null,
+      siigoInvoiceNumber,
     });
-  } catch (err) {
-    let message = "Error al crear factura en SIIGO.";
+  } catch (error) {
+    console.error("[prefacturas siigo send] error:", {
+      code: (error as any)?.code,
+      message: (error as any)?.message,
+    });
 
-    if (err instanceof SiigoApiError) {
-      const body = err.payload as Record<string, unknown>;
-      const errors = body?.Errors as unknown[] | undefined;
-      const firstError = errors?.[0] as Record<string, unknown> | undefined;
-
-      message =
-        String(
-          firstError?.Message ??
-            firstError?.message ??
-            body?.message ??
-            err.message,
-        ) || message;
-    } else {
-      message = String((err as Error)?.message ?? message);
-    }
-
-    await db
-      .update(prefacturas)
-      .set({
-        siigoStatus: "ERROR",
-        siigoErrorMessage: message,
-        siigoLastSyncAt: new Date(),
-      })
-      .where(eq(prefacturas.id, prefacturaId));
-
-    return Response.json({ error: message }, { status: 502 });
+    return Response.json(
+      {
+        ok: false,
+        error:
+          error instanceof Error ? error.message : "Error interno del servidor",
+      },
+      { status: 500 },
+    );
   }
 }
