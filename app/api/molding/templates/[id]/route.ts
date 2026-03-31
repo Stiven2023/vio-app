@@ -10,6 +10,18 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
+function normalizeUpper(value: string | null | undefined) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+const PANTALONETA_SUBTYPE_OPTIONS = [
+  "VOLEY",
+  "PETO",
+  "BALONCESTO",
+  "PROMESAS",
+  "DOBLE FAZ",
+] as const;
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -143,7 +155,19 @@ export async function PATCH(
   }
 
   const existing = await db
-    .select({ id: moldingTemplates.id })
+    .select({
+      id: moldingTemplates.id,
+      garmentType: moldingTemplates.garmentType,
+      garmentSubtype: moldingTemplates.garmentSubtype,
+      neckType: moldingTemplates.neckType,
+      hasProtection: moldingTemplates.hasProtection,
+      hasPocket: moldingTemplates.hasPocket,
+      hasTanca: moldingTemplates.hasTanca,
+      hasElastic: moldingTemplates.hasElastic,
+      hasLateralMesh: moldingTemplates.hasLateralMesh,
+      cordColor: moldingTemplates.cordColor,
+      lateralMeshColor: moldingTemplates.lateralMeshColor,
+    })
     .from(moldingTemplates)
     .where(eq(moldingTemplates.id, id))
     .limit(1);
@@ -275,6 +299,51 @@ export async function PATCH(
   const zipperSizeCm = parseDecimalField(body.zipperSizeCm);
 
   if (zipperSizeCm !== undefined) updates.zipperSizeCm = zipperSizeCm;
+
+  const current = existing[0];
+  const finalGarmentType =
+    updates.garmentType ?? current.garmentType ?? null;
+  const finalGarmentSubtype =
+    updates.garmentSubtype ?? current.garmentSubtype ?? null;
+  const finalHasTanca = updates.hasTanca ?? current.hasTanca ?? false;
+  const finalHasLateralMesh =
+    updates.hasLateralMesh ?? current.hasLateralMesh ?? false;
+  const finalCordColor =
+    updates.cordColor ?? current.cordColor ?? null;
+  const finalLateralMeshColor =
+    updates.lateralMeshColor ?? current.lateralMeshColor ?? null;
+  const isPantaloneta = normalizeUpper(finalGarmentType) === "PANTALONETA";
+
+  if (isPantaloneta) {
+    const normalizedSubtype = normalizeUpper(finalGarmentSubtype);
+
+    if (
+      !PANTALONETA_SUBTYPE_OPTIONS.some(
+        (option) => normalizeUpper(option) === normalizedSubtype,
+      )
+    ) {
+      return new Response(
+        "Para PANTALONETA debes seleccionar un subtipo valido",
+        { status: 400 },
+      );
+    }
+
+    if (finalHasTanca && !finalCordColor) {
+      return new Response("Debes indicar el color de la cuerda", {
+        status: 400,
+      });
+    }
+
+    if (finalHasLateralMesh && !finalLateralMeshColor) {
+      return new Response("Debes indicar el color de la malla lateral", {
+        status: 400,
+      });
+    }
+
+    updates.neckType = null;
+    if (!finalHasTanca) updates.cordColor = null;
+    if (!finalHasLateralMesh) updates.lateralMeshColor = null;
+  }
 
   try {
     const [updated] = await db

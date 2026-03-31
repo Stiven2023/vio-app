@@ -34,6 +34,8 @@ function asNumber(v: unknown) {
 
 export function OrderItemStructuresSection(props: {
   disabled: boolean;
+  requiresPositions: boolean;
+  totalQuantity?: number;
   positions: OrderItemPositionInput[];
   teams: OrderItemTeamInput[];
   specialRequirements: OrderItemSpecialRequirementInput[];
@@ -50,6 +52,8 @@ export function OrderItemStructuresSection(props: {
 }) {
   const {
     disabled,
+    requiresPositions,
+    totalQuantity,
     positions,
     teams,
     specialRequirements,
@@ -139,12 +143,16 @@ export function OrderItemStructuresSection(props: {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 notranslate" translate="no">
+      <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2 text-xs text-default-600">
+        Usa este bloque para definir posiciones y cantidades, combinaciones por equipo y requerimientos especiales de confección del diseño.
+      </div>
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Posiciones del diseño</div>
+          <div className="text-sm font-semibold">Posiciones y cantidades</div>
           <Button
-            isDisabled={disabled}
+            isDisabled={disabled || !requiresPositions}
             size="sm"
             variant="flat"
             onPress={() =>
@@ -163,13 +171,25 @@ export function OrderItemStructuresSection(props: {
           </Button>
         </div>
 
-        {positions.length === 0 ? (
+        {!requiresPositions ? (
+          <div className="text-xs text-default-500">
+            Esta sección solo se configura cuando el diseño es conjunto + arquero.
+          </div>
+        ) : null}
+
+        {requiresPositions ? (
+          <div className="text-xs text-primary">
+            Total configurado: {positions.reduce((acc, row) => acc + Math.max(0, Math.floor(asNumber(row.quantity))), 0)} / {Math.max(0, Math.floor(asNumber(totalQuantity)))}
+          </div>
+        ) : null}
+
+        {requiresPositions && positions.length === 0 ? (
           <div className="text-xs text-default-500">
             Sin posiciones configuradas.
           </div>
         ) : null}
 
-        {positions.map((row, idx) => (
+        {requiresPositions ? positions.map((row, idx) => (
           <div key={idx} className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <Select
               isDisabled={disabled}
@@ -230,12 +250,12 @@ export function OrderItemStructuresSection(props: {
               Quitar
             </Button>
           </div>
-        ))}
+        )) : null}
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Equipos</div>
+          <div className="text-sm font-semibold">Combinaciones por equipo</div>
           <Button
             isDisabled={disabled}
             size="sm"
@@ -347,7 +367,7 @@ export function OrderItemStructuresSection(props: {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Requerimientos especiales</div>
+          <div className="text-sm font-semibold">Requerimientos especiales de confección</div>
           <Button
             isDisabled={disabled}
             size="sm"
@@ -367,7 +387,7 @@ export function OrderItemStructuresSection(props: {
               ])
             }
           >
-            Agregar requerimiento
+            Agregar detalle
           </Button>
         </div>
 
@@ -457,6 +477,82 @@ export function OrderItemStructuresSection(props: {
               >
                 Tiene franjas laterales
               </Switch>
+
+              <Switch
+                isDisabled={disabled}
+                isSelected={Boolean(row.hasCordon)}
+                onValueChange={(v) =>
+                  onSpecialRequirementsChange(
+                    specialRequirements.map((x, i) =>
+                      i === idx ? { ...x, hasCordon: v } : x,
+                    ),
+                  )
+                }
+              >
+                Tiene cordón
+              </Switch>
+
+              <Switch
+                isDisabled={disabled}
+                isSelected={Boolean(row.hasElastic)}
+                onValueChange={(v) =>
+                  onSpecialRequirementsChange(
+                    specialRequirements.map((x, i) =>
+                      i === idx ? { ...x, hasElastic: v } : x,
+                    ),
+                  )
+                }
+              >
+                Tiene elástico
+              </Switch>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Input
+                isDisabled={disabled}
+                label="Cierre"
+                value={String(row.closureType ?? "")}
+                onValueChange={(v) =>
+                  onSpecialRequirementsChange(
+                    specialRequirements.map((x, i) =>
+                      i === idx ? { ...x, closureType: v } : x,
+                    ),
+                  )
+                }
+              />
+
+              <Select
+                isDisabled={disabled}
+                label="Cantidad de cierres"
+                selectedKeys={
+                  row.closureQuantity
+                    ? [String(row.closureQuantity)]
+                    : ["NONE"]
+                }
+                onSelectionChange={(keys: any) => {
+                  const key = String(Array.from(keys as any)[0] ?? "NONE");
+                  const nextValue = key === "NONE" ? null : Number(key);
+
+                  onSpecialRequirementsChange(
+                    specialRequirements.map((x, i) =>
+                      i === idx
+                        ? {
+                            ...x,
+                            closureQuantity:
+                              nextValue === 1 || nextValue === 2 || nextValue === 4
+                                ? nextValue
+                                : null,
+                          }
+                        : x,
+                    ),
+                  );
+                }}
+              >
+                <SelectItem key="NONE">No aplica</SelectItem>
+                <SelectItem key="1">1</SelectItem>
+                <SelectItem key="2">2</SelectItem>
+                <SelectItem key="4">4</SelectItem>
+              </Select>
             </div>
 
             <Input

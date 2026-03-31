@@ -33,6 +33,7 @@ import {
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
+import { getOrderDesignQuantityLimitError } from "@/src/utils/order-item-quantity-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { canRoleChangeStatus } from "@/src/utils/role-status";
@@ -268,8 +269,17 @@ export async function GET(
     .from(orderItemSpecialRequirements)
     .where(eq(orderItemSpecialRequirements.orderItemId, orderItemId));
 
+  const legacyCuffType =
+    specialRequirements.find((row) => String(row.cuffType ?? "").trim())
+      ?.cuffType ?? null;
+
+  const itemWithFallback = {
+    ...item,
+    cuffType: item.cuffType ?? legacyCuffType,
+  };
+
   return Response.json({
-    item,
+    item: itemWithFallback,
     packaging,
     socks,
     materials,
@@ -302,6 +312,14 @@ function toPositiveInt(v: unknown) {
   const i = Math.floor(n);
 
   return i > 0 ? i : null;
+}
+
+function normalizeClosureQuantity(v: unknown) {
+  const n = toPositiveInt(v);
+
+  if (n === 1 || n === 2 || n === 4) return n;
+
+  return null;
 }
 
 function normalizeOperationalProcess(v: unknown) {
@@ -339,6 +357,17 @@ function normalizeProductionTechnique(v: unknown) {
   return "SUBLIMACION";
 }
 
+function normalizeScreenPrintType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "DTF") return "DTF";
+  if (raw === "VINILO") return "VINILO";
+
+  return null;
+}
+
 function normalizePosition(v: unknown) {
   const raw = String(v ?? "")
     .trim()
@@ -371,13 +400,35 @@ function normalizeSockLength(v: unknown) {
   return null;
 }
 
+function normalizeOrderConfigurationMode(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "PRENDA") return "PRENDA";
+  if (raw === "CONJUNTO") return "CONJUNTO";
+  if (raw === "CONJUNTO_ARQUERO") return "CONJUNTO_ARQUERO";
+
+  return null;
+}
+
 function validatePositionsBusiness(
   positionsInput: unknown,
-  designTypeInput: unknown,
-  teamsInput: unknown,
+  orderConfigurationModeInput: unknown,
 ) {
+  const orderConfigurationMode = normalizeOrderConfigurationMode(
+    orderConfigurationModeInput,
+  );
+
+  if (
+    orderConfigurationMode !== "CONJUNTO_ARQUERO" &&
+    (!Array.isArray(positionsInput) || positionsInput.length === 0)
+  ) {
+    return null;
+  }
+
   if (!Array.isArray(positionsInput) || positionsInput.length === 0) {
-    return "Debes configurar al menos una posición del diseño.";
+    return "Debes configurar posiciones y cantidades para conjunto + arquero.";
   }
 
   const normalized = positionsInput
@@ -395,30 +446,25 @@ function validatePositionsBusiness(
     return "La cantidad por posición no puede ser negativa.";
   }
 
-  if (normalized.length > 1) {
-    const set = new Set(normalized.map((row: any) => row.position));
-
-    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
-      return "Si defines más de una posición, debes incluir JUGADOR y ARQUERO.";
-    }
+  if (orderConfigurationMode !== "CONJUNTO_ARQUERO") {
+    return null;
   }
 
-  const designType = normalizeDesignType(designTypeInput);
-  const hasTeams = Array.isArray(teamsInput) && teamsInput.length > 0;
+  const set = new Set(normalized.map((row: any) => row.position));
 
-  if (hasTeams) {
-    const set = new Set(normalized.map((row: any) => row.position));
-
-    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
-      return "Si configuras equipos, debes tener posiciones JUGADOR y ARQUERO.";
-    }
-  }
-
-  if (designType === "PRODUCCION" && normalized.length < 2) {
-    return "Para design type PRODUCCION debes definir al menos JUGADOR y ARQUERO.";
+  if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
+    return "Para conjunto + arquero debes definir al menos JUGADOR y ARQUERO.";
   }
 
   return null;
+}
+
+function positionsContainGoalkeeper(
+  positionsInput: Array<{ position?: string | null }> | null | undefined,
+) {
+  return (positionsInput ?? []).some(
+    (row) => normalizePosition(row?.position) === "ARQUERO",
+  );
 }
 
 function sumGroupedPackagingQuantity(packagingInput: unknown) {
@@ -607,6 +653,7 @@ export async function PUT(
       name: orderItems.name,
       garmentType: orderItems.garmentType,
       logoImageUrl: orderItems.logoImageUrl,
+      clothingImageTwoUrl: orderItems.clothingImageTwoUrl,
       status: orderItems.status,
       quantity: orderItems.quantity,
       unitPrice: orderItems.unitPrice,
@@ -614,7 +661,9 @@ export async function PUT(
       additionEvidence: orderItems.additionEvidence,
       designType: orderItems.designType,
       productionTechnique: orderItems.productionTechnique,
+      screenPrintType: orderItems.screenPrintType,
       color: orderItems.color,
+      cuffType: orderItems.cuffType,
       process: orderItems.process,
     })
     .from(orderItems)
@@ -675,6 +724,21 @@ export async function PUT(
     );
   }
 
+  if (qty !== null) {
+    const quantityLimitError = await getOrderDesignQuantityLimitError(db, {
+      orderId: String(existing.orderId ?? ""),
+      nextItemQuantity: qty,
+      excludeOrderItemId: orderItemId,
+    });
+
+    if (quantityLimitError) {
+      return new Response(
+        `La suma de diseños del pedido no puede superar ${quantityLimitError.agreedUnits} unidades acordadas. Disponibles para este diseño: ${quantityLimitError.availableUnits}.`,
+        { status: 422 },
+      );
+    }
+  }
+
   if (Array.isArray(body.packaging)) {
     const groupedPackagingTotal = sumGroupedPackagingQuantity(body.packaging);
 
@@ -689,8 +753,7 @@ export async function PUT(
   if (body.positions !== undefined) {
     const positionsValidationError = validatePositionsBusiness(
       body.positions,
-      body.designType ?? body.process,
-      body.teams,
+      body.orderConfigurationMode,
     );
 
     if (positionsValidationError) {
@@ -702,12 +765,9 @@ export async function PUT(
     body.positions === undefined &&
     (body.designType !== undefined ||
       body.process !== undefined ||
-      body.teams !== undefined)
+      body.teams !== undefined ||
+      body.orderConfigurationMode !== undefined)
   ) {
-    const desiredDesignType = normalizeDesignType(
-      body.designType ?? body.process ?? existing.designType ?? existing.process,
-    );
-
     const existingPositions = await db
       .select({
         position: orderItemPositions.position,
@@ -716,23 +776,22 @@ export async function PUT(
       .from(orderItemPositions)
       .where(eq(orderItemPositions.orderItemId, orderItemId));
 
-    const teamsForValidation =
-      body.teams !== undefined
-        ? body.teams
-        : await db
-            .select({ id: orderItemTeams.id })
-            .from(orderItemTeams)
-            .where(eq(orderItemTeams.orderItemId, orderItemId));
+    const desiredOrderConfigurationMode =
+      normalizeOrderConfigurationMode(body.orderConfigurationMode) ??
+      (existing.clothingImageTwoUrl
+        ? positionsContainGoalkeeper(existingPositions)
+          ? "CONJUNTO_ARQUERO"
+          : "CONJUNTO"
+        : "PRENDA");
 
     const positionsValidationError = validatePositionsBusiness(
       existingPositions,
-      desiredDesignType,
-      teamsForValidation,
+      desiredOrderConfigurationMode,
     );
 
     if (positionsValidationError) {
       return new Response(
-        `${positionsValidationError} Si cambias design type o equipos sin enviar positions, las posiciones actuales deben cumplir la regla.`,
+        `${positionsValidationError} Si cambias la configuración sin enviar positions, las posiciones actuales deben cumplir la regla.`,
         { status: 400 },
       );
     }
@@ -920,8 +979,24 @@ export async function PUT(
     patch.clothingImageTwoUrl = toNullableString(body.clothingImageTwoUrl);
   if (body.logoImageUrl !== undefined)
     patch.logoImageUrl = toNullableString(body.logoImageUrl);
-  if (body.screenPrint !== undefined)
-    patch.screenPrint = Boolean(body.screenPrint);
+  if (body.screenPrintType !== undefined) {
+    const normalizedScreenPrintType = normalizeScreenPrintType(
+      body.screenPrintType,
+    );
+
+    patch.screenPrintType = normalizedScreenPrintType;
+    patch.screenPrint = Boolean(normalizedScreenPrintType);
+  } else if (body.screenPrint !== undefined) {
+    const nextScreenPrint = Boolean(body.screenPrint);
+
+    patch.screenPrint = nextScreenPrint;
+
+    if (!nextScreenPrint) {
+      patch.screenPrintType = null;
+    } else if (!toNullableString(existing.screenPrintType)) {
+      patch.screenPrintType = "DTF";
+    }
+  }
   if (body.embroidery !== undefined)
     patch.embroidery = Boolean(body.embroidery);
   if (body.buttonhole !== undefined)
@@ -945,6 +1020,8 @@ export async function PUT(
   }
   if (body.neckType !== undefined)
     patch.neckType = toNullableString(body.neckType);
+  if (body.cuffType !== undefined)
+    patch.cuffType = toNullableString(body.cuffType);
   if (body.sleeve !== undefined) patch.sleeve = toNullableString(body.sleeve);
   if (body.color !== undefined) patch.color = toNullableString(body.color);
   if (body.requiresSocks !== undefined)
@@ -1039,6 +1116,7 @@ export async function PUT(
       "clothingImageTwoUrl",
       "logoImageUrl",
       "screenPrint",
+      "screenPrintType",
       "embroidery",
       "buttonhole",
       "snap",
@@ -1046,6 +1124,7 @@ export async function PUT(
       "flag",
       "gender",
       "neckType",
+      "cuffType",
       "sleeve",
       "color",
       "designType",
@@ -1185,11 +1264,14 @@ export async function PUT(
             position: normalizePosition(s.position) as any,
             sockLength: normalizeSockLength(s.sockLength) as any,
             color: toNullableString(s.color),
+            material: toNullableString(s.material),
+            isDesigned: Boolean(s.isDesigned),
             size: String(s.size ?? ""),
             quantity:
               s.quantity === undefined ? null : toPositiveInt(s.quantity),
             description: toNullableString(s.description),
             imageUrl: toNullableString(s.imageUrl),
+            logoImageUrl: toNullableString(s.logoImageUrl),
           })) as any,
         );
       }
@@ -1302,6 +1384,10 @@ export async function PUT(
             hasReflectiveTape: Boolean(sr.hasReflectiveTape),
             reflectiveTapeLocation: toNullableString(sr.reflectiveTapeLocation),
             hasSideStripes: Boolean(sr.hasSideStripes),
+            closureType: toNullableString(sr.closureType),
+            closureQuantity: normalizeClosureQuantity(sr.closureQuantity),
+            hasCordon: Boolean(sr.hasCordon),
+            hasElastic: Boolean(sr.hasElastic),
             notes: toNullableString(sr.notes),
           })) as any,
         );

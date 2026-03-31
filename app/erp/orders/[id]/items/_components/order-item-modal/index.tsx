@@ -227,6 +227,9 @@ export function OrderItemModal(props: {
         sleeve: item.sleeve ?? null,
         color: item.color ?? null,
         screenPrint: Boolean(item.screenPrint),
+        screenPrintType: item.screenPrint
+          ? ((item.screenPrintType ?? "DTF") as "DTF" | "VINILO")
+          : null,
         embroidery: Boolean(item.embroidery),
         buttonhole: Boolean(item.buttonhole),
         snap: Boolean(item.snap),
@@ -312,6 +315,7 @@ export function OrderItemModal(props: {
                   disabled={uiDisabled}
                   garmentType={String(item.garmentType ?? "JUGADOR")}
                   orderId={orderId}
+                  totalQuantity={quantity}
                   packaging={packaging}
                   requiresSocks={Boolean(item.requiresSocks)}
                   value={socks}

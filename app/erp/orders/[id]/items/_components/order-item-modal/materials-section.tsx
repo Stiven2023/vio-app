@@ -33,7 +33,7 @@ export function MaterialsSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold">Materiales (compras)</div>
+        <div className="text-sm font-semibold">Insumos de compras</div>
         <Button
           isDisabled={disabled}
           size="sm"
@@ -47,7 +47,7 @@ export function MaterialsSection({
       </div>
 
       {value.length === 0 ? (
-        <div className="text-sm text-foreground-500">Sin materiales.</div>
+        <div className="text-sm text-foreground-500">Sin insumos.</div>
       ) : null}
 
       <div className="flex flex-col gap-3">
@@ -55,7 +55,7 @@ export function MaterialsSection({
           <div key={idx} className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <Select
               isDisabled={disabled}
-              label="Ítem"
+              label="Insumo"
               selectedKeys={m.inventoryItemId ? [m.inventoryItemId] : []}
               onSelectionChange={(keys: any) => {
                 const k = Array.from(keys as any)[0];
@@ -71,7 +71,7 @@ export function MaterialsSection({
             >
               {inventoryItems.map((ii) => (
                 <SelectItem key={ii.id} textValue={ii.name}>
-                  {ii.name}
+                  <span className="notranslate" translate="no">{ii.name}</span>
                 </SelectItem>
               ))}
             </Select>
@@ -94,7 +94,7 @@ export function MaterialsSection({
 
             <Input
               isDisabled={disabled}
-              label="Nota"
+              label="Observación"
               value={String(m.note ?? "")}
               onValueChange={(v: string) =>
                 onChange(

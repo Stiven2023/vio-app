@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import NextLink from "next/link";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Skeleton } from "@heroui/skeleton";
 import { Textarea } from "@heroui/input";
 import {
   Table,
@@ -196,16 +197,55 @@ export function OrderItemDetailPage({
 
   if (loading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-8 w-64 rounded-medium bg-default-200" />
-        <div className="h-4 w-80 rounded-medium bg-default-100" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, idx) => (
-            <div key={idx} className="h-20 rounded-medium bg-default-100" />
-          ))}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64 rounded-medium" />
+            <Skeleton className="h-4 w-72 rounded-medium" />
+          </div>
+          <Skeleton className="h-10 w-36 rounded-large" />
         </div>
-        <div className="h-56 rounded-medium bg-default-100" />
-        <div className="h-56 rounded-medium bg-default-100" />
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-24 rounded-medium" />
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {Array.from({ length: 3 }, (_, idx) => (
+                <div key={idx} className="space-y-2">
+                  <Skeleton className="h-3 w-16 rounded-medium" />
+                  <Skeleton className="h-5 w-28 rounded-medium" />
+                  <Skeleton className="h-4 w-24 rounded-medium" />
+                </div>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40 rounded-medium" />
+          </CardHeader>
+          <CardBody className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 8 }, (_, idx) => (
+              <div key={idx} className="space-y-2 rounded-large border border-default-100 p-3">
+                <Skeleton className="h-3 w-20 rounded-medium" />
+                <Skeleton className="h-5 w-24 rounded-medium" />
+                <Skeleton className="h-4 w-16 rounded-medium" />
+              </div>
+            ))}
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-44 rounded-medium" />
+          </CardHeader>
+          <CardBody>
+            <Skeleton className="h-56 w-full rounded-large" />
+          </CardBody>
+        </Card>
       </div>
     );
   }
@@ -286,19 +326,23 @@ export function OrderItemDetailPage({
             </div>
             <div>
               <div className="text-xs text-default-500">Tela</div>
-              <div className="font-medium">{item?.fabric ?? "-"}</div>
+              <div className="font-medium notranslate" translate="no">{item?.fabric ?? "-"}</div>
             </div>
             <div>
               <div className="text-xs text-default-500">Proceso</div>
               <div className="font-medium">{item?.process ?? "-"}</div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Genero</div>
+              <div className="text-xs text-default-500">Género</div>
               <div className="font-medium">{item?.gender ?? "-"}</div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Cuello</div>
-              <div className="font-medium">{item?.neckType ?? "-"}</div>
+              <div className="text-xs text-default-500">Tipo de cuello</div>
+              <div className="font-medium notranslate" translate="no">{item?.neckType ?? "-"}</div>
+            </div>
+            <div>
+              <div className="text-xs text-default-500">Tipo de puño</div>
+              <div className="font-medium notranslate" translate="no">{item?.cuffType ?? "-"}</div>
             </div>
             <div>
               <div className="text-xs text-default-500">Manga</div>
@@ -315,44 +359,50 @@ export function OrderItemDetailPage({
               </div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Revision</div>
+              <div className="text-xs text-default-500">Revisión</div>
               <div className="font-medium">
-                {item?.requiresRevision ? "Si" : "No"}
+                {item?.requiresRevision ? "Sí" : "No"}
               </div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Produccion</div>
+              <div className="text-xs text-default-500">Producción</div>
               <div className="font-medium">{item?.manufacturingId ?? "-"}</div>
             </div>
             <div>
-              <div className="text-xs text-default-500">Screen print</div>
+              <div className="text-xs text-default-500">Serigrafía (DTF / Vinilo)</div>
               <div className="font-medium">
-                {item?.screenPrint ? "Si" : "No"}
+                {item?.screenPrint
+                  ? String(item?.screenPrintType ?? "DTF")
+                      .trim()
+                      .toUpperCase() === "VINILO"
+                    ? "Vinilo"
+                    : "DTF"
+                  : "No"}
               </div>
             </div>
             <div>
               <div className="text-xs text-default-500">Bordado</div>
               <div className="font-medium">
-                {item?.embroidery ? "Si" : "No"}
+                {item?.embroidery ? "Sí" : "No"}
               </div>
             </div>
             <div>
               <div className="text-xs text-default-500">Ojal</div>
               <div className="font-medium">
-                {item?.buttonhole ? "Si" : "No"}
+                {item?.buttonhole ? "Sí" : "No"}
               </div>
             </div>
             <div>
               <div className="text-xs text-default-500">Broche</div>
-              <div className="font-medium">{item?.snap ? "Si" : "No"}</div>
+              <div className="font-medium">{item?.snap ? "Sí" : "No"}</div>
             </div>
             <div>
               <div className="text-xs text-default-500">Etiqueta</div>
-              <div className="font-medium">{item?.tag ? "Si" : "No"}</div>
+              <div className="font-medium">{item?.tag ? "Sí" : "No"}</div>
             </div>
             <div>
               <div className="text-xs text-default-500">Bandera</div>
-              <div className="font-medium">{item?.flag ? "Si" : "No"}</div>
+              <div className="font-medium">{item?.flag ? "Sí" : "No"}</div>
             </div>
           </div>
 
@@ -484,7 +534,7 @@ export function OrderItemDetailPage({
               <TableHeader>
                 <TableColumn>Talla</TableColumn>
                 <TableColumn>Cantidad</TableColumn>
-                <TableColumn>Descripcion</TableColumn>
+                <TableColumn>Descripción</TableColumn>
                 <TableColumn>Imagen</TableColumn>
               </TableHeader>
               <TableBody emptyContent="Sin medias" items={payload?.socks ?? []}>
@@ -519,7 +569,7 @@ export function OrderItemDetailPage({
         <CardBody>
           <Table removeWrapper aria-label="Materiales">
             <TableHeader>
-              <TableColumn>Item</TableColumn>
+              <TableColumn>Insumo</TableColumn>
               <TableColumn>Cantidad</TableColumn>
               <TableColumn>Entregado</TableColumn>
               <TableColumn>Nota</TableColumn>
@@ -531,7 +581,9 @@ export function OrderItemDetailPage({
               {(row) => (
                 <TableRow key={`${row.inventoryItemId}-${row.note}`}>
                   <TableCell>
-                    {(row as any).itemName ?? row.inventoryItemId ?? "-"}
+                    <span className="notranslate" translate="no">
+                      {(row as any).itemName ?? row.inventoryItemId ?? "-"}
+                    </span>
                   </TableCell>
                   <TableCell>{row.quantity ?? "-"}</TableCell>
                   <TableCell>{(row as any).deliveredQty ?? "0"}</TableCell>

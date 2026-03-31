@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Input } from "@heroui/input";
+import { Skeleton } from "@heroui/skeleton";
 import { Select, SelectItem } from "@heroui/select";
 import { Switch } from "@heroui/switch";
 
@@ -26,6 +27,7 @@ import type {
   MoldingTemplateRow,
 } from "@/app/erp/molding/_lib/types";
 import type {
+  OrderConfigurationMode,
   OrderItemPositionInput,
   OrderItemSpecialRequirementInput,
   OrderItemTeamInput,
@@ -61,8 +63,26 @@ type ProductPriceRow = {
 type DesignerRow = {
   id: string;
   name: string;
+  role?: string | null;
+  roleName?: string | null;
   isActive?: boolean | null;
 };
+
+function toRoleKey(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase();
+}
+
+function isDesignRole(value: unknown) {
+  const role = toRoleKey(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return role === "DISENADOR" || role === "LIDER_DISENO";
+}
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -84,6 +104,104 @@ function getPackagingTotals(rows: Array<{ mode?: string; quantity?: number }>) {
   }
 
   return { groupedTotal, individualTotal };
+}
+
+function getSocksTotal(rows: Array<{ quantity?: number }>) {
+  return (rows ?? []).reduce((acc, row) => {
+    const qty = Number(row?.quantity ?? 0);
+
+    return acc + (Number.isFinite(qty) ? Math.max(0, Math.floor(qty)) : 0);
+  }, 0);
+}
+
+function buildMoldingTechnicalSections(args: {
+  sections: Array<{ title: string; detail: MoldingTemplateDetail | null }>;
+}) {
+  return args.sections
+    .map(({ title, detail }) => {
+      if (!detail) return null;
+
+      const fields = [
+        ["Subtipo de prenda", detail.garmentSubtype],
+        ["Detalle de diseño", detail.designDetail],
+        ["Sesgo", detail.sesgoType],
+        ["Color sesgo", detail.sesgoColor],
+        ["Hiladilla", detail.hiladillaColor],
+        ["Material de puño", detail.cuffMaterial],
+        ["Ubicación de cierre", detail.zipperLocation],
+        ["Color de cierre", detail.zipperColor],
+        ["Medida cierre (cm)", detail.zipperSizeCm],
+        ["Forro", detail.liningType],
+        ["Color forro", detail.liningColor],
+        ["Capota", detail.hoodType],
+        ["Cierre bolsillo", detail.pocketZipperColor],
+        ["Color malla lateral", detail.lateralMeshColor],
+        ["Botón", detail.buttonType],
+        ["Tipo de ojal", detail.buttonholeType],
+        ["Perilla", detail.perillaColor],
+        ["Cuello estructural", detail.collarType],
+        ["Notas de fusionado", detail.fusioningNotes],
+        ["Cierre invisible", detail.invisibleZipperColor],
+      ]
+        .map(([label, value]) => ({ label, value: String(value ?? "").trim() }))
+        .filter((field) => field.value);
+
+      const booleanFields = [
+        detail.hasInnerLining ? "Lleva forro interno" : null,
+        detail.hasPocket ? "Lleva bolsillo" : null,
+        detail.hasLateralMesh ? "Lleva malla lateral" : null,
+        detail.hasFajon ? "Lleva fajón" : null,
+        detail.hasTanca ? "Lleva tanca" : null,
+        detail.hasProtection ? "Lleva protección" : null,
+        detail.hasEntretela ? "Lleva entretela" : null,
+      ]
+        .filter(Boolean)
+        .map((label) => ({ label: String(label), value: "Sí" }));
+
+      const allFields = [...fields, ...booleanFields];
+
+      if (allFields.length === 0) return null;
+
+      return { title, fields: allFields };
+    })
+    .filter(
+      (
+        section,
+      ): section is { title: string; fields: Array<{ label: string; value: string }> } =>
+        Boolean(section),
+    );
+}
+
+function getDefaultPositions(quantity: unknown, color: unknown): OrderItemPositionInput[] {
+  return [
+    {
+      position: "JUGADOR",
+      quantity: Math.max(0, Math.floor(asNumber(quantity))),
+      color: String(color ?? ""),
+      sortOrder: 1,
+    },
+  ];
+}
+
+function hasGoalkeeperPosition(rows: OrderItemPositionInput[]) {
+  return rows.some(
+    (row) => String(row.position ?? "").trim().toUpperCase() === "ARQUERO",
+  );
+}
+
+function inferConfigurationMode(args: {
+  hasSecondGarment: boolean;
+  positions: OrderItemPositionInput[];
+}): OrderConfigurationMode {
+  if (hasGoalkeeperPosition(args.positions)) {
+    return "CONJUNTO_ARQUERO";
+  }
+
+  if (!args.hasSecondGarment) {
+    return "PRENDA";
+  }
+
+  return "CONJUNTO";
 }
 
 function pickCopScaleByQuantity(row: ProductPriceRow, quantity: number) {
@@ -252,7 +370,8 @@ export function OrderItemEditPage(props: {
   const [selectedMoldingDetails, setSelectedMoldingDetails] = React.useState<Record<string, MoldingTemplateDetail>>({});
   const [loadingMoldings, setLoadingMoldings] = React.useState(false);
   const [isApplyingMolding, setIsApplyingMolding] = React.useState(false);
-  const [isConjunto, setIsConjunto] = React.useState(false);
+  const [configurationMode, setConfigurationMode] =
+    React.useState<OrderConfigurationMode>("PRENDA");
   const [positions, setPositions] = React.useState<OrderItemPositionInput[]>([]);
   const [teams, setTeams] = React.useState<OrderItemTeamInput[]>([]);
   const [specialRequirements, setSpecialRequirements] = React.useState<
@@ -279,12 +398,24 @@ export function OrderItemEditPage(props: {
       .then((payload) => {
         if (!active) return;
         setInitialValue(payload);
-        setPositions(Array.isArray((payload as any).positions) ? (payload as any).positions : []);
+        const nextPositions = Array.isArray((payload as any).positions)
+          ? (payload as any).positions
+          : [];
+
+        setPositions(nextPositions);
         setTeams(Array.isArray((payload as any).teams) ? (payload as any).teams : []);
         setSpecialRequirements(
           Array.isArray((payload as any).specialRequirements)
             ? (payload as any).specialRequirements
             : [],
+        );
+        setConfigurationMode(
+          inferConfigurationMode({
+            hasSecondGarment: Boolean(
+              String((payload as any).clothingImageTwoUrl ?? "").trim(),
+            ),
+            positions: nextPositions,
+          }),
         );
       })
       .catch((e) => {
@@ -391,7 +522,16 @@ export function OrderItemEditPage(props: {
         setInitialMoldingTemplateId(firstTemplateId);
         setMoldingTemplateIdTwo(secondTemplateId);
         setInitialMoldingTemplateIdTwo(secondTemplateId);
-        setIsConjunto(Boolean(secondTemplateId));
+        setConfigurationMode((current) => {
+          if (current === "CONJUNTO_ARQUERO") {
+            return current;
+          }
+
+          return inferConfigurationMode({
+            hasSecondGarment: Boolean(secondTemplateId),
+            positions,
+          });
+        });
         setExistingMoldingTemplateIds(templateIds);
         setHistoricalMoldingOptions(historicalOptions);
       })
@@ -448,6 +588,22 @@ export function OrderItemEditPage(props: {
   });
 
   React.useEffect(() => {
+    const technique = String(item.productionTechnique ?? "")
+      .trim()
+      .toUpperCase();
+
+    if (technique === "SUBLIMACION") {
+      setGarmentProcessMode("SUBLIMACION");
+
+      return;
+    }
+
+    if (technique === "FONDO_ENTERO") {
+      setGarmentProcessMode("FONDO_ENTERO");
+
+      return;
+    }
+
     if (!String(item.color ?? "").trim()) {
       setGarmentProcessMode("SUBLIMACION");
 
@@ -455,7 +611,7 @@ export function OrderItemEditPage(props: {
     }
 
     setGarmentProcessMode("FONDO_ENTERO");
-  }, [item.color]);
+  }, [item.productionTechnique, item.color]);
 
   React.useEffect(() => {
     const ids = Array.from(
@@ -582,6 +738,10 @@ export function OrderItemEditPage(props: {
             updated.neckType = template.neckType;
             hasChanges = true;
           }
+          if (!String(prev.cuffType ?? "").trim() && template.cuffType) {
+            updated.cuffType = template.cuffType;
+            hasChanges = true;
+          }
           if (!String(prev.sleeve ?? "").trim() && template.sleeveType) {
             updated.sleeve = normalizeItemSleeve(template.sleeveType) ?? prev.sleeve;
             if (updated.sleeve !== prev.sleeve) hasChanges = true;
@@ -592,6 +752,7 @@ export function OrderItemEditPage(props: {
           }
           if (!prev.screenPrint && template.screenPrint) {
             updated.screenPrint = true;
+            updated.screenPrintType = prev.screenPrintType ?? "DTF";
             hasChanges = true;
           }
           if (!prev.embroidery && template.embroidery) {
@@ -682,7 +843,11 @@ export function OrderItemEditPage(props: {
       })
       .then((payload) => {
         if (!active) return;
-        setDesigners(Array.isArray(payload.items) ? payload.items : []);
+        setDesigners(
+          (Array.isArray(payload.items) ? payload.items : []).filter((employee) =>
+            isDesignRole(employee?.roleName ?? employee?.role),
+          ),
+        );
       })
       .catch(() => {
         if (!active) return;
@@ -804,9 +969,46 @@ export function OrderItemEditPage(props: {
     return (q * up).toFixed(2);
   }, [item.quantity, item.unitPrice]);
 
+  const referenceSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const designSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const structuresSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const packagingSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const moldingSectionRef = React.useRef<HTMLDivElement | null>(null);
+  const socksSectionRef = React.useRef<HTMLDivElement | null>(null);
+
+  const focusSection = React.useCallback(
+    (ref: React.RefObject<HTMLDivElement | null>) => {
+      const container = ref.current;
+
+      if (!container) return;
+
+      container.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      window.setTimeout(() => {
+        const target = container.querySelector(
+          "input, textarea, button, [role='button'], [tabindex]:not([tabindex='-1'])",
+        ) as HTMLElement | null;
+
+        target?.focus();
+      }, 80);
+    },
+    [],
+  );
+
+  const setFocusedError = React.useCallback(
+    (message: string, ref: React.RefObject<HTMLDivElement | null>) => {
+      setError(message);
+      focusSection(ref);
+    },
+    [focusSection],
+  );
+
   const uiDisabled = isSaving || loadingItem;
   const isRestricted = orderKind === "COMPLETACION";
   const canEditUnitPrice = priceClientType === "AUTORIZADO";
+  const isConjunto = configurationMode !== "PRENDA";
+  const requiresPositionConfiguration =
+    configurationMode === "CONJUNTO_ARQUERO";
   const moldingOneId = String(moldingTemplateId ?? "").trim();
   const moldingTwoId = String(moldingTemplateIdTwo ?? "").trim();
   const hasRequiredMolding = isConjunto
@@ -887,6 +1089,30 @@ export function OrderItemEditPage(props: {
 
     return Array.from(map.values());
   }, [historicalMoldingOptions, moldingTemplates, selectedMoldingDetails]);
+  const moldingTechnicalSections = React.useMemo(
+    () =>
+      buildMoldingTechnicalSections({
+        sections: [
+          {
+            title: "Prenda 1",
+            detail: selectedMoldingDetails[moldingOneId] ?? null,
+          },
+          ...(isConjunto
+            ? [
+                {
+                  title: "Prenda 2",
+                  detail: selectedMoldingDetails[moldingTwoId] ?? null,
+                },
+              ]
+            : []),
+        ],
+      }),
+    [isConjunto, moldingOneId, moldingTwoId, selectedMoldingDetails],
+  );
+  const selectedMoldingOne = React.useMemo(
+    () => availableMoldingOptions.find((t) => t.id === moldingTemplateId) ?? null,
+    [availableMoldingOptions, moldingTemplateId],
+  );
 
     React.useEffect(() => {
       if (!isConjunto) {
@@ -933,10 +1159,35 @@ export function OrderItemEditPage(props: {
       return {
         ...prev,
         screenPrint: decorationFromMolding.screenPrint,
+        screenPrintType: decorationFromMolding.screenPrint
+          ? (prev.screenPrintType ?? "DTF")
+          : null,
         embroidery: decorationFromMolding.embroidery,
       };
     });
   }, [decorationFromMolding, hasRequiredMolding, setItem]);
+
+  React.useEffect(() => {
+    if (!requiresPositionConfiguration) {
+      return;
+    }
+
+    setPositions((prev) => {
+      if (prev.length === 0) {
+        return getDefaultPositions(item.quantity, item.color);
+      }
+
+      return prev.map((row, idx) =>
+        idx === 0
+          ? {
+              ...row,
+              quantity: Math.max(0, Math.floor(asNumber(item.quantity))),
+              color: String(item.color ?? ""),
+            }
+          : row,
+      );
+    });
+  }, [item.color, item.quantity, requiresPositionConfiguration]);
 
   React.useEffect(() => {
     if (!selectedPrice) return;
@@ -969,7 +1220,10 @@ export function OrderItemEditPage(props: {
     setError(null);
 
     if (isUploadingAssets) {
-      setError("Espera a que termine la subida de imágenes.");
+      setFocusedError(
+        "Espera a que termine la subida de imágenes.",
+        designSectionRef,
+      );
 
       return;
     }
@@ -977,7 +1231,7 @@ export function OrderItemEditPage(props: {
     const name = String(item.name ?? "").trim();
 
     if (!name && !isRestricted) {
-      setError("El nombre del diseño es obligatorio.");
+      setFocusedError("El nombre del diseño es obligatorio.", designSectionRef);
 
       return;
     }
@@ -987,25 +1241,97 @@ export function OrderItemEditPage(props: {
     const { groupedTotal, individualTotal } = getPackagingTotals(packaging);
 
     if (groupedTotal !== individualTotal) {
-      setError(
+      setFocusedError(
         `La lista de empaque debe sumar exactamente la curva (${groupedTotal}). Actualmente: ${individualTotal}.`,
+        packagingSectionRef,
       );
 
       return;
     }
 
     if (!isRestricted && !moldingOneId) {
-      setError("Selecciona la moldería principal (Prenda 1).");
+      setFocusedError(
+        "Selecciona la moldería principal (Prenda 1).",
+        moldingSectionRef,
+      );
 
       return;
     }
 
     if (!isRestricted && isConjunto && garmentProcessMode !== "SUBLIMACION") {
-      setError(
+      setFocusedError(
         "Cuando el conjunto no es sublimado debes crear otro diseño. El conjunto con una sola moldería aplica solo para proceso de prenda: Sublimación.",
+        moldingSectionRef,
       );
 
       return;
+    }
+
+    if (!isRestricted && item.requiresSocks) {
+      const socksTotal = getSocksTotal(socks);
+
+      if (socksTotal !== quantity) {
+        setFocusedError(
+          `La cantidad total de medias debe ser ${quantity}. Actualmente: ${socksTotal}.`,
+          socksSectionRef,
+        );
+
+        return;
+      }
+
+      const missingSockData = socks.find(
+        (row) => !String(row.sockLength ?? "").trim() || !String(row.color ?? "").trim(),
+      );
+
+      if (missingSockData) {
+        setFocusedError(
+          "Cada media debe tener tipo de media y color.",
+          socksSectionRef,
+        );
+
+        return;
+      }
+
+      const designedSockWithoutAssets = socks.find(
+        (row) =>
+          Boolean((row as any).isDesigned) &&
+          (!String((row as any).description ?? "").trim() ||
+            !String((row as any).logoImageUrl ?? "").trim()),
+      );
+
+      if (designedSockWithoutAssets) {
+        setFocusedError(
+          "Si una media es diseñada, debe incluir descripción y logo.",
+          socksSectionRef,
+        );
+
+        return;
+      }
+    }
+
+    if (!isRestricted && requiresPositionConfiguration) {
+      const positionsTotal = positions.reduce(
+        (acc, row) => acc + Math.max(0, Math.floor(asNumber(row.quantity))),
+        0,
+      );
+
+      if (positions.length === 0) {
+        setFocusedError(
+          "En conjunto + arquero debes configurar posiciones y cantidades.",
+          structuresSectionRef,
+        );
+
+        return;
+      }
+
+      if (positionsTotal !== quantity) {
+        setFocusedError(
+          `La suma de posiciones del conjunto + arquero debe ser ${quantity}. Actualmente: ${positionsTotal}.`,
+          structuresSectionRef,
+        );
+
+        return;
+      }
     }
 
     setIsSaving(true);
@@ -1070,15 +1396,20 @@ export function OrderItemEditPage(props: {
         category: item.category ?? null,
         labelBrand: item.labelBrand ?? null,
         neckType: item.neckType ?? null,
+        cuffType: item.cuffType ?? null,
         sleeve: item.sleeve ?? null,
         color: item.color ?? null,
         screenPrint: Boolean(item.screenPrint),
+        screenPrintType: item.screenPrint
+          ? ((item.screenPrintType ?? "DTF") as "DTF" | "VINILO")
+          : null,
         embroidery: Boolean(item.embroidery),
         buttonhole: Boolean(item.buttonhole),
         snap: Boolean(item.snap),
         tag: Boolean(item.tag),
         flag: Boolean(item.flag),
         requiresSocks: Boolean(item.requiresSocks),
+        orderConfigurationMode: configurationMode,
       };
 
       const payload: any =
@@ -1089,7 +1420,7 @@ export function OrderItemEditPage(props: {
               packaging,
               socks,
               materials,
-              positions,
+              positions: requiresPositionConfiguration ? positions : [],
               teams,
               specialRequirements,
             };
@@ -1179,17 +1510,49 @@ export function OrderItemEditPage(props: {
 
   if (loadingItem && !initialValue) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-8 w-56 rounded-medium bg-default-200" />
-        <div className="h-4 w-80 rounded-medium bg-default-100" />
-        <div className="rounded-medium border border-default-200 p-4 space-y-3">
-          <div className="h-12 w-full rounded-medium bg-default-100" />
-          <div className="h-12 w-full rounded-medium bg-default-100" />
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <div className="h-10 rounded-medium bg-default-100" />
-            <div className="h-10 rounded-medium bg-default-100" />
-            <div className="h-10 rounded-medium bg-default-100" />
-          </div>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56 rounded-medium" />
+          <Skeleton className="h-4 w-80 rounded-medium" />
+        </div>
+
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-28 rounded-medium" />
+          </CardHeader>
+          <CardBody className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Skeleton className="h-14 rounded-large" />
+              <Skeleton className="h-14 rounded-large" />
+            </div>
+          </CardBody>
+        </Card>
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-start">
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <Skeleton className="h-6 w-40 rounded-medium" />
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-64 rounded-large" />
+            </CardBody>
+          </Card>
+
+          <Card className="xl:col-span-1">
+            <CardHeader>
+              <Skeleton className="h-6 w-32 rounded-medium" />
+            </CardHeader>
+            <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-12 rounded-large" />
+              <Skeleton className="h-12 rounded-large sm:col-span-2" />
+            </CardBody>
+          </Card>
         </div>
       </div>
     );
@@ -1215,6 +1578,7 @@ export function OrderItemEditPage(props: {
         </div>
       </div>
 
+      <div ref={referenceSectionRef}>
       <Card>
         <CardHeader>
           <div className="font-semibold">Referencia</div>
@@ -1250,43 +1614,51 @@ export function OrderItemEditPage(props: {
           ) : null}
         </CardBody>
       </Card>
+      </div>
 
-      <Card>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-start">
+      <div ref={designSectionRef} className="xl:col-span-2">
+      <Card className="xl:col-span-2">
         <CardHeader>
-          <div className="font-semibold">Diseño (Paso 1)</div>
+          <div className="font-semibold">Diseño visual (Paso 1)</div>
         </CardHeader>
         <CardBody>
           <DesignSection
             afterGenderContent={
-              <div className="space-y-3">
+              <div key={`design-config-${configurationMode}`} className="space-y-3">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,220px)_1fr] md:items-start">
                   <Select
                     isDisabled={uiDisabled || isRestricted || isApplyingMolding}
                     label="Configuración"
-                    selectedKeys={[isConjunto ? "CONJUNTO" : "SIMPLE"]}
+                    selectedKeys={[configurationMode]}
                     onSelectionChange={(keys: any) => {
-                      const k = String(Array.from(keys as any)[0] ?? "SIMPLE");
-                      const nextIsConjunto = k === "CONJUNTO";
+                      const nextMode = String(
+                        Array.from(keys as any)[0] ?? "PRENDA",
+                      ) as OrderConfigurationMode;
 
-                      setIsConjunto(nextIsConjunto);
-                      if (!nextIsConjunto) {
+                      setConfigurationMode(nextMode);
+                      if (nextMode === "PRENDA") {
                         setMoldingTemplateIdTwo(null);
                       } else {
                         setGarmentProcessMode("SUBLIMACION");
                       }
+                      if (nextMode !== "CONJUNTO_ARQUERO") {
+                        setPositions([]);
+                      }
                     }}
                   >
-                    <SelectItem key="SIMPLE">Una prenda</SelectItem>
-                    <SelectItem key="CONJUNTO">Conjunto (2 prendas)</SelectItem>
+                    <SelectItem key="PRENDA">Prenda</SelectItem>
+                    <SelectItem key="CONJUNTO">Conjunto</SelectItem>
+                    <SelectItem key="CONJUNTO_ARQUERO">Conjunto + arquero</SelectItem>
                   </Select>
 
                   <div className="text-xs text-default-500 rounded-medium border border-default-200 bg-default-50 px-3 py-2">
-                    En conjunto se usa la misma moldería para las 2 prendas; si no es sublimación, crea otro diseño.
+                    En conjunto y conjunto + arquero se usa la misma moldería para las 2 prendas; las posiciones solo se editan en conjunto + arquero.
                   </div>
                 </div>
 
                 {isConjunto ? (
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div key="conjunto-image-role" className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     <Select
                       isDisabled={uiDisabled || isRestricted || isApplyingMolding}
                       label="Imagen prenda 1 corresponde a"
@@ -1325,25 +1697,31 @@ export function OrderItemEditPage(props: {
                       }}
                     >
                       {availableMoldingOptions.map((t) => (
-                        <SelectItem key={t.id}>
-                          {t.moldingCode}
-                          {t.garmentType ? ` — ${t.garmentType}` : ""}
-                          {t.color ? ` / ${t.color}` : ""}
-                          {t.isActive === false ? " / INACTIVA" : ""}
+                        <SelectItem key={t.id} textValue={t.moldingCode}>
+                          <span className="notranslate" translate="no">
+                            {t.moldingCode}
+                            {t.garmentType ? ` — ${t.garmentType}` : ""}
+                            {t.color ? ` / ${t.color}` : ""}
+                            {t.isActive === false ? " / INACTIVA" : ""}
+                          </span>
                         </SelectItem>
                       ))}
                     </Select>
+                    {selectedMoldingOne ? (
+                      <div className="rounded-small bg-default-100 px-2 py-1 text-xs text-default-600">
+                        Código seleccionado: <span className="font-semibold notranslate" translate="no">{selectedMoldingOne.moldingCode}</span>
+                      </div>
+                    ) : null}
                   </div>
 
                   {isConjunto ? (
-                    <div className="rounded-medium border border-default-200 p-3 space-y-3">
+                    <div key="conjunto-prenda-2" className="rounded-medium border border-default-200 p-3 space-y-3">
                       <div className="text-sm font-semibold">Prenda 2</div>
                       <Input
                         isDisabled
                         label="Moldería"
                         value={
-                          availableMoldingOptions.find((t) => t.id === moldingTemplateId)
-                            ?.moldingCode ??
+                          selectedMoldingOne?.moldingCode ??
                           "Se usará la misma moldería de Prenda 1"
                         }
                       />
@@ -1372,9 +1750,10 @@ export function OrderItemEditPage(props: {
             imageRoleTwo={imageOneRole === "JUGADOR" ? "ARQUERO" : "JUGADOR"}
             lockDecorationByMolding={hasRequiredMolding}
             logoFile={logoFile}
+            moldingTechnicalSections={moldingTechnicalSections}
             orderKind={orderKind}
             onGarmentProcessModeChange={setGarmentProcessMode}
-            showAdvancedFields={hasRequiredMolding}
+            showAdvancedFields={true}
             value={item}
             onChange={setItem}
             onSelectImageOneFile={setImageOneFile}
@@ -1383,38 +1762,16 @@ export function OrderItemEditPage(props: {
           />
         </CardBody>
       </Card>
+      </div>
 
-      <Card>
+      <Card className="xl:col-span-1 xl:sticky xl:top-4">
         <CardHeader>
-          <div className="font-semibold">Curvas y lista de empaque</div>
+          <div className="font-semibold">Ficha técnica</div>
         </CardHeader>
-        <CardBody className="space-y-3">
-          {isConjunto ? (
-            <div className="rounded-medium border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700">
-              El empaque se sigue editando en una sola lista, pero ahora se conserva junto con las 2 molderías del conjunto.
-            </div>
-          ) : null}
-          <PackagingSection
-            disabled={uiDisabled}
-            garmentType={String(item.garmentType ?? "JUGADOR")}
-            maxCurveQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
-            mode={packagingMode}
-            packaging={packaging}
-            onError={(m) => setError(m)}
-            onModeChange={setPackagingMode}
-            onPackagingChange={setPackaging}
-          />
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="font-semibold">Clasificación técnica</div>
-        </CardHeader>
-        <CardBody className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Select
             isDisabled={uiDisabled}
-            label="Design type"
+            label="Tipo de diseño"
             selectedKeys={item.designType ? [String(item.designType)] : ["PRODUCCION"]}
             onSelectionChange={(keys: any) => {
               const k = String(Array.from(keys as any)[0] ?? "PRODUCCION");
@@ -1429,25 +1786,7 @@ export function OrderItemEditPage(props: {
 
           <Select
             isDisabled={uiDisabled}
-            label="Production technique"
-            selectedKeys={
-              item.productionTechnique
-                ? [String(item.productionTechnique)]
-                : ["SUBLIMACION"]
-            }
-            onSelectionChange={(keys: any) => {
-              const k = String(Array.from(keys as any)[0] ?? "SUBLIMACION");
-
-              setItem((s) => ({ ...s, productionTechnique: k as any }));
-            }}
-          >
-            <SelectItem key="SUBLIMACION">SUBLIMACION</SelectItem>
-            <SelectItem key="FONDO_ENTERO">FONDO_ENTERO</SelectItem>
-          </Select>
-
-          <Select
-            isDisabled={uiDisabled}
-            label="Designer"
+            label="Diseñador"
             selectedKeys={item.designerId ? [String(item.designerId)] : []}
             onSelectionChange={(keys: any) => {
               const k = Array.from(keys as any)[0];
@@ -1464,7 +1803,8 @@ export function OrderItemEditPage(props: {
 
           <Input
             isDisabled={uiDisabled}
-            label="Discipline"
+            description="Ejemplo: Fútbol, Ciclismo, Running"
+            label="Disciplina"
             value={String(item.discipline ?? "")}
             onValueChange={(v: string) =>
               setItem((s) => ({ ...s, discipline: v || null }))
@@ -1473,52 +1813,125 @@ export function OrderItemEditPage(props: {
 
           <Input
             isDisabled={uiDisabled}
-            label="Category"
+            description="Especifica la prenda inferior. Ejemplo: pantaloneta, pantaloneta larga, licra"
+            label="Parte inferior (especificar prenda)"
             value={String(item.category ?? "")}
             onValueChange={(v: string) =>
               setItem((s) => ({ ...s, category: v || null }))
             }
           />
 
-          <Input
-            isDisabled={uiDisabled}
-            label="Label brand"
-            value={String(item.labelBrand ?? "")}
-            onValueChange={(v: string) =>
-              setItem((s) => ({ ...s, labelBrand: v || null }))
-            }
-          />
-
           <Switch
+            className="sm:col-span-2"
             isDisabled={uiDisabled}
             isSelected={Boolean(item.hasCordon)}
             onValueChange={(v: boolean) =>
               setItem((s) => ({ ...s, hasCordon: v }))
             }
           >
-            Has cordon
+            Tiene cordón (parte inferior)
           </Switch>
 
           <Input
+            className="sm:col-span-2"
             isDisabled={uiDisabled || !Boolean(item.hasCordon)}
-            label="Cordon color"
+            label="Color del cordón (parte inferior)"
             value={String(item.cordonColor ?? "")}
             onValueChange={(v: string) =>
               setItem((s) => ({ ...s, cordonColor: v || null }))
             }
           />
+
+          <Select
+            isDisabled={uiDisabled}
+            label="Marquilla"
+            selectedKeys={item.labelBrand ? [String(item.labelBrand)] : []}
+            onSelectionChange={(keys: any) => {
+              const k = Array.from(keys as any)[0];
+
+              setItem((s) => ({ ...s, labelBrand: k ? String(k) : null }));
+            }}
+          >
+            <SelectItem key="VIOMAR">VIOMAR</SelectItem>
+            <SelectItem key="CLIENTE">CLIENTE</SelectItem>
+          </Select>
+
+          <Select
+            isDisabled={uiDisabled}
+            label="Serigrafía"
+            selectedKeys={[
+              item.screenPrint
+                ? item.screenPrintType === "VINILO"
+                  ? "VINILO"
+                  : "DTF"
+                : "NO",
+            ]}
+            onSelectionChange={(keys: any) => {
+              const k = String(Array.from(keys as any)[0] ?? "NO");
+
+              setItem((s) => ({
+                ...s,
+                screenPrint: k !== "NO",
+                screenPrintType:
+                  k === "NO" ? null : ((k === "VINILO" ? "VINILO" : "DTF") as any),
+              }));
+            }}
+          >
+            <SelectItem key="NO">No lleva</SelectItem>
+            <SelectItem key="DTF">DTF</SelectItem>
+            <SelectItem key="VINILO">Vinilo</SelectItem>
+          </Select>
+
+          <Switch
+            isDisabled={uiDisabled}
+            isSelected={Boolean(item.embroidery)}
+            onValueChange={(v: boolean) =>
+              setItem((s) => ({ ...s, embroidery: v }))
+            }
+          >
+            Bordado
+          </Switch>
+
+          <Switch
+            isDisabled={uiDisabled}
+            isSelected={Boolean(item.buttonhole)}
+            onValueChange={(v: boolean) =>
+              setItem((s) => ({ ...s, buttonhole: v }))
+            }
+          >
+            Ojal y botón
+          </Switch>
+
+          <Switch
+            isDisabled={uiDisabled}
+            isSelected={Boolean(item.snap)}
+            onValueChange={(v: boolean) =>
+              setItem((s) => ({ ...s, snap: v }))
+            }
+          >
+            Broche
+          </Switch>
+
         </CardBody>
       </Card>
 
-      <Card>
+      <div ref={structuresSectionRef} className="xl:col-span-3">
+      <Card className="xl:col-span-3">
         <CardHeader>
-          <div className="font-semibold">Estructura del diseño</div>
+          <div>
+            <div className="font-semibold">Configuración adicional del diseño</div>
+            <div className="text-sm text-default-500">
+              Aquí defines posiciones, equipos de referencia y detalles especiales de confección.
+            </div>
+          </div>
         </CardHeader>
         <CardBody>
           <OrderItemStructuresSection
             disabled={uiDisabled}
+            requiresPositions={requiresPositionConfiguration}
             positions={positions}
             specialRequirements={specialRequirements}
+            totalQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
             teams={teams}
             onTeamImageFileSelect={handleTeamImageFileSelect}
             onPositionsChange={setPositions}
@@ -1527,38 +1940,73 @@ export function OrderItemEditPage(props: {
           />
         </CardBody>
       </Card>
+      </div>
+
+      <div ref={packagingSectionRef} className="xl:col-span-3">
+      <Card className="xl:col-span-3">
+        <CardHeader>
+          <div className="font-semibold">Curvas y lista de empaque</div>
+        </CardHeader>
+        <CardBody className="space-y-3">
+          {isConjunto ? (
+            <div className="rounded-medium border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700">
+              El empaque se sigue editando en una sola lista, pero ahora se conserva junto con las 2 molderías del conjunto.
+            </div>
+          ) : null}
+          <PackagingSection
+            disabled={uiDisabled}
+            garmentType={String(item.garmentType ?? "JUGADOR")}
+            maxCurveQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
+            mode={packagingMode}
+            packaging={packaging}
+            onError={(m) => setFocusedError(m, packagingSectionRef)}
+            onModeChange={setPackagingMode}
+            onPackagingChange={setPackaging}
+          />
+        </CardBody>
+      </Card>
+      </div>
+      </div>
 
       {orderKind !== "COMPLETACION" && Boolean(item.requiresSocks) ? (
+        <div ref={socksSectionRef}>
         <Card>
           <CardHeader>
-            <div className="font-semibold">Medias</div>
+            <div>
+              <div className="font-semibold">Medias</div>
+              <div className="text-sm text-default-500">
+                Curva, importación y referencias visuales de las medias del diseño.
+              </div>
+            </div>
           </CardHeader>
           <CardBody>
             <SocksSection
               disabled={uiDisabled}
               garmentType={String(item.garmentType ?? "JUGADOR")}
               orderId={orderId}
+              totalQuantity={Math.max(1, Math.floor(asNumber(item.quantity)))}
               packaging={packaging}
               requiresSocks={Boolean(item.requiresSocks)}
               value={socks}
               onChange={setSocks}
-              onError={(m) => setError(m)}
+              onError={(m) => setFocusedError(m, socksSectionRef)}
               onUploadingChange={setIsUploadingAssets}
             />
           </CardBody>
         </Card>
+        </div>
       ) : null}
 
       {orderKind !== "COMPLETACION" ? (
         <Card>
           <CardHeader>
-            <div className="font-semibold">Materiales</div>
+            <div className="font-semibold">Insumos</div>
           </CardHeader>
           <CardBody>
             <div className="mb-3 rounded-medium border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-700">
               Reglas informativas: tela {item.fabric ? `(${item.fabric})` : "(pendiente)"}, cantidad {Math.max(1, Math.floor(asNumber(item.quantity)))},
               medias {item.requiresSocks ? "sí" : "no"}, color {item.color ? item.color : "no aplica / pendiente"},
-              estampado {item.screenPrint ? "sí" : "no"}, bordado {item.embroidery ? "sí" : "no"}.
+              estampado {item.screenPrint ? (item.screenPrintType === "VINILO" ? "vinilo" : "dtf") : "no"}, bordado {item.embroidery ? "sí" : "no"}.
               Verifica tallas en curvas y detalle de medias cuando aplique.
             </div>
             <MaterialsSection

@@ -7,7 +7,13 @@ import {
   orderPayments,
   orders,
   prefacturas,
+  products,
+  quotationItems,
 } from "@/src/db/schema";
+import {
+  getProjectedOrderDesignUnits,
+  resolveOrderAgreedUnits,
+} from "@/src/utils/order-item-quantity-limit";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -160,6 +166,40 @@ export async function GET(
       .where(eq(prefacturas.orderId, orderId))
       .limit(1);
 
+    const agreedUnits = await resolveOrderAgreedUnits(db, orderId);
+    const { assignedUnits } = await getProjectedOrderDesignUnits(db, {
+      orderId,
+      nextItemQuantity: 0,
+    });
+    const availableUnits =
+      agreedUnits === null ? null : Math.max(0, agreedUnits - assignedUnits);
+
+    const prefacturaProductsRows = prefacturaRow?.id
+      ? await db
+          .select({
+            id: products.id,
+            name: products.name,
+            isActive: products.isActive,
+          })
+          .from(prefacturas)
+          .innerJoin(
+            quotationItems,
+            eq(quotationItems.quotationId, prefacturas.quotationId),
+          )
+          .innerJoin(products, eq(products.id, quotationItems.productId))
+          .where(eq(prefacturas.orderId, orderId))
+      : [];
+
+    const productSeen = new Set<string>();
+    const allowedProducts = prefacturaProductsRows.filter((row) => {
+      const id = String(row.id ?? "").trim();
+
+      if (!id || productSeen.has(id)) return false;
+      productSeen.add(id);
+
+      return row.isActive !== false;
+    });
+
     return Response.json({
       order: orderRow,
       lines,
@@ -175,6 +215,12 @@ export async function GET(
         remaining,
       },
       prefactura: prefacturaRow ?? null,
+      allowedProducts,
+      designUnits: {
+        agreedUnits,
+        assignedUnits,
+        availableUnits,
+      },
     });
   } catch (error) {
     const response = dbErrorResponse(error);

@@ -320,6 +320,11 @@ function buildPurchaseHints(args: {
       value: toNullableString(primaryMolding?.neckType) ?? toNullableString(item.neckType),
     },
     {
+      key: "cuff-type",
+      label: "Puño",
+      value: toNullableString(primaryMolding?.cuffType) ?? toNullableString(item.cuffType),
+    },
+    {
       key: "sesgo",
       label: "Sesgo",
       value: toNullableString(primaryMolding?.sesgoType),
@@ -424,6 +429,8 @@ function buildPurchaseHints(args: {
     const details = [
       toNullableString(row.fabric),
       toNullableString(row.fabricColor),
+      toNullableString(row.closureType),
+      row.closureQuantity ? `${row.closureQuantity} cierres` : null,
       row.hasReflectiveTape ? "Cinta reflectiva" : null,
       toNullableString(row.reflectiveTapeLocation),
       row.hasSideStripes ? "Franjas laterales" : null,
@@ -623,9 +630,17 @@ export async function listPurchaseHints(limit = 40) {
 
   const items = await Promise.all(
     uniqueOrderItemIds.map(async (orderItemId) => {
-      const fullView = await getDesignFullView(orderItemId);
+      try {
+        const fullView = await getDesignFullView(orderItemId);
 
-      return fullView?.purchaseHints ?? null;
+        return fullView?.purchaseHints ?? null;
+      } catch (error) {
+        console.error("Failed to build purchase hints for order item", {
+          orderItemId,
+          error,
+        });
+        return null;
+      }
     }),
   );
 

@@ -4,6 +4,13 @@ export type DesignType = "PRODUCCION" | "COMPRA" | "BODEGA";
 
 export type ProductionTechnique = "SUBLIMACION" | "FONDO_ENTERO";
 
+export type ScreenPrintType = "DTF" | "VINILO";
+
+export type OrderConfigurationMode =
+  | "PRENDA"
+  | "CONJUNTO"
+  | "CONJUNTO_ARQUERO";
+
 export type Position =
   | "JUGADOR"
   | "ARQUERO"
@@ -30,10 +37,13 @@ export type OrderItemSockInput = {
   position?: Position | null;
   sockLength?: SockLength | null;
   color?: string | null;
+  material?: string | null;
+  isDesigned?: boolean;
   size: string;
   quantity?: number;
   description?: string | null;
   imageUrl?: string | null;
+  logoImageUrl?: string | null;
 };
 
 export type OrderItemPositionInput = {
@@ -64,6 +74,10 @@ export type OrderItemSpecialRequirementInput = {
   hasReflectiveTape?: boolean;
   reflectiveTapeLocation?: string | null;
   hasSideStripes?: boolean;
+  closureType?: string | null;
+  closureQuantity?: number | null;
+  hasCordon?: boolean;
+  hasElastic?: boolean;
   notes?: string | null;
 };
 
@@ -103,6 +117,7 @@ export type OrderItemInput = {
   logoImageUrl?: string | null;
 
   screenPrint?: boolean;
+  screenPrintType?: ScreenPrintType | null;
   embroidery?: boolean;
   buttonhole?: boolean;
   snap?: boolean;
@@ -120,6 +135,7 @@ export type OrderItemInput = {
   category?: string | null;
   labelBrand?: string | null;
   neckType?: string | null;
+  cuffType?: string | null;
   sleeve?: string | null;
   color?: string | null;
 
@@ -133,4 +149,5 @@ export type OrderItemInput = {
   positions?: OrderItemPositionInput[];
   teams?: OrderItemTeamInput[];
   specialRequirements?: OrderItemSpecialRequirementInput[];
+  orderConfigurationMode?: OrderConfigurationMode | null;
 };

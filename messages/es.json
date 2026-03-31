@@ -116,7 +116,7 @@
     "assignMolding": "Asignar moldería",
     "calculateInsumos": "Calcular insumos",
     "combinationOrder": "Orden de combinación",
-    "snapshot": "Snapshot de moldería"
+    "snapshot": "Captura de moldería"
   },
   "Orders": {
     "pageTitle": "Pedidos",
@@ -129,6 +129,19 @@
     "total": "Total",
     "date": "Fecha",
     "items": "Ítems"
+  },
+  "OrderItemsUI": {
+    "designs": "Diseños",
+    "newDesign": "Nuevo diseño",
+    "editDesign": "Editar diseño",
+    "visualDesignStep": "Diseño visual (Paso 1)",
+    "additionalDesignConfig": "Configuración adicional del diseño",
+    "packagingAndList": "Curvas y lista de empaque",
+    "configuration": "Configuración",
+    "information": "Información",
+    "orderLocked": "Pedido en montaje o superior. Los diseños no pueden modificarse.",
+    "orderManagement": "Consulta y gestión de diseños del pedido.",
+    "createNewDesign": "Crear nuevo diseño"
   },
   "PurchaseOrders": {
     "pageTitle": "Órdenes de compra",

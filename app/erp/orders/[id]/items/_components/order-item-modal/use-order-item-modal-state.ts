@@ -130,9 +130,16 @@ export function useOrderItemModalState(options: {
     category: (initialValue?.item as any)?.category ?? null,
     labelBrand: (initialValue?.item as any)?.labelBrand ?? null,
     neckType: initialValue?.item?.neckType ?? null,
+    cuffType: (initialValue?.item as any)?.cuffType ?? null,
     sleeve: initialValue?.item?.sleeve ?? null,
     color: initialValue?.item?.color ?? null,
     screenPrint: Boolean(initialValue?.item?.screenPrint ?? false),
+    screenPrintType:
+      (initialValue?.item as any)?.screenPrintType === "VINILO"
+        ? "VINILO"
+        : (initialValue?.item as any)?.screenPrintType === "DTF"
+          ? "DTF"
+          : null,
     embroidery: Boolean(initialValue?.item?.embroidery ?? false),
     buttonhole: Boolean(initialValue?.item?.buttonhole ?? false),
     snap: Boolean(initialValue?.item?.snap ?? false),
@@ -212,9 +219,16 @@ export function useOrderItemModalState(options: {
       gender: initialValue?.item?.gender ?? null,
       process: normalizeOperationalProcess(initialValue?.item?.process),
       neckType: initialValue?.item?.neckType ?? null,
+      cuffType: (initialValue?.item as any)?.cuffType ?? null,
       sleeve: initialValue?.item?.sleeve ?? null,
       color: initialValue?.item?.color ?? null,
       screenPrint: Boolean(initialValue?.item?.screenPrint ?? false),
+      screenPrintType:
+        (initialValue?.item as any)?.screenPrintType === "VINILO"
+          ? "VINILO"
+          : (initialValue?.item as any)?.screenPrintType === "DTF"
+            ? "DTF"
+            : null,
       embroidery: Boolean(initialValue?.item?.embroidery ?? false),
       buttonhole: Boolean(initialValue?.item?.buttonhole ?? false),
       snap: Boolean(initialValue?.item?.snap ?? false),

@@ -319,16 +319,105 @@ const CAMISETA_LONG_SLEEVE_SUBTYPE_OPTIONS = [
 const CAMISETA_OBSERVATION_NOTE =
   "TENER EN CUENTA LA MANGA SIEMPRE IRA SENCILLA CON DOBLEZ EN PUÑO";
 
+const FALDA_OBSERVATION_NOTE =
+  "TENER EN CUENTA PARA SEPARAR LICRA INTERNA DE LA FALDA, SIEMPRE Y CUANDO LA TELA SEA DIFERENTE Y ES NECESARIO PARA LA PARTE DE PRODUCCION. POR QUE CADA DISENO SE SEPARA DE ACUERDO A EL TIPO DE TELA";
+
+const LICRA_CORTA_FAJON_NOTE =
+  "CAUCHO PARA FAJON: 3 CM, 4 CM O 10 CM. ELASTICO EN LA PARTE TRASERA.";
+const CAMISILLA_NOTE =
+  "CAMISILLA CON CORTE LATERAL: CUELLO NORMAL 4.5 CM O ESPECIAL 6.0 CM. SESGO SOBREPUESTO 4.5 CM (MISMA TELA) O SESGO ESPECIAL 6.0 CM / NORMAL 3.5 CM. SIEMPRE VA EN SPRING (ESPECIFICAR COLOR). SESGO BASICO CUANDO REQUIERA: BLANCO O NEGRO. HILADILLA BASICA CUANDO REQUIERA: BLANCO, NEGRO, GRIS, AZUL OSCURO, AZUL REY, ROJO, AMARILLO. LATERALES EN MALLA (DEFINIR COLOR).";
+
+const TOP_SUBTYPE_OPTIONS = ["SENCILLA", "CON FAJON"] as const;
+const TOP_SESGO_OPTIONS = [
+  "SESGO SOBREPUESTO 4.5 CM (MISMA TELA)",
+  "SESGO NORMAL 3.5 CM",
+] as const;
+const TOP_NOTE =
+  "TOP: SIEMPRE VA EN SPRING, ESPECIFICAR COLOR. FORRO INTERNO SOLO EN FRENTE EN LICRA JABON. SESGO EN COLORES BASICOS. HILADILLA EN COLORES BASICOS CUANDO REQUIERA.";
+
+const CHAQUETA_SUBTYPE_OPTIONS = [
+  "TIPO 1: CON CIERRE FRONTAL SENCILLA",
+  "TIPO 2: CON CIERRE FRONTAL CON PUNO Y FAJON",
+] as const;
+const CORTAVIENTO_SUBTYPE_OPTIONS = [
+  "TIPO 1: CON CIERRE FRONTAL SENCILLA",
+  "TIPO 2: CON CIERRE FRONTAL CON PUNO Y FAJON",
+] as const;
+const CHALECO_SUBTYPE_OPTIONS = [
+  "CHALECO ENGUATADO",
+  "CHALECO CON FORRO",
+  "CHALECO SIN FORRO",
+  "CHALECO CIERRE EN BOLSILLOS",
+] as const;
+const TRUSAS_SUBTYPE_OPTIONS = [
+  "TRUSA CICLISMO",
+  "TRUSA PATINAJE",
+  "CAMISETA CICLISMO",
+  "LICRA DE CICLISMO",
+  "TRUSAS GIMNASIA-NATACION",
+  "TRUSA BODY + SHORT",
+  "TRUSA CONJUNTO PORRISMO",
+] as const;
+const BEISBOLERA_SUBTYPE_OPTIONS = [
+  "FULL BOTONES",
+  "DOS BOTONES",
+  "BUSO RUNING",
+  "BUSO CON CIERRE",
+  "BUSO TIPO BOLSILLO CANGURO, PARTIDO Y COMPLETO",
+] as const;
+const BUSO_SUBTYPE_OPTIONS = [
+  "BUSO SENCILLO",
+  "BUSO HODDIE",
+  "HODDIE(CHOMPA) CON CAPUCHA",
+  "BUSO RUNING",
+  "BUSO CON CIERRE",
+  "BUSO TIPO BOLSILLO CANGURO, PARTIDO Y COMPLETO",
+] as const;
+const CHAQUETA_NOTE =
+  "CHAQUETA ENGUATADA TIPO MICHEL. MATERIAL: IMPERMEABLE O ANTIFLUIDOS. BOLSILLOS: DOS LATERALES Y UN BOLSILLO INTERNO. CIERRE CENTRAL HASTA CUELLO TIPO TORTUGA. FORRO: FLEECE, MALLA O PERCHADO. PERSONALIZACION: BORDADO EN BOLSILLO Y/O ESPALDA. OPCIONALES: MANGAS EXTRAIBLES, REFLECTIVOS, BOLSILLOS ADICIONALES, BORDADOS, ESTAMPADOS, CAPOTA, PUNOS.";
+const CORTAVIENTO_NOTE =
+  "CORTAVIENTO CON CAPUCHA FIJA. ESPECIFICAR TIPO DE MANGA. SI EL PUNO ES SOBREPUESTO, DEFINIR SI VA EN LA MISMA TELA O EN RIB. HILADILLA SOLO EN COLORES BASICOS (BLANCO, NEGRO, GRIS, AZUL OSCURO, AZUL REY, ROJO, AMARILLO). ESPECIFICAR COLOR DE FORROS Y CIERRES (FRONTAL, BOLSILLOS Y CAPUCHA). TENER EN CUENTA TANCA EN RUEDO Y PINOS, ELASTICO EN PUNO Y CORDON.";
+const CHALECO_NOTE =
+  "TIPOS DE CHALECO: ENGUATADO, CON FORRO, SIN FORRO, Y CON CIERRE EN BOLSILLOS. PRENDA SIN MANGA, SIN CAPUCHA Y SIN PUNO. SI LLEVA CIERRE EN BOLSILLOS, ESPECIFICAR COLOR.";
+const TRUSAS_NOTE =
+  "TIPOS DE TRUSAS: TRUSA CICLISMO, TRUSA PATINAJE, CAMISETA CICLISMO, LICRA DE CICLISMO, TRUSAS GIMNASIA-NATACION, TRUSA BODY + SHORT, TRUSA CONJUNTO PORRISMO. TENER EN CUENTA AL ESPECIFICAR INSUMOS: CIERRE INVISIBLE (ESPECIFICAR COLOR RESORTE) Y VERIFICAR SI LLEVA FORRO INTERNO.";
+const BEISBOLERA_NOTE =
+  "TIPOS DE BEISBOLERA: FULL BOTONES, DOS BOTONES, BUSO RUNING, BUSO CON CIERRE, BUSO TIPO BOLSILLO CANGURO (PARTIDO Y COMPLETO). INSUMOS: ENTRETELA PARA FUSIONAR, TIPO DE BOTON (VIOMAR O GENERICO), HILADILLA BASICA CUANDO REQUIERA (BLANCO, NEGRO, GRIS, AZUL OSCURO, AZUL REY, ROJO, AMARILLO).";
+const BEISBOLERA_FULL_BOTONES_FUSION_NOTE =
+  "PARA LA BEISBOLERA FULL BOTONES: LOS FALSOS Y COCOTERAS VAN FUSIONADAS COMPLETAS.";
+const BEISBOLERA_DOS_BOTONES_FUSION_NOTE =
+  "PARA LA BEISBOLERA DOS BOTONES: SOLO VAN FUSIONADAS 2 PERILLAS Y LA COCOTERA.";
+const BUSO_NOTE =
+  "TIPOS DE BUSOS: BUSO SENCILLO, BUSO HODDIE, HODDIE(CHOMPA) CON CAPUCHA, BUSO RUNING, BUSO CON CIERRE, BUSO TIPO BOLSILLO CANGURO (PARTIDO Y COMPLETO). INSUMOS: CIERRE DE 75 CM (ESPECIFICAR COLOR) Y CORDONES DE PRESENTACION (ESPECIFICAR COLOR: BLANCO, NEGRO O AZUL OSCURO).";
+
 const CAMISILLA_NECK_OPTIONS = ["CUELLO NORMAL 4.5 CM", "CUELLO ESPECIAL 6.0 CM"] as const;
 
-const CAMISILLA_SESGO_OPTIONS = ["SESGO O SOBREPUESTO 4.5 CM", "SESGO ESPECIAL 6.0 CM"] as const;
+const CAMISILLA_SESGO_OPTIONS = [
+  "SESGO O SOBREPUESTO 4.5 CM",
+  "SESGO ESPECIAL 6.0 CM",
+  "SESGO NORMAL 3.5 CM",
+] as const;
 
 const SHORT_SUBTYPE_OPTIONS = [
-  "VOLLEY",
+  "VOLEY",
   "PETO",
   "BALONCESTO",
   "PROMESAS",
   "DOBLE FAZ",
+] as const;
+
+const SUDADERA_SUBTYPE_OPTIONS = [
+  "CON CIERRE EN BOTA",
+  "CON CIERRE EN BOTA Y LATERAL",
+  "CON CIERRE EN BOTA Y FRANJA",
+  "CON CIERRE EN BOTA Y VENA",
+  "DOS BOLSILLOS SENCILLA",
+  "CON CIERRES LATERALES",
+  "CON SESGO LATERAL",
+  "CON SESGO LATERAL Y CIERRE",
+  "RECTA CON CIERRE LATERAL",
+  "RECTA CON CIERRES LATERALES Y VENA",
+  "JOGGER BOTA RECTA",
 ] as const;
 
 const POLO_SUBTYPE_OPTIONS = [
@@ -343,10 +432,14 @@ const POLO_SUBTYPE_OPTIONS = [
 const POLO_SHORT_SLEEVE_NECK_OPTIONS = ["CUELLO EN V", "CUELLO REDONDO"] as const;
 
 const POLO_LONG_SLEEVE_NECK_OPTIONS = [
+  "CUELLO EN V",
+  "CUELLO REDONDO",
   "CUELLO BARUDA O CON BABERO",
   "CUELLO MILITAR",
   "CUELLO TIPO POLO",
 ] as const;
+
+const POLO_SLEEVE_OPTIONS = ["DOBLEZ", "MANGA LARGA"] as const;
 
 const GENDER_OPTIONS = ["MASCULINO", "FEMENINO"] as const;
 const PROCESS_OPTIONS = ["SUBLIMACION", "CORTE"] as const;
@@ -413,6 +506,10 @@ const POCKET_PANTS_OPTIONS = [
   "BOLSILLOS LATERALES",
   "BOLSILLOS LATERALES + BOLSILLO TRASERO",
 ] as const;
+const POCKET_CHALECO_OPTIONS = [
+  "SIN BOLSILLOS",
+  "BOLSILLOS LATERALES",
+] as const;
 const YES_NO_OPTIONS = ["NO", "SI"] as const;
 const PURCHASE_RULES_START = "[REGLAS_COMPRAS]";
 const PURCHASE_RULES_END = "[/REGLAS_COMPRAS]";
@@ -454,6 +551,10 @@ function getPocketOptions(garmentType: string): string[] {
     normalized.includes("PANTALOETA")
   ) {
     return [...POCKET_PANTS_OPTIONS];
+  }
+
+  if (normalized.includes("CHALECO")) {
+    return [...POCKET_CHALECO_OPTIONS];
   }
 
   return [...POCKET_GENERIC_OPTIONS];
@@ -584,7 +685,29 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   const isCamiseta = normalizeUpper(form.garmentType) === "CAMISETA";
   const isCamisilla = normalizeUpper(form.garmentType) === "CAMISILLA";
   const isLicraCorta = normalizeUpper(form.garmentType) === "LICRA CORTA";
+  const isTop = normalizeUpper(form.garmentType) === "TOP";
+  const isFalda = normalizeUpper(form.garmentType) === "FALDA";
   const isShort = normalizeUpper(form.garmentType) === "SHORT";
+  const isBermuda = normalizeUpper(form.garmentType) === "BERMUDA";
+  const isPantaloneta = normalizeUpper(form.garmentType) === "PANTALONETA";
+  const isSudadera = normalizeUpper(form.garmentType) === "SUDADERA";
+  const isChaqueta = normalizeUpper(form.garmentType) === "CHAQUETA";
+  const isCortaviento = normalizeUpper(form.garmentType) === "CORTAVIENTO";
+  const isChaleco = ["CHALECO", "CHALECOS"].includes(
+    normalizeUpper(form.garmentType),
+  );
+  const isTrusas = normalizeUpper(form.garmentType) === "TRUSAS";
+  const isBeisbolera = normalizeUpper(form.garmentType) === "BEISBOLERA";
+  const isBuso = normalizeUpper(form.garmentType) === "BUSO";
+  const isLowerGarment =
+    isShort ||
+    isBermuda ||
+    isPantaloneta ||
+    isLicraCorta ||
+    isSudadera ||
+    isFalda;
+  const isShortLikeSubtype = isShort || isBermuda || isPantaloneta;
+  const isBermudaOrSudadera = isBermuda || isSudadera;
   const isPolo = normalizeUpper(form.garmentType) === "POLO";
   const isSublimacion = normalizeUpper(form.process) === "SUBLIMACION";
   const isCorte = normalizeUpper(form.process) === "CORTE";
@@ -600,6 +723,87 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     () => getPocketOptions(form.garmentType),
     [form.garmentType],
   );
+  const shortSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || SHORT_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...SHORT_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...SHORT_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const topSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || TOP_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...TOP_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...TOP_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const sudaderaSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || SUDADERA_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...SUDADERA_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...SUDADERA_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const chaquetaSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || CHAQUETA_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...CHAQUETA_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...CHAQUETA_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const cortavientoSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || CORTAVIENTO_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...CORTAVIENTO_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...CORTAVIENTO_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const chalecoSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || CHALECO_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...CHALECO_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...CHALECO_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const trusasSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || TRUSAS_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...TRUSAS_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...TRUSAS_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const beisboleraSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || BEISBOLERA_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...BEISBOLERA_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...BEISBOLERA_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
+  const busoSubtypeOptions = useMemo(() => {
+    const current = String(form.garmentSubtype ?? "").trim();
+
+    if (!current || BUSO_SUBTYPE_OPTIONS.includes(current as any)) {
+      return [...BUSO_SUBTYPE_OPTIONS];
+    }
+
+    return [current, ...BUSO_SUBTYPE_OPTIONS];
+  }, [form.garmentSubtype]);
   const hasSesgo =
     hasValue(form.sesgoType) && normalizeUpper(form.sesgoType) !== "SIN SESGO";
   const hasZipper = [
@@ -622,6 +826,10 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   const hasPocketConfigured =
     hasValue(form.pocketConfig) &&
     normalizeUpper(form.pocketConfig) !== "SIN BOLSILLOS";
+  const hasDrawstring = form.hasTanca;
+  const hasPocketZipper =
+    hasValue(form.pocketZipperColor) ||
+    normalizeUpper(form.zipperLocation).includes("BOLSILLO");
   const purchaseRulesSummary = useMemo(() => {
     const fabrics =
       form.fabricChecklist.length > 0
@@ -740,7 +948,14 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     setForm((prev) => {
       const patch: Partial<FormState> = {};
 
-      if (prev.sleeveType) patch.sleeveType = "";
+      if (normalizeUpper(prev.sleeveType) !== "SIN MANGA") patch.sleeveType = "SIN MANGA";
+      if (normalizeUpper(prev.cuffType) !== "NO APLICA") patch.cuffType = "NO APLICA";
+      if (normalizeUpper(prev.hoodType) !== "SIN CAPUCHA") patch.hoodType = "SIN CAPUCHA";
+
+      if (!normalizeUpper(prev.fabric).includes("SPRING")) {
+        patch.fabric = "SPRING";
+        patch.fabricChecklist = ["SPRING"];
+      }
 
       if (
         prev.neckType &&
@@ -754,6 +969,14 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         !CAMISILLA_SESGO_OPTIONS.includes(prev.sesgoType as any)
       ) {
         patch.sesgoType = "";
+      }
+
+      patch.hasLateralMesh = true;
+
+      if (!normalizeUpper(prev.observations).includes("CAMISILLA CON CORTE LATERAL")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${CAMISILLA_NOTE}`
+          : CAMISILLA_NOTE;
       }
 
       if (!Object.keys(patch).length) return prev;
@@ -770,6 +993,11 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
       if (prev.sleeveType) patch.sleeveType = "";
       if (prev.neckType) patch.neckType = "";
+      if (!normalizeUpper(prev.observations).includes("CAUCHO PARA FAJON")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${LICRA_CORTA_FAJON_NOTE}`
+          : LICRA_CORTA_FAJON_NOTE;
+      }
 
       if (!Object.keys(patch).length) return prev;
 
@@ -778,19 +1006,169 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   }, [isLicraCorta]);
 
   useEffect(() => {
-    if (!isShort) return;
+    if (!isFalda) return;
 
     setForm((prev) => {
       const patch: Partial<FormState> = {};
 
       if (prev.sleeveType) patch.sleeveType = "";
       if (prev.neckType) patch.neckType = "";
+      if (prev.garmentSubtype) patch.garmentSubtype = "";
+
+      if (!normalizeUpper(prev.observations).includes("SEPARAR LICRA INTERNA")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${FALDA_OBSERVATION_NOTE}`
+          : FALDA_OBSERVATION_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isFalda]);
+
+  useEffect(() => {
+    if (!isTop) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+
+      if (!TOP_SUBTYPE_OPTIONS.some((option) => normalizeUpper(option) === normalizedSubtype)) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!normalizeUpper(prev.fabric).includes("SPRING")) {
+        patch.fabric = "SPRING";
+        patch.fabricChecklist = ["SPRING"];
+      }
+
+      patch.hasInnerLining = true;
+
+      if (!normalizeUpper(prev.observations).includes("FORRO INTERNO SOLO EN FRENTE EN LICRA JABON")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${TOP_NOTE}`
+          : TOP_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isTop]);
+
+  useEffect(() => {
+    if (!isShort) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const allowedSubtypes = SHORT_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (prev.sleeveType) patch.sleeveType = "";
+      if (prev.neckType) patch.neckType = "";
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        patch.garmentSubtype = "";
+      }
 
       if (!Object.keys(patch).length) return prev;
 
       return { ...prev, ...patch };
     });
   }, [isShort]);
+
+  useEffect(() => {
+    if (!isPantaloneta) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const allowedSubtypes = SHORT_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (prev.sleeveType) patch.sleeveType = "";
+      if (prev.neckType) patch.neckType = "";
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        patch.garmentSubtype = "";
+      }
+
+      if (
+        !prev.pocketConfig ||
+        normalizeUpper(prev.pocketConfig) === "SIN BOLSILLOS"
+      ) {
+        patch.pocketConfig = "BOLSILLOS LATERALES";
+        patch.hasPocket = true;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isPantaloneta]);
+
+  useEffect(() => {
+    if (!isBermuda) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const allowedSubtypes = SHORT_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (prev.sleeveType) patch.sleeveType = "";
+      if (prev.neckType) patch.neckType = "";
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!prev.pocketConfig || normalizeUpper(prev.pocketConfig) === "SIN BOLSILLOS") {
+        patch.pocketConfig = "BOLSILLOS LATERALES";
+        patch.hasPocket = true;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isBermuda]);
+
+  useEffect(() => {
+    if (!isSudadera) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const enablesZipper =
+        normalizedSubtype.includes("CIERRE") ||
+        normalizedSubtype.includes("LATERAL");
+
+      if (prev.neckType) patch.neckType = "";
+
+      if (
+        prev.garmentSubtype &&
+        !SUDADERA_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (enablesZipper && !prev.zipperSizeCm) {
+        patch.zipperSizeCm = "20";
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isSudadera]);
 
   useEffect(() => {
     if (!isPolo) return;
@@ -800,11 +1178,8 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       const normalizedSleeve = normalizeUpper(prev.sleeveType);
       const allowedNecks = [...getPoloNeckOptions(prev.sleeveType)] as string[];
 
-      if (
-        normalizedSleeve !== "MANGA CORTA" &&
-        normalizedSleeve !== "MANGA LARGA"
-      ) {
-        patch.sleeveType = "MANGA CORTA";
+      if (normalizedSleeve !== "DOBLEZ" && normalizedSleeve !== "MANGA LARGA") {
+        patch.sleeveType = "DOBLEZ";
       }
 
       if (
@@ -819,6 +1194,305 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       return { ...prev, ...patch };
     });
   }, [isPolo]);
+
+  useEffect(() => {
+    if (!isChaqueta) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const isTipo2 = normalizedSubtype.includes("TIPO 2");
+
+      if (
+        prev.garmentSubtype &&
+        !CHAQUETA_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!prev.pocketConfig || normalizeUpper(prev.pocketConfig) === "SIN BOLSILLOS") {
+        patch.pocketConfig = "BOLSILLOS LATERALES";
+        patch.hasPocket = true;
+      }
+
+      if (!prev.zipperLocation) {
+        patch.zipperLocation = "CENTRAL FRONTAL HASTA CUELLO TIPO TORTUGA";
+      }
+
+      patch.hasInnerLining = true;
+      if (!prev.liningType) patch.liningType = "MALLA";
+
+      if (isTipo2) {
+        patch.hasFajon = true;
+      }
+
+      if (!normalizeUpper(prev.observations).includes("CHAQUETA ENGUATADA TIPO MICHEL")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${CHAQUETA_NOTE}`
+          : CHAQUETA_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isChaqueta]);
+
+  useEffect(() => {
+    if (!isCortaviento) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const isTipo2 = normalizedSubtype.includes("TIPO 2");
+
+      if (
+        prev.garmentSubtype &&
+        !CORTAVIENTO_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!prev.pocketConfig || normalizeUpper(prev.pocketConfig) === "SIN BOLSILLOS") {
+        patch.pocketConfig = "BOLSILLOS LATERALES";
+        patch.hasPocket = true;
+      }
+
+      if (!prev.hoodType || normalizeUpper(prev.hoodType) !== "FIJA") {
+        patch.hoodType = "FIJA";
+      }
+
+      if (!prev.zipperLocation) {
+        patch.zipperLocation = "CIERRE FRONTAL";
+      }
+
+      if (isTipo2) {
+        patch.hasFajon = true;
+      }
+
+      if (!normalizeUpper(prev.observations).includes("CORTAVIENTO CON CAPUCHA FIJA")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${CORTAVIENTO_NOTE}`
+          : CORTAVIENTO_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isCortaviento]);
+
+  useEffect(() => {
+    if (!isChaleco) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+
+      if (
+        prev.garmentSubtype &&
+        !CHALECO_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      patch.sleeveType = "SIN MANGA";
+      patch.cuffType = "NO APLICA";
+      patch.hoodType = "SIN CAPUCHA";
+      patch.neckType = "";
+
+      const needsLining =
+        normalizedSubtype === "CHALECO ENGUATADO" ||
+        normalizedSubtype === "CHALECO CON FORRO";
+      const noLining = normalizedSubtype === "CHALECO SIN FORRO";
+      const pocketZipperSubtype =
+        normalizedSubtype === "CHALECO CIERRE EN BOLSILLOS";
+
+      if (needsLining) {
+        patch.hasInnerLining = true;
+        if (!prev.liningType || normalizeUpper(prev.liningType) === "SIN FORRO") {
+          patch.liningType = "MALLA";
+        }
+      }
+
+      if (noLining) {
+        patch.hasInnerLining = false;
+        patch.liningType = "";
+        patch.liningColor = "";
+      }
+
+      if (pocketZipperSubtype) {
+        patch.pocketConfig = "BOLSILLOS LATERALES";
+        patch.hasPocket = true;
+      }
+
+      if (!normalizeUpper(prev.observations).includes("TIPOS DE CHALECO")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${CHALECO_NOTE}`
+          : CHALECO_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isChaleco]);
+
+  useEffect(() => {
+    if (!isTrusas) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+
+      if (
+        prev.garmentSubtype &&
+        !TRUSAS_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (!prev.hoodType || normalizeUpper(prev.hoodType) !== "SIN CAPUCHA") {
+        patch.hoodType = "SIN CAPUCHA";
+      }
+
+      if (!prev.cuffType || normalizeUpper(prev.cuffType) !== "NO APLICA") {
+        patch.cuffType = "NO APLICA";
+      }
+
+      if (!normalizeUpper(prev.observations).includes("TIPOS DE TRUSAS")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${TRUSAS_NOTE}`
+          : TRUSAS_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isTrusas]);
+
+  useEffect(() => {
+    if (!isBeisbolera) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const isFullBotones = normalizedSubtype === "FULL BOTONES";
+      const isDosBotones = normalizedSubtype === "DOS BOTONES";
+      const isBusoConCierre = normalizedSubtype === "BUSO CON CIERRE";
+      const isBusoCanguro = normalizedSubtype.includes("BOLSILLO CANGURO");
+
+      if (
+        prev.garmentSubtype &&
+        !BEISBOLERA_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      patch.hasEntretela = true;
+
+      if (isFullBotones || isDosBotones) {
+        patch.buttonhole = true;
+        if (!prev.buttonType || normalizeUpper(prev.buttonType) === "SIN BOTONES") {
+          patch.buttonType = isDosBotones ? "2 BOTONES" : "OTRO";
+        }
+        if (!prev.buttonholeType || normalizeUpper(prev.buttonholeType) === "SIN OJAL") {
+          patch.buttonholeType = "SENCILLO";
+        }
+      }
+
+      if (isBusoConCierre && !prev.zipperLocation) {
+        patch.zipperLocation = "CIERRE FRONTAL";
+      }
+
+      if (isBusoCanguro) {
+        patch.pocketConfig = "EN EL PECHO";
+        patch.hasPocket = true;
+      }
+
+      const currentObs = normalizeUpper(prev.observations);
+      const notes: string[] = [];
+      if (!currentObs.includes("TIPOS DE BEISBOLERA")) {
+        notes.push(BEISBOLERA_NOTE);
+      }
+      if (isFullBotones && !currentObs.includes("FALSOS Y COCOTERAS VAN FUSIONADAS COMPLETAS")) {
+        notes.push(BEISBOLERA_FULL_BOTONES_FUSION_NOTE);
+      }
+      if (isDosBotones && !currentObs.includes("SOLO VAN FUSIONADAS 2 PERILLAS Y LA COCOTERA")) {
+        notes.push(BEISBOLERA_DOS_BOTONES_FUSION_NOTE);
+      }
+      if (notes.length > 0) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${notes.join("\n")}`
+          : notes.join("\n");
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isBeisbolera]);
+
+  useEffect(() => {
+    if (!isBuso) return;
+
+    setForm((prev) => {
+      const patch: Partial<FormState> = {};
+      const normalizedSubtype = normalizeUpper(prev.garmentSubtype);
+      const isHooded =
+        normalizedSubtype === "BUSO HODDIE" ||
+        normalizedSubtype === "HODDIE(CHOMPA) CON CAPUCHA";
+      const isBusoConCierre = normalizedSubtype === "BUSO CON CIERRE";
+      const isBusoCanguro = normalizedSubtype.includes("BOLSILLO CANGURO");
+
+      if (
+        prev.garmentSubtype &&
+        !BUSO_SUBTYPE_OPTIONS.some(
+          (option) => normalizeUpper(option) === normalizedSubtype,
+        )
+      ) {
+        patch.garmentSubtype = "";
+      }
+
+      if (isHooded) {
+        patch.hoodType = "FIJA";
+        patch.hasTanca = true;
+      } else if (!prev.hoodType || normalizeUpper(prev.hoodType) === "FIJA") {
+        patch.hoodType = "SIN CAPUCHA";
+      }
+
+      if (isBusoConCierre) {
+        if (!prev.zipperLocation) patch.zipperLocation = "CIERRE FRONTAL";
+        if (!prev.zipperSizeCm) patch.zipperSizeCm = "75";
+      }
+
+      if (isBusoCanguro) {
+        patch.pocketConfig = "EN EL PECHO";
+        patch.hasPocket = true;
+      }
+
+      if (!normalizeUpper(prev.observations).includes("TIPOS DE BUSOS")) {
+        patch.observations = prev.observations
+          ? `${prev.observations}\n${BUSO_NOTE}`
+          : BUSO_NOTE;
+      }
+
+      if (!Object.keys(patch).length) return prev;
+
+      return { ...prev, ...patch };
+    });
+  }, [isBuso]);
 
   useEffect(() => {
     setForm((prev) => {
@@ -1175,6 +1849,36 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
 
         return;
       }
+
+      if (!normalizeUpper(form.fabric).includes("SPRING")) {
+        toast.error("Para CAMISILLA la tela debe ser SPRING");
+
+        return;
+      }
+
+      if (!hasValue(form.color)) {
+        toast.error("Para CAMISILLA debes especificar color");
+
+        return;
+      }
+
+      if (!hasValue(form.sesgoColor)) {
+        toast.error("Para CAMISILLA debes especificar color de sesgo");
+
+        return;
+      }
+
+      if (!form.hasLateralMesh) {
+        toast.error("Para CAMISILLA con corte lateral debes marcar malla lateral");
+
+        return;
+      }
+
+      if (!hasValue(form.lateralMeshColor)) {
+        toast.error("Para CAMISILLA debes definir color de la malla lateral");
+
+        return;
+      }
     }
 
     if (isLicraCorta && !form.hasFajon) {
@@ -1183,21 +1887,516 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
       return;
     }
 
+    if (isLicraCorta && !form.hasElastic) {
+      toast.error("Para LICRA CORTA debes marcar ELASTICO (parte trasera)");
+
+      return;
+    }
+
+    if (
+      isLicraCorta &&
+      !/(3\s*CM|4\s*CM|10\s*CM)/.test(normalizeUpper(form.observations))
+    ) {
+      toast.error("En LICRA CORTA debes especificar caucho de fajon: 3 cm, 4 cm o 10 cm");
+
+      return;
+    }
+
+    if (isFalda && form.garmentSubtype) {
+      toast.error("Para FALDA no debes usar subtipo");
+
+      return;
+    }
+
+    if (isFalda && form.neckType) {
+      toast.error("Para FALDA no aplica cuello");
+
+      return;
+    }
+
+    if (isFalda && !form.hasFajon) {
+      toast.error("Para FALDA debes marcar FAJON");
+
+      return;
+    }
+
+    if (isFalda && !form.hasElastic) {
+      toast.error("Para FALDA debes marcar RESORTE / ELASTICO");
+
+      return;
+    }
+
     if (isPolo) {
       const normalizedSleeve = normalizeUpper(form.sleeveType);
       const allowedNecks = [...getPoloNeckOptions(form.sleeveType)] as string[];
 
-      if (
-        normalizedSleeve !== "MANGA CORTA" &&
-        normalizedSleeve !== "MANGA LARGA"
-      ) {
-        toast.error("Para POLO debes elegir MANGA CORTA o MANGA LARGA");
+      if (normalizedSleeve !== "DOBLEZ" && normalizedSleeve !== "MANGA LARGA") {
+        toast.error("Para POLO debes elegir DOBLEZ o MANGA LARGA");
+
+        return;
+      }
+
+      if (!POLO_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para POLO debes seleccionar subtipo de polo");
 
         return;
       }
 
       if (!allowedNecks.some((neck) => neck === String(form.neckType))) {
         toast.error("El cuello no corresponde al tipo de manga seleccionado");
+
+        return;
+      }
+
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const requiresButtonSet =
+        normalizedSubtype === "CON CIERRE EN PERILLA" ||
+        normalizedSubtype === "2 BOTONES" ||
+        normalizedSubtype === "3 BOTONES" ||
+        normalizedSubtype === "CON BROCHE";
+      const isBrocheSubtype = normalizedSubtype === "CON BROCHE";
+
+      if (requiresButtonSet && !form.buttonholeType) {
+        toast.error("Para POLO debes especificar el tipo de ojal");
+
+        return;
+      }
+
+      if (requiresButtonSet && !form.buttonType) {
+        toast.error("Para POLO debes especificar boton VIOMAR o generico / broche");
+
+        return;
+      }
+
+      if (isBrocheSubtype && normalizeUpper(form.buttonType) !== "BROCHE") {
+        toast.error("Si el subtipo es CON BROCHE, el tipo de boton debe ser BROCHE");
+
+        return;
+      }
+
+      if (requiresButtonSet && !form.perillaColor) {
+        toast.error("Para POLO debes especificar el color de perilla");
+        return;
+      }
+
+      if (hasSesgo && !hasValue(form.hiladillaColor)) {
+        toast.error("Si POLO lleva sesgo debes especificar color de hiladilla");
+
+        return;
+      }
+    }
+
+    if (isTop) {
+      if (!TOP_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para TOP debes seleccionar subtipo: SENCILLA o CON FAJON");
+
+        return;
+      }
+
+      if (!normalizeUpper(form.fabric).includes("SPRING")) {
+        toast.error("Para TOP la tela debe ser SPRING");
+
+        return;
+      }
+
+      if (!hasValue(form.color)) {
+        toast.error("Para TOP debes especificar color");
+
+        return;
+      }
+
+      if (!form.hasInnerLining) {
+        toast.error("Para TOP siempre aplica forro interno (solo frente en LICRA JABON)");
+
+        return;
+      }
+
+      if (hasSesgo) {
+        if (!TOP_SESGO_OPTIONS.includes(form.sesgoType as any)) {
+          toast.error("En TOP el sesgo debe ser SOBREPUESTO 4.5 o NORMAL 3.5");
+
+          return;
+        }
+
+        if (!hasValue(form.sesgoColor)) {
+          toast.error("En TOP debes especificar color del sesgo (colores basicos)");
+
+          return;
+        }
+
+        if (
+          normalizeUpper(form.sesgoType) ===
+            "SESGO NORMAL 3.5 CM" &&
+          !form.hasFajon
+        ) {
+          toast.error("En TOP con sesgo normal 3.5 debes marcar FAJON");
+
+          return;
+        }
+      }
+    }
+
+    if (isChaqueta) {
+      if (!CHAQUETA_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para CHAQUETA debes seleccionar subtipo TIPO 1 o TIPO 2");
+
+        return;
+      }
+
+      if (!hasPocketConfigured) {
+        toast.error("Para CHAQUETA debes especificar bolsillos laterales");
+
+        return;
+      }
+
+      if (!hasValue(form.zipperLocation)) {
+        toast.error("Para CHAQUETA debes especificar cierre frontal");
+
+        return;
+      }
+
+      if (!form.hasInnerLining || !hasValue(form.liningType)) {
+        toast.error("Para CHAQUETA debes especificar forro interno (fleece, malla o perchado)");
+
+        return;
+      }
+
+      if (normalizeUpper(form.garmentSubtype).includes("TIPO 2")) {
+        if (!form.hasFajon) {
+          toast.error("En CHAQUETA TIPO 2 debes marcar FAJON");
+
+          return;
+        }
+
+        if (normalizeUpper(form.cuffType) === "NO APLICA" || !hasValue(form.cuffType)) {
+          toast.error("En CHAQUETA TIPO 2 debes especificar tipo de puno");
+
+          return;
+        }
+      }
+    }
+
+    if (isCortaviento) {
+      if (!CORTAVIENTO_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para CORTAVIENTO debes seleccionar subtipo TIPO 1 o TIPO 2");
+
+        return;
+      }
+
+      if (normalizeUpper(form.hoodType) !== "FIJA") {
+        toast.error("Para CORTAVIENTO la capucha debe ser FIJA");
+
+        return;
+      }
+
+      if (!hasPocketConfigured) {
+        toast.error("Para CORTAVIENTO debes especificar bolsillos");
+
+        return;
+      }
+
+      if (!hasValue(form.zipperLocation)) {
+        toast.error("Para CORTAVIENTO debes especificar cierre frontal");
+
+        return;
+      }
+
+      if (!hasValue(form.zipperColor)) {
+        toast.error("Para CORTAVIENTO debes especificar color del cierre frontal");
+
+        return;
+      }
+
+      if (hasPocketConfigured && !hasValue(form.pocketZipperColor)) {
+        toast.error("Para CORTAVIENTO debes especificar color del cierre de bolsillos");
+
+        return;
+      }
+
+      if (form.hasInnerLining && !hasValue(form.liningColor)) {
+        toast.error("Si CORTAVIENTO lleva forro debes especificar color");
+
+        return;
+      }
+
+      if (normalizeUpper(form.garmentSubtype).includes("TIPO 2")) {
+        if (!form.hasFajon) {
+          toast.error("En CORTAVIENTO TIPO 2 debes marcar FAJON");
+
+          return;
+        }
+
+        if (normalizeUpper(form.cuffType) === "NO APLICA" || !hasValue(form.cuffType)) {
+          toast.error("En CORTAVIENTO TIPO 2 debes especificar tipo de puno");
+
+          return;
+        }
+      }
+    }
+
+    if (isChaleco) {
+      if (!CHALECO_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error(
+          "Para CHALECO debes seleccionar subtipo: ENGUATADO, CON FORRO, SIN FORRO o CIERRE EN BOLSILLOS",
+        );
+
+        return;
+      }
+
+      if (normalizeUpper(form.hoodType) !== "SIN CAPUCHA") {
+        toast.error("Para CHALECO la capucha no aplica");
+
+        return;
+      }
+
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const needsLining =
+        normalizedSubtype === "CHALECO ENGUATADO" ||
+        normalizedSubtype === "CHALECO CON FORRO";
+      const noLining = normalizedSubtype === "CHALECO SIN FORRO";
+      const pocketZipperSubtype =
+        normalizedSubtype === "CHALECO CIERRE EN BOLSILLOS";
+
+      if (needsLining && (!form.hasInnerLining || !hasValue(form.liningType))) {
+        toast.error("En CHALECO con forro o enguadado debes especificar tipo de forro");
+
+        return;
+      }
+
+      if (noLining && form.hasInnerLining) {
+        toast.error("En CHALECO SIN FORRO no debe marcarse forro interno");
+
+        return;
+      }
+
+      if (pocketZipperSubtype && !hasValue(form.pocketZipperColor)) {
+        toast.error("En CHALECO CIERRE EN BOLSILLOS debes especificar color del cierre");
+
+        return;
+      }
+    }
+
+    if (isTrusas) {
+      if (!TRUSAS_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error(
+          "Para TRUSAS debes seleccionar un subtipo valido de la matriz tecnica",
+        );
+
+        return;
+      }
+
+      if (normalizeUpper(form.hoodType) !== "SIN CAPUCHA") {
+        toast.error("Para TRUSAS la capucha no aplica");
+
+        return;
+      }
+
+      if (hasZipper && !hasValue(form.invisibleZipperColor)) {
+        toast.error("En TRUSAS, si lleva cierre debes especificar color de cierre invisible/resorte");
+
+        return;
+      }
+
+      if (form.hasInnerLining && !hasValue(form.liningType)) {
+        toast.error("Si TRUSAS lleva forro interno debes especificar tipo de forro");
+
+        return;
+      }
+    }
+
+    if (isBeisbolera) {
+      if (!BEISBOLERA_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para BEISBOLERA debes seleccionar un subtipo valido");
+
+        return;
+      }
+
+      if (!form.hasEntretela) {
+        toast.error("Para BEISBOLERA debes marcar ENTRETELA para fusionar");
+
+        return;
+      }
+
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const requiresButtons =
+        normalizedSubtype === "FULL BOTONES" || normalizedSubtype === "DOS BOTONES";
+
+      if (requiresButtons && (!hasButtons || !hasValue(form.buttonType))) {
+        toast.error("En BEISBOLERA con botones debes especificar tipo de boton");
+
+        return;
+      }
+
+      if (requiresButtons && !hasValue(form.buttonholeType)) {
+        toast.error("En BEISBOLERA con botones debes especificar tipo de ojal");
+
+        return;
+      }
+
+      if (normalizedSubtype === "BUSO CON CIERRE") {
+        if (!hasValue(form.zipperLocation) || !hasValue(form.zipperColor)) {
+          toast.error("En BEISBOLERA BUSO CON CIERRE debes especificar ubicacion y color del cierre");
+
+          return;
+        }
+      }
+
+      if (
+        normalizedSubtype.includes("BOLSILLO CANGURO") &&
+        !hasPocketConfigured
+      ) {
+        toast.error("En BEISBOLERA tipo canguro debes configurar bolsillo");
+
+        return;
+      }
+
+      if (hasSesgo && !hasValue(form.hiladillaColor)) {
+        toast.error("En BEISBOLERA, si lleva sesgo debes especificar color de hiladilla");
+
+        return;
+      }
+    }
+
+    if (isBuso) {
+      if (!BUSO_SUBTYPE_OPTIONS.includes(form.garmentSubtype as any)) {
+        toast.error("Para BUSO debes seleccionar un subtipo valido");
+
+        return;
+      }
+
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const isHooded =
+        normalizedSubtype === "BUSO HODDIE" ||
+        normalizedSubtype === "HODDIE(CHOMPA) CON CAPUCHA";
+
+      if (normalizedSubtype === "BUSO CON CIERRE") {
+        if (!hasValue(form.zipperLocation) || !hasValue(form.zipperColor)) {
+          toast.error("En BUSO CON CIERRE debes especificar ubicacion y color del cierre");
+
+          return;
+        }
+
+        if (String(form.zipperSizeCm || "") !== "75") {
+          toast.error("En BUSO CON CIERRE el tamano de cierre debe ser 75 cm");
+
+          return;
+        }
+      }
+
+      if (isHooded && normalizeUpper(form.hoodType) !== "FIJA") {
+        toast.error("En BUSO tipo hoodie la capucha debe ser FIJA");
+
+        return;
+      }
+
+      if ((isHooded || form.hasTanca) && !hasValue(form.cordColor)) {
+        toast.error("En BUSO debes especificar color del cordon de presentacion");
+
+        return;
+      }
+    }
+
+    if (isPantaloneta) {
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const allowedSubtypes = SHORT_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        toast.error(
+          "Para PANTALONETA debes seleccionar un subtipo: VOLEY, PETO, BALONCESTO, PROMESAS o DOBLE FAZ",
+        );
+
+        return;
+      }
+
+      if (hasDrawstring && !hasValue(form.cordColor)) {
+        toast.error("Debes indicar el color de la cuerda");
+
+        return;
+      }
+
+      if (form.hasLateralMesh && !hasValue(form.lateralMeshColor)) {
+        toast.error("Debes indicar el color de la malla lateral");
+
+        return;
+      }
+    }
+
+    if (isShort) {
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const allowedSubtypes = SHORT_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        toast.error(
+          "Para SHORT debes seleccionar un subtipo: VOLEY, PETO, BALONCESTO, PROMESAS o DOBLE FAZ",
+        );
+
+        return;
+      }
+    }
+
+    if (isBermuda) {
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const allowedSubtypes = SHORT_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        toast.error(
+          "Para BERMUDA debes seleccionar un subtipo: VOLEY, PETO, BALONCESTO, PROMESAS o DOBLE FAZ",
+        );
+
+        return;
+      }
+
+      if (hasPocketZipper && !hasValue(form.pocketZipperColor)) {
+        toast.error("Debes indicar el color del cierre del bolsillo");
+
+        return;
+      }
+
+      if (hasDrawstring && !hasValue(form.cordColor)) {
+        toast.error("Debes indicar el color del cordon redondo Viomar");
+
+        return;
+      }
+
+      if (hasPocketZipper && String(form.zipperSizeCm || "") !== "20") {
+        toast.error("Para BERMUDA el tamano del cierre debe ser 20 cm");
+
+        return;
+      }
+    }
+
+    if (isSudadera) {
+      const normalizedSubtype = normalizeUpper(form.garmentSubtype);
+      const allowedSubtypes = SUDADERA_SUBTYPE_OPTIONS.map((option) =>
+        normalizeUpper(option),
+      );
+
+      if (!allowedSubtypes.includes(normalizedSubtype)) {
+        toast.error("Para SUDADERA debes seleccionar un subtipo valido");
+
+        return;
+      }
+
+      if (hasZipper && !hasValue(form.zipperColor)) {
+        toast.error("Debes indicar el color del cierre");
+
+        return;
+      }
+
+      if (hasDrawstring && !hasValue(form.cordColor)) {
+        toast.error("Debes indicar el color del cordon redondo Viomar");
+
+        return;
+      }
+
+      if (hasZipper && String(form.zipperSizeCm || "") !== "20") {
+        toast.error("Para SUDADERA el tamano del cierre debe ser 20 cm");
 
         return;
       }
@@ -1227,7 +2426,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
         moldingCode: form.moldingCode.trim() || undefined,
         version: form.version ? Number(form.version) : 1,
         garmentType: form.garmentType || undefined,
-        garmentSubtype: form.neckType || undefined,
+        garmentSubtype: form.garmentSubtype || undefined,
         fabric:
           form.fabricChecklist.length > 0
             ? form.fabricChecklist.join(", ")
@@ -1494,6 +2693,223 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>
+                      {isShortLikeSubtype ? (
+                        <Select
+                          isRequired
+                          label={
+                            isBermuda
+                              ? "Subtipo de bermuda"
+                              : isShort
+                                ? "Subtipo de short"
+                                : "Subtipo de pantaloneta"
+                          }
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {shortSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isPolo ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de polo"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {POLO_SUBTYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isTop ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de top"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {topSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isChaqueta ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de chaqueta"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {chaquetaSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isCortaviento ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de cortaviento"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {cortavientoSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isChaleco ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de chaleco"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {chalecoSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isTrusas ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de trusas"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {trusasSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isBeisbolera ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de beisbolera"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {beisboleraSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isBuso ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de buso"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {busoSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : isSudadera ? (
+                        <Select
+                          isRequired
+                          label="Subtipo de sudadera"
+                          placeholder="Seleccionar subtipo"
+                          selectedKeys={
+                            form.garmentSubtype
+                              ? new Set([form.garmentSubtype])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("garmentSubtype", first ? String(first) : "");
+                          }}
+                        >
+                          {sudaderaSubtypeOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : null}
                       {isCamiseta ? (
                         <Select
                           isRequired
@@ -1566,7 +2982,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
-                      ) : isLicraCorta || isShort ? (
+                      ) : isLowerGarment ? (
                         <Input
                           isDisabled
                           label="Cuello"
@@ -1789,51 +3205,211 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>
-                      <Select
-                        label="Bolsillos"
-                        selectedKeys={
-                          new Set([
-                            form.pocketConfig ||
-                              (pocketOptions[0] ?? "SIN BOLSILLOS"),
-                          ])
-                        }
-                        selectionMode="single"
-                        onSelectionChange={(keys) => {
-                          const first = String(
-                            Array.from(keys)[0] ??
-                              pocketOptions[0] ??
-                              "SIN BOLSILLOS",
-                          );
+                      {isPantaloneta ? (
+                        <>
+                          <Select
+                            isRequired
+                            label="Bolsillo trasero"
+                            selectedKeys={
+                              new Set([
+                                normalizeUpper(form.pocketConfig).includes("TRASERO")
+                                  ? "SI"
+                                  : "NO",
+                              ])
+                            }
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+                              const hasBackPocket = first === "SI";
 
-                          setForm((prev) => ({
-                            ...prev,
-                            pocketConfig: first,
-                            hasPocket: normalizeUpper(first) !== "SIN BOLSILLOS",
-                          }));
-                        }}
-                      >
-                        {pocketOptions.map((option) => (
-                          <SelectItem key={option}>{option}</SelectItem>
-                        ))}
-                      </Select>
-                      <Checkbox
-                        isSelected={form.hasElastic}
-                        onValueChange={(v) => setField("hasElastic", v)}
-                      >
-                        Elastic
-                      </Checkbox>
+                              setForm((prev) => ({
+                                ...prev,
+                                hasPocket: true,
+                                pocketConfig: hasBackPocket
+                                  ? "BOLSILLOS LATERALES + BOLSILLO TRASERO"
+                                  : "BOLSILLOS LATERALES",
+                              }));
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          <Select
+                            isRequired
+                            label="Lleva elástico"
+                            selectedKeys={new Set([form.hasElastic ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+
+                              setField("hasElastic", first === "SI");
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          <Select
+                            isRequired
+                            label="Lleva cuerda"
+                            selectedKeys={new Set([hasDrawstring ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+                              const enabled = first === "SI";
+
+                              setForm((prev) => ({
+                                ...prev,
+                                hasTanca: enabled,
+                                cordColor: enabled ? prev.cordColor : "",
+                              }));
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          <Input
+                            isDisabled={!hasDrawstring}
+                            isRequired={hasDrawstring}
+                            label="Color de la cuerda"
+                            value={form.cordColor}
+                            onValueChange={(v) => setField("cordColor", v)}
+                          />
+                        </>
+                      ) : isBermudaOrSudadera ? (
+                        <>
+                          <Select
+                            isRequired
+                            label="Cierres en bolsillos"
+                            selectedKeys={new Set([hasPocketZipper ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+                              const hasClosing = first === "SI";
+
+                              setForm((prev) => ({
+                                ...prev,
+                                hasPocket: true,
+                                pocketConfig: "BOLSILLOS LATERALES",
+                                zipperLocation: hasClosing ? "BOLSILLOS" : "",
+                                pocketZipperColor: hasClosing ? prev.pocketZipperColor : "",
+                                zipperColor: hasClosing ? prev.zipperColor : "",
+                                zipperSizeCm: hasClosing ? "20" : "",
+                              }));
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          <Input
+                            isDisabled={!hasPocketZipper}
+                            isRequired={hasPocketZipper}
+                            label="Color del cierre del bolsillo"
+                            value={form.pocketZipperColor}
+                            onValueChange={(v) => setField("pocketZipperColor", v)}
+                          />
+                          <Select
+                            isRequired
+                            label="Lleva elastico"
+                            selectedKeys={new Set([form.hasElastic ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+
+                              setField("hasElastic", first === "SI");
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          <Select
+                            isRequired
+                            label="Lleva cordon redondo Viomar"
+                            selectedKeys={new Set([hasDrawstring ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+                              const enabled = first === "SI";
+
+                              setForm((prev) => ({
+                                ...prev,
+                                hasTanca: enabled,
+                                cordColor: enabled ? prev.cordColor : "",
+                              }));
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          <Input
+                            isDisabled={!hasDrawstring}
+                            isRequired={hasDrawstring}
+                            label="Color del cordon Viomar"
+                            value={form.cordColor}
+                            onValueChange={(v) => setField("cordColor", v)}
+                          />
+                        </>
+                      ) : (
+                        <Select
+                          label="Bolsillos"
+                          selectedKeys={
+                            new Set([
+                              form.pocketConfig ||
+                                (pocketOptions[0] ?? "SIN BOLSILLOS"),
+                            ])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = String(
+                              Array.from(keys)[0] ??
+                                pocketOptions[0] ??
+                                "SIN BOLSILLOS",
+                            );
+
+                            setForm((prev) => ({
+                              ...prev,
+                              pocketConfig: first,
+                              hasPocket: normalizeUpper(first) !== "SIN BOLSILLOS",
+                            }));
+                          }}
+                        >
+                          {pocketOptions.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      )}
+                      {!isPantaloneta && !isBermudaOrSudadera ? (
+                        <Checkbox
+                          isSelected={form.hasElastic}
+                          onValueChange={(v) => setField("hasElastic", v)}
+                        >
+                          Elastic
+                        </Checkbox>
+                      ) : null}
                       <Checkbox
                         isSelected={form.hasFajon}
                         onValueChange={(v) => setField("hasFajon", v)}
                       >
                         Fajón
                       </Checkbox>
-                      <Checkbox
-                        isSelected={form.hasTanca}
-                        onValueChange={(v) => setField("hasTanca", v)}
-                      >
-                        Tanca
-                      </Checkbox>
+                      {isShort ? (
+                        <p className="text-xs text-default-500 sm:col-span-2 md:col-span-3">
+                          Caucho para fajon en short: 3 cm, 4 cm o 10 cm (especificar en observaciones).
+                        </p>
+                      ) : null}
+                      {!isPantaloneta && !isBermudaOrSudadera ? (
+                        <Checkbox
+                          isSelected={form.hasTanca}
+                          onValueChange={(v) => setField("hasTanca", v)}
+                        >
+                          Tanca
+                        </Checkbox>
+                      ) : null}
                       <Checkbox
                         isSelected={form.hasEntretela}
                         onValueChange={(v) => setField("hasEntretela", v)}
@@ -1847,85 +3423,107 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                   </div>
 
                   {/* Sesgo & Thread */}
-                  <div>
-                    <p className="text-sm font-semibold text-default-600 mb-3">
-                      Sesgo & Thread
-                    </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Select
-                        label="Lleva sesgo"
-                        selectedKeys={new Set([hasSesgo ? "SI" : "NO"])}
-                        selectionMode="single"
-                        onSelectionChange={(keys) => {
-                          const first = Array.from(keys)[0];
+                    {!isPantaloneta ? (
+                      <div>
+                        <p className="text-sm font-semibold text-default-600 mb-3">
+                          Sesgo & Thread
+                        </p>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <Select
+                            label="Lleva sesgo"
+                            selectedKeys={new Set([hasSesgo ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = Array.from(keys)[0];
 
-                          setSesgoEnabled(String(first) === "SI");
-                        }}
-                      >
-                        {YES_NO_OPTIONS.map((option) => (
-                          <SelectItem key={option}>{option}</SelectItem>
-                        ))}
-                      </Select>
-                      {isCamisilla ? (
-                        <Select
-                          isDisabled={!hasSesgo}
-                          isRequired
-                          label="Sesgo type"
-                          placeholder="Select camisilla sesgo type"
-                          selectedKeys={
-                            form.sesgoType ? new Set([form.sesgoType]) : new Set([])
-                          }
-                          selectionMode="single"
-                          onSelectionChange={(keys) => {
-                            const first = Array.from(keys)[0];
+                              setSesgoEnabled(String(first) === "SI");
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                          {isCamisilla ? (
+                            <Select
+                              isDisabled={!hasSesgo}
+                              isRequired
+                              label="Sesgo type"
+                              placeholder="Select camisilla sesgo type"
+                              selectedKeys={
+                                form.sesgoType ? new Set([form.sesgoType]) : new Set([])
+                              }
+                              selectionMode="single"
+                              onSelectionChange={(keys) => {
+                                const first = Array.from(keys)[0];
 
-                            setField("sesgoType", first ? String(first) : "");
-                          }}
-                        >
-                          {CAMISILLA_SESGO_OPTIONS.map((option) => (
-                            <SelectItem key={option}>{option}</SelectItem>
-                          ))}
-                        </Select>
-                      ) : (
-                        <Select
-                          isDisabled={!hasSesgo}
-                          label="Sesgo type"
-                          placeholder="Select sesgo type"
-                          selectedKeys={
-                            form.sesgoType ? new Set([form.sesgoType]) : new Set([])
-                          }
-                          selectionMode="single"
-                          onSelectionChange={(keys) => {
-                            const first = Array.from(keys)[0];
+                                setField("sesgoType", first ? String(first) : "");
+                              }}
+                            >
+                              {CAMISILLA_SESGO_OPTIONS.map((option) => (
+                                <SelectItem key={option}>{option}</SelectItem>
+                              ))}
+                            </Select>
+                          ) : isTop ? (
+                            <Select
+                              isDisabled={!hasSesgo}
+                              isRequired={hasSesgo}
+                              label="Sesgo type"
+                              placeholder="Select top sesgo type"
+                              selectedKeys={
+                                form.sesgoType ? new Set([form.sesgoType]) : new Set([])
+                              }
+                              selectionMode="single"
+                              onSelectionChange={(keys) => {
+                                const first = Array.from(keys)[0];
 
-                            setField("sesgoType", first ? String(first) : "");
-                          }}
-                        >
-                          {SESGO_TYPE_OPTIONS.map((option) => (
-                            <SelectItem key={option}>{option}</SelectItem>
-                          ))}
-                        </Select>
-                      )}
-                      <Input
-                        isDisabled={!hasSesgo}
-                        label="Sesgo color"
-                        value={form.sesgoColor}
-                        onValueChange={(v) => setField("sesgoColor", v)}
-                      />
-                      <Input
-                        isDisabled={!hasSesgo}
-                        label="Hiladilla color"
-                        value={form.hiladillaColor}
-                        onValueChange={(v) => setField("hiladillaColor", v)}
-                      />
-                      <Input
-                        isDisabled={!hasSesgo}
-                        label="Cord color"
-                        value={form.cordColor}
-                        onValueChange={(v) => setField("cordColor", v)}
-                      />
-                    </div>
-                  </div>
+                                setField("sesgoType", first ? String(first) : "");
+                              }}
+                            >
+                              {TOP_SESGO_OPTIONS.map((option) => (
+                                <SelectItem key={option}>{option}</SelectItem>
+                              ))}
+                            </Select>
+                          ) : (
+                            <Select
+                              isDisabled={!hasSesgo}
+                              label="Sesgo type"
+                              placeholder="Select sesgo type"
+                              selectedKeys={
+                                form.sesgoType ? new Set([form.sesgoType]) : new Set([])
+                              }
+                              selectionMode="single"
+                              onSelectionChange={(keys) => {
+                                const first = Array.from(keys)[0];
+
+                                setField("sesgoType", first ? String(first) : "");
+                              }}
+                            >
+                              {SESGO_TYPE_OPTIONS.map((option) => (
+                                <SelectItem key={option}>{option}</SelectItem>
+                              ))}
+                            </Select>
+                          )}
+                          <Input
+                            isDisabled={!hasSesgo}
+                            label="Sesgo color"
+                            value={form.sesgoColor}
+                            onValueChange={(v) => setField("sesgoColor", v)}
+                          />
+                          <Input
+                            isDisabled={!hasSesgo}
+                            label="Hiladilla color"
+                            value={form.hiladillaColor}
+                            onValueChange={(v) => setField("hiladillaColor", v)}
+                          />
+                          <Input
+                            isDisabled={!hasSesgo}
+                            label="Cord color"
+                            value={form.cordColor}
+                            onValueChange={(v) => setField("cordColor", v)}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
 
                   {/* Sleeve & Cuff */}
                   <div>
@@ -1933,7 +3531,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       Sleeve & Cuff
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                      {isCamiseta || isPolo ? (
+                      {isCamiseta ? (
                         <Select
                           isRequired
                           label="Sleeve type"
@@ -1953,7 +3551,32 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
-                      ) : isCamisilla || isShort || isLicraCorta ? (
+                      ) : isPolo ? (
+                        <Select
+                          isRequired
+                          label="Sleeve type"
+                          selectedKeys={
+                            form.sleeveType
+                              ? new Set([form.sleeveType])
+                              : new Set([])
+                          }
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
+
+                            setField("sleeveType", first ? String(first) : "");
+                          }}
+                        >
+                          {POLO_SLEEVE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) :
+                        isCamisilla ||
+                        isShort ||
+                        isLicraCorta ||
+                        isPantaloneta ||
+                        isChaleco ? (
                         <Input
                           isDisabled
                           label="Sleeve type"
@@ -1982,20 +3605,22 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           ))}
                         </Select>
                       )}
-                      <Select
-                        label="Tipo de puño"
-                        selectedKeys={new Set([form.cuffType || "NO APLICA"])}
-                        selectionMode="single"
-                        onSelectionChange={(keys) => {
-                          const first = Array.from(keys)[0];
+                      {!isLowerGarment && !isChaleco && !isTrusas && !isCamisilla ? (
+                        <Select
+                          label="Tipo de puño"
+                          selectedKeys={new Set([form.cuffType || "NO APLICA"])}
+                          selectionMode="single"
+                          onSelectionChange={(keys) => {
+                            const first = Array.from(keys)[0];
 
-                          setField("cuffType", first ? String(first) : "NO APLICA");
-                        }}
-                      >
-                        {CUFF_TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option}>{option}</SelectItem>
-                        ))}
-                      </Select>
+                            setField("cuffType", first ? String(first) : "NO APLICA");
+                          }}
+                        >
+                          {CUFF_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option}>{option}</SelectItem>
+                          ))}
+                        </Select>
+                      ) : null}
                     </div>
                   </div>
 
@@ -2011,8 +3636,18 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         selectionMode="single"
                         onSelectionChange={(keys) => {
                           const first = Array.from(keys)[0];
+                          const enabled = String(first) === "SI";
 
-                          setZipperEnabled(String(first) === "SI");
+                          if (enabled && isBermudaOrSudadera) {
+                            setForm((prev) => ({
+                              ...prev,
+                              zipperSizeCm: prev.zipperSizeCm || "20",
+                            }));
+
+                            return;
+                          }
+
+                          setZipperEnabled(enabled);
                         }}
                       >
                         {YES_NO_OPTIONS.map((option) => (
@@ -2032,11 +3667,26 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         onValueChange={(v) => setField("zipperColor", v)}
                       />
                       <Input
-                        isDisabled={!hasZipper}
+                        isDisabled={!hasZipper || isBermudaOrSudadera || (isBuso && normalizeUpper(form.garmentSubtype) === "BUSO CON CIERRE")}
                         label="Zipper size (cm)"
                         type="number"
-                        value={form.zipperSizeCm}
-                        onValueChange={(v) => setField("zipperSizeCm", v)}
+                        value={
+                          hasZipper && isBermudaOrSudadera
+                            ? "20"
+                            : isBuso && normalizeUpper(form.garmentSubtype) === "BUSO CON CIERRE"
+                              ? "75"
+                              : form.zipperSizeCm
+                        }
+                        onValueChange={(v) =>
+                          setField(
+                            "zipperSizeCm",
+                            isBermudaOrSudadera
+                              ? "20"
+                              : isBuso && normalizeUpper(form.garmentSubtype) === "BUSO CON CIERRE"
+                                ? "75"
+                                : v,
+                          )
+                        }
                       />
                       <Input
                         isDisabled={!hasZipper}
@@ -2064,8 +3714,9 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       {/* Forro */}
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         <Select
+                          isDisabled={isTop}
                           label="Lleva revestimiento"
-                          selectedKeys={new Set([hasLining ? "SI" : "NO"])}
+                          selectedKeys={new Set([isTop || hasLining ? "SI" : "NO"])}
                           selectionMode="single"
                           onSelectionChange={(keys) => {
                             const first = Array.from(keys)[0];
@@ -2080,7 +3731,11 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                         <Select
                           isDisabled={!hasLining}
                           label="Tipo de revestimiento"
-                          placeholder="Seleccione el tipo"
+                          placeholder={
+                            isChaqueta
+                              ? "Seleccione: fleece, malla o perchado"
+                              : "Seleccione el tipo"
+                          }
                           selectedKeys={
                             form.liningType
                               ? new Set([form.liningType])
@@ -2106,42 +3761,110 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                       </div>
                       {/* Capucha y protección */}
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <Select
-                          label="Tipo de capucha"
-                          placeholder="Seleccione el tipo de capucha"
-                          selectedKeys={
-                            form.hoodType
-                              ? new Set([form.hoodType])
-                              : new Set([])
-                          }
-                          selectionMode="single"
-                          onSelectionChange={(keys) => {
-                            const first = Array.from(keys)[0];
+                          {!isLowerGarment && isCortaviento ? (
+                            <Input
+                              isDisabled
+                              label="Tipo de capucha"
+                              value={form.hoodType || "FIJA"}
+                            />
+                          ) : !isLowerGarment && isChaleco ? (
+                            <Input
+                              isDisabled
+                              label="Tipo de capucha"
+                              value={form.hoodType || "SIN CAPUCHA"}
+                            />
+                          ) : !isLowerGarment && isTrusas ? (
+                            <Input
+                              isDisabled
+                              label="Tipo de capucha"
+                              value={form.hoodType || "SIN CAPUCHA"}
+                            />
+                          ) : !isLowerGarment && isCamisilla ? (
+                            <Input
+                              isDisabled
+                              label="Tipo de capucha"
+                              value={form.hoodType || "SIN CAPUCHA"}
+                            />
+                          ) : !isLowerGarment ? (
+                            <Select
+                              label="Tipo de capucha"
+                              placeholder="Seleccione el tipo de capucha"
+                              selectedKeys={
+                                form.hoodType
+                                  ? new Set([form.hoodType])
+                  : new Set([])
+                              }
+                              selectionMode="single"
+                              onSelectionChange={(keys) => {
+                                const first = Array.from(keys)[0];
 
-                            setField("hoodType", first ? String(first) : "");
-                          }}
-                        >
-                          {HOOD_TYPE_OPTIONS.map((option) => (
-                            <SelectItem key={option}>{option}</SelectItem>
-                          ))}
-                        </Select>
-                        <Checkbox
-                          isSelected={form.hasProtection}
-                          onValueChange={(v) => setField("hasProtection", v)}
-                        >
-                          Protección
-                        </Checkbox>
+                                setField("hoodType", first ? String(first) : "");
+                              }}
+                            >
+                              {HOOD_TYPE_OPTIONS.map((option) => (
+                                <SelectItem key={option}>{option}</SelectItem>
+                              ))}
+                            </Select>
+                          ) : null}
+                        {isPantaloneta ? (
+                          <Select
+                            isRequired
+                            label="Lleva protección"
+                            selectedKeys={new Set([form.hasProtection ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+
+                              setField("hasProtection", first === "SI");
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                        ) : (
+                          <Checkbox
+                            isSelected={form.hasProtection}
+                            onValueChange={(v) => setField("hasProtection", v)}
+                          >
+                            Protección
+                          </Checkbox>
+                        )}
                       </div>
                       {/* Malla lateral */}
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <Checkbox
-                          isSelected={form.hasLateralMesh}
-                          onValueChange={(v) => setField("hasLateralMesh", v)}
-                        >
-                          Malla lateral
-                        </Checkbox>
+                        {isPantaloneta ? (
+                          <Select
+                            isRequired
+                            label="Lleva malla lateral"
+                            selectedKeys={new Set([form.hasLateralMesh ? "SI" : "NO"])}
+                            selectionMode="single"
+                            onSelectionChange={(keys) => {
+                              const first = String(Array.from(keys)[0] ?? "NO");
+                              const enabled = first === "SI";
+
+                              setForm((prev) => ({
+                                ...prev,
+                                hasLateralMesh: enabled,
+                                lateralMeshColor: enabled ? prev.lateralMeshColor : "",
+                              }));
+                            }}
+                          >
+                            {YES_NO_OPTIONS.map((option) => (
+                              <SelectItem key={option}>{option}</SelectItem>
+                            ))}
+                          </Select>
+                        ) : (
+                          <Checkbox
+                            isSelected={form.hasLateralMesh}
+                            onValueChange={(v) => setField("hasLateralMesh", v)}
+                          >
+                            Malla lateral
+                          </Checkbox>
+                        )}
                         <Input
                           isDisabled={!form.hasLateralMesh}
+                          isRequired={form.hasLateralMesh}
                           label="Color de la malla lateral"
                           value={form.lateralMeshColor}
                           onValueChange={(v) => setField("lateralMeshColor", v)}

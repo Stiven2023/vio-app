@@ -11,6 +11,7 @@ import NextLink from "next/link";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
+import { Skeleton } from "@heroui/skeleton";
 import { Select, SelectItem } from "@heroui/select";
 import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
 import {
@@ -245,6 +246,9 @@ export function OrderItemsPage({
   }
 
   const rows = itemsData?.items ?? [];
+  const skeletonRows = Array.from({ length: 6 }, (_, index) => ({
+    id: `skeleton-${index}`,
+  }));
 
   return (
     <div className="space-y-4">
@@ -258,6 +262,14 @@ export function OrderItemsPage({
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            as={NextLink}
+            href={`/orders/${orderId}/items/new`}
+            isDisabled={!canModify}
+            color="primary"
+          >
+            Crear nuevo diseño
+          </Button>
           <Button as={NextLink} href="/orders" variant="flat">
             Volver
           </Button>
@@ -268,9 +280,16 @@ export function OrderItemsPage({
         <CardHeader className="flex items-center justify-between">
           <div className="min-w-0">
             <div className="font-semibold">Información</div>
-            <div className="text-sm text-default-500">
-              Pedido: {order?.orderCode ?? orderId} {loadingOrder ? "(cargando...)" : null}
-            </div>
+            {loadingOrder ? (
+              <div className="mt-2 space-y-2">
+                <Skeleton className="h-4 w-48 rounded-medium" />
+                <Skeleton className="h-3 w-36 rounded-medium" />
+              </div>
+            ) : (
+              <div className="text-sm text-default-500">
+                Pedido: {order?.orderCode ?? orderId}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {isClient ? (
@@ -328,145 +347,203 @@ export function OrderItemsPage({
           <div className="font-semibold">Lista</div>
         </CardHeader>
         <CardBody>
-          {loadingItems ? <div>Cargando...</div> : null}
-
           <Table removeWrapper aria-label="Diseños">
             <TableHeader columns={columns}>
               {(column) => (
                 <TableColumn key={column.key}>{column.name}</TableColumn>
               )}
             </TableHeader>
-            <TableBody emptyContent="Sin diseños" items={rows}>
-              {(row) => (
-                <TableRow key={row.id}>
-                  {(columnKey) => {
-                    const rowIndex = rows.indexOf(row);
-                    const designNum = (page - 1) * pageSize + rowIndex + 1;
+            {loadingItems ? (
+              <TableBody items={skeletonRows}>
+                {(row) => (
+                  <TableRow key={row.id}>
+                    {(columnKey) => {
+                      if (columnKey === "designNum") {
+                        return (
+                          <TableCell>
+                            <Skeleton className="h-4 w-10 rounded-medium" />
+                          </TableCell>
+                        );
+                      }
 
-                    if (columnKey === "designNum") {
-                      return (
-                        <TableCell>
-                          <span className="text-xs font-mono font-semibold text-default-500">
-                            D{designNum}
-                          </span>
-                        </TableCell>
-                      );
-                    }
-
-                    if (columnKey === "actions") {
-                      return (
-                        <TableCell>
-                          <Dropdown>
-                            <DropdownTrigger>
-                              <Button size="sm" variant="flat">
-                                <BsThreeDotsVertical />
-                              </Button>
-                            </DropdownTrigger>
-                            <DropdownMenu aria-label="Acciones">
-                              <DropdownItem
-                                key="history"
-                                as={NextLink}
-                                href={`/status-history?tab=items&orderItemId=${encodeURIComponent(
-                                  row.id,
-                                )}`}
-                                startContent={<BsClockHistory />}
-                              >
-                                Historial
-                              </DropdownItem>
-
-                              <DropdownItem
-                                key="detail"
-                                as={NextLink}
-                                href={`/orders/${orderId}/items/${row.id}`}
-                                startContent={<BsEye />}
-                              >
-                                Ver detalle
-                              </DropdownItem>
-
-                              <DropdownItem
-                                key="edit"
-                                as={NextLink}
-                                href={`/orders/${orderId}/items/${row.id}/edit`}
-                                isDisabled={!canModify}
-                                startContent={<BsPencilSquare />}
-                              >
-                                Editar
-                              </DropdownItem>
-
-                              <DropdownItem
-                                key="delete"
-                                className="text-danger"
-                                isDisabled={!canModify}
-                                startContent={<BsTrash />}
-                                onPress={() => onDelete(row.id)}
-                              >
-                                Eliminar
-                              </DropdownItem>
-                            </DropdownMenu>
-                          </Dropdown>
-                        </TableCell>
-                      );
-                    }
-
-                    if (columnKey === "name") {
-                      return <TableCell>{String(row.name ?? "-")}</TableCell>;
-                    }
-
-                    if (columnKey === "status") {
-                      return (
-                        <TableCell className="text-default-600">
-                          {row.status ?? "-"}
-                        </TableCell>
-                      );
-                    }
-
-                    if (columnKey === "statusHistory") {
-                      return (
-                        <TableCell className="text-default-600">
-                          {formatHistory(row.lastStatusAt, row.lastStatusBy)}
-                          {canSeeHistory ? (
-                            <div>
-                              <Button
-                                size="sm"
-                                variant="light"
-                                onPress={() => openHistory(row.id)}
-                              >
-                                Ver historial
-                              </Button>
+                      if (columnKey === "name") {
+                        return (
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-40 rounded-medium" />
+                              <Skeleton className="h-3 w-24 rounded-medium" />
                             </div>
-                          ) : null}
-                        </TableCell>
-                      );
-                    }
+                          </TableCell>
+                        );
+                      }
 
-                    if (columnKey === "additions") {
+                      if (columnKey === "statusHistory") {
+                        return (
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Skeleton className="h-4 w-36 rounded-medium" />
+                              <Skeleton className="h-8 w-24 rounded-medium" />
+                            </div>
+                          </TableCell>
+                        );
+                      }
+
+                      if (columnKey === "actions") {
+                        return (
+                          <TableCell>
+                            <Skeleton className="h-8 w-10 rounded-medium" />
+                          </TableCell>
+                        );
+                      }
+
                       return (
                         <TableCell>
-                          {row.hasAdditions
-                            ? String(row.additionEvidence ?? "Sí").trim() ||
-                              "Sí"
-                            : "No"}
+                          <Skeleton className="h-4 w-24 rounded-medium" />
                         </TableCell>
                       );
-                    }
+                    }}
+                  </TableRow>
+                )}
+              </TableBody>
+            ) : (
+              <TableBody emptyContent="Sin diseños" items={rows}>
+                {(row) => (
+                  <TableRow key={row.id}>
+                    {(columnKey) => {
+                      const rowIndex = rows.indexOf(row);
+                      const designNum = (page - 1) * pageSize + rowIndex + 1;
 
-                    return (
-                      <TableCell>
-                        {String((row as any)[columnKey] ?? "-")}
-                      </TableCell>
-                    );
-                  }}
-                </TableRow>
-              )}
-            </TableBody>
+                      if (columnKey === "designNum") {
+                        return (
+                          <TableCell>
+                            <span className="text-xs font-mono font-semibold text-default-500">
+                              D{designNum}
+                            </span>
+                          </TableCell>
+                        );
+                      }
+
+                      if (columnKey === "actions") {
+                        return (
+                          <TableCell>
+                            <Dropdown>
+                              <DropdownTrigger>
+                                <Button size="sm" variant="flat">
+                                  <BsThreeDotsVertical />
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu aria-label="Acciones">
+                                <DropdownItem
+                                  key="history"
+                                  as={NextLink}
+                                  href={`/status-history?tab=items&orderItemId=${encodeURIComponent(
+                                    row.id,
+                                  )}`}
+                                  startContent={<BsClockHistory />}
+                                >
+                                  Historial
+                                </DropdownItem>
+
+                                <DropdownItem
+                                  key="detail"
+                                  as={NextLink}
+                                  href={`/orders/${orderId}/items/${row.id}`}
+                                  startContent={<BsEye />}
+                                >
+                                  Ver detalle
+                                </DropdownItem>
+
+                                <DropdownItem
+                                  key="edit"
+                                  as={NextLink}
+                                  href={`/orders/${orderId}/items/${row.id}/edit`}
+                                  isDisabled={!canModify}
+                                  startContent={<BsPencilSquare />}
+                                >
+                                  Editar
+                                </DropdownItem>
+
+                                <DropdownItem
+                                  key="delete"
+                                  className="text-danger"
+                                  isDisabled={!canModify}
+                                  startContent={<BsTrash />}
+                                  onPress={() => onDelete(row.id)}
+                                >
+                                  Eliminar
+                                </DropdownItem>
+                              </DropdownMenu>
+                            </Dropdown>
+                          </TableCell>
+                        );
+                      }
+
+                      if (columnKey === "name") {
+                        return <TableCell>{String(row.name ?? "-")}</TableCell>;
+                      }
+
+                      if (columnKey === "status") {
+                        return (
+                          <TableCell className="text-default-600">
+                            {row.status ?? "-"}
+                          </TableCell>
+                        );
+                      }
+
+                      if (columnKey === "statusHistory") {
+                        return (
+                          <TableCell className="text-default-600">
+                            {formatHistory(row.lastStatusAt, row.lastStatusBy)}
+                            {canSeeHistory ? (
+                              <div>
+                                <Button
+                                  size="sm"
+                                  variant="light"
+                                  onPress={() => openHistory(row.id)}
+                                >
+                                  Ver historial
+                                </Button>
+                              </div>
+                            ) : null}
+                          </TableCell>
+                        );
+                      }
+
+                      if (columnKey === "additions") {
+                        return (
+                          <TableCell>
+                            {row.hasAdditions
+                              ? String(row.additionEvidence ?? "Sí").trim() ||
+                                "Sí"
+                              : "No"}
+                          </TableCell>
+                        );
+                      }
+
+                      return (
+                        <TableCell>
+                          {String((row as any)[columnKey] ?? "-")}
+                        </TableCell>
+                      );
+                    }}
+                  </TableRow>
+                )}
+              </TableBody>
+            )}
           </Table>
 
           <div className="mt-3 flex items-center justify-between text-sm text-default-500">
             <div>
-              Página {itemsData?.page ?? page} /{" "}
-              {itemsData
-                ? Math.max(1, Math.ceil(itemsData.total / itemsData.pageSize))
-                : 1}
+              {loadingItems ? (
+                <Skeleton className="h-4 w-28 rounded-medium" />
+              ) : (
+                <>
+                  Página {itemsData?.page ?? page} /{" "}
+                  {itemsData
+                    ? Math.max(1, Math.ceil(itemsData.total / itemsData.pageSize))
+                    : 1}
+                </>
+              )}
             </div>
             <div className="flex gap-2">
               <Button
@@ -495,7 +572,20 @@ export function OrderItemsPage({
           <ModalHeader>Historial de estado</ModalHeader>
           <ModalBody>
             {historyLoading ? (
-              <div className="text-sm text-default-500">Cargando...</div>
+              <div className="space-y-3 py-1">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <div
+                    key={`history-skeleton-${index}`}
+                    className="flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-28 rounded-medium" />
+                      <Skeleton className="h-3 w-20 rounded-medium" />
+                    </div>
+                    <Skeleton className="h-3 w-24 rounded-medium" />
+                  </div>
+                ))}
+              </div>
             ) : historyItems.length === 0 ? (
               <div className="text-sm text-default-500">Sin cambios.</div>
             ) : (

@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 import { db } from "@/src/db";
-import { clients, employees, users, legalStatusRecords } from "@/src/db/schema";
+import { clients, employees, roles, users, legalStatusRecords } from "@/src/db/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -54,15 +54,20 @@ export async function GET(request: Request) {
       .from(employees);
 
     const items = await db
-      .select()
+      .select({
+        employee: employees,
+        roleName: roles.name,
+      })
       .from(employees)
+      .leftJoin(roles, eq(employees.roleId, roles.id))
       .orderBy(employees.createdAt)
       .limit(pageSize)
       .offset(offset);
 
     // Obtener el estado jurídico más reciente para cada empleado
     const itemsWithStatus = await Promise.all(
-      items.map(async (employee) => {
+      items.map(async (row) => {
+        const employee = row.employee;
         const legalStatus = await db.query.legalStatusRecords.findFirst({
           where: (record, { eq, and }) =>
             and(
@@ -81,6 +86,8 @@ export async function GET(request: Request) {
 
         return {
           ...employee,
+          role: row.roleName ?? null,
+          roleName: row.roleName ?? null,
           isActive: isActiveByLegalStatus,
           legalStatus: legalStatus?.status ?? null,
         };

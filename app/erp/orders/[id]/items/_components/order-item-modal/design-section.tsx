@@ -51,6 +51,12 @@ const COLOR_OPTIONS = [
 
 const GARMENT_PROCESS_OPTIONS = ["SUBLIMACION", "FONDO_ENTERO"] as const;
 
+function asNumber(value: unknown) {
+  const parsed = Number(String(value ?? "0"));
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function getPastedImageFile(ev: React.ClipboardEvent) {
   const items = Array.from(ev.clipboardData?.items ?? []);
   const img = items.find(
@@ -235,6 +241,7 @@ export function DesignSection({
   orderKind,
   isCreateBlocked,
   canEditUnitPrice,
+  quantityDescription,
   fabricOptions,
   lockDecorationByMolding = false,
   garmentProcessMode,
@@ -242,6 +249,7 @@ export function DesignSection({
   imageRoleOne = "JUGADOR",
   imageRoleTwo = "ARQUERO",
   afterGenderContent,
+  moldingTechnicalSections,
   showAdvancedFields = true,
   onChange,
   onSelectImageOneFile,
@@ -256,6 +264,7 @@ export function DesignSection({
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   isCreateBlocked: boolean;
   canEditUnitPrice: boolean;
+  quantityDescription?: string;
   fabricOptions?: string[];
   lockDecorationByMolding?: boolean;
   garmentProcessMode?: "SUBLIMACION" | "FONDO_ENTERO";
@@ -263,6 +272,10 @@ export function DesignSection({
   imageRoleOne?: "JUGADOR" | "ARQUERO";
   imageRoleTwo?: "JUGADOR" | "ARQUERO";
   afterGenderContent?: React.ReactNode;
+  moldingTechnicalSections?: Array<{
+    title: string;
+    fields: Array<{ label: string; value: string }>;
+  }>;
   showAdvancedFields?: boolean;
   onChange: (next: OrderItemInput) => void;
   onSelectImageOneFile: (file: File | null) => void;
@@ -309,6 +322,13 @@ export function DesignSection({
   const [garmentProcess, setGarmentProcess] = React.useState<
     "SUBLIMACION" | "FONDO_ENTERO"
   >(() => {
+    const technique = String(value.productionTechnique ?? "")
+      .trim()
+      .toUpperCase();
+
+    if (technique === "FONDO_ENTERO") return "FONDO_ENTERO";
+    if (technique === "SUBLIMACION") return "SUBLIMACION";
+
     const color = String(value.color ?? "").trim();
 
     return color ? "FONDO_ENTERO" : "SUBLIMACION";
@@ -351,11 +371,17 @@ export function DesignSection({
 
       <div className="grid grid-cols-1 gap-3">
         <Input
-          isDisabled
+          isDisabled={isCreateBlocked}
           label="Cantidad"
           type="number"
           value={String(value.quantity ?? 1)}
-          description="La cantidad se ajusta fuera de esta seccion"
+          description={
+            quantityDescription ??
+            "Se valida contra el cupo total acordado del pedido"
+          }
+          onValueChange={(v: string) =>
+            onChange({ ...value, quantity: Math.max(1, Math.floor(asNumber(v))) })
+          }
         />
       </div>
 
@@ -425,13 +451,15 @@ export function DesignSection({
               }}
             >
               {(fabricOptions ?? []).map((option) => (
-                <SelectItem key={option}>{option}</SelectItem>
+                <SelectItem key={option} textValue={option}>
+                  <span className="notranslate" translate="no">{option}</span>
+                </SelectItem>
               ))}
             </Select>
 
             <Select
               isDisabled={locked}
-              label="Proceso prenda"
+              label="Técnica de producción"
               selectedKeys={[resolvedGarmentProcess]}
               onSelectionChange={(keys: any) => {
                 const k = String(Array.from(keys as any)[0] ?? "SUBLIMACION");
@@ -442,8 +470,18 @@ export function DesignSection({
                 onGarmentProcessModeChange?.(next);
 
                 if (next === "SUBLIMACION") {
-                  onChange({ ...value, color: null });
+                  onChange({
+                    ...value,
+                    productionTechnique: next,
+                    color: null,
+                  });
+                  return;
                 }
+
+                onChange({
+                  ...value,
+                  productionTechnique: next,
+                });
               }}
             >
               {GARMENT_PROCESS_OPTIONS.map((option) => (
@@ -453,46 +491,35 @@ export function DesignSection({
               ))}
             </Select>
 
-            {resolvedGarmentProcess === "FONDO_ENTERO" ? (
-              <Select
-                isDisabled={locked}
-                label="Color"
-                selectedKeys={value.color ? [String(value.color).toUpperCase()] : []}
-                onSelectionChange={(keys: any) => {
-                  const k = Array.from(keys as any)[0];
+            <div key={`garment-process-${resolvedGarmentProcess}`}>
+              {resolvedGarmentProcess === "FONDO_ENTERO" ? (
+                <Select
+                  key="garment-color-select"
+                  isDisabled={locked}
+                  label="Color"
+                  selectedKeys={value.color ? [String(value.color).toUpperCase()] : []}
+                  onSelectionChange={(keys: any) => {
+                    const k = Array.from(keys as any)[0];
 
-                  onChange({ ...value, color: k ? String(k) : null });
-                }}
-              >
-                {COLOR_OPTIONS.map((option) => (
-                  <SelectItem key={option}>{option}</SelectItem>
-                ))}
-              </Select>
-            ) : (
-              <div className="rounded-medium border border-default-200 bg-default-50 px-3 py-2 text-xs text-default-600">
-                En sublimación no se requiere seleccionar color de fondo.
-              </div>
-            )}
+                    onChange({ ...value, color: k ? String(k) : null });
+                  }}
+                >
+                  {COLOR_OPTIONS.map((option) => (
+                    <SelectItem key={option}>{option}</SelectItem>
+                  ))}
+                </Select>
+              ) : (
+                <div
+                  key="garment-color-hint"
+                  className="rounded-medium border border-default-200 bg-default-50 px-3 py-2 text-xs text-default-600"
+                >
+                  En sublimación no se requiere seleccionar color de fondo.
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Select
-              isDisabled={locked}
-              label="Proceso creación"
-              selectedKeys={value.process ? [String(value.process)] : []}
-              onSelectionChange={(keys: any) => {
-                const k = Array.from(keys as any)[0];
-
-                onChange({ ...value, process: k ? String(k) : null });
-              }}
-            >
-              <SelectItem key="PRODUCCION">Producción</SelectItem>
-              <SelectItem key="BODEGA">Bodega</SelectItem>
-              <SelectItem key="COMPRAS">Compras</SelectItem>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <Select
               isDisabled={locked}
               label="Tipo de cuello"
@@ -504,7 +531,9 @@ export function DesignSection({
               }}
             >
               {NECK_OPTIONS.map((opt) => (
-                <SelectItem key={opt.id}>{opt.label}</SelectItem>
+                <SelectItem key={opt.id} textValue={opt.label}>
+                  <span className="notranslate" translate="no">{opt.label}</span>
+                </SelectItem>
               ))}
             </Select>
 
@@ -522,45 +551,60 @@ export function DesignSection({
               <SelectItem key="LARGA">Larga</SelectItem>
               <SelectItem key="SISA">Sisa</SelectItem>
             </Select>
+
+            <Input
+              isDisabled={locked}
+              label="Tipo de puño"
+              value={String(value.cuffType ?? "")}
+              onValueChange={(v: string) =>
+                onChange({ ...value, cuffType: v || null })
+              }
+            />
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <Select
-              isDisabled={locked || lockDecorationByMolding}
-              label="Estampado"
-              selectedKeys={value.screenPrint ? ["SI"] : ["NO"]}
-              onSelectionChange={(keys: any) => {
-                const k = Array.from(keys as any)[0];
-
-                onChange({ ...value, screenPrint: String(k) === "SI" });
-              }}
-            >
-              <SelectItem key="NO">No</SelectItem>
-              <SelectItem key="SI">Sí</SelectItem>
-            </Select>
-            <Select
-              isDisabled={locked || lockDecorationByMolding}
-              label="Bordado"
-              selectedKeys={value.embroidery ? ["SI"] : ["NO"]}
-              onSelectionChange={(keys: any) => {
-                const k = Array.from(keys as any)[0];
-
-                onChange({ ...value, embroidery: String(k) === "SI" });
-              }}
-            >
-              <SelectItem key="NO">No</SelectItem>
-              <SelectItem key="SI">Sí</SelectItem>
-            </Select>
-            <Switch
-              isDisabled={locked}
-              isSelected={Boolean(value.requiresSocks)}
-              onValueChange={(v: boolean) =>
-                onChange({ ...value, requiresSocks: v })
-              }
-            >
-              Requiere medias
-            </Switch>
+            <div className="md:col-span-3">
+              <Switch
+                isDisabled={locked}
+                isSelected={Boolean(value.requiresSocks)}
+                onValueChange={(v: boolean) =>
+                  onChange({ ...value, requiresSocks: v })
+                }
+              >
+                Requiere medias
+              </Switch>
+            </div>
           </div>
+
+          {moldingTechnicalSections && moldingTechnicalSections.length > 0 ? (
+            <div className="space-y-3 rounded-medium border border-default-200 bg-default-50 p-3">
+              <div>
+                <div className="text-sm font-semibold">Ficha técnica derivada de moldería</div>
+                <div className="text-xs text-default-500">
+                  Campos técnicos aplicados desde la moldería que no se duplican en el formulario principal del diseño.
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {moldingTechnicalSections.map((section) => (
+                  <div
+                    key={section.title}
+                    className="rounded-medium border border-default-200 bg-content1 p-3"
+                  >
+                    <div className="mb-2 text-sm font-semibold">{section.title}</div>
+                    <div className="space-y-2 text-sm">
+                      {section.fields.map((field) => (
+                        <div key={`${section.title}-${field.label}`} className="grid grid-cols-[140px_1fr] gap-2">
+                          <div className="text-default-500">{field.label}</div>
+                          <div className="font-medium notranslate" translate="no">{field.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </>
       ) : (
         <div className="rounded-medium border border-warning-200 bg-warning-50 px-3 py-2 text-xs text-warning-700">

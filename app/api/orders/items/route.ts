@@ -15,6 +15,7 @@ import {
   orders,
   prefacturas,
   products,
+  quotationItems,
   quotations,
 } from "@/src/db/schema";
 import {
@@ -23,6 +24,7 @@ import {
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
+import { getOrderDesignQuantityLimitError } from "@/src/utils/order-item-quantity-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -83,6 +85,14 @@ function toPositiveInt(v: unknown) {
   return i > 0 ? i : null;
 }
 
+function normalizeClosureQuantity(v: unknown) {
+  const n = toPositiveInt(v);
+
+  if (n === 1 || n === 2 || n === 4) return n;
+
+  return null;
+}
+
 function normalizeOperationalProcess(v: unknown) {
   const raw = String(v ?? "")
     .trim()
@@ -118,6 +128,17 @@ function normalizeProductionTechnique(v: unknown) {
   return "SUBLIMACION";
 }
 
+function normalizeScreenPrintType(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "DTF") return "DTF";
+  if (raw === "VINILO") return "VINILO";
+
+  return null;
+}
+
 function normalizePosition(v: unknown) {
   const raw = String(v ?? "")
     .trim()
@@ -150,13 +171,35 @@ function normalizeSockLength(v: unknown) {
   return null;
 }
 
+function normalizeOrderConfigurationMode(v: unknown) {
+  const raw = String(v ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (raw === "PRENDA") return "PRENDA";
+  if (raw === "CONJUNTO") return "CONJUNTO";
+  if (raw === "CONJUNTO_ARQUERO") return "CONJUNTO_ARQUERO";
+
+  return null;
+}
+
 function validatePositionsBusiness(
   positionsInput: unknown,
-  designTypeInput: unknown,
-  teamsInput: unknown,
+  orderConfigurationModeInput: unknown,
 ) {
+  const orderConfigurationMode = normalizeOrderConfigurationMode(
+    orderConfigurationModeInput,
+  );
+
+  if (
+    orderConfigurationMode !== "CONJUNTO_ARQUERO" &&
+    (!Array.isArray(positionsInput) || positionsInput.length === 0)
+  ) {
+    return null;
+  }
+
   if (!Array.isArray(positionsInput) || positionsInput.length === 0) {
-    return "Debes configurar al menos una posición del diseño.";
+    return "Debes configurar posiciones y cantidades para conjunto + arquero.";
   }
 
   const normalized = positionsInput
@@ -174,27 +217,14 @@ function validatePositionsBusiness(
     return "La cantidad por posición no puede ser negativa.";
   }
 
-  if (normalized.length > 1) {
-    const set = new Set(normalized.map((row: any) => row.position));
-
-    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
-      return "Si defines más de una posición, debes incluir JUGADOR y ARQUERO.";
-    }
+  if (orderConfigurationMode !== "CONJUNTO_ARQUERO") {
+    return null;
   }
 
-  const designType = normalizeDesignType(designTypeInput);
-  const hasTeams = Array.isArray(teamsInput) && teamsInput.length > 0;
+  const set = new Set(normalized.map((row: any) => row.position));
 
-  if (hasTeams) {
-    const set = new Set(normalized.map((row: any) => row.position));
-
-    if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
-      return "Si configuras equipos, debes tener posiciones JUGADOR y ARQUERO.";
-    }
-  }
-
-  if (designType === "PRODUCCION" && normalized.length < 2) {
-    return "Para design type PRODUCCION debes definir al menos JUGADOR y ARQUERO.";
+  if (!(set.has("JUGADOR") && set.has("ARQUERO"))) {
+    return "Para conjunto + arquero debes definir al menos JUGADOR y ARQUERO.";
   }
 
   return null;
@@ -501,8 +531,7 @@ export async function POST(request: Request) {
 
   const positionsValidationError = validatePositionsBusiness(
     body.positions,
-    body.designType ?? body.process,
-    body.teams,
+    body.orderConfigurationMode,
   );
 
   if (positionsValidationError) {
@@ -557,6 +586,17 @@ export async function POST(request: Request) {
         );
       }
 
+      const quantityLimitError = await getOrderDesignQuantityLimitError(tx, {
+        orderId,
+        nextItemQuantity: qty,
+      });
+
+      if (quantityLimitError) {
+        throw new Error(
+          `La suma de diseños del pedido no puede superar ${quantityLimitError.agreedUnits} unidades acordadas. Disponibles: ${quantityLimitError.availableUnits}.`,
+        );
+      }
+
       const productId = toNullableString(body.productId);
 
       if (!productId) {
@@ -571,6 +611,29 @@ export async function POST(request: Request) {
 
       if (!productRow || productRow.isActive === false) {
         throw new Error("producto requerido");
+      }
+
+      const [prefacturaLink] = await tx
+        .select({ quotationId: prefacturas.quotationId })
+        .from(prefacturas)
+        .where(eq(prefacturas.orderId, orderId))
+        .limit(1);
+
+      if (prefacturaLink?.quotationId) {
+        const allowedRows = await tx
+          .select({ productId: quotationItems.productId })
+          .from(quotationItems)
+          .where(eq(quotationItems.quotationId, prefacturaLink.quotationId));
+
+        const allowedProductIds = new Set(
+          allowedRows.map((row) => String(row.productId ?? "").trim()),
+        );
+
+        if (allowedProductIds.size > 0 && !allowedProductIds.has(productId)) {
+          throw new Error(
+            "El producto seleccionado no está habilitado en la prefactura del pedido",
+          );
+        }
       }
 
       const resolvedUnitPrice = resolveUnitPriceByRule({
@@ -597,6 +660,18 @@ export async function POST(request: Request) {
       const normalizedProductionTechnique = normalizeProductionTechnique(
         body.productionTechnique,
       );
+      const normalizedScreenPrintType = normalizeScreenPrintType(
+        body.screenPrintType,
+      );
+      const effectiveScreenPrint = normalizedScreenPrintType
+        ? true
+        : Boolean(body.screenPrint ?? false);
+      const effectiveScreenPrintType = normalizedScreenPrintType
+        ? normalizedScreenPrintType
+        : effectiveScreenPrint
+          ? "DTF"
+          : null;
+
       if (normalizedProductionTechnique === "FONDO_ENTERO") {
         const hasColor = Boolean(String(body.color ?? "").trim());
 
@@ -628,7 +703,8 @@ export async function POST(request: Request) {
           clothingImageOneUrl,
           clothingImageTwoUrl,
           logoImageUrl,
-          screenPrint: Boolean(body.screenPrint ?? false),
+          screenPrint: effectiveScreenPrint,
+          screenPrintType: effectiveScreenPrintType,
           embroidery: Boolean(body.embroidery ?? false),
           buttonhole: Boolean(body.buttonhole ?? false),
           snap: Boolean(body.snap ?? false),
@@ -646,6 +722,7 @@ export async function POST(request: Request) {
           labelBrand: toNullableString(body.labelBrand),
           estimatedLeadDays,
           neckType: toNullableString(body.neckType),
+          cuffType: toNullableString(body.cuffType),
           sleeve: toNullableString(body.sleeve),
           color: toNullableString(body.color),
           requiresSocks: Boolean(body.requiresSocks ?? false),
@@ -692,11 +769,14 @@ export async function POST(request: Request) {
             position: normalizePosition(s.position) as any,
             sockLength: normalizeSockLength(s.sockLength) as any,
             color: toNullableString(s.color),
+            material: toNullableString(s.material),
+            isDesigned: Boolean(s.isDesigned),
             size: String(s.size ?? ""),
             quantity:
               s.quantity === undefined ? null : toPositiveInt(s.quantity),
             description: toNullableString(s.description),
             imageUrl: toNullableString(s.imageUrl),
+            logoImageUrl: toNullableString(s.logoImageUrl),
           })) as any,
         );
       }
@@ -788,6 +868,10 @@ export async function POST(request: Request) {
             hasReflectiveTape: Boolean(sr.hasReflectiveTape),
             reflectiveTapeLocation: toNullableString(sr.reflectiveTapeLocation),
             hasSideStripes: Boolean(sr.hasSideStripes),
+            closureType: toNullableString(sr.closureType),
+            closureQuantity: normalizeClosureQuantity(sr.closureQuantity),
+            hasCordon: Boolean(sr.hasCordon),
+            hasElastic: Boolean(sr.hasElastic),
             notes: toNullableString(sr.notes),
           })) as any,
         );
