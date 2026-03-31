@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
+import { Chip } from "@heroui/chip";
 import {
   Dropdown,
   DropdownItem,
@@ -27,6 +28,7 @@ import {
   ModalHeader,
 } from "@heroui/modal";
 import { Select, SelectItem } from "@heroui/select";
+import { Tooltip } from "@heroui/tooltip";
 import NextLink from "next/link";
 import {
   BsEye,
@@ -325,6 +327,14 @@ export function PrefacturasTab({
   const [approveTarget, setApproveTarget] = useState<PrefacturaRow | null>(null);
   const [approveNote, setApproveNote] = useState("");
   const [approveReference, setApproveReference] = useState("");
+
+  // ── SIIGO integration state ────────────────────────────────────────────────
+  const [siigoSending, setSiigoSending] = useState<string | null>(null);
+  const [siigoPolling, setSiigoPolling] = useState<string | null>(null);
+  const [siigoErrorModal, setSiigoErrorModal] = useState<{
+    prefacturaCode: string;
+    message: string;
+  } | null>(null);
 
   const resolveTargetStatus = (
     currentStatusRaw: string,
@@ -883,7 +893,7 @@ export function PrefacturasTab({
                           View order
                         </DropdownItem>
                       ) : null}
-                      {canEdit ? (
+                      {canEdit && !isSiigoBlocked(row) ? (
                         <DropdownItem
                           key="advance"
                           isDisabled={isSiigoBlocked(row)}
@@ -891,6 +901,66 @@ export function PrefacturasTab({
                           onPress={() => openAdvanceModal(row)}
                         >
                           Pay advance
+                        </DropdownItem>
+                      ) : null}
+                      {canEdit && isSiigoBlocked(row) ? (
+                        <DropdownItem
+                          key="siigo-blocked"
+                          isDisabled
+                          startContent={<BsLockFill className="text-warning" />}
+                        >
+                          Bloqueada por SIIGO ({row.siigoStatus})
+                        </DropdownItem>
+                      ) : null}
+                      {canEdit && canSendToSiigo(row) ? (
+                        <DropdownItem
+                          key="siigo-send"
+                          startContent={
+                            siigoSending === row.id ? (
+                              <BsArrowRepeat className="animate-spin" />
+                            ) : (
+                              <BsSend className="text-primary" />
+                            )
+                          }
+                          onPress={() => handleSendToSiigo(row)}
+                        >
+                          {siigoSending === row.id
+                            ? "Enviando a SIIGO…"
+                            : "Enviar a SIIGO"}
+                        </DropdownItem>
+                      ) : null}
+                      {canEdit && canPollSiigo(row) ? (
+                        <DropdownItem
+                          key="siigo-poll"
+                          startContent={
+                            siigoPolling === row.id ? (
+                              <BsArrowRepeat className="animate-spin" />
+                            ) : (
+                              <BsArrowRepeat className="text-primary" />
+                            )
+                          }
+                          onPress={() => handlePollSiigo(row)}
+                        >
+                          {siigoPolling === row.id
+                            ? "Consultando SIIGO…"
+                            : "Actualizar estado SIIGO"}
+                        </DropdownItem>
+                      ) : null}
+                      {row.siigoStatus === "ERROR" && row.siigoErrorMessage ? (
+                        <DropdownItem
+                          key="siigo-error"
+                          className="text-danger"
+                          startContent={
+                            <BsExclamationCircle className="text-danger" />
+                          }
+                          onPress={() =>
+                            setSiigoErrorModal({
+                              prefacturaCode: row.prefacturaCode,
+                              message: row.siigoErrorMessage ?? "",
+                            })
+                          }
+                        >
+                          Ver error SIIGO
                         </DropdownItem>
                       ) : null}
                       {canChangeStatus && canApproveAdvanceAction(row) ? (
@@ -1265,6 +1335,32 @@ export function PrefacturasTab({
               onPress={confirmReadyDispatch}
             >
               {readySubmitting ? "Confirming..." : "Confirm shipment"}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* SIIGO Error Detail Modal */}
+      <Modal
+        isOpen={Boolean(siigoErrorModal)}
+        onClose={() => setSiigoErrorModal(null)}
+      >
+        <ModalContent>
+          <ModalHeader>
+            Error SIIGO — {siigoErrorModal?.prefacturaCode}
+          </ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-danger whitespace-pre-wrap break-words">
+              {siigoErrorModal?.message ?? "Sin detalle de error."}
+            </p>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="primary"
+              variant="flat"
+              onPress={() => setSiigoErrorModal(null)}
+            >
+              Cerrar
             </Button>
           </ModalFooter>
         </ModalContent>

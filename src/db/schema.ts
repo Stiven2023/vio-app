@@ -735,6 +735,11 @@ export const products = pgTable("products", {
   endDate: timestamp("end_date"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  // SIIGO sync tracking
+  siigoId: varchar("siigo_id", { length: 100 }),
+  siigoSynced: boolean("siigo_synced").default(false).notNull(),
+  siigoSyncedAt: timestamp("siigo_synced_at", { withTimezone: true }),
+  siigoSyncError: text("siigo_sync_error"),
 });
 
 export const additions = pgTable("additions", {
