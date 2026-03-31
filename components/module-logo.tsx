@@ -1,6 +1,6 @@
 import clsx from "clsx";
 
-type ModuleId = "erp" | "mes" | "crm";
+type ModuleId = "erp" | "mes" | "crm" | "hr";
 
 export function ModuleLogo({
   module,
@@ -113,6 +113,64 @@ export function ModuleLogo({
           <path
             d="m111 83-7-31c-1-3-4-5-7-4l-10 1 8 39 11-2c3-1 5-3 5-6Z"
             fill={accent}
+          />
+        </>
+      ) : null}
+
+      {module === "hr" ? (
+        <>
+          <circle cx="64" cy="38" fill={accent} r="16" />
+          <path
+            d="M32 95c0-18 14-32 32-32s32 14 32 32"
+            fill={accent}
+            stroke={stroke}
+            strokeLinejoin="round"
+            strokeWidth="1.5"
+          />
+          <rect
+            fill="color-mix(in srgb, var(--viomar-primary) 30%, transparent)"
+            height="30"
+            rx="4"
+            width="36"
+            x="46"
+            y="68"
+          />
+          <rect fill={accent} height="5" rx="1" width="36" x="46" y="68" />
+          <line
+            stroke={stroke}
+            strokeLinecap="round"
+            strokeWidth="2"
+            x1="54"
+            x2="54"
+            y1="65"
+            y2="71"
+          />
+          <line
+            stroke={stroke}
+            strokeLinecap="round"
+            strokeWidth="2"
+            x1="74"
+            x2="74"
+            y1="65"
+            y2="71"
+          />
+          <line
+            stroke={stroke}
+            strokeLinecap="round"
+            strokeWidth="1.5"
+            x1="52"
+            x2="72"
+            y1="82"
+            y2="82"
+          />
+          <line
+            stroke={stroke}
+            strokeLinecap="round"
+            strokeWidth="1.5"
+            x1="52"
+            x2="66"
+            y1="89"
+            y2="89"
           />
         </>
       ) : null}

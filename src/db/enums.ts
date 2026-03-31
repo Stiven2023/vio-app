@@ -374,6 +374,67 @@ Object.defineProperty(LeaveTypeEnum, "enumValues", {
 });
 
 /* ========================= */
+/*  EMPLOYEE REQUEST ENUMS   */
+/* ========================= */
+
+export const EmployeeRequestType = {
+  PERMISO: "PERMISO",
+  RECLAMO: "RECLAMO",
+  SOLICITUD: "SOLICITUD",
+  SUGERENCIA: "SUGERENCIA",
+  PQR: "PQR",
+} as const;
+
+export const employeeRequestTypeValues = [
+  "PERMISO",
+  "RECLAMO",
+  "SOLICITUD",
+  "SUGERENCIA",
+  "PQR",
+] as const;
+
+export const EmployeeRequestTypeEnum = z.enum(employeeRequestTypeValues);
+Object.defineProperty(EmployeeRequestTypeEnum, "enumValues", {
+  value: employeeRequestTypeValues,
+});
+
+export const EmployeeRequestStatus = {
+  PENDIENTE: "PENDIENTE",
+  EN_REVISION: "EN_REVISION",
+  APROBADO: "APROBADO",
+  RECHAZADO: "RECHAZADO",
+  RESUELTO: "RESUELTO",
+} as const;
+
+export const employeeRequestStatusValues = [
+  "PENDIENTE",
+  "EN_REVISION",
+  "APROBADO",
+  "RECHAZADO",
+  "RESUELTO",
+] as const;
+
+export const EmployeeRequestStatusEnum = z.enum(employeeRequestStatusValues);
+Object.defineProperty(EmployeeRequestStatusEnum, "enumValues", {
+  value: employeeRequestStatusValues,
+});
+
+export const EmployeeRequestPriority = {
+  BAJA: "BAJA",
+  MEDIA: "MEDIA",
+  ALTA: "ALTA",
+} as const;
+
+export const employeeRequestPriorityValues = ["BAJA", "MEDIA", "ALTA"] as const;
+
+export const EmployeeRequestPriorityEnum = z.enum(
+  employeeRequestPriorityValues,
+);
+Object.defineProperty(EmployeeRequestPriorityEnum, "enumValues", {
+  value: employeeRequestPriorityValues,
+});
+
+/* ========================= */
 /*     ROLE ENUMS           */
 /* ========================= */
 
