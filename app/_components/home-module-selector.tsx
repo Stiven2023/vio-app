@@ -24,7 +24,7 @@ const PRIMARY_DARK = "var(--viomar-primary-dark)";
 const FG = "var(--viomar-fg)";
 
 type Section = {
-  id: "erp" | "mes" | "crm";
+  id: "erp" | "mes" | "crm" | "hr";
   title: string;
   fullTitle: string;
   description: string;
@@ -67,6 +67,17 @@ const sections: Section[] = [
     accentWord: "CLIENTS",
     stat: "3x",
     statLabel: "Conversion",
+  },
+  {
+    id: "hr",
+    title: "RR.HH.",
+    fullTitle: "Recursos Humanos",
+    description:
+      "Solicita vacaciones, consulta tus solicitudes y accede a certificados y cursos.",
+    route: "/portal/hr",
+    accentWord: "EMPLEADOS",
+    stat: "24h",
+    statLabel: "Respuesta",
   },
 ];
 
