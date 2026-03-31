@@ -216,6 +216,15 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         withholdingIcaAmount: prefacturas.withholdingIcaAmount,
         withholdingIvaAmount: prefacturas.withholdingIvaAmount,
         totalAfterWithholdings: prefacturas.totalAfterWithholdings,
+        // SIIGO electronic invoicing tracking
+        siigoStatus: prefacturas.siigoStatus,
+        siigoInvoiceId: prefacturas.siigoInvoiceId,
+        siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
+        siigoIssuedAt: prefacturas.siigoIssuedAt,
+        siigoSentAt: prefacturas.siigoSentAt,
+        siigoLastSyncAt: prefacturas.siigoLastSyncAt,
+        siigoErrorMessage: prefacturas.siigoErrorMessage,
+        siigoCufe: prefacturas.siigoCufe,
         clientName: sql<
           string | null
         >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,

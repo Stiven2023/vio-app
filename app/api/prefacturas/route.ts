@@ -298,6 +298,10 @@ export async function GET(request: Request) {
           documentType: documentTypeExpr,
           approvedAt: prefacturas.approvedAt,
           createdAt: prefacturas.createdAt,
+          siigoStatus: prefacturas.siigoStatus,
+          siigoInvoiceId: prefacturas.siigoInvoiceId,
+          siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
+          siigoErrorMessage: prefacturas.siigoErrorMessage,
         })
         .from(prefacturas)
         .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -350,6 +354,10 @@ export async function GET(request: Request) {
             documentType: sql<string | null>`null`,
             approvedAt: prefacturas.approvedAt,
             createdAt: prefacturas.createdAt,
+            siigoStatus: prefacturas.siigoStatus,
+            siigoInvoiceId: prefacturas.siigoInvoiceId,
+            siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
+            siigoErrorMessage: prefacturas.siigoErrorMessage,
           })
           .from(prefacturas)
           .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -410,6 +418,10 @@ export async function GET(request: Request) {
             totalProducts: null,
             clientName: null,
             documentType: null,
+            siigoStatus: null,
+            siigoInvoiceId: null,
+            siigoInvoiceNumber: null,
+            siigoErrorMessage: null,
           }));
         } catch (err3) {
           console.error(
