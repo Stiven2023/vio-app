@@ -254,6 +254,7 @@ export async function GET(request: Request) {
       documentType: string | null;
       approvedAt: Date | null;
       createdAt: Date | null;
+      siigoStatus: string | null;
     }> = [];
     let total = 0;
 
@@ -298,6 +299,7 @@ export async function GET(request: Request) {
           documentType: documentTypeExpr,
           approvedAt: prefacturas.approvedAt,
           createdAt: prefacturas.createdAt,
+          siigoStatus: prefacturas.siigoStatus,
         })
         .from(prefacturas)
         .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -350,6 +352,7 @@ export async function GET(request: Request) {
             documentType: sql<string | null>`null`,
             approvedAt: prefacturas.approvedAt,
             createdAt: prefacturas.createdAt,
+            siigoStatus: prefacturas.siigoStatus,
           })
           .from(prefacturas)
           .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -410,6 +413,7 @@ export async function GET(request: Request) {
             totalProducts: null,
             clientName: null,
             documentType: null,
+            siigoStatus: null,
           }));
         } catch (err3) {
           console.error(

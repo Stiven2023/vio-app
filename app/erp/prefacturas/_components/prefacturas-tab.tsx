@@ -35,6 +35,8 @@ import {
   BsPlusCircle,
   BsThreeDotsVertical,
   BsTrash,
+  BsSend,
+  BsArrowRepeat,
 } from "react-icons/bs";
 
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
@@ -64,6 +66,7 @@ type PrefacturaRow = {
   documentType: "F" | "R" | null;
   approvedAt: string | null;
   createdAt: string | null;
+  siigoStatus: string | null;
 };
 
 type BankOption = {
@@ -661,6 +664,99 @@ export function PrefacturasTab({
     );
   };
 
+  const isSiigoBlocked = (row: PrefacturaRow) => {
+    const s = String(row.siigoStatus ?? "").trim().toUpperCase();
+
+    return s === "SENT" || s === "INVOICED";
+  };
+
+  const [siigoPollLoading, setSiigoPollLoading] = useState(false);
+
+  const sendToSiigo = async (row: PrefacturaRow) => {
+    try {
+      await apiJson(`/api/prefacturas/${row.id}/siigo/send`, {
+        method: "POST",
+      });
+      toast.success(`Prefactura ${row.prefacturaCode} enviada a SIIGO`);
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const pollSiigoStatus = async () => {
+    if (siigoPollLoading) return;
+
+    try {
+      setSiigoPollLoading(true);
+      const result = await apiJson<{
+        ok: boolean;
+        polled: number;
+        invoiced: number;
+        errors: number;
+      }>("/api/prefacturas/siigo/poll", { method: "POST" });
+
+      toast.success(
+        `SIIGO poll: ${result.polled} consultadas, ${result.invoiced} facturadas, ${result.errors} con error`,
+      );
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSiigoPollLoading(false);
+    }
+  };
+
+  const getSiigoStatusChip = (row: PrefacturaRow) => {
+    const s = String(row.siigoStatus ?? "").trim().toUpperCase();
+
+    if (!s || s === "NOT_APPLICABLE" || row.documentType !== "F") {
+      return (
+        <span className="rounded bg-default-100 px-1.5 py-0.5 text-xs text-default-500">
+          N/A
+        </span>
+      );
+    }
+
+    if (s === "READY") {
+      return (
+        <span className="rounded bg-primary-100 px-1.5 py-0.5 text-xs text-primary-700">
+          READY
+        </span>
+      );
+    }
+
+    if (s === "SENT") {
+      return (
+        <span className="rounded bg-warning-100 px-1.5 py-0.5 text-xs text-warning-700">
+          SENT
+        </span>
+      );
+    }
+
+    if (s === "INVOICED") {
+      return (
+        <span className="rounded bg-success-100 px-1.5 py-0.5 text-xs text-success-700">
+          INVOICED
+        </span>
+      );
+    }
+
+    if (s === "ERROR") {
+      return (
+        <span className="rounded bg-danger-100 px-1.5 py-0.5 text-xs text-danger-700">
+          ERROR
+        </span>
+      );
+    }
+
+    return (
+      <span className="rounded bg-default-100 px-1.5 py-0.5 text-xs text-default-500">
+        {s || "–"}
+      </span>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -704,6 +800,14 @@ export function PrefacturasTab({
               <BsPlusCircle /> New prefacture
             </Button>
           ) : null}
+          <Button
+            isLoading={siigoPollLoading}
+            startContent={<BsArrowRepeat />}
+            variant="flat"
+            onPress={pollSiigoStatus}
+          >
+            Actualizar SIIGO
+          </Button>
           <Button variant="flat" onPress={refresh}>
             Refresh
           </Button>
@@ -720,6 +824,7 @@ export function PrefacturasTab({
             "Type",
             "Client",
             "Status",
+            "SIIGO",
             "Total",
             "Created",
             "Actions",
@@ -734,6 +839,7 @@ export function PrefacturasTab({
             <TableColumn>Type</TableColumn>
             <TableColumn>Client</TableColumn>
             <TableColumn>Status</TableColumn>
+            <TableColumn>SIIGO</TableColumn>
             <TableColumn>Total</TableColumn>
             <TableColumn>Created</TableColumn>
             <TableColumn>Actions</TableColumn>
@@ -756,6 +862,7 @@ export function PrefacturasTab({
                 <TableCell>{row.orderType ?? "-"}</TableCell>
                 <TableCell>{row.clientName ?? "-"}</TableCell>
                 <TableCell>{row.status}</TableCell>
+                <TableCell>{getSiigoStatusChip(row)}</TableCell>
                 <TableCell>{formatMoney(row.total)}</TableCell>
                 <TableCell>{formatDate(row.createdAt)}</TableCell>
                 <TableCell>
@@ -779,6 +886,7 @@ export function PrefacturasTab({
                       {canEdit ? (
                         <DropdownItem
                           key="advance"
+                          isDisabled={isSiigoBlocked(row)}
                           startContent={<BsPiggyBank />}
                           onPress={() => openAdvanceModal(row)}
                         >
@@ -805,11 +913,23 @@ export function PrefacturasTab({
                           Order / designs ready
                         </DropdownItem>
                       ) : null}
+                      {canEdit &&
+                      row.documentType === "F" &&
+                      !isSiigoBlocked(row) ? (
+                        <DropdownItem
+                          key="siigo-send"
+                          startContent={<BsSend />}
+                          onPress={() => sendToSiigo(row)}
+                        >
+                          Enviar a SIIGO
+                        </DropdownItem>
+                      ) : null}
                       {canDelete ? (
                         <DropdownItem
                           key="delete"
                           className="text-danger"
                           color="danger"
+                          isDisabled={isSiigoBlocked(row)}
                           startContent={<BsTrash />}
                           onPress={() => setPendingDelete(row)}
                         >
