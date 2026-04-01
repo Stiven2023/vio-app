@@ -83,7 +83,6 @@ export async function POST(
       siigoSentAt: null,
       siigoLastSyncAt: new Date(),
       siigoErrorMessage: `Reset por admin. Motivo: ${reason}. Estado anterior: ${previousStatus ?? "sin estado"}`,
-      siigoCufe: null,
     })
     .where(eq(prefacturas.id, prefacturaId));
 

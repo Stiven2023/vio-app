@@ -224,7 +224,6 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         siigoSentAt: prefacturas.siigoSentAt,
         siigoLastSyncAt: prefacturas.siigoLastSyncAt,
         siigoErrorMessage: prefacturas.siigoErrorMessage,
-        siigoCufe: prefacturas.siigoCufe,
         clientName: sql<
           string | null
         >`coalesce(${clients.name}, (select c2.name from clients c2 where c2.id = ${quotations.clientId}))`,

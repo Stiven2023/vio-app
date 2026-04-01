@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+
+import { Suspense } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -25,7 +28,9 @@ export default async function StatusHistoryPage() {
         Review status changes for orders and designs.
       </p>
       <div className="mt-6">
-        <StatusHistoryClient />
+        <Suspense fallback={<div className="text-sm text-default-500">Cargando...</div>}>
+          <StatusHistoryClient />
+        </Suspense>
       </div>
     </div>
   );

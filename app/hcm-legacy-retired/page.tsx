@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 type RetiredPageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     from?: string | string[];
-  };
+  }>;
 };
 
 function readFromPath(value: string | string[] | undefined) {
@@ -12,8 +12,9 @@ function readFromPath(value: string | string[] | undefined) {
   return value ?? "";
 }
 
-export default function HcmLegacyRetiredPage({ searchParams }: RetiredPageProps) {
-  const from = readFromPath(searchParams?.from);
+export default async function HcmLegacyRetiredPage({ searchParams }: RetiredPageProps) {
+  const resolvedSearchParams = await searchParams;
+  const from = readFromPath(resolvedSearchParams?.from);
 
   return (
     <main className="mx-auto flex min-h-[70vh] w-full max-w-3xl flex-col justify-center px-6 py-12">

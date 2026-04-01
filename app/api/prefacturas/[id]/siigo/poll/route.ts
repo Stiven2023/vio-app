@@ -142,7 +142,6 @@ export async function POST(
         siigoInvoiceNumber: invoiceNumber,
         siigoIssuedAt: issuedAt,
         siigoLastSyncAt: new Date(),
-        siigoCufe: cufe,
         siigoErrorMessage:
           newStatus === "REJECTED" && legalizingErrors
             ? legalizingErrors

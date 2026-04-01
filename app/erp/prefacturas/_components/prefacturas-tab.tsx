@@ -39,6 +39,7 @@ import {
   BsTrash,
   BsSend,
   BsArrowRepeat,
+  BsLockFill,
 } from "react-icons/bs";
 
 import { FilterSearch } from "@/app/erp/catalog/_components/ui/filter-search";
@@ -910,57 +911,6 @@ export function PrefacturasTab({
                           startContent={<BsLockFill className="text-warning" />}
                         >
                           Bloqueada por SIIGO ({row.siigoStatus})
-                        </DropdownItem>
-                      ) : null}
-                      {canEdit && canSendToSiigo(row) ? (
-                        <DropdownItem
-                          key="siigo-send"
-                          startContent={
-                            siigoSending === row.id ? (
-                              <BsArrowRepeat className="animate-spin" />
-                            ) : (
-                              <BsSend className="text-primary" />
-                            )
-                          }
-                          onPress={() => handleSendToSiigo(row)}
-                        >
-                          {siigoSending === row.id
-                            ? "Enviando a SIIGO…"
-                            : "Enviar a SIIGO"}
-                        </DropdownItem>
-                      ) : null}
-                      {canEdit && canPollSiigo(row) ? (
-                        <DropdownItem
-                          key="siigo-poll"
-                          startContent={
-                            siigoPolling === row.id ? (
-                              <BsArrowRepeat className="animate-spin" />
-                            ) : (
-                              <BsArrowRepeat className="text-primary" />
-                            )
-                          }
-                          onPress={() => handlePollSiigo(row)}
-                        >
-                          {siigoPolling === row.id
-                            ? "Consultando SIIGO…"
-                            : "Actualizar estado SIIGO"}
-                        </DropdownItem>
-                      ) : null}
-                      {row.siigoStatus === "ERROR" && row.siigoErrorMessage ? (
-                        <DropdownItem
-                          key="siigo-error"
-                          className="text-danger"
-                          startContent={
-                            <BsExclamationCircle className="text-danger" />
-                          }
-                          onPress={() =>
-                            setSiigoErrorModal({
-                              prefacturaCode: row.prefacturaCode,
-                              message: row.siigoErrorMessage ?? "",
-                            })
-                          }
-                        >
-                          Ver error SIIGO
                         </DropdownItem>
                       ) : null}
                       {canChangeStatus && canApproveAdvanceAction(row) ? (

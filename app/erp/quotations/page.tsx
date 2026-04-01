@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { QuotationsList } from "./_components/QuotationsList";
 
 export default function QuotationsPage() {

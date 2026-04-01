@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+
+import { Suspense } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -161,7 +164,9 @@ export default async function AccountingLandingPage() {
         </p>
       </header>
 
-      <AccountingHubTabs groups={visibleGroups} />
+      <Suspense fallback={<div className="text-sm text-default-500">Cargando...</div>}>
+        <AccountingHubTabs groups={visibleGroups} />
+      </Suspense>
     </div>
   );
 }

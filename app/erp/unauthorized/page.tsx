@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import NextLink from "next/link";
 import { Button } from "@heroui/button";
 import { Card, CardBody } from "@heroui/card";
