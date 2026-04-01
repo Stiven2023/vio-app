@@ -5,6 +5,7 @@ export async function buildSiigoProductPayload(
     priceCopBase?: string | null;
   },
   accountGroup: number,
+  taxId?: number,
 ) {
   const basePrice = parseFloat(String(product.priceCopBase ?? "0")) || 0;
 
@@ -18,6 +19,10 @@ export async function buildSiigoProductPayload(
     tax_classification: "Taxed",
     tax_included: false,
     tax_consumption_value: 0,
+    taxes:
+      Number.isFinite(taxId) && Number(taxId) > 0
+        ? [{ id: Number(taxId) }]
+        : [],
     prices: [
       {
         currency_code: "COP",

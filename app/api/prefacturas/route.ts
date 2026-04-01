@@ -255,6 +255,9 @@ export async function GET(request: Request) {
       approvedAt: Date | null;
       createdAt: Date | null;
       siigoStatus: string | null;
+      siigoInvoiceId: string | null;
+      siigoInvoiceNumber: string | null;
+      siigoErrorMessage: string | null;
     }> = [];
     let total = 0;
 
@@ -300,6 +303,9 @@ export async function GET(request: Request) {
           approvedAt: prefacturas.approvedAt,
           createdAt: prefacturas.createdAt,
           siigoStatus: prefacturas.siigoStatus,
+          siigoInvoiceId: prefacturas.siigoInvoiceId,
+          siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
+          siigoErrorMessage: prefacturas.siigoErrorMessage,
         })
         .from(prefacturas)
         .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -353,6 +359,9 @@ export async function GET(request: Request) {
             approvedAt: prefacturas.approvedAt,
             createdAt: prefacturas.createdAt,
             siigoStatus: prefacturas.siigoStatus,
+            siigoInvoiceId: prefacturas.siigoInvoiceId,
+            siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
+            siigoErrorMessage: prefacturas.siigoErrorMessage,
           })
           .from(prefacturas)
           .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -414,6 +423,9 @@ export async function GET(request: Request) {
             clientName: null,
             documentType: null,
             siigoStatus: null,
+            siigoInvoiceId: null,
+            siigoInvoiceNumber: null,
+            siigoErrorMessage: null,
           }));
         } catch (err3) {
           console.error(

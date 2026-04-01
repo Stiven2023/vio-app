@@ -5,24 +5,16 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AccountingHubTabs } from "./_components/accounting-hub-tabs";
+import {
+  ACCOUNTING_HUB_COPY,
+  buildAccountingHubGroups,
+  hasAccountingHubAccess,
+  resolveAccountingLocale,
+} from "./_lib/hub";
 
 import { checkPermissions } from "@/src/utils/permission-middleware";
 
 type AccessMap = Record<string, boolean>;
-
-type AccountingAccessLink = {
-  title: string;
-  href: string;
-  description: string;
-  enabled: boolean;
-};
-
-type AccountingGroup = {
-  key: string;
-  title: string;
-  description: string;
-  items: AccountingAccessLink[];
-};
 
 export default async function AccountingLandingPage() {
   const token = (await cookies()).get("auth_token")?.value;
@@ -32,6 +24,10 @@ export default async function AccountingLandingPage() {
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),
   });
+  const locale = resolveAccountingLocale(
+    (await cookies()).get("NEXT_LOCALE")?.value,
+  );
+  const copy = ACCOUNTING_HUB_COPY[locale];
 
   const perms = (await checkPermissions(req, [
     "VER_PEDIDO",
@@ -44,128 +40,33 @@ export default async function AccountingLandingPage() {
     "VER_CAJA_MENOR",
   ])) as AccessMap;
 
-  const groups: AccountingGroup[] = [
-    {
-      key: "docs",
-      title: "Documentos comerciales",
-      description: "Emisión y control documental de ventas.",
-      items: [
-        {
-          title: "Facturas",
-          href: "/erp/contabilidad-modulo/facturas",
-          description: "Gestión de facturación final.",
-          enabled: Boolean(perms.VER_PEDIDO),
-        },
-        {
-          title: "Remisiones",
-          href: "/erp/contabilidad-modulo/remisiones",
-          description: "Control de despachos y soportes.",
-          enabled: Boolean(perms.VER_PEDIDO),
-        },
-        {
-          title: "Retenciones",
-          href: "/erp/contabilidad-modulo/retenciones",
-          description: "Retefuente, reteICA y reteIVA.",
-          enabled: Boolean(perms.VER_RETENCIONES),
-        },
-      ],
-    },
-    {
-      key: "cash-banks",
-      title: "Recaudo y bancos",
-      description: "Ingreso de pagos y control de extractos.",
-      items: [
-        {
-          title: "Recibo de caja",
-          href: "/erp/contabilidad-modulo/recibo-caja",
-          description: "Aplicación de recaudos por cliente.",
-          enabled: Boolean(perms.VER_RECIBO_CAJA),
-        },
-        {
-          title: "Consignaciones",
-          href: "/erp/depositos",
-          description: "Depósitos, abonos y macro contable.",
-          enabled: Boolean(perms.VER_PEDIDO),
-        },
-        {
-          title: "Extractos bancarios",
-          href: "/erp/contabilidad-modulo/extractos-bancarios",
-          description: "Base para conciliación por período.",
-          enabled: Boolean(perms.VER_CONCILIACION_BANCARIA),
-        },
-      ],
-    },
-    {
-      key: "receivables",
-      title: "Cartera y recuperación",
-      description: "Seguimiento de cuentas por cobrar.",
-      items: [
-        {
-          title: "Cartera",
-          href: "/erp/contabilidad-modulo/cartera",
-          description: "Cartera por cliente y vencimientos.",
-          enabled: Boolean(perms.VER_CARTERA),
-        },
-        {
-          title: "Factorización",
-          href: "/erp/contabilidad-modulo/factoring",
-          description: "Control de cesión de cartera.",
-          enabled: Boolean(perms.VER_FACTORING),
-        },
-      ],
-    },
-    {
-      key: "close-control",
-      title: "Cierre y control",
-      description: "Visión de resultados y gastos operativos.",
-      items: [
-        {
-          title: "Caja menor",
-          href: "/erp/contabilidad-modulo/caja-menor",
-          description: "Fondos y movimientos menores.",
-          enabled: Boolean(perms.VER_CAJA_MENOR),
-        },
-        {
-          title: "Estado de resultados",
-          href: "/erp/contabilidad-modulo/estado-resultados",
-          description: "Pérdidas y ganancias por período.",
-          enabled: Boolean(perms.VER_ESTADO_RESULTADOS),
-        },
-      ],
-    },
-  ];
-
-  const visibleGroups = groups
-    .map((group) => ({
-      ...group,
-      items: group.items
-        .filter((item) => item.enabled)
-        .map((item) => ({
-          title: item.title,
-          href: item.href,
-          description: item.description,
-        })),
-    }))
-    .filter((group) => group.items.length > 0);
-
-  const hasAnyAccess = groups.some((group) =>
-    group.items.some((item) => item.enabled),
-  );
+  const visibleGroups = buildAccountingHubGroups(locale, perms);
+  const hasAnyAccess = hasAccountingHubAccess(perms);
 
   if (!hasAnyAccess) redirect("/unauthorized");
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16 pb-10 space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Contabilidad</h1>
-        <p className="text-default-600">
-          Accesos agrupados por bloque operativo para ejecutar el ciclo
-          contable completo.
-        </p>
+      <header className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold">{copy.pageTitle}</h1>
+            <p className="text-default-600">{copy.pageDescription}</p>
+          </div>
+          <a
+            className="inline-flex items-center justify-center rounded-medium border border-default-300 bg-content2 px-4 py-2 text-sm font-medium transition hover:border-primary hover:text-primary"
+            href="/api/contabilidad/formato-pruebas?format=csv"
+          >
+            Descargar formato de prueba (CSV)
+          </a>
+        </div>
       </header>
 
-      <Suspense fallback={<div className="text-sm text-default-500">Cargando...</div>}>
-        <AccountingHubTabs groups={visibleGroups} />
+      <Suspense fallback={<div className="text-sm text-default-500">{copy.loading}</div>}>
+        <AccountingHubTabs
+          ariaLabel={copy.navigationAriaLabel}
+          groups={visibleGroups}
+        />
       </Suspense>
     </div>
   );

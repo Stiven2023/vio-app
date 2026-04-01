@@ -11,7 +11,7 @@ type FilterOption = {
 type FilterSelectProps = {
   label: string;
   value: string;
-  options: FilterOption[];
+  options: readonly FilterOption[];
   onChange: (value: string) => void;
   isDisabled?: boolean;
   className?: string;

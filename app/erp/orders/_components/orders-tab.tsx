@@ -1,6 +1,12 @@
 "use client";
 
-import type { OrderListItem, OrdersOptions } from "../_lib/types";
+import type {
+  CommercialAction,
+  OrderHistoryItem,
+  OrderListItem,
+  OrdersOptions,
+  UiLocale,
+} from "../_lib/types";
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -40,6 +46,21 @@ import {
 } from "@heroui/modal";
 
 import { apiJson, getErrorMessage } from "../_lib/api";
+import {
+  getOrderStatusFilterOptions,
+  getOrderTypeFilterOptions,
+  ORDERS_TAB_COPY,
+} from "../_lib/orders-tab.constants";
+import {
+  calculatePaidPercent,
+  canRequestReadyDispatch,
+  canTakeCommercialDecision,
+  formatOrderCurrency,
+  formatOrderDate,
+  formatOrderLastUpdate,
+  getClientUiLocale,
+  resolveDispatchTarget,
+} from "../_lib/orders-tab.utils";
 import { usePaginatedApi } from "../_hooks/use-paginated-api";
 
 import { OrderModal } from "./order-modal";
@@ -50,28 +71,6 @@ import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { TableSkeleton } from "@/app/erp/catalog/_components/ui/table-skeleton";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { formatOrderStatusReason } from "@/src/utils/order-status-reason";
-
-const statusOptions: Array<{ value: string; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "PENDIENTE", label: "Pending" },
-  { value: "PENDIENTE_CONTABILIDAD", label: "Pending accounting" },
-  { value: "APROBADO_CONTABILIDAD", label: "Accounting approved" },
-  { value: "APROBACION", label: "Approval" },
-  { value: "PROGRAMACION", label: "Scheduling" },
-  { value: "PRODUCCION", label: "Production" },
-  { value: "ATRASADO", label: "Delayed" },
-  { value: "FINALIZADO", label: "Completed" },
-  { value: "ENTREGADO", label: "Delivered" },
-  { value: "CANCELADO", label: "Canceled" },
-];
-
-const typeOptions: Array<{ value: string; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "VN", label: "VN" },
-  { value: "VI", label: "VI" },
-  { value: "VT", label: "VT" },
-  { value: "VW", label: "VW" },
-];
 
 export function OrdersTab({
   canCreate,
@@ -92,32 +91,10 @@ export function OrdersTab({
   isAdvisor: boolean;
   advisorEmployeeId: string | null;
 }) {
-  const [uiLocale, setUiLocale] = useState<"en" | "es">("en");
+  const [uiLocale, setUiLocale] = useState<UiLocale>("en");
 
   useEffect(() => {
-    const readLocale = () => {
-      const fromStorage =
-        typeof window !== "undefined"
-          ? window.localStorage.getItem("preferredLanguage")
-          : null;
-      const fromCookie =
-        typeof document !== "undefined"
-          ? document.cookie
-              .split(";")
-              .map((part) => part.trim())
-              .find((part) => part.startsWith("NEXT_LOCALE="))
-              ?.split("=")[1] ?? null
-          : null;
-      const fromHtml =
-        typeof document !== "undefined"
-          ? document.documentElement.lang
-          : null;
-      const value = String(fromStorage || fromCookie || fromHtml || "en")
-        .trim()
-        .toLowerCase();
-
-      setUiLocale(value.startsWith("es") ? "es" : "en");
-    };
+    const readLocale = () => setUiLocale(getClientUiLocale());
 
     readLocale();
 
@@ -130,54 +107,15 @@ export function OrdersTab({
     };
   }, []);
 
-  const canShowReadyDispatchAction = (currentStatusRaw: string | null | undefined) => {
-    const currentStatus = String(currentStatusRaw ?? "")
-      .trim()
-      .toUpperCase();
-
-    return ![
-      "PROGRAMACION",
-      "PRODUCCION",
-      "ATRASADO",
-      "FINALIZADO",
-      "ENTREGADO",
-      "CANCELADO",
-    ].includes(currentStatus);
-  };
-
-  const formatCurrency = (
-    value: string | number | null | undefined,
-    currency: string | null | undefined,
-  ) => {
-    const amount = Number(value ?? 0);
-    const code =
-      String(currency ?? "COP").toUpperCase() === "USD" ? "USD" : "COP";
-
-    if (!Number.isFinite(amount)) return code === "USD" ? "$0.00" : "$0";
-
-    return new Intl.NumberFormat("es-CO", {
-      style: "currency",
-      currency: code,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
-  };
-
-  const formatDate = (value: string | null | undefined) => {
-    const raw = String(value ?? "").trim();
-
-    if (!raw) return "-";
-
-    const date = new Date(raw);
-
-    if (Number.isNaN(date.getTime())) return raw;
-
-    return date.toLocaleDateString("es-CO");
-  };
-
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
   const [type, setType] = useState("all");
+  const copy = ORDERS_TAB_COPY[uiLocale];
+  const statusOptions = useMemo(
+    () => getOrderStatusFilterOptions(uiLocale),
+    [uiLocale],
+  );
+  const typeOptions = useMemo(() => getOrderTypeFilterOptions(uiLocale), [uiLocale]);
 
   const endpoint = useMemo(() => {
     const sp = new URLSearchParams();
@@ -206,16 +144,7 @@ export function OrdersTab({
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrderListItem | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyItems, setHistoryItems] = useState<
-    Array<{
-      id: string;
-      status: string | null;
-      changedByName: string | null;
-      reasonCode: string | null;
-      meta: Record<string, unknown> | null;
-      createdAt: string | null;
-    }>
-  >([]);
+  const [historyItems, setHistoryItems] = useState<OrderHistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -232,82 +161,9 @@ export function OrdersTab({
   const [commercialOrder, setCommercialOrder] = useState<OrderListItem | null>(
     null,
   );
-  const [commercialAction, setCommercialAction] = useState<
-    "APPROVE" | "WAIT_FOR_PAYMENT"
-  >("APPROVE");
+  const [commercialAction, setCommercialAction] =
+    useState<CommercialAction>("APPROVE");
   const [commercialNote, setCommercialNote] = useState("");
-
-  const resolveTargetStatus = (
-    order: OrderListItem,
-    paidPercent: number,
-  ): { targetStatus: "APROBACION" | "PROGRAMACION" | null; reason: string } => {
-    const currentStatus = String(order.status ?? "")
-      .trim()
-      .toUpperCase();
-    const isPaidAtLeast50 = paidPercent >= 50;
-
-    if (
-      [
-        "PROGRAMACION",
-        "PRODUCCION",
-        "ATRASADO",
-        "FINALIZADO",
-        "ENTREGADO",
-        "CANCELADO",
-      ].includes(currentStatus)
-    ) {
-      return {
-        targetStatus: null,
-        reason: `The order is already in ${currentStatus} and does not require this manual dispatch.`,
-      };
-    }
-
-    if (isPaidAtLeast50) {
-      if (currentStatus === "APROBADO_CONTABILIDAD") {
-        return {
-          targetStatus: "PROGRAMACION",
-          reason:
-            "Accounting already approved the advance and payment is at least 50%; it should be sent to Scheduling.",
-        };
-      }
-
-      if (currentStatus === "APROBACION") {
-        return {
-          targetStatus: "PROGRAMACION",
-          reason:
-            "Confirmed advance is 50% or more; it will be sent to Scheduling.",
-        };
-      }
-
-      return {
-        targetStatus: "APROBACION",
-        reason:
-          "Although the advance is 50% or more, workflow requires passing through Approval before Scheduling.",
-      };
-    }
-
-    if (currentStatus === "PENDIENTE_CONTABILIDAD") {
-      return {
-        targetStatus: "APROBACION",
-        reason:
-          "Accounting approval is still pending, so this action only sends the order to Approval.",
-      };
-    }
-
-    if (currentStatus === "APROBACION") {
-      return {
-        targetStatus: null,
-        reason:
-          "The order is already in Approval. When it meets the rules you can send it to Scheduling.",
-      };
-    }
-
-    return {
-      targetStatus: "APROBACION",
-      reason:
-        "With confirmed advance below 50%, the order should be sent to Approval.",
-    };
-  };
 
   const canAccessOrder = (order: OrderListItem) => {
     if (!isAdvisor) return true;
@@ -337,10 +193,10 @@ export function OrdersTab({
   const emptyContent = useMemo(() => {
     if (loading) return "";
     if (q.trim() !== "" || status !== "all" || type !== "all")
-      return "No results";
+      return copy.emptyResults;
 
-    return "No orders";
-  }, [loading, q, status, type]);
+    return copy.emptyOrders;
+  }, [copy.emptyOrders, copy.emptyResults, loading, q, status, type]);
 
   const remove = async () => {
     const o = pendingDelete;
@@ -354,7 +210,7 @@ export function OrdersTab({
         method: "DELETE",
         body: JSON.stringify({ id: o.id }),
       });
-      toast.success("Order disabled");
+      toast.success(copy.deleteSuccess);
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();
@@ -371,14 +227,7 @@ export function OrdersTab({
     setHistoryLoading(true);
     try {
       const res = await apiJson<{
-        items: Array<{
-          id: string;
-          status: string | null;
-          changedByName: string | null;
-          reasonCode: string | null;
-          meta: Record<string, unknown> | null;
-          createdAt: string | null;
-        }>;
+        items: OrderHistoryItem[];
       }>(
         `/api/status-history/orders?orderId=${encodeURIComponent(order.id)}&page=1&pageSize=50`,
       );
@@ -396,19 +245,9 @@ export function OrdersTab({
     setReadyOpen(true);
   };
 
-  const canShowCommercialDecision = (
-    currentStatusRaw: string | null | undefined,
-  ) => {
-    const currentStatus = String(currentStatusRaw ?? "")
-      .trim()
-      .toUpperCase();
-
-    return currentStatus === "APROBACION";
-  };
-
   const openCommercialModal = (
     order: OrderListItem,
-    action: "APPROVE" | "WAIT_FOR_PAYMENT",
+    action: CommercialAction,
   ) => {
     setCommercialOrder(order);
     setCommercialAction(action);
@@ -433,8 +272,8 @@ export function OrdersTab({
 
       toast.success(
         commercialAction === "APPROVE"
-          ? "Commercial approval recorded"
-          : "Marked as waiting for payment",
+          ? copy.commercial.successApprove
+          : copy.commercial.successWait,
       );
       setCommercialOpen(false);
       setCommercialOrder(null);
@@ -462,15 +301,15 @@ export function OrdersTab({
       });
 
       if (!result.toStatus) {
-        toast.error(result.reason || "No applicable destination status.");
+        toast.error(result.reason || copy.readyDispatch.noDestination);
 
         return;
       }
 
       toast.success(
         result.toStatus === "PROGRAMACION"
-          ? "Order sent to Scheduling"
-          : "Order sent to Approval",
+          ? copy.readyDispatch.successToScheduling
+          : copy.readyDispatch.successToApproval,
       );
 
       if (!result.changed && result.reason) {
@@ -493,20 +332,20 @@ export function OrdersTab({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
-            placeholder="Search by code..."
+            placeholder={copy.searchPlaceholder}
             value={q}
             onValueChange={setQ}
           />
           <FilterSelect
             className="sm:w-56"
-            label="Status"
+            label={copy.statusLabel}
             options={statusOptions}
             value={status}
             onChange={setStatus}
           />
           <FilterSelect
             className="sm:w-40"
-            label="Type"
+            label={copy.typeLabel}
             options={typeOptions}
             value={type}
             onChange={setType}
@@ -515,38 +354,22 @@ export function OrdersTab({
 
         <div className="flex gap-2">
           <Button variant="flat" onPress={refresh}>
-            Refresh
+            {copy.refresh}
           </Button>
         </div>
       </div>
 
       {loading ? (
         <TableSkeleton
-          ariaLabel="Orders"
-          headers={[
-            "Code",
-            "Client",
-            "Type",
-            "Delivery",
-            "Status",
-            "Last update",
-            "Total",
-            "Paid %",
-            "Actions",
-          ]}
+          ariaLabel={copy.tableAriaLabel}
+          headers={copy.tableHeaders}
         />
       ) : (
-        <Table aria-label="Orders">
+        <Table aria-label={copy.tableAriaLabel}>
           <TableHeader>
-            <TableColumn>Code</TableColumn>
-            <TableColumn>Client</TableColumn>
-            <TableColumn>Type</TableColumn>
-            <TableColumn>Delivery</TableColumn>
-            <TableColumn>Status</TableColumn>
-            <TableColumn>Last update</TableColumn>
-            <TableColumn>Total</TableColumn>
-            <TableColumn>Paid %</TableColumn>
-            <TableColumn>Actions</TableColumn>
+            {copy.tableHeaders.map((header) => (
+              <TableColumn key={header}>{header}</TableColumn>
+            ))}
           </TableHeader>
           <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
             {(o) => (
@@ -554,15 +377,19 @@ export function OrdersTab({
                 <TableCell className="font-medium">{o.orderCode}</TableCell>
                 <TableCell>{o.clientName ?? "-"}</TableCell>
                 <TableCell>{o.type}</TableCell>
-                <TableCell>{formatDate(o.deliveryDate)}</TableCell>
+                <TableCell>{formatOrderDate(o.deliveryDate)}</TableCell>
                 <TableCell>{o.status}</TableCell>
                 <TableCell className="text-default-600">
                   {(() => {
                     if (!o.lastStatusAt) return "-";
-                    const date = new Date(o.lastStatusAt);
-                    const label = Number.isNaN(date.getTime())
-                      ? o.lastStatusAt
-                      : date.toLocaleString("es-CO");
+                    const label = formatOrderLastUpdate({
+                      id: o.id,
+                      status: o.status,
+                      changedByName: o.lastStatusBy ?? null,
+                      reasonCode: null,
+                      meta: null,
+                      createdAt: o.lastStatusAt,
+                    });
 
                     return o.lastStatusBy
                       ? `${label} · ${o.lastStatusBy}`
@@ -575,35 +402,15 @@ export function OrdersTab({
                         variant="light"
                         onPress={() => openHistory(o)}
                       >
-                        View history
+                            {copy.history.viewHistory}
                       </Button>
                     </div>
                   ) : null}
                 </TableCell>
-                <TableCell>{formatCurrency(o.total, o.currency)}</TableCell>
+                <TableCell>{formatOrderCurrency(o.total, o.currency)}</TableCell>
                 <TableCell>
                   {(() => {
-                    const total = Number(o.total ?? 0);
-                    const shipping = Number(o.shippingFee ?? 0);
-                    const denom = total + shipping;
-                    const paid = Number(o.paidTotal ?? 0);
-
-                    if (!Number.isFinite(denom) || denom <= 0) {
-                      return (
-                        <span className="font-semibold text-danger">0%</span>
-                      );
-                    }
-
-                    if (!Number.isFinite(paid) || paid <= 0) {
-                      return (
-                        <span className="font-semibold text-danger">0%</span>
-                      );
-                    }
-
-                    const pct = Math.min(
-                      100,
-                      Math.max(0, (paid / denom) * 100),
-                    );
+                    const pct = calculatePaidPercent(o);
 
                     const toneClass =
                       pct >= 50
@@ -630,14 +437,14 @@ export function OrdersTab({
                         <BsThreeDotsVertical />
                       </Button>
                     </DropdownTrigger>
-                    <DropdownMenu aria-label="Acciones">
+                    <DropdownMenu aria-label={copy.actionsAriaLabel}>
                       <DropdownItem
                         key="items"
                         as={NextLink}
                         href={`/orders/${o.id}/items`}
                         startContent={<BsWindowStack />}
                       >
-                        Designs
+                        {copy.actions.designs}
                       </DropdownItem>
 
                       {canAccessOrder(o) ? (
@@ -647,7 +454,7 @@ export function OrdersTab({
                           href={`/orders/${o.id}/detail`}
                           startContent={<BsEye />}
                         >
-                          View details
+                          {copy.actions.viewDetails}
                         </DropdownItem>
                       ) : null}
 
@@ -658,7 +465,7 @@ export function OrdersTab({
                           href={`/orders/${o.id}/prefactura`}
                           startContent={<BsReceipt />}
                         >
-                          Pre-invoice
+                          {copy.actions.preInvoice}
                         </DropdownItem>
                       ) : null}
 
@@ -671,37 +478,37 @@ export function OrdersTab({
                           )}`}
                           startContent={<BsClockHistory />}
                         >
-                          History
+                          {copy.actions.history}
                         </DropdownItem>
                       ) : null}
 
                       {canChangeStatus &&
                       canAccessOrder(o) &&
-                      canShowReadyDispatchAction(o.status) ? (
+                      canRequestReadyDispatch(o.status) ? (
                         <DropdownItem
                           key="ready-dispatch"
                           startContent={<BsCheck2Circle />}
                           onPress={() => openReadyModal(o)}
                         >
-                          Order / designs ready
+                          {copy.actions.ready}
                         </DropdownItem>
                       ) : null}
 
                       {canCommercialDecision &&
                       canAccessOrder(o) &&
-                      canShowCommercialDecision(o.status) ? (
+                      canTakeCommercialDecision(o.status) ? (
                         <DropdownItem
                           key="commercial-approve"
                           startContent={<BsHandThumbsUp />}
                           onPress={() => openCommercialModal(o, "APPROVE")}
                         >
-                          Commercial approve
+                          {copy.actions.commercialApprove}
                         </DropdownItem>
                       ) : null}
 
                       {canCommercialDecision &&
                       canAccessOrder(o) &&
-                      canShowCommercialDecision(o.status) ? (
+                      canTakeCommercialDecision(o.status) ? (
                         <DropdownItem
                           key="commercial-wait"
                           startContent={<BsPauseCircle />}
@@ -709,7 +516,7 @@ export function OrdersTab({
                             openCommercialModal(o, "WAIT_FOR_PAYMENT")
                           }
                         >
-                          Wait for payment
+                          {copy.actions.waitForPayment}
                         </DropdownItem>
                       ) : null}
 
@@ -723,7 +530,7 @@ export function OrdersTab({
                             setConfirmOpen(true);
                           }}
                         >
-                          Delete
+                          {copy.actions.delete}
                         </DropdownItem>
                       ) : null}
                     </DropdownMenu>
@@ -747,14 +554,16 @@ export function OrdersTab({
       />
 
       <ConfirmActionModal
-        cancelLabel="Cancel"
-        confirmLabel="Delete"
+        cancelLabel={copy.confirmDelete.cancel}
+        confirmLabel={copy.confirmDelete.confirm}
         description={
-          pendingDelete ? `Delete order ${pendingDelete.orderCode}?` : undefined
+          pendingDelete
+            ? copy.confirmDelete.description(pendingDelete.orderCode)
+            : undefined
         }
         isLoading={deletingId === pendingDelete?.id}
         isOpen={confirmOpen}
-        title="Confirm deletion"
+        title={copy.confirmDelete.title}
         onConfirm={remove}
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
@@ -764,12 +573,12 @@ export function OrdersTab({
 
       <Modal disableAnimation isOpen={historyOpen} onOpenChange={setHistoryOpen}>
         <ModalContent>
-          <ModalHeader>Status history</ModalHeader>
+          <ModalHeader>{copy.history.title}</ModalHeader>
           <ModalBody>
             {historyLoading ? (
-              <div className="text-sm text-default-500">Loading...</div>
+              <div className="text-sm text-default-500">{copy.history.loading}</div>
             ) : historyItems.length === 0 ? (
-              <div className="text-sm text-default-500">No changes.</div>
+              <div className="text-sm text-default-500">{copy.history.empty}</div>
             ) : (
               <div className="space-y-2 text-sm">
                 {historyItems.map((item) => (
@@ -788,32 +597,30 @@ export function OrdersTab({
                         <div className="text-xs text-default-500">
                           {[
                             item.meta.fromStatus
-                              ? `from: ${String(item.meta.fromStatus)}`
+                              ? `${copy.history.from}: ${String(item.meta.fromStatus)}`
                               : null,
                             item.meta.toStatus
-                              ? `to: ${String(item.meta.toStatus)}`
+                              ? `${copy.history.to}: ${String(item.meta.toStatus)}`
                               : null,
                             item.meta.paidPercent !== undefined &&
                             item.meta.paidPercent !== null
-                              ? `paid: ${Number(item.meta.paidPercent).toFixed(0)}%`
+                              ? `${copy.history.paid}: ${Number(item.meta.paidPercent).toFixed(0)}%`
                               : null,
                             item.meta.prefacturaId
-                              ? `pref: ${String(item.meta.prefacturaId)}`
+                              ? `${copy.history.pref}: ${String(item.meta.prefacturaId)}`
                               : null,
                           ]
                             .filter(Boolean)
-                            .join(" • ") || "Sin metadatos"
+                            .join(" • ") || copy.history.noMetadata
                           }
                         </div>
                       ) : null}
                       <div className="text-xs text-default-500">
-                        {item.changedByName ?? "System"}
+                        {item.changedByName ?? copy.history.changedBySystem}
                       </div>
                     </div>
                     <div className="text-xs text-default-500">
-                      {item.createdAt
-                        ? new Date(item.createdAt).toLocaleString("es-CO")
-                        : "-"}
+                      {formatOrderLastUpdate(item)}
                     </div>
                   </div>
                 ))}
@@ -832,13 +639,13 @@ export function OrdersTab({
         }}
       >
         <ModalContent>
-          <ModalHeader>Confirm order dispatch</ModalHeader>
+          <ModalHeader>{copy.readyDispatch.title}</ModalHeader>
           <ModalBody>
             {(() => {
               if (!readyOrder) {
                 return (
                   <div className="text-sm text-default-500">
-                    Select an order to continue.
+                    {copy.readyDispatch.selectOrder}
                   </div>
                 );
               }
@@ -847,43 +654,48 @@ export function OrdersTab({
               const shipping = Number(readyOrder.shippingFee ?? 0);
               const paid = Number(readyOrder.paidTotal ?? 0);
               const orderTotal = Math.max(0, total) + Math.max(0, shipping);
-              const paidPercent =
-                orderTotal > 0 ? Math.max(0, (paid / orderTotal) * 100) : 0;
-              const target = resolveTargetStatus(readyOrder, paidPercent);
+              const paidPercent = calculatePaidPercent(readyOrder);
+              const target = resolveDispatchTarget(
+                readyOrder,
+                paidPercent,
+                uiLocale,
+              );
 
               return (
                 <div className="space-y-2 text-sm">
                   <div>
-                    <span className="text-default-500">Order:</span>{" "}
+                    <span className="text-default-500">{copy.readyDispatch.order}:</span>{" "}
                     <strong>{readyOrder.orderCode}</strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Client:</span>{" "}
+                    <span className="text-default-500">{copy.readyDispatch.client}:</span>{" "}
                     <strong>{readyOrder.clientName ?? "-"}</strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Current status:</span>{" "}
+                    <span className="text-default-500">{copy.readyDispatch.currentStatus}:</span>{" "}
                     <strong>{readyOrder.status}</strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Order total:</span>{" "}
+                    <span className="text-default-500">{copy.readyDispatch.orderTotal}:</span>{" "}
                     <strong>
-                      {formatCurrency(orderTotal, readyOrder.currency)}
+                      {formatOrderCurrency(orderTotal, readyOrder.currency)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Confirmed paid:</span>{" "}
+                    <span className="text-default-500">{copy.readyDispatch.confirmedPaid}:</span>{" "}
                     <strong>
-                      {formatCurrency(Math.max(0, paid), readyOrder.currency)}
+                      {formatOrderCurrency(Math.max(0, paid), readyOrder.currency)}
                     </strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Paid percentage:</span>{" "}
+                    <span className="text-default-500">{copy.readyDispatch.paidPercent}:</span>{" "}
                     <strong>{paidPercent.toFixed(0)}%</strong>
                   </div>
                   <div>
-                    <span className="text-default-500">Destination:</span>{" "}
-                    <strong>{target.targetStatus ?? "Not applicable"}</strong>
+                    <span className="text-default-500">{copy.readyDispatch.destination}:</span>{" "}
+                    <strong>
+                      {target.targetStatus ?? copy.readyDispatch.destinationNotApplicable}
+                    </strong>
                   </div>
                   <div className="rounded-medium border border-default-200 bg-default-50 p-2 text-default-700">
                     {target.reason}
@@ -894,14 +706,16 @@ export function OrdersTab({
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setReadyOpen(false)}>
-              Cancel
+              {copy.readyDispatch.cancel}
             </Button>
             <Button
               color="primary"
               isDisabled={!readyOrder || readySubmitting}
               onPress={confirmReadyDispatch}
             >
-              {readySubmitting ? "Confirmando..." : "Confirm dispatch"}
+              {readySubmitting
+                ? copy.readyDispatch.confirming
+                : copy.readyDispatch.confirm}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -921,31 +735,31 @@ export function OrdersTab({
         <ModalContent>
           <ModalHeader>
             {commercialAction === "APPROVE"
-              ? "Commercial approval"
-              : "Wait for payment"}
+              ? copy.commercial.titleApprove
+              : copy.commercial.titleWait}
           </ModalHeader>
           <ModalBody>
             <div className="space-y-2 text-sm">
               <div>
-                <span className="text-default-500">Order:</span>{" "}
+                <span className="text-default-500">{copy.commercial.order}:</span>{" "}
                 <strong>{commercialOrder?.orderCode ?? "-"}</strong>
               </div>
               <div>
-                <span className="text-default-500">Client:</span>{" "}
+                <span className="text-default-500">{copy.commercial.client}:</span>{" "}
                 <strong>{commercialOrder?.clientName ?? "-"}</strong>
               </div>
               <div>
-                <span className="text-default-500">Current status:</span>{" "}
+                <span className="text-default-500">{copy.commercial.currentStatus}:</span>{" "}
                 <strong>{commercialOrder?.status ?? "-"}</strong>
               </div>
               <div className="rounded-medium border border-default-200 bg-default-50 p-2 text-default-700">
                 {commercialAction === "APPROVE"
-                  ? "This records commercial approval and keeps the order in Approval until next workflow action."
-                  : "This records a commercial pause because payment is still pending."}
+                  ? copy.commercial.bodyApprove
+                  : copy.commercial.bodyWait}
               </div>
               <textarea
                 className="min-h-24 w-full rounded-medium border border-default-300 bg-content1 px-3 py-2 text-sm outline-none"
-                placeholder="Optional note"
+                placeholder={copy.commercial.notePlaceholder}
                 value={commercialNote}
                 onChange={(event) => setCommercialNote(event.target.value)}
               />
@@ -953,14 +767,14 @@ export function OrdersTab({
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setCommercialOpen(false)}>
-              Cancel
+              {copy.commercial.cancel}
             </Button>
             <Button
               color="primary"
               isDisabled={!commercialOrder || commercialSubmitting}
               onPress={submitCommercialDecision}
             >
-              {commercialSubmitting ? "Saving..." : "Save decision"}
+              {commercialSubmitting ? copy.commercial.saving : copy.commercial.save}
             </Button>
           </ModalFooter>
         </ModalContent>

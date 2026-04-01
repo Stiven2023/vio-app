@@ -1,6 +1,12 @@
 "use client";
 
-import type { ClientPriceType, QuoteForm, TaxZone } from "../_lib/types";
+import type {
+  ClientPriceType,
+  PrefactureOrderType,
+  QuoteForm,
+  QuoteProcess,
+  TaxZone,
+} from "../_lib/types";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,6 +28,18 @@ import {
 
 import { QuotationsForm } from "./QuotationsForm";
 import { QuotationsProductsTable } from "./QuotationsProductsTable";
+import {
+  DEFAULT_COUNTRY,
+  DEFAULT_PAYMENT_TERM,
+  getPrefactureOrderTypeOptions,
+  QUOTATION_COPY,
+} from "../_lib/constants";
+import {
+  getQuotationUiLocale,
+  normalizeTaxZone,
+  safeRate,
+  TAX_ZONE_DEFAULT_RATES,
+} from "../_lib/utils";
 
 import { useSessionStore } from "@/store/session";
 import { FileUpload } from "@/components/file-upload";
@@ -32,58 +50,6 @@ type QuotationEditorProps = {
   quoteId?: string;
   mode?: "quotation" | "prefactura";
 };
-
-type PrefacturaOrderType = "VN" | "VI" | "VT" | "VW";
-
-const TAX_ZONE_DEFAULT_RATES: Record<
-  TaxZone,
-  {
-    withholdingTaxRate: number;
-    withholdingIcaRate: number;
-    withholdingIvaRate: number;
-  }
-> = {
-  CONTINENTAL: {
-    withholdingTaxRate: 2.5,
-    withholdingIcaRate: 0.966,
-    withholdingIvaRate: 15,
-  },
-  FREE_ZONE: {
-    withholdingTaxRate: 0,
-    withholdingIcaRate: 0,
-    withholdingIvaRate: 0,
-  },
-  SAN_ANDRES: {
-    withholdingTaxRate: 0,
-    withholdingIcaRate: 0.5,
-    withholdingIvaRate: 0,
-  },
-  SPECIAL_REGIME: {
-    withholdingTaxRate: 1,
-    withholdingIcaRate: 0.7,
-    withholdingIvaRate: 0,
-  },
-};
-
-function normalizeTaxZone(value: unknown): TaxZone {
-  const raw = String(value ?? "CONTINENTAL")
-    .trim()
-    .toUpperCase();
-
-  if (raw === "FREE_ZONE" || raw === "SAN_ANDRES" || raw === "SPECIAL_REGIME") {
-    return raw;
-  }
-
-  return "CONTINENTAL";
-}
-
-function safeRate(value: unknown, fallback: number): number {
-  const parsed = Number(value);
-
-  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
-
-  return parsed;
-}
 
 type QuotationDetailResponse = {
   id: string;
@@ -121,7 +87,7 @@ type QuotationDetailResponse = {
       | "MUESTRA"
       | "OBSEQUIO"
       | "BODEGA";
-    process: "PRODUCCION" | "BODEGA" | "COMPRAS";
+    process: QuoteProcess;
     quantity: number;
     unitPrice: number;
     discount: number;
@@ -135,6 +101,9 @@ export function QuotationEditor({
   quoteId,
   mode = "quotation",
 }: QuotationEditorProps) {
+  const locale = getQuotationUiLocale();
+  const copy = QUOTATION_COPY[locale];
+  const prefactureOrderTypeOptions = getPrefactureOrderTypeOptions(locale);
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
 
@@ -151,13 +120,13 @@ export function QuotationEditor({
     contactName: "",
     contactPhone: "",
     address: "",
-    country: "COLOMBIA",
+    country: DEFAULT_COUNTRY,
     city: "",
     postalCode: "",
     seller: user?.name ?? "",
     currency: "COP",
     expiryDate: "",
-    paymentTerms: "TRANSFERENCIA",
+    paymentTerms: DEFAULT_PAYMENT_TERM,
     promissoryNoteNumber: "",
     clientPriceTypeDisplay: null,
     municipalityFiscalSnapshot: "",
@@ -174,7 +143,7 @@ export function QuotationEditor({
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [loadedQuoteCode, setLoadedQuoteCode] = useState("");
   const [prefacturaOrderType, setPrefacturaOrderType] =
-    useState<PrefacturaOrderType>("VN");
+    useState<PrefactureOrderType>("VN");
   const [prefacturaOrderName, setPrefacturaOrderName] = useState("");
   const [hasClientApproval, setHasClientApproval] = useState(false);
   const [clientApprovalImageUrl, setClientApprovalImageUrl] = useState("");
@@ -297,7 +266,15 @@ export function QuotationEditor({
           documentType: quote.documentType ?? "F",
           currency: quote.currency,
           expiryDate: quote.expiryDate ?? "",
-          paymentTerms: quote.paymentTerms ?? "TRANSFERENCIA",
+          paymentTerms:
+            quote.paymentTerms === "EFECTIVO" ||
+            quote.paymentTerms === "TARJETA" ||
+            quote.paymentTerms === "CHEQUE" ||
+            quote.paymentTerms === "CREDITO" ||
+            quote.paymentTerms === "OTROS" ||
+            quote.paymentTerms === "TRANSFERENCIA"
+              ? quote.paymentTerms
+              : DEFAULT_PAYMENT_TERM,
           promissoryNoteNumber: quote.promissoryNoteNumber ?? "",
           municipalityFiscalSnapshot: quote.municipalityFiscalSnapshot ?? "",
           taxZoneSnapshot: normalizeTaxZone(quote.taxZoneSnapshot),
@@ -374,7 +351,7 @@ export function QuotationEditor({
       documentNumber: selectedClient.identification ?? "",
       documentVerificationDigit: selectedClient.dv ?? "",
       address: selectedClient.address ?? "",
-      country: selectedClient.country ?? "COLOMBIA",
+      country: selectedClient.country ?? DEFAULT_COUNTRY,
       city: selectedClient.city ?? "",
       postalCode: selectedClient.postalCode ?? "",
       contactName: selectedClient.contactName ?? "",
@@ -463,8 +440,8 @@ export function QuotationEditor({
       if (!hasActiveCredit || !hasPromissoryNumber) {
         toast.error(
           !hasActiveCredit
-            ? "The client has no active credit."
-            : "The client has no promissory note number registered.",
+            ? copy.editor.validation.noCredit
+            : copy.editor.validation.noPromissory,
         );
 
         return;
@@ -475,7 +452,7 @@ export function QuotationEditor({
       if (creatingPrefactura) return;
 
       if (!form.clientId) {
-        toast.error("Select an active client");
+        toast.error(copy.toasts.selectClient);
 
         return;
       }
@@ -485,15 +462,13 @@ export function QuotationEditor({
       );
 
       if (validItems.length === 0) {
-        toast.error("Add at least one valid item");
+        toast.error(copy.toasts.addValidItem);
 
         return;
       }
 
       if (hasClientApproval && !clientApprovalImageUrl.trim()) {
-        toast.error(
-          "You must attach the screenshot/evidence of the client's approval",
-        );
+        toast.error(copy.editor.validation.approvalEvidenceRequired);
 
         return;
       }
@@ -556,7 +531,7 @@ export function QuotationEditor({
           },
         );
 
-        toast.success("Prefacture created");
+        toast.success(copy.editor.validation.prefactureCreated);
 
         if (!quoteId) {
           try {
@@ -629,15 +604,15 @@ export function QuotationEditor({
         <div>
           <h1 className="text-2xl font-bold">
             {quoteId
-              ? "Edit quotation"
+              ? copy.editor.titleEdit
               : mode === "prefactura"
-                ? "Create prefacture"
-                : "Create quotation"}
+                ? copy.editor.titleCreatePrefacture
+                : copy.editor.titleCreate}
           </h1>
           <p className="text-default-600">
-            Code: {loadedQuoteCode || quoteCode}
+            {copy.editor.code}: {loadedQuoteCode || quoteCode}
             {mode === "prefactura" && !quoteId
-              ? " (will be created as direct prefacture)"
+              ? ` ${copy.editor.directPrefactureNote}`
               : ""}
           </p>
         </div>
@@ -651,7 +626,7 @@ export function QuotationEditor({
             )
           }
         >
-          Back
+          {copy.editor.back}
         </Button>
       </div>
 
@@ -659,13 +634,13 @@ export function QuotationEditor({
         <Card className="border border-default-200" radius="md" shadow="none">
           <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input
-              label="Order name"
-              placeholder="E.g: Order Sports Club"
+              label={copy.editor.orderName}
+              placeholder={copy.editor.orderNamePlaceholder}
               value={prefacturaOrderName}
               onValueChange={setPrefacturaOrderName}
             />
             <Select
-              label="Order type"
+              label={copy.editor.orderType}
               selectedKeys={[prefacturaOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
@@ -677,18 +652,19 @@ export function QuotationEditor({
                 );
               }}
             >
-              <SelectItem key="VN">VN - National</SelectItem>
-              <SelectItem key="VI">VI - International</SelectItem>
-              <SelectItem key="VT">VT</SelectItem>
-              <SelectItem key="VW">VW</SelectItem>
+              {prefactureOrderTypeOptions.map((option) => (
+                <SelectItem key={option.value}>{option.label}</SelectItem>
+              ))}
             </Select>
 
             <div className="rounded-medium border border-default-200 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold">Client approval</p>
+                  <p className="text-sm font-semibold">
+                    {copy.editor.clientApproval}
+                  </p>
                   <p className="text-xs text-default-500">
-                    Client&apos;s commercial confirmation.
+                    {copy.editor.clientApprovalHelp}
                   </p>
                 </div>
                 <Switch
@@ -702,7 +678,7 @@ export function QuotationEditor({
               <div className="rounded-medium border border-default-200 p-3 md:col-span-2">
                 <FileUpload
                   acceptedFileTypes="image/*"
-                  label="Screenshot / approval evidence"
+                  label={copy.editor.approvalEvidence}
                   uploadFolder="prefacturas/avales"
                   value={clientApprovalImageUrl}
                   onChange={setClientApprovalImageUrl}
@@ -716,7 +692,7 @@ export function QuotationEditor({
 
       <Card className="border border-default-200" radius="md" shadow="none">
         <CardHeader className="text-sm font-semibold">
-          General Information
+          {copy.editor.generalInformation}
         </CardHeader>
         <CardBody className="space-y-4">
           <QuotationsForm
@@ -757,20 +733,22 @@ export function QuotationEditor({
           radius="md"
           shadow="none"
         >
-          <CardHeader className="text-sm font-semibold">Totals</CardHeader>
+          <CardHeader className="text-sm font-semibold">
+            {copy.editor.totals}
+          </CardHeader>
           <CardBody className="space-y-3">
             <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
+              <span>{copy.editor.subtotal}</span>
               <span>{asMoney(computed.subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span>VAT (19%)</span>
+              <span>{copy.editor.vat}</span>
               <span>{asMoney(computed.iva)}</span>
             </div>
 
             <div className="space-y-2 border-t border-default-200 pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Shipping</span>
+                <span className="text-sm">{copy.editor.shipping}</span>
                 <Switch
                   isSelected={shippingEnabled}
                   onValueChange={setShippingEnabled}
@@ -778,7 +756,7 @@ export function QuotationEditor({
               </div>
               <Input
                 isDisabled={!shippingEnabled}
-                label="Shipping value"
+                label={copy.editor.shippingValue}
                 type="number"
                 value={String(shippingFee)}
                 variant="flat"
@@ -790,7 +768,7 @@ export function QuotationEditor({
 
             <div className="space-y-2 border-t border-default-200 pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm">Insurance</span>
+                <span className="text-sm">{copy.editor.insurance}</span>
                 <Switch
                   isSelected={insuranceEnabled}
                   onValueChange={setInsuranceEnabled}
@@ -798,7 +776,7 @@ export function QuotationEditor({
               </div>
               <Input
                 isDisabled={!insuranceEnabled}
-                label="Insurance value"
+                label={copy.editor.insuranceValue}
                 type="number"
                 value={String(insuranceFee)}
                 variant="flat"
@@ -812,9 +790,9 @@ export function QuotationEditor({
               <div className="space-y-2 border-t border-default-200 pt-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm">Advance</span>
+                    <span className="text-sm">{copy.editor.advance}</span>
                     <p className="text-xs text-default-500">
-                      Commercial control at 50% for the prefacture.
+                      {copy.editor.advanceHelp}
                     </p>
                   </div>
                   <Switch
@@ -823,27 +801,27 @@ export function QuotationEditor({
                   />
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Advance (50%)</span>
+                  <span>{copy.editor.advanceAmount}</span>
                   <span>
                     {hasAdvance
                       ? asMoney(computed.advancePayment)
-                      : "Not applicable"}
+                      : copy.editor.notApplicable}
                   </span>
                 </div>
               </div>
             ) : null}
 
             <div className="flex justify-between text-sm font-semibold border-t border-default-200 pt-3">
-              <span>General Total</span>
+              <span>{copy.editor.generalTotal}</span>
               <span>{asMoney(computed.total)}</span>
             </div>
 
             <div className="space-y-2 border-t border-default-200 pt-3">
-              <p className="text-sm font-semibold">Withholdings</p>
+              <p className="text-sm font-semibold">{copy.editor.withholdings}</p>
               <div className="grid grid-cols-1 gap-2">
                 <Input
                   isDisabled={!chargesEnabled}
-                  label="Withholding tax (%)"
+                  label={copy.editor.withholdingTax}
                   type="number"
                   value={String(effectiveWithholdingTaxRate)}
                   variant="flat"
@@ -853,7 +831,7 @@ export function QuotationEditor({
                 />
                 <Input
                   isDisabled={!chargesEnabled}
-                  label="ICA withholding (%)"
+                  label={copy.editor.withholdingIca}
                   type="number"
                   value={String(effectiveWithholdingIcaRate)}
                   variant="flat"
@@ -863,7 +841,7 @@ export function QuotationEditor({
                 />
                 <Input
                   isDisabled={!chargesEnabled}
-                  label="IVA withholding (%)"
+                  label={copy.editor.withholdingIva}
                   type="number"
                   value={String(effectiveWithholdingIvaRate)}
                   variant="flat"
@@ -874,34 +852,34 @@ export function QuotationEditor({
               </div>
               {!chargesEnabled ? (
                 <p className="text-xs text-default-500">
-                  Con documento tipo R no se cobra IVA ni retenciones.
+                  {copy.editor.noTaxesForR}
                 </p>
               ) : null}
               <div className="rounded-medium border border-default-200 p-3 text-xs text-default-600">
                 <p>
-                  Fiscal snapshot:{" "}
-                  {form.municipalityFiscalSnapshot || "No municipality"} /{" "}
+                  {copy.editor.fiscalSnapshot}:{" "}
+                  {form.municipalityFiscalSnapshot || copy.editor.noMunicipality} /{" "}
                   {form.taxZoneSnapshot}
                 </p>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Withholding value</span>
+                <span>{copy.editor.withholdingTaxValue}</span>
                 <span>{asMoney(withholdingTaxAmount)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>ICA withholding value</span>
+                <span>{copy.editor.withholdingIcaValue}</span>
                 <span>{asMoney(withholdingIcaAmount)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>IVA withholding value</span>
+                <span>{copy.editor.withholdingIvaValue}</span>
                 <span>{asMoney(withholdingIvaAmount)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
-                <span>Total withholdings</span>
+                <span>{copy.editor.totalWithholdings}</span>
                 <span>{asMoney(totalWithholdings)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-primary">
-                <span>Total after withholdings</span>
+                <span>{copy.editor.totalAfterWithholdings}</span>
                 <span>{asMoney(totalAfterWithholdings)}</span>
               </div>
             </div>
@@ -912,12 +890,12 @@ export function QuotationEditor({
               onPress={handleSaveQuotation}
             >
               {submitting || creatingPrefactura
-                ? "Saving..."
+                ? copy.editor.saving
                 : quoteId
-                  ? "Save changes"
+                  ? copy.editor.saveChanges
                   : mode === "prefactura"
-                    ? "Save prefacture"
-                    : "Save quotation"}
+                    ? copy.editor.savePrefacture
+                    : copy.editor.saveQuotation}
             </Button>
           </CardBody>
         </Card>

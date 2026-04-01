@@ -74,3 +74,16 @@ export type OrdersOptions = {
   clients: Array<{ id: string; name: string }>;
   products: Array<{ id: string; name: string }>;
 };
+
+export type UiLocale = "en" | "es";
+
+export type CommercialAction = "APPROVE" | "WAIT_FOR_PAYMENT";
+
+export type OrderHistoryItem = {
+  id: string;
+  status: string | null;
+  changedByName: string | null;
+  reasonCode: string | null;
+  meta: Record<string, unknown> | null;
+  createdAt: string | null;
+};

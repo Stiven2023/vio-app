@@ -7,15 +7,7 @@ import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
-
-function parseRate(value: unknown) {
-  const parsed = Number(value);
-
-  if (!Number.isFinite(parsed)) return null;
-  if (parsed < 0 || parsed > 100) return null;
-
-  return parsed.toFixed(4);
-}
+import { parseRatePercentage } from "@/src/utils/business-rule-guards";
 
 export async function PATCH(
   request: Request,
@@ -44,9 +36,9 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const withholdingTaxRate = parseRate(body?.withholdingTaxRate);
-    const withholdingIcaRate = parseRate(body?.withholdingIcaRate);
-    const withholdingIvaRate = parseRate(body?.withholdingIvaRate);
+    const withholdingTaxRate = parseRatePercentage(body?.withholdingTaxRate);
+    const withholdingIcaRate = parseRatePercentage(body?.withholdingIcaRate);
+    const withholdingIvaRate = parseRatePercentage(body?.withholdingIvaRate);
 
     if (
       withholdingTaxRate === null ||

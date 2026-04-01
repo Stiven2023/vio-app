@@ -16,6 +16,7 @@ import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { buildExpiryDateFromDelivery } from "@/src/utils/quotation-delivery";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { isClientEligibleForQuotation } from "@/src/utils/business-rule-guards";
 
 function toDateOnlyLocal(date: Date) {
   const year = date.getFullYear();
@@ -308,9 +309,8 @@ export async function POST(request: Request) {
   const items = Array.isArray(body?.items) ? body.items : [];
   const totalProducts = calculateTotalProductsFromItems(items);
   const paymentTerms = String(body?.paymentTerms ?? "").toUpperCase();
-  const documentType = String(body?.documentType ?? "F").toUpperCase() === "R"
-    ? "R"
-    : "F";
+  const documentType =
+    String(body?.documentType ?? "F").toUpperCase() === "R" ? "R" : "F";
   const autoExpiryDate = buildExpiryDateFromDelivery(
     toDateOnlyLocal(new Date()),
     30,
@@ -338,7 +338,7 @@ export async function POST(request: Request) {
     return new Response("Client not found", { status: 400 });
   }
 
-  if (!existingClient.isActive) {
+  if (!isClientEligibleForQuotation(existingClient)) {
     return new Response("Client is not active", { status: 400 });
   }
 
@@ -401,17 +401,29 @@ export async function POST(request: Request) {
           municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
           taxZoneSnapshot,
           withholdingTaxRate:
-            documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxRate),
+            documentType === "R"
+              ? "0.00"
+              : toNumericString(body?.withholdingTaxRate),
           withholdingIcaRate:
-            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaRate),
+            documentType === "R"
+              ? "0.00"
+              : toNumericString(body?.withholdingIcaRate),
           withholdingIvaRate:
-            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaRate),
+            documentType === "R"
+              ? "0.00"
+              : toNumericString(body?.withholdingIvaRate),
           withholdingTaxAmount:
-            documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxAmount),
+            documentType === "R"
+              ? "0.00"
+              : toNumericString(body?.withholdingTaxAmount),
           withholdingIcaAmount:
-            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaAmount),
+            documentType === "R"
+              ? "0.00"
+              : toNumericString(body?.withholdingIcaAmount),
           withholdingIvaAmount:
-            documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaAmount),
+            documentType === "R"
+              ? "0.00"
+              : toNumericString(body?.withholdingIvaAmount),
           totalAfterWithholdings:
             documentType === "R"
               ? toNumericString(body?.total)
@@ -495,7 +507,10 @@ export async function POST(request: Request) {
       href: `/erp/cotizaciones/${created.id}`,
     });
 
-    return Response.json({ id: created.id, quoteCode: created.quoteCode }, { status: 201 });
+    return Response.json(
+      { id: created.id, quoteCode: created.quoteCode },
+      { status: 201 },
+    );
   } catch (error) {
     const response = dbErrorResponse(error);
 

@@ -33,6 +33,7 @@ import NextLink from "next/link";
 import {
   BsEye,
   BsCheck2Circle,
+  BsFileEarmarkPdf,
   BsPiggyBank,
   BsPlusCircle,
   BsThreeDotsVertical,
@@ -50,205 +51,33 @@ import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
 import { FileUpload } from "@/components/file-upload";
 
-type OrderType = "VN" | "VI" | "VT" | "VW";
-
-type PrefacturaRow = {
-  id: string;
-  prefacturaCode: string;
-  quotationId: string | null;
-  quoteCode: string | null;
-  orderId: string | null;
-  orderCode: string | null;
-  orderName: string | null;
-  orderType: OrderType | null;
-  status: string;
-  totalProducts: string | null;
-  subtotal: string | null;
-  total: string | null;
-  clientName: string | null;
-  documentType: "F" | "R" | null;
-  approvedAt: string | null;
-  createdAt: string | null;
-  siigoStatus: string | null;
-};
-
-type BankOption = {
-  id: string;
-  code: string;
-  name: string;
-  accountRef: string;
-  isActive: boolean | null;
-};
-
-type PrefacturaAdvanceDetail = {
-  id: string;
-  prefacturaCode?: string | null;
-  total?: string | null;
-  currency?: string | null;
-  advanceRequired?: string | null;
-  advanceReceived?: string | null;
-  advanceMethod?: "EFECTIVO" | "TRANSFERENCIA" | null;
-  advanceBankId?: string | null;
-  advanceReferenceNumber?: string | null;
-  advanceCurrency?: string | null;
-  advanceDate?: string | null;
-  advancePaymentImageUrl?: string | null;
-};
-
-type OrderDispatchPreview = {
-  id: string;
-  orderCode: string;
-  status: string;
-  total: string | null;
-  shippingFee?: string | null;
-};
-
-type ReadyDispatchPreview = {
-  prefacturaCode: string;
-  orderId: string;
-  orderCode: string;
-  currentStatus: string;
-  targetStatus: "APROBACION" | "PROGRAMACION" | null;
-  reason: string;
-  paidPercent: number;
-  paidTotal: number;
-  orderTotal: number;
-};
-
-type ApproveAdvanceResult = {
-  ok: boolean;
-  prefacturaId: string;
-  orderId: string | null;
-  accountingApproved: boolean;
-  fromOrderStatus: string;
-  toOrderStatus: string | null;
-  paidPercent: number;
-  autoScheduled: boolean;
-  message: string;
-};
-
-type RequestSchedulingResult = {
-  changed: boolean;
-  fromStatus: string;
-  toStatus: "APROBACION" | "PROGRAMACION" | null;
-  reason: string;
-};
-
-const documentTypeOptions = [
-  { value: "all", label: "All" },
-  { value: "F", label: "F" },
-  { value: "R", label: "R" },
-];
-
-const statusOptions = [
-  { value: "all", label: "All" },
-  { value: "PENDIENTE_CONTABILIDAD", label: "Pending accounting" },
-  { value: "APROBADO_CONTABILIDAD", label: "Accounting approved" },
-  { value: "APROBACION", label: "Approval" },
-  { value: "PROGRAMACION", label: "Scheduling" },
-  { value: "PENDIENTE", label: "Pending" },
-  { value: "APROBADA", label: "Approved" },
-  { value: "CANCELADA", label: "Cancelled" },
-  { value: "ANULADA", label: "Voided" },
-];
-
-const typeOptions = [
-  { value: "all", label: "All" },
-  { value: "VN", label: "National" },
-  { value: "VI", label: "International" },
-  { value: "VT", label: "VT" },
-  { value: "VW", label: "VW" },
-];
-
-function formatMoney(value: string | number | null | undefined) {
-  const amount = Number(value ?? 0);
-
-  if (!Number.isFinite(amount)) return "-";
-
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-function canShowReadyDispatchAction(currentStatusRaw: string | null | undefined) {
-  const currentStatus = String(currentStatusRaw ?? "")
-    .trim()
-    .toUpperCase();
-
-  return ![
-    "PROGRAMACION",
-    "PRODUCCION",
-    "ATRASADO",
-    "FINALIZADO",
-    "ENTREGADO",
-    "CANCELADO",
-  ].includes(currentStatus);
-}
-
-function normalizeCurrency(value: string | null | undefined): "COP" | "USD" {
-  return String(value ?? "COP")
-    .trim()
-    .toUpperCase() === "USD"
-    ? "USD"
-    : "COP";
-}
-
-function formatMoneyByCurrency(
-  value: string | number | null | undefined,
-  currency: "COP" | "USD",
-) {
-  const amount = Number(value ?? 0);
-
-  if (!Number.isFinite(amount)) return "-";
-
-  return new Intl.NumberFormat(currency === "USD" ? "en-US" : "es-CO", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: currency === "USD" ? 2 : 0,
-    maximumFractionDigits: currency === "USD" ? 2 : 0,
-  }).format(amount);
-}
-
-function normalizeAmountInput(value: string) {
-  const raw = value.replace(/[^\d.,]/g, "");
-
-  if (!raw) return "";
-
-  const normalized = raw.replace(/,/g, ".");
-  const parts = normalized.split(".");
-
-  if (parts.length === 1) {
-    return parts[0].replace(/^0+(?=\d)/, "");
-  }
-
-  const integer = (parts[0] || "0").replace(/^0+(?=\d)/, "");
-  const decimal = parts.slice(1).join("").replace(/\D/g, "").slice(0, 2);
-
-  return decimal ? `${integer}.${decimal}` : integer;
-}
-
-function resolveAdvanceStatus(amount: number, total: number) {
-  if (!Number.isFinite(total) || total <= 0) return "PENDIENTE";
-
-  const percentage = Math.max(0, (amount / total) * 100);
-
-  if (percentage >= 50) return "RECIBIDO";
-  if (percentage > 29) return "PARCIAL";
-
-  return "PENDIENTE";
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleString("es-CO");
-}
+import {
+  APPROVE_ADVANCE_ALLOWED_STATUSES,
+  DOCUMENT_TYPE_OPTIONS as documentTypeOptions,
+  SIIGO_BLOCKED_STATUSES,
+  STATUS_OPTIONS as statusOptions,
+  TYPE_OPTIONS as typeOptions,
+} from "../_lib/prefacturas-tab.constants";
+import {
+  canShowReadyDispatchAction,
+  formatDate,
+  formatMoney,
+  formatMoneyByCurrency,
+  normalizeAmountInput,
+  normalizeCurrency,
+  resolveAdvanceStatus,
+  resolveTargetStatus,
+} from "../_lib/prefacturas-tab.utils";
+import type {
+  ApproveAdvanceResult,
+  BankOption,
+  OrderDispatchPreview,
+  PrefacturaAdvanceDetail,
+  PrefacturaRow,
+  ReadyDispatchPreview,
+  RequestSchedulingResult,
+  SiigoAuthStatus,
+} from "../_lib/types";
 
 export function PrefacturasTab({
   canChangeStatus,
@@ -257,6 +86,8 @@ export function PrefacturasTab({
   canDelete,
   initialStatus = "all",
   lockStatusFilter = false,
+  initialDocumentType = "all",
+  lockDocumentTypeFilter = false,
   initialOrderStatus = "all",
 }: {
   canChangeStatus: boolean;
@@ -265,13 +96,15 @@ export function PrefacturasTab({
   canDelete: boolean;
   initialStatus?: string;
   lockStatusFilter?: boolean;
+  initialDocumentType?: string;
+  lockDocumentTypeFilter?: boolean;
   initialOrderStatus?: string;
 }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState(initialStatus);
   const [type, setType] = useState("all");
-  const [documentType, setDocumentType] = useState("all");
+  const [documentType, setDocumentType] = useState(initialDocumentType);
 
   const endpoint = useMemo(() => {
     const sp = new URLSearchParams();
@@ -332,66 +165,33 @@ export function PrefacturasTab({
   // ── SIIGO integration state ────────────────────────────────────────────────
   const [siigoSending, setSiigoSending] = useState<string | null>(null);
   const [siigoPolling, setSiigoPolling] = useState<string | null>(null);
+  const [invoiceDownloadLoading, setInvoiceDownloadLoading] = useState<
+    string | null
+  >(null);
+  const [siigoLiveSubmissionEnabled, setSiigoLiveSubmissionEnabled] =
+    useState<boolean>(false);
   const [siigoErrorModal, setSiigoErrorModal] = useState<{
     prefacturaCode: string;
     message: string;
   } | null>(null);
 
-  const resolveTargetStatus = (
-    currentStatusRaw: string,
-    paidPercent: number,
-  ): { targetStatus: "APROBACION" | "PROGRAMACION" | null; reason: string } => {
-    const currentStatus = String(currentStatusRaw ?? "")
-      .trim()
-      .toUpperCase();
-    const isPaidAtLeast50 = paidPercent >= 50;
+  useEffect(() => {
+    let active = true;
 
-    if (
-      [
-        "PROGRAMACION",
-        "PRODUCCION",
-        "ATRASADO",
-        "FINALIZADO",
-        "ENTREGADO",
-        "CANCELADO",
-      ].includes(currentStatus)
-    ) {
-      return {
-        targetStatus: null,
-        reason: `The order is already in ${currentStatus} and does not require this manual shipment.`,
-      };
-    }
+    apiJson<SiigoAuthStatus>("/api/siigo/auth")
+      .then((res) => {
+        if (!active) return;
+        setSiigoLiveSubmissionEnabled(Boolean(res.liveSubmissionEnabled));
+      })
+      .catch(() => {
+        if (!active) return;
+        setSiigoLiveSubmissionEnabled(false);
+      });
 
-    if (isPaidAtLeast50) {
-      if (currentStatus === "APROBACION") {
-        return {
-          targetStatus: "PROGRAMACION",
-          reason:
-            "The confirmed advance is 50% or more, it will be sent to Scheduling.",
-        };
-      }
-
-      return {
-        targetStatus: "APROBACION",
-        reason:
-          "Although the advance is 50% or more, the workflow requires passing through Approval before Scheduling.",
-      };
-    }
-
-    if (currentStatus === "APROBACION") {
-      return {
-        targetStatus: null,
-        reason:
-          "The order is already in Approval. When it meets the rules, you can send it to Scheduling.",
-      };
-    }
-
-    return {
-      targetStatus: "APROBACION",
-      reason:
-        "With confirmed advance less than 50%, the order should be sent to Approval.",
+    return () => {
+      active = false;
     };
-  };
+  }, []);
 
   useEffect(() => {
     apiJson<{ items: BankOption[] }>("/api/banks?page=1&pageSize=200")
@@ -665,30 +465,148 @@ export function PrefacturasTab({
   };
 
   const canApproveAdvanceAction = (row: PrefacturaRow) => {
-    const status = String(row.status ?? "")
-      .trim()
-      .toUpperCase();
+    const s = String(row.status ?? "").trim().toUpperCase();
 
     return (
       Boolean(row.orderId) &&
-      ["PENDIENTE_CONTABILIDAD", "PENDIENTE", "APROBACION"].includes(status)
+      (APPROVE_ADVANCE_ALLOWED_STATUSES as readonly string[]).includes(s)
     );
   };
 
   const isSiigoBlocked = (row: PrefacturaRow) => {
     const s = String(row.siigoStatus ?? "").trim().toUpperCase();
 
-    return s === "SENT" || s === "INVOICED";
+    return (SIIGO_BLOCKED_STATUSES as readonly string[]).includes(s);
+  };
+
+  const hasOfficialSiigoInvoice = (row: PrefacturaRow) => {
+    if (row.documentType !== "F") return false;
+    if (!String(row.siigoInvoiceId ?? "").trim()) return false;
+    const status = String(row.siigoStatus ?? "").trim().toUpperCase();
+
+    return ["SENT", "DRAFT", "INVOICED", "ACCEPTED"].includes(status);
   };
 
   const [siigoPollLoading, setSiigoPollLoading] = useState(false);
 
   const sendToSiigo = async (row: PrefacturaRow) => {
+    if (siigoSending) return;
+
     try {
+      setSiigoSending(row.id);
       await apiJson(`/api/prefacturas/${row.id}/siigo/send`, {
         method: "POST",
       });
-      toast.success(`Prefactura ${row.prefacturaCode} enviada a SIIGO`);
+      toast.success(`Prefacture ${row.prefacturaCode} sent to SIIGO`);
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSiigoSending(null);
+    }
+  };
+
+  const pollSingleSiigo = async (row: PrefacturaRow) => {
+    if (siigoPolling) return;
+
+    try {
+      setSiigoPolling(row.id);
+      const result = await apiJson<{
+        ok: boolean;
+        siigoStatus: string;
+      }>(`/api/prefacturas/${row.id}/siigo/poll`, {
+        method: "POST",
+      });
+
+      toast.success(
+        `SIIGO status for ${row.prefacturaCode}: ${result.siigoStatus}`,
+      );
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setSiigoPolling(null);
+    }
+  };
+
+  const downloadInvoiceDocument = async (row: PrefacturaRow) => {
+    if (invoiceDownloadLoading) return;
+
+    const previewUrl = row.orderId
+      ? `/api/exports/orders/${row.orderId}/prefactura-pdf`
+      : null;
+
+    if (!hasOfficialSiigoInvoice(row)) {
+      if (previewUrl) {
+        window.open(previewUrl, "_blank", "noopener,noreferrer");
+      } else {
+        toast.error("No preview available for this prefacture.");
+      }
+
+      return;
+    }
+
+    try {
+      setInvoiceDownloadLoading(row.id);
+
+      const resolved = await apiJson<{
+        ok: boolean;
+        officialPdfUrl?: string;
+        reason?: string;
+        message?: string;
+      }>(`/api/prefacturas/${row.id}/siigo/official-invoice-pdf?resolve=1`);
+
+      const officialPdfUrl = String(resolved.officialPdfUrl ?? "").trim();
+
+      if (officialPdfUrl) {
+        window.open(officialPdfUrl, "_blank", "noopener,noreferrer");
+        toast.success("Official SIIGO invoice opened.");
+
+        return;
+      }
+
+      if (previewUrl) {
+        window.open(previewUrl, "_blank", "noopener,noreferrer");
+        toast("Official PDF not available yet. Downloaded local preview.");
+
+        return;
+      }
+
+      toast.error("Official PDF is not available yet.");
+    } catch (error) {
+      const message = getErrorMessage(error);
+
+      if (previewUrl) {
+        window.open(previewUrl, "_blank", "noopener,noreferrer");
+        toast(`Could not download official PDF (${message}). Local preview opened.`);
+
+        return;
+      }
+
+      toast.error(message);
+    } finally {
+      setInvoiceDownloadLoading(null);
+    }
+  };
+
+  const resetSiigoStatus = async (row: PrefacturaRow) => {
+    const reason = window
+      .prompt(
+        `Reason for SIIGO reset of ${row.prefacturaCode}:`,
+        "Administrative correction",
+      )
+      ?.trim();
+
+    if (!reason) return;
+
+    try {
+      await apiJson(`/api/prefacturas/${row.id}/siigo/reset`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      toast.success(`SIIGO reset applied to ${row.prefacturaCode}`);
       refresh();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -708,7 +626,7 @@ export function PrefacturasTab({
       }>("/api/prefacturas/siigo/poll", { method: "POST" });
 
       toast.success(
-        `SIIGO poll: ${result.polled} consultadas, ${result.invoiced} facturadas, ${result.errors} con error`,
+        `SIIGO poll: ${result.polled} queried, ${result.invoiced} invoiced, ${result.errors} with errors`,
       );
       refresh();
     } catch (error) {
@@ -720,6 +638,7 @@ export function PrefacturasTab({
 
   const getSiigoStatusChip = (row: PrefacturaRow) => {
     const s = String(row.siigoStatus ?? "").trim().toUpperCase();
+    const errorMessage = String(row.siigoErrorMessage ?? "").trim();
 
     if (!s || s === "NOT_APPLICABLE" || row.documentType !== "F") {
       return (
@@ -745,6 +664,14 @@ export function PrefacturasTab({
       );
     }
 
+    if (s === "DRAFT") {
+      return (
+        <span className="rounded bg-warning-100 px-1.5 py-0.5 text-xs text-warning-700">
+          DRAFT
+        </span>
+      );
+    }
+
     if (s === "INVOICED") {
       return (
         <span className="rounded bg-success-100 px-1.5 py-0.5 text-xs text-success-700">
@@ -753,12 +680,32 @@ export function PrefacturasTab({
       );
     }
 
-    if (s === "ERROR") {
+    if (s === "ACCEPTED") {
       return (
+        <span className="rounded bg-success-100 px-1.5 py-0.5 text-xs text-success-700">
+          ACCEPTED
+        </span>
+      );
+    }
+
+    if (s === "REJECTED") {
+      return (
+        <span className="rounded bg-danger-100 px-1.5 py-0.5 text-xs text-danger-700">
+          REJECTED
+        </span>
+      );
+    }
+
+    if (s === "ERROR") {
+      const chip = (
         <span className="rounded bg-danger-100 px-1.5 py-0.5 text-xs text-danger-700">
           ERROR
         </span>
       );
+
+      if (!errorMessage) return chip;
+
+      return <Tooltip content={errorMessage}>{chip}</Tooltip>;
     }
 
     return (
@@ -768,18 +715,47 @@ export function PrefacturasTab({
     );
   };
 
+  const getInvoiceAvailabilityChip = (row: PrefacturaRow) => {
+    const canPreview = Boolean(row.orderId);
+
+    if (hasOfficialSiigoInvoice(row)) {
+      return (
+        <span className="rounded bg-success-100 px-1.5 py-0.5 text-[11px] text-success-700">
+          Official PDF
+        </span>
+      );
+    }
+
+    if (canPreview) {
+      return (
+        <span className="rounded bg-default-100 px-1.5 py-0.5 text-[11px] text-default-600">
+          Preview only
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      {!siigoLiveSubmissionEnabled ? (
+        <div className="rounded-md border border-warning-300 bg-warning-50 px-3 py-2 text-sm text-warning-800">
+          SIIGO test mode active. Live submission is disabled and no documents
+          will be sent to DIAN.
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
           <FilterSearch
-            className="sm:w-72"
+            className="w-full sm:w-72"
             placeholder="Prefacture code, quotation or order…"
             value={q}
             onValueChange={setQ}
           />
           <FilterSelect
-            className="sm:w-48"
+            className="w-full sm:w-48"
             isDisabled={lockStatusFilter}
             label="Status"
             options={statusOptions}
@@ -787,41 +763,57 @@ export function PrefacturasTab({
             onChange={setStatus}
           />
           <FilterSelect
-            className="sm:w-48"
+            className="w-full sm:w-48"
             label="Type"
             options={typeOptions}
             value={type}
             onChange={setType}
           />
           <FilterSelect
-            className="sm:w-40"
+            className="w-full sm:w-40"
             label="Document"
+            isDisabled={lockDocumentTypeFilter}
             options={documentTypeOptions}
             value={documentType}
             onChange={setDocumentType}
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 xl:justify-end">
           {canCreate ? (
             <Button
               color="primary"
+              className="w-full sm:w-auto"
               onPress={() => router.push("/erp/pre-invoices/new")}
             >
               <BsPlusCircle /> New prefacture
             </Button>
           ) : null}
           <Button
+            className="w-full sm:w-auto"
             isLoading={siigoPollLoading}
             startContent={<BsArrowRepeat />}
             variant="flat"
             onPress={pollSiigoStatus}
           >
-            Actualizar SIIGO
+            Update SIIGO
           </Button>
-          <Button variant="flat" onPress={refresh}>
-            Refresh
-          </Button>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button className="w-full sm:w-auto" variant="flat">
+                <BsThreeDotsVertical /> More
+              </Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Prefacture toolbar actions">
+              <DropdownItem
+                key="refresh-list"
+                startContent={<BsArrowRepeat />}
+                onPress={refresh}
+              >
+                Refresh list
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
         </div>
       </div>
 
@@ -873,7 +865,12 @@ export function PrefacturasTab({
                 <TableCell>{row.orderType ?? "-"}</TableCell>
                 <TableCell>{row.clientName ?? "-"}</TableCell>
                 <TableCell>{row.status}</TableCell>
-                <TableCell>{getSiigoStatusChip(row)}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    {getSiigoStatusChip(row)}
+                    {getInvoiceAvailabilityChip(row)}
+                  </div>
+                </TableCell>
                 <TableCell>{formatMoney(row.total)}</TableCell>
                 <TableCell>{formatDate(row.createdAt)}</TableCell>
                 <TableCell>
@@ -894,6 +891,27 @@ export function PrefacturasTab({
                           View order
                         </DropdownItem>
                       ) : null}
+                      {row.orderId && !hasOfficialSiigoInvoice(row) ? (
+                        <DropdownItem
+                          key="download-invoice-document"
+                          startContent={<BsFileEarmarkPdf />}
+                          onPress={() => downloadInvoiceDocument(row)}
+                        >
+                          Download invoice preview (PDF)
+                        </DropdownItem>
+                      ) : null}
+                      {hasOfficialSiigoInvoice(row) ? (
+                        <DropdownItem
+                          key="download-official-or-preview"
+                          isDisabled={invoiceDownloadLoading === row.id}
+                          startContent={<BsFileEarmarkPdf />}
+                          onPress={() => downloadInvoiceDocument(row)}
+                        >
+                          {invoiceDownloadLoading === row.id
+                            ? "Preparing invoice..."
+                            : "Download official SIIGO invoice (PDF)"}
+                        </DropdownItem>
+                      ) : null}
                       {canEdit && !isSiigoBlocked(row) ? (
                         <DropdownItem
                           key="advance"
@@ -910,7 +928,22 @@ export function PrefacturasTab({
                           isDisabled
                           startContent={<BsLockFill className="text-warning" />}
                         >
-                          Bloqueada por SIIGO ({row.siigoStatus})
+                          Locked by SIIGO ({row.siigoStatus})
+                        </DropdownItem>
+                      ) : null}
+                      {row.documentType === "F" &&
+                      (String(row.siigoStatus ?? "")
+                        .trim()
+                        .toUpperCase() === "SENT" ||
+                        String(row.siigoStatus ?? "")
+                          .trim()
+                          .toUpperCase() === "DRAFT") ? (
+                        <DropdownItem
+                          key="siigo-poll-one"
+                          startContent={<BsArrowRepeat />}
+                          onPress={() => pollSingleSiigo(row)}
+                        >
+                          Update SIIGO status
                         </DropdownItem>
                       ) : null}
                       {canChangeStatus && canApproveAdvanceAction(row) ? (
@@ -941,7 +974,20 @@ export function PrefacturasTab({
                           startContent={<BsSend />}
                           onPress={() => sendToSiigo(row)}
                         >
-                          Enviar a SIIGO
+                          Send to SIIGO
+                        </DropdownItem>
+                      ) : null}
+                      {canChangeStatus &&
+                      row.documentType === "F" &&
+                      String(row.siigoStatus ?? "")
+                        .trim()
+                        .toUpperCase() !== "NOT_APPLICABLE" ? (
+                        <DropdownItem
+                          key="siigo-reset"
+                          startContent={<BsArrowRepeat />}
+                          onPress={() => resetSiigoStatus(row)}
+                        >
+                          Reset SIIGO
                         </DropdownItem>
                       ) : null}
                       {canDelete ? (
@@ -1297,11 +1343,11 @@ export function PrefacturasTab({
       >
         <ModalContent>
           <ModalHeader>
-            Error SIIGO — {siigoErrorModal?.prefacturaCode}
+            SIIGO Error — {siigoErrorModal?.prefacturaCode}
           </ModalHeader>
           <ModalBody>
             <p className="text-sm text-danger whitespace-pre-wrap break-words">
-              {siigoErrorModal?.message ?? "Sin detalle de error."}
+              {siigoErrorModal?.message ?? "No error details."}
             </p>
           </ModalBody>
           <ModalFooter>
@@ -1310,7 +1356,7 @@ export function PrefacturasTab({
               variant="flat"
               onPress={() => setSiigoErrorModal(null)}
             >
-              Cerrar
+              Close
             </Button>
           </ModalFooter>
         </ModalContent>

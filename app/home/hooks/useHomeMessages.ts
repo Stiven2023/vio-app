@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 export function useHomeMessages() {
   const homePageTranslations = useTranslations("HomePage");
   const moduleTranslations = useTranslations("HomeModules");
+  const currentYear = new Date().getFullYear();
 
   return {
     enterpriseSystemLabel: homePageTranslations("enterpriseSystemLabel"),
@@ -13,7 +14,7 @@ export function useHomeMessages() {
     languageEnglish: homePageTranslations("languageEnglish"),
     languageSpanish: homePageTranslations("languageSpanish"),
     enterButtonLabel: homePageTranslations("enterButtonLabel"),
-    copyrightText: homePageTranslations("copyrightText"),
+    copyrightText: homePageTranslations("copyrightText", { year: currentYear }),
     timeZone: homePageTranslations("timeZone"),
     modules: {
       erp: {

@@ -166,19 +166,19 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
 
   const saveFactoring = async () => {
     if (!prefacturaId) {
-      toast.error("Selecciona una prefactura");
+      toast.error("Select a pre-invoice");
 
       return;
     }
 
     if (!factoringEntity.trim()) {
-      toast.error("La entidad de factoring es obligatoria");
+      toast.error("Factoring entity is required");
 
       return;
     }
 
     if (!assignmentDate) {
-      toast.error("La fecha de asignacion es obligatoria");
+      toast.error("Assignment date is required");
 
       return;
     }
@@ -186,7 +186,7 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
     const rate = toNumber(discountRate);
 
     if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
-      toast.error("La tasa de descuento debe estar entre 0 y 100");
+      toast.error("Discount rate must be between 0 and 100");
 
       return;
     }
@@ -204,7 +204,7 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
         }),
       });
 
-      toast.success("Asignacion a factoring creada");
+      toast.success("Factoring assignment created");
       setCreateOpen(false);
       resetDraft();
       refresh();
@@ -224,8 +224,8 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
 
       toast.success(
         status === "COLLECTED"
-          ? "Registro marcado como cobrado"
-          : "Registro anulado",
+          ? "Record marked as collected"
+          : "Record voided",
       );
       refresh();
     } catch (error) {
@@ -237,7 +237,7 @@ export function FactoringTab({ canCreate }: { canCreate: boolean }) {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-default-500">
-          Control de cartera asignada a entidades de factoring.
+          Portfolio assigned to factoring entities.
         </div>
         {canCreate ? (
           <Button color="primary" onPress={() => setCreateOpen(true)}>

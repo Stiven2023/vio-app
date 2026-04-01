@@ -37,6 +37,12 @@ import {
 } from "react-icons/bs";
 
 import { useClientOnly } from "../_hooks/useClientOnly";
+import {
+  getPrefactureOrderTypeOptions,
+  QUOTATION_COPY,
+} from "../_lib/constants";
+import { getQuotationUiLocale } from "../_lib/utils";
+import type { PrefactureOrderType } from "../_lib/types";
 
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
@@ -53,8 +59,6 @@ type QuotationRow = {
   clientName: string | null;
   sellerName: string | null;
 };
-
-type OrderType = "VN" | "VI" | "VT" | "VW";
 
 type Paginated<T> = {
   items: T[];
@@ -145,6 +149,9 @@ function formatMoneyByCurrency(
 }
 
 export function QuotationsList() {
+  const locale = getQuotationUiLocale();
+  const copy = QUOTATION_COPY[locale];
+  const prefactureOrderTypeOptions = getPrefactureOrderTypeOptions(locale);
   const router = useRouter();
   const isMounted = useClientOnly();
   const [rows, setRows] = useState<Paginated<QuotationRow> | null>(null);
@@ -161,7 +168,7 @@ export function QuotationsList() {
   const [prefacturaRow, setPrefacturaRow] = useState<QuotationRow | null>(null);
   const [prefacturaOrderName, setPrefacturaOrderName] = useState("");
   const [prefacturaOrderType, setPrefacturaOrderType] =
-    useState<OrderType>("VN");
+    useState<PrefactureOrderType>("VN");
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams({
@@ -194,7 +201,7 @@ export function QuotationsList() {
     fetchRows();
   }, [endpoint]);
 
-  const emptyContent = loading ? "" : "No quotations";
+  const emptyContent = loading ? "" : copy.list.empty;
 
   const downloadPdf = async (
     row: QuotationRow,
@@ -273,7 +280,7 @@ export function QuotationsList() {
 
   const openPrefacturaModal = (row: QuotationRow) => {
     const defaultName = `Order ${row.quoteCode}`;
-    const defaultType: OrderType =
+    const defaultType: PrefactureOrderType =
       String(row.currency ?? "COP").toUpperCase() === "USD" ? "VI" : "VN";
 
     setPrefacturaRow(row);
@@ -310,8 +317,8 @@ export function QuotationsList() {
 
       toast.success(
         result.reused
-          ? `Prefacture updated. Order: ${result.order?.orderCode ?? "-"}`
-          : `Prefacture created. Order: ${result.order?.orderCode ?? "-"}`,
+          ? copy.list.prefactureUpdated(result.order?.orderCode ?? "-")
+          : copy.list.prefactureCreated(result.order?.orderCode ?? "-"),
       );
 
       fetchRows();
@@ -336,8 +343,8 @@ export function QuotationsList() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           <Input
             className="sm:w-80"
-            label="Search"
-            placeholder="Code, client or seller"
+            label={copy.list.search}
+            placeholder={copy.list.searchPlaceholder}
             value={query}
             onValueChange={(v) => {
               setPage(1);
@@ -348,7 +355,7 @@ export function QuotationsList() {
             <>
               <Select
                 className="sm:w-44"
-                label="Currency"
+                label={copy.list.currency}
                 selectedKeys={[currency]}
                 onSelectionChange={(keys) => {
                   const first = String(Array.from(keys)[0] ?? "ALL");
@@ -357,13 +364,13 @@ export function QuotationsList() {
                   setCurrency(first);
                 }}
               >
-                <SelectItem key="ALL">All</SelectItem>
+                <SelectItem key="ALL">{copy.list.all}</SelectItem>
                 <SelectItem key="COP">COP</SelectItem>
                 <SelectItem key="USD">USD</SelectItem>
               </Select>
               <Select
                 className="sm:w-44"
-                label="Status"
+                label={copy.list.status}
                 selectedKeys={[status]}
                 onSelectionChange={(keys) => {
                   const first = String(Array.from(keys)[0] ?? "active");
@@ -372,9 +379,9 @@ export function QuotationsList() {
                   setStatus(first);
                 }}
               >
-                <SelectItem key="active">Active</SelectItem>
-                <SelectItem key="inactive">Inactive</SelectItem>
-                <SelectItem key="all">All</SelectItem>
+                <SelectItem key="active">{copy.list.active}</SelectItem>
+                <SelectItem key="inactive">{copy.list.inactive}</SelectItem>
+                <SelectItem key="all">{copy.list.all}</SelectItem>
               </Select>
             </>
           ) : (
@@ -387,27 +394,27 @@ export function QuotationsList() {
 
         <div className="flex gap-2">
           <Button variant="flat" onPress={fetchRows}>
-            Refresh
+            {copy.list.refresh}
           </Button>
           <Button
             color="primary"
             onPress={() => router.push("/quotations/new")}
           >
-            Create quotation
+            {copy.list.createQuotation}
           </Button>
         </div>
       </div>
 
-      <Table aria-label="Quotations">
+      <Table aria-label={copy.list.empty}>
         <TableHeader>
-          <TableColumn>Code</TableColumn>
-          <TableColumn>Client</TableColumn>
-          <TableColumn>Seller</TableColumn>
-          <TableColumn>Expiration</TableColumn>
-          <TableColumn>Currency</TableColumn>
-          <TableColumn>Total</TableColumn>
-          <TableColumn>Status</TableColumn>
-          <TableColumn>Actions</TableColumn>
+          <TableColumn>{copy.list.headers.code}</TableColumn>
+          <TableColumn>{copy.list.headers.client}</TableColumn>
+          <TableColumn>{copy.list.headers.seller}</TableColumn>
+          <TableColumn>{copy.list.headers.expiration}</TableColumn>
+          <TableColumn>{copy.list.headers.currency}</TableColumn>
+          <TableColumn>{copy.list.headers.total}</TableColumn>
+          <TableColumn>{copy.list.headers.status}</TableColumn>
+          <TableColumn>{copy.list.headers.actions}</TableColumn>
         </TableHeader>
         <TableBody
           emptyContent={emptyContent}
@@ -434,7 +441,7 @@ export function QuotationsList() {
               <TableCell>
                 {formatMoneyByCurrency(row.total, row.currency)}
               </TableCell>
-              <TableCell>{row.isActive ? "Active" : "Inactive"}</TableCell>
+              <TableCell>{row.isActive ? copy.list.active : copy.list.inactive}</TableCell>
               <TableCell>
                 <Dropdown>
                   <DropdownTrigger>
@@ -442,20 +449,20 @@ export function QuotationsList() {
                       <BsThreeDotsVertical />
                     </Button>
                   </DropdownTrigger>
-                  <DropdownMenu aria-label="Quotation actions">
+                  <DropdownMenu aria-label={copy.list.actionsAriaLabel}>
                     <DropdownItem
                       key="view"
                       startContent={<BsEye />}
                       onPress={() => router.push(`/quotations/${row.id}`)}
                     >
-                      View / Edit
+                      {copy.list.actionViewEdit}
                     </DropdownItem>
                     <DropdownItem
                       key="edit"
                       startContent={<BsPencilSquare />}
                       onPress={() => router.push(`/quotations/${row.id}`)}
                     >
-                      Edit
+                      {copy.list.actionEdit}
                     </DropdownItem>
                     <DropdownItem
                       key="download"
@@ -463,8 +470,8 @@ export function QuotationsList() {
                       onPress={() => openDownloadModal(row)}
                     >
                       {downloadingId === row.id
-                        ? "Downloading PDF..."
-                        : "Download PDF"}
+                        ? copy.list.actionDownloadingPdf
+                        : copy.list.actionDownloadPdf}
                     </DropdownItem>
                     <DropdownItem
                       key="download-excel"
@@ -472,8 +479,8 @@ export function QuotationsList() {
                       onPress={() => downloadExcel(row)}
                     >
                       {downloadingId === row.id
-                        ? "Downloading Excel..."
-                        : "Download Excel"}
+                        ? copy.list.actionDownloadingExcel
+                        : copy.list.actionDownloadExcel}
                     </DropdownItem>
                     <DropdownItem
                       key="prefactura"
@@ -481,10 +488,10 @@ export function QuotationsList() {
                       onPress={() => openPrefacturaModal(row)}
                     >
                       {prefacturaId === row.id
-                        ? "Converting..."
+                        ? copy.list.actionConverting
                         : row.prefacturaApproved
-                          ? "Revert prefacture"
-                          : "Approve prefacture"}
+                          ? copy.list.actionRevertPrefacture
+                          : copy.list.actionApprovePrefacture}
                     </DropdownItem>
                     <DropdownItem
                       key="delete"
@@ -492,7 +499,7 @@ export function QuotationsList() {
                       startContent={<BsTrash />}
                       onPress={() => setPendingDelete(row)}
                     >
-                      Delete
+                      {copy.list.actionDelete}
                     </DropdownItem>
                   </DropdownMenu>
                 </Dropdown>
@@ -503,36 +510,38 @@ export function QuotationsList() {
       </Table>
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-default-500">Total: {rows?.total ?? 0}</p>
+        <p className="text-sm text-default-500">
+          {copy.list.total(rows?.total ?? 0)}
+        </p>
         <div className="flex gap-2">
           <Button
             isDisabled={page <= 1 || loading}
             variant="flat"
             onPress={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Previous
+            {copy.list.previous}
           </Button>
           <Button
             isDisabled={!rows?.hasNextPage || loading}
             variant="flat"
             onPress={() => setPage((p) => p + 1)}
           >
-            Next
+            {copy.list.next}
           </Button>
         </div>
       </div>
 
       <ConfirmActionModal
-        cancelLabel="Cancel"
-        confirmLabel="Delete"
+        cancelLabel={copy.list.cancel}
+        confirmLabel={copy.list.actionDelete}
         description={
           pendingDelete
-            ? `Delete quotation ${pendingDelete.quoteCode}?`
+            ? copy.list.deleteDescription(pendingDelete.quoteCode)
             : undefined
         }
         isLoading={deleting}
         isOpen={Boolean(pendingDelete)}
-        title="Confirm deletion"
+        title={copy.list.deleteTitle}
         onConfirm={async () => {
           if (!pendingDelete || deleting) return;
           try {
@@ -540,7 +549,7 @@ export function QuotationsList() {
             await apiJson(`/api/quotations/${pendingDelete.id}`, {
               method: "DELETE",
             });
-            toast.success("Quotation deleted");
+            toast.success(copy.list.deleteSuccess);
             setPendingDelete(null);
             fetchRows();
           } catch (error) {
@@ -564,10 +573,10 @@ export function QuotationsList() {
         }}
       >
         <ModalContent>
-          <ModalHeader>Download quotation PDF</ModalHeader>
+          <ModalHeader>{copy.list.downloadTitle}</ModalHeader>
           <ModalBody>
             <p className="text-sm text-default-600">
-              Choose the PDF format: internal or external.
+              {copy.list.downloadDescription}
             </p>
           </ModalBody>
           <ModalFooter>
@@ -576,7 +585,7 @@ export function QuotationsList() {
               variant="light"
               onPress={() => setDownloadRow(null)}
             >
-              Cancel
+              {copy.list.cancel}
             </Button>
             <Button
               isDisabled={Boolean(downloadingId) || !downloadRow}
@@ -586,7 +595,7 @@ export function QuotationsList() {
                 downloadPdf(downloadRow, "interno");
               }}
             >
-              Internal PDF
+              {copy.list.internalPdf}
             </Button>
             <Button
               color="primary"
@@ -596,7 +605,7 @@ export function QuotationsList() {
                 downloadPdf(downloadRow, "externo");
               }}
             >
-              External PDF
+              {copy.list.externalPdf}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -614,18 +623,18 @@ export function QuotationsList() {
         <ModalContent>
           <ModalHeader>
             {prefacturaRow?.prefacturaApproved
-              ? "Revert prefacture"
-              : "Approve prefacture"}
+              ? copy.list.prefactureModalRevert
+              : copy.list.prefactureModalApprove}
           </ModalHeader>
           <ModalBody className="space-y-3">
             <Input
-              label="Order name"
+              label={copy.editor.orderName}
               placeholder="E.g: Order COT10001"
               value={prefacturaOrderName}
               onValueChange={setPrefacturaOrderName}
             />
             <Select
-              label="Order type"
+              label={copy.editor.orderType}
               selectedKeys={[prefacturaOrderType]}
               onSelectionChange={(keys) => {
                 const first = String(Array.from(keys)[0] ?? "VN");
@@ -637,10 +646,9 @@ export function QuotationsList() {
                 );
               }}
             >
-              <SelectItem key="VN">National</SelectItem>
-              <SelectItem key="VI">International</SelectItem>
-              <SelectItem key="VT">VT</SelectItem>
-              <SelectItem key="VW">VW</SelectItem>
+              {prefactureOrderTypeOptions.map((option) => (
+                <SelectItem key={option.value}>{option.label}</SelectItem>
+              ))}
             </Select>
           </ModalBody>
           <ModalFooter>
@@ -649,14 +657,14 @@ export function QuotationsList() {
               variant="flat"
               onPress={closePrefacturaModal}
             >
-              Cancel
+              {copy.list.cancel}
             </Button>
             <Button
               color="primary"
               isDisabled={Boolean(prefacturaId)}
               onPress={convertToPrefactura}
             >
-              {prefacturaId ? "Converting..." : "Confirm"}
+              {prefacturaId ? copy.list.actionConverting : copy.list.confirm}
             </Button>
           </ModalFooter>
         </ModalContent>

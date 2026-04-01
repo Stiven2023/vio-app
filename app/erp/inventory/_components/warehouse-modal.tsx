@@ -96,13 +96,13 @@ export function WarehouseModal({
     };
 
     if (!payload.code) {
-      toast.error("Código requerido");
+      toast.error("Code is required");
 
       return;
     }
 
     if (!payload.name) {
-      toast.error("Nombre requerido");
+      toast.error("Name is required");
 
       return;
     }

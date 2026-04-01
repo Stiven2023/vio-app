@@ -211,31 +211,31 @@ export function BankReconciliationTab({
 
   const saveReconciliation = async () => {
     if (!bankId) {
-      toast.error("Selecciona un banco");
+      toast.error("Select a bank");
 
       return;
     }
 
     if (!period) {
-      toast.error("Selecciona un periodo");
+      toast.error("Select a period");
 
       return;
     }
 
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period)) {
-      toast.error("El periodo debe tener formato YYYY-MM");
+      toast.error("Period must follow YYYY-MM format");
 
       return;
     }
 
     for (const [index, item] of draftItems.entries()) {
       if (!item.itemDate) {
-        toast.error(`El item ${index + 1} requiere fecha`);
+        toast.error(`Item ${index + 1} requires a date`);
 
         return;
       }
       if (!item.description.trim()) {
-        toast.error(`El item ${index + 1} requiere descripcion`);
+        toast.error(`Item ${index + 1} requires a description`);
 
         return;
       }
@@ -254,7 +254,7 @@ export function BankReconciliationTab({
         }),
       });
 
-      toast.success("Conciliacion creada");
+      toast.success("Reconciliation created");
       setCreateOpen(false);
       resetDraft();
       refresh();
@@ -270,7 +270,7 @@ export function BankReconciliationTab({
       await apiJson(`/api/contabilidad/conciliaciones-bancarias/${id}/close`, {
         method: "PUT",
       });
-      toast.success("Conciliacion cerrada");
+      toast.success("Reconciliation closed");
       refresh();
     } catch (error) {
       toast.error(getErrorMessage(error));

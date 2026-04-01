@@ -1,31 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { toast } from "react-hot-toast";
 
 import { AppFooter } from "@/components/app-footer";
 import { Navbar } from "@/components/navbar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hasShownLegacyHcmNotice = useRef(false);
   const isModuleShell =
-    pathname.startsWith("/mes") || pathname.startsWith("/crm");
+    pathname.startsWith("/mes") ||
+    pathname.startsWith("/crm") ||
+    pathname.startsWith("/hcm");
   const isLocalizedHome = pathname === "/es" || pathname === "/en";
 
   useEffect(() => {
-    if (hasShownLegacyHcmNotice.current) return;
-
     const params = new URLSearchParams(window.location.search);
 
     if (params.get("legacy_hcm") !== "1") return;
-
-    hasShownLegacyHcmNotice.current = true;
-    toast("Ruta legacy detectada: usa HCM en tus accesos guardados.", {
-      icon: "i",
-      duration: 5500,
-    });
 
     params.delete("legacy_hcm");
 

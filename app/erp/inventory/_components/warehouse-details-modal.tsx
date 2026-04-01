@@ -313,7 +313,7 @@ export function WarehouseDetailsModal({
     if (transferring) return;
 
     if (!transferStockId) {
-      toast.error("Selecciona un item");
+      toast.error("Select an item");
 
       return;
     }
@@ -323,13 +323,13 @@ export function WarehouseDetailsModal({
     );
 
     if (!selectedStock?.inventoryItemId) {
-      toast.error("No se pudo resolver el item a trasladar");
+      toast.error("Could not resolve the item to transfer");
 
       return;
     }
 
     if (!transferToWarehouseId) {
-      toast.error("Selecciona bodega destino");
+      toast.error("Select a destination warehouse");
 
       return;
     }
@@ -337,7 +337,7 @@ export function WarehouseDetailsModal({
     const qty = Number(transferQty);
 
     if (!Number.isFinite(qty) || qty <= 0) {
-      toast.error("Cantidad invalida");
+      toast.error("Invalid quantity");
 
       return;
     }
@@ -356,7 +356,7 @@ export function WarehouseDetailsModal({
         }),
       });
 
-      toast.success("Traslado registrado");
+      toast.success("Transfer registered");
       setTransferQty("");
       setTransferNotes("");
       await fetchDetails();
@@ -373,13 +373,13 @@ export function WarehouseDetailsModal({
     if (requestingTransfer) return;
 
     if (!requestFromWarehouseId) {
-      toast.error("Selecciona bodega origen");
+      toast.error("Select a source warehouse");
 
       return;
     }
 
     if (!requestStockId) {
-      toast.error("Selecciona item de la bodega origen");
+      toast.error("Select an item from the source warehouse");
 
       return;
     }
@@ -389,7 +389,7 @@ export function WarehouseDetailsModal({
     );
 
     if (!selectedStock?.inventoryItemId) {
-      toast.error("No se pudo resolver el item a solicitar");
+      toast.error("Could not resolve the item to request");
 
       return;
     }
@@ -397,7 +397,7 @@ export function WarehouseDetailsModal({
     const qty = Number(requestQty);
 
     if (!Number.isFinite(qty) || qty <= 0) {
-      toast.error("Cantidad invalida");
+      toast.error("Invalid quantity");
 
       return;
     }
@@ -417,7 +417,7 @@ export function WarehouseDetailsModal({
         }),
       });
 
-      toast.success("Solicitud de traslado creada");
+      toast.success("Transfer request created");
       setRequestQty("");
       setRequestNotes("");
       await fetchTransferRequests();
@@ -438,7 +438,7 @@ export function WarehouseDetailsModal({
         body: JSON.stringify({ id: requestId }),
       });
 
-      toast.success("Solicitud aprobada y traslado ejecutado");
+      toast.success("Request approved and transfer executed");
       await Promise.all([fetchTransferRequests(), fetchDetails()]);
       onChanged();
     } catch (error) {
@@ -458,7 +458,7 @@ export function WarehouseDetailsModal({
         body: JSON.stringify({ id: requestId }),
       });
 
-      toast.success("Solicitud rechazada");
+      toast.success("Request rejected");
       await fetchTransferRequests();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -477,7 +477,7 @@ export function WarehouseDetailsModal({
         body: JSON.stringify({ id: requestId }),
       });
 
-      toast.success("Solicitud cancelada");
+      toast.success("Request cancelled");
       await fetchTransferRequests();
     } catch (error) {
       toast.error(getErrorMessage(error));

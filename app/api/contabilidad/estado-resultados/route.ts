@@ -37,11 +37,14 @@ export async function GET(request: Request) {
       10,
     );
     const periodType = searchParams.get("period") ?? "monthly";
+    const strictSiigo = (searchParams.get("strictSiigo") ?? "1") !== "0";
 
     const dateFrom = `${year}-01-01`;
     const dateTo = `${year}-12-31`;
 
-    // Revenue from approved/invoiced prefacturas
+    // Revenue from approved/invoiced prefacturas.
+    // In strict mode, only SIIGO-validated statuses are included to avoid
+    // reporting revenue that has not been effectively issued/accepted.
     const revenueRows = await db.execute(sql`
       SELECT
         ${periodType === "annual" ? sql`1` : periodType === "quarterly" ? sql`EXTRACT(QUARTER FROM approved_at)::int` : sql`EXTRACT(MONTH FROM approved_at)::int`} AS period_num,
@@ -50,9 +53,27 @@ export async function GET(request: Request) {
       WHERE approved_at >= ${dateFrom}::date
         AND approved_at <= ${dateTo}::date
         AND status NOT IN ('ANULADA', 'PENDIENTE_CONTABILIDAD')
+        ${
+          strictSiigo
+            ? sql`AND COALESCE(siigo_status, '') IN ('ACCEPTED', 'INVOICED', 'NOT_APPLICABLE')`
+            : sql``
+        }
       GROUP BY period_num
       ORDER BY period_num
     `);
+
+    const excludedRevenueRows = strictSiigo
+      ? await db.execute(sql`
+          SELECT
+            COALESCE(SUM(total::numeric), 0) AS amount,
+            COUNT(*)::int AS docs
+          FROM prefacturas
+          WHERE approved_at >= ${dateFrom}::date
+            AND approved_at <= ${dateTo}::date
+            AND status NOT IN ('ANULADA', 'PENDIENTE_CONTABILIDAD')
+            AND COALESCE(siigo_status, '') NOT IN ('ACCEPTED', 'INVOICED', 'NOT_APPLICABLE')
+        `)
+      : null;
 
     // COGS from finalized/approved purchase orders
     const cogsRows = await db.execute(sql`
@@ -172,9 +193,19 @@ export async function GET(request: Request) {
     const operatingMargin =
       totalRevenue > 0 ? (operatingIncome / totalRevenue) * 100 : 0;
 
+    const excludedRevenueAmount = strictSiigo
+      ? parseFloat(
+          String(excludedRevenueRows?.rows?.[0]?.amount ?? "0"),
+        )
+      : 0;
+    const excludedRevenueDocs = strictSiigo
+      ? parseInt(String(excludedRevenueRows?.rows?.[0]?.docs ?? "0"), 10)
+      : 0;
+
     return Response.json({
       year,
       periodType,
+      strictSiigo,
       periods,
       byPeriod,
       summary: {
@@ -187,7 +218,15 @@ export async function GET(request: Request) {
         totalOperatingCosts: totalOperatingCosts.toFixed(2),
         operatingIncome: operatingIncome.toFixed(2),
         operatingMargin: operatingMargin.toFixed(2),
+        excludedRevenue: excludedRevenueAmount.toFixed(2),
+        excludedRevenueDocs,
       },
+      warnings:
+        strictSiigo && excludedRevenueAmount > 0
+          ? [
+              `Se excluyeron ${excludedRevenueDocs} prefacturas por no tener validacion SIIGO final (ingreso excluido: ${excludedRevenueAmount.toFixed(2)}).`,
+            ]
+          : [],
     });
   } catch (error) {
     const dbError = dbErrorResponse(error);

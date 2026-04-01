@@ -19,7 +19,7 @@ type SiigoAuthResult = {
   expiresAt: number;
   expiresIn: number | null;
   payload: SiigoAuthPayload;
-  source: "remote" | "cache";
+  source: "remote" | "cache" | "env";
 };
 
 export class SiigoApiError extends Error {
@@ -40,11 +40,13 @@ export type SiigoTokenStatus = {
   expiresAt: string | null;
   expiresIn: number | null;
   baseUrl: string;
+  liveSubmissionEnabled: boolean;
 };
 
 export type SiigoCredentialDebugInfo = {
   usernameConfigured: boolean;
   accessKeyConfigured: boolean;
+  tokenConfigured: boolean;
   accessKeySource: "SIIGO_ACCESS_KEY" | "SIIGO_API_SECRET" | "missing";
   accessKeyLength: number | null;
   accessKeyLooksBase64: boolean;
@@ -71,6 +73,22 @@ function getSiigoBaseUrl() {
 
 function getSiigoPartnerId() {
   return cleanEnvValue(process.env.SIIGO_PARTNER_ID);
+}
+
+function getStaticSiigoToken() {
+  return cleanEnvValue(process.env.SIIGO_TOKEN ?? process.env.SIIGO_API_TOKEN);
+}
+
+function toAuthorizationHeader(token: string, source: SiigoAuthResult["source"]) {
+  const normalized = String(token ?? "").trim();
+
+  if (!normalized) return normalized;
+  if (/^(Bearer|Basic)\s+/i.test(normalized)) return normalized;
+
+  // For env token mode we preserve the token exactly as configured.
+  if (source === "env") return normalized;
+
+  return `Bearer ${normalized}`;
 }
 
 function buildSiigoApiUrl(path: string) {
@@ -113,6 +131,7 @@ export function getSiigoCredentialDebugInfo(): SiigoCredentialDebugInfo {
   const accessKeyEnv = cleanEnvValue(process.env.SIIGO_ACCESS_KEY);
   const apiSecretEnv = cleanEnvValue(process.env.SIIGO_API_SECRET);
   const effectiveAccessKey = accessKeyEnv || apiSecretEnv;
+  const staticToken = getStaticSiigoToken();
   const partnerId = getSiigoPartnerId();
 
   const accessKeyWarning = accessKeyEnv
@@ -128,6 +147,7 @@ export function getSiigoCredentialDebugInfo(): SiigoCredentialDebugInfo {
   return {
     usernameConfigured: Boolean(username),
     accessKeyConfigured: Boolean(effectiveAccessKey),
+    tokenConfigured: Boolean(staticToken),
     accessKeySource: accessKeyEnv
       ? "SIIGO_ACCESS_KEY"
       : apiSecretEnv
@@ -196,6 +216,15 @@ export function clearSiigoTokenCache() {
 }
 
 export function getSiigoTokenStatus(): SiigoTokenStatus {
+  const liveRaw = String(process.env.SIIGO_ALLOW_LIVE_SUBMISSION ?? "")
+    .trim()
+    .toLowerCase();
+  const liveSubmissionEnabled =
+    liveRaw === "1" ||
+    liveRaw === "true" ||
+    liveRaw === "yes" ||
+    liveRaw === "on";
+
   if (!tokenCache || tokenCache.expiresAt <= Date.now()) {
     if (tokenCache && tokenCache.expiresAt <= Date.now()) {
       tokenCache = null;
@@ -207,6 +236,7 @@ export function getSiigoTokenStatus(): SiigoTokenStatus {
       expiresAt: null,
       expiresIn: null,
       baseUrl: getSiigoBaseUrl(),
+      liveSubmissionEnabled,
     };
   }
 
@@ -219,6 +249,7 @@ export function getSiigoTokenStatus(): SiigoTokenStatus {
       Math.floor((tokenCache.expiresAt - Date.now()) / 1000),
     ),
     baseUrl: getSiigoBaseUrl(),
+    liveSubmissionEnabled,
   };
 }
 
@@ -226,6 +257,20 @@ export async function authenticateWithSiigo(args?: {
   forceRefresh?: boolean;
 }): Promise<SiigoAuthResult> {
   const forceRefresh = Boolean(args?.forceRefresh);
+  const staticToken = getStaticSiigoToken();
+
+  if (staticToken) {
+    const now = Date.now();
+
+    return {
+      token: staticToken,
+      obtainedAt: now,
+      expiresAt: now + DEFAULT_TOKEN_TTL_MS,
+      expiresIn: null,
+      payload: {},
+      source: "env",
+    };
+  }
 
   if (!forceRefresh && tokenCache && tokenCache.expiresAt > Date.now()) {
     return {
@@ -320,7 +365,7 @@ export async function siigoRequest(
   if (!skipAuth) {
     const auth = await authenticateWithSiigo();
 
-    finalHeaders.set("Authorization", `Bearer ${auth.token}`);
+    finalHeaders.set("Authorization", toAuthorizationHeader(auth.token, auth.source));
   }
 
   const url = buildSiigoApiUrl(path);
@@ -335,7 +380,10 @@ export async function siigoRequest(
     const auth = await authenticateWithSiigo({ forceRefresh: true });
     const retryHeaders = new Headers(finalHeaders);
 
-    retryHeaders.set("Authorization", `Bearer ${auth.token}`);
+    retryHeaders.set(
+      "Authorization",
+      toAuthorizationHeader(auth.token, auth.source),
+    );
 
     return fetch(url, {
       ...init,

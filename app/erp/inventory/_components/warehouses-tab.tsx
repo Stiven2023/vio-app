@@ -84,7 +84,7 @@ export function WarehousesTab({ canManage }: { canManage: boolean }) {
         body: JSON.stringify({ id: warehouse.id }),
       });
 
-      toast.success("Bodega eliminada");
+      toast.success("Warehouse deleted");
       setConfirmOpen(false);
       setPendingDelete(null);
       refresh();

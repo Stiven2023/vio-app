@@ -1,6 +1,11 @@
 "use client";
 
-import type { OrderType, QuoteProcess } from "../_lib/types";
+import type {
+  Addition,
+  ProductOption,
+  QuoteItem,
+  UiLocale,
+} from "../_lib/types";
 
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
@@ -12,38 +17,12 @@ import {
   DropdownItem,
 } from "@heroui/dropdown";
 import { TableCell, TableRow } from "@heroui/table";
-
-type Addition = {
-  id: string;
-  name: string;
-  quantity: number;
-  unitPrice: number;
-  discount: number;
-};
-
-type QuoteItem = {
-  id: string;
-  productId: string;
-  orderType: OrderType;
-  process: QuoteProcess;
-  code: string;
-  quantity: number;
-  product: string;
-  description: string;
-  unitPrice: number;
-  discount: number;
-  additions: Addition[];
-  referenceOrderCode?: string;
-  referenceDesign?: string;
-};
-
-type ProductOption = {
-  id: string;
-  productCode: string | null;
-  name: string;
-  description: string | null;
-  priceCopBase: string | null;
-};
+import {
+  getOrderTypeOptions,
+  getProcessOptions,
+  QUOTATION_COPY,
+} from "../_lib/constants";
+import { getQuotationUiLocale } from "../_lib/utils";
 
 type QuotationsTableRowProps = {
   row: QuoteItem;
@@ -55,6 +34,7 @@ type QuotationsTableRowProps = {
   onRemoveItem: (id: string) => void;
   onAddAddition: (id: string, addition: Addition) => void;
   asMoney: (value: number) => string;
+  locale?: UiLocale;
 };
 
 export function QuotationsTableRow({
@@ -67,14 +47,18 @@ export function QuotationsTableRow({
   onRemoveItem,
   onAddAddition,
   asMoney,
+  locale,
 }: QuotationsTableRowProps) {
+  const uiLocale = locale ?? getQuotationUiLocale();
+  const copy = QUOTATION_COPY[uiLocale];
+  const orderTypeOptions = getOrderTypeOptions(uiLocale);
+  const processOptions = getProcessOptions(uiLocale);
   const subtotalLine = row.quantity * row.unitPrice;
   const discountAmount = subtotalLine * (row.discount / 100);
   const lineTotal = subtotalLine - discountAmount;
 
   return (
     <TableRow>
-      {/* Tipo Diseño */}
       <TableCell>
         <Select
           classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
@@ -85,19 +69,15 @@ export function QuotationsTableRow({
             const first = Array.from(keys)[0];
 
             onUpdateItem(row.id, {
-              orderType: String(first ?? "NORMAL") as OrderType,
+              orderType: String(first ?? "NORMAL") as QuoteItem["orderType"],
             });
           }}
         >
-          <SelectItem key="NORMAL">New</SelectItem>
-          <SelectItem key="COMPLETACION">Completion</SelectItem>
-          <SelectItem key="REFERENTE">Referent</SelectItem>
-          <SelectItem key="REPOSICION">Reposition</SelectItem>
-          <SelectItem key="MUESTRA">Sample</SelectItem>
-          <SelectItem key="OBSEQUIO">Gift</SelectItem>
+          {orderTypeOptions.map((option) => (
+            <SelectItem key={option.value}>{option.label}</SelectItem>
+          ))}
         </Select>
       </TableCell>
-      {/* Proceso */}
       <TableCell>
         <Select
           classNames={{ trigger: "min-h-12 text-sm font-medium w-40" }}
@@ -108,19 +88,18 @@ export function QuotationsTableRow({
             const first = Array.from(keys)[0];
 
             onUpdateItem(row.id, {
-              process: String(first ?? "PRODUCCION") as QuoteProcess,
+              process: String(first ?? "PRODUCCION") as QuoteItem["process"],
             });
           }}
         >
-          <SelectItem key="PRODUCCION">Production</SelectItem>
-          <SelectItem key="BODEGA">Warehouse</SelectItem>
-          <SelectItem key="COMPRAS">Purchases</SelectItem>
+          {processOptions.map((option) => (
+            <SelectItem key={option.value}>{option.label}</SelectItem>
+          ))}
         </Select>
       </TableCell>
-      {/* Producto */}
       <TableCell>
         <Select
-          aria-label="Select product"
+          aria-label={copy.products.productSearch}
           classNames={{ trigger: "min-h-12 text-sm font-medium w-64" }}
           isLoading={loadingProducts}
           selectedKeys={row.productId ? [row.productId] : []}
@@ -191,7 +170,6 @@ export function QuotationsTableRow({
       </TableCell>
       {/* Total Value */}
       <TableCell className="font-semibold">{asMoney(lineTotal)}</TableCell>
-      {/* Acción */}
       <TableCell>
         <Dropdown>
           <DropdownTrigger>
@@ -207,8 +185,8 @@ export function QuotationsTableRow({
               }
             >
               {expandedItemId === row.id
-                ? "− Hide Additions"
-                : "+ Add Additions"}
+                ? `- ${copy.products.headers.additions}`
+                : `+ ${copy.additions.addAddition}`}
             </DropdownItem>
             <DropdownItem
               key="remove"
@@ -216,7 +194,7 @@ export function QuotationsTableRow({
               color="danger"
               onPress={() => onRemoveItem(row.id)}
             >
-              Remove Product
+              {copy.products.remove}
             </DropdownItem>
           </DropdownMenu>
         </Dropdown>

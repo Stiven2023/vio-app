@@ -14,6 +14,8 @@ import { Select, SelectItem } from "@heroui/select";
 import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 
+import { QUOTATION_COPY } from "../_lib/constants";
+import { getQuotationUiLocale } from "../_lib/utils";
 import { apiJson } from "@/app/erp/catalog/_lib/api";
 
 type QuotationsAdditionsPanelProps = {
@@ -37,6 +39,7 @@ export function QuotationsAdditionsPanel({
   onAddAddition,
   asMoney,
 }: QuotationsAdditionsPanelProps) {
+  const copy = QUOTATION_COPY[getQuotationUiLocale()].additions;
   const isAuthorizedManual =
     currency === "COP" && clientPriceType === "AUTORIZADO";
   const isConditional = ["COMPLETACION", "REFERENTE", "REPOSICION"].includes(
@@ -150,7 +153,7 @@ export function QuotationsAdditionsPanel({
     <Card className="border border-default-200 mt-2" radius="md" shadow="none">
       <CardHeader className="flex items-center justify-between">
         <span className="text-sm font-semibold">
-          Additions for {row.product}
+          {copy.titleForProduct(row.product)}
         </span>
         <Button
           color="primary"
@@ -166,17 +169,20 @@ export function QuotationsAdditionsPanel({
             onAddAddition(row.id, newAddition);
           }}
         >
-          + Add Addition
+          + {copy.addAddition}
         </Button>
       </CardHeader>
       <CardBody className="space-y-3">
         {/* Campos de referencia si es condicional */}
         {isConditional && (
           <div className="space-y-3 rounded-lg border border-default-200 bg-default-50 dark:bg-default-100/10 p-3">
+            <p className="text-xs font-semibold text-default-600">
+              {copy.conditionalReferenceSection}
+            </p>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <Input
-                label="Search order by code"
-                placeholder="E.g: ORD-001"
+                label={copy.searchOrderByCode}
+                placeholder={copy.searchOrderPlaceholder}
                 size="sm"
                 value={orderSearch}
                 variant="bordered"
@@ -185,7 +191,7 @@ export function QuotationsAdditionsPanel({
 
               <Select
                 isLoading={ordersLoading}
-                label="Reference order"
+                label={copy.referenceOrder}
                 selectedKeys={selectedOrderId ? [selectedOrderId] : []}
                 size="sm"
                 variant="bordered"
@@ -205,14 +211,14 @@ export function QuotationsAdditionsPanel({
                 {orderOptions.map((order) => (
                   <SelectItem
                     key={order.id}
-                  >{`${order.orderCode} · ${order.clientName ?? "No client"}`}</SelectItem>
+                  >{`${order.orderCode} · ${order.clientName ?? copy.noClient}`}</SelectItem>
                 ))}
               </Select>
 
               <Select
                 isDisabled={!selectedOrderId}
                 isLoading={designsLoading}
-                label="Reference design"
+                label={copy.referenceDesign}
                 selectedKeys={row.referenceDesign ? [row.referenceDesign] : []}
                 size="sm"
                 variant="bordered"
@@ -233,58 +239,58 @@ export function QuotationsAdditionsPanel({
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               <div className="rounded-md border border-default-200 bg-content1 p-3">
                 <p className="text-xs font-semibold text-default-600">
-                  Order preview
+                  {copy.orderPreview}
                 </p>
                 {selectedOrder ? (
                   <div className="mt-1 space-y-1 text-xs text-default-700">
                     <p>
-                      <span className="font-medium">Code:</span>{" "}
+                      <span className="font-medium">{copy.orderCode}:</span>{" "}
                       {selectedOrder.orderCode}
                     </p>
                     <p>
-                      <span className="font-medium">Client:</span>{" "}
+                      <span className="font-medium">{copy.client}:</span>{" "}
                       {selectedOrder.clientName ?? "-"}
                     </p>
                     <p>
-                      <span className="font-medium">Type:</span>{" "}
+                      <span className="font-medium">{copy.type}:</span>{" "}
                       {selectedOrder.kind ?? "-"}
                     </p>
                     <p>
-                      <span className="font-medium">Status:</span>{" "}
+                      <span className="font-medium">{copy.status}:</span>{" "}
                       {selectedOrder.status ?? "-"}
                     </p>
                     <p>
-                      <span className="font-medium">Designs:</span>{" "}
+                      <span className="font-medium">{copy.designs}:</span>{" "}
                       {selectedOrder.itemCount ?? 0}
                     </p>
                   </div>
                 ) : (
                   <p className="mt-1 text-xs text-default-500">
-                    Select an order to see its summary.
+                    {copy.selectOrderSummary}
                   </p>
                 )}
               </div>
 
               <div className="rounded-md border border-default-200 bg-content1 p-3">
                 <p className="text-xs font-semibold text-default-600">
-                  Design preview
+                  {copy.designPreview}
                 </p>
                 {selectedDesign ? (
                   <div className="mt-1 space-y-2 text-xs text-default-700">
                     <p>
-                      <span className="font-medium">Number:</span>{" "}
+                      <span className="font-medium">{copy.number}:</span>{" "}
                       {selectedDesign.designNumber}
                     </p>
                     <p>
-                      <span className="font-medium">Name:</span>{" "}
+                      <span className="font-medium">{copy.name}:</span>{" "}
                       {selectedDesign.designName}
                     </p>
                     <p>
-                      <span className="font-medium">Status:</span>{" "}
+                      <span className="font-medium">{copy.status}:</span>{" "}
                       {selectedDesign.status ?? "-"}
                     </p>
                     <p>
-                      <span className="font-medium">Quantity:</span>{" "}
+                      <span className="font-medium">{copy.quantity}:</span>{" "}
                       {selectedDesign.quantity ?? 0}
                     </p>
                     {selectedDesign.previewImageUrl ? (
@@ -297,7 +303,7 @@ export function QuotationsAdditionsPanel({
                   </div>
                 ) : (
                   <p className="mt-1 text-xs text-default-500">
-                    Select a design to see preview.
+                    {copy.selectDesignPreview}
                   </p>
                 )}
               </div>
@@ -308,7 +314,7 @@ export function QuotationsAdditionsPanel({
         {/* Additions list */}
         {row.additions.length === 0 ? (
           <p className="text-xs text-default-500">
-            No additions for this product
+            {copy.empty}
           </p>
         ) : (
           <div className="space-y-2">
@@ -323,8 +329,8 @@ export function QuotationsAdditionsPanel({
                   <Select
                     className="flex-1 min-w-64"
                     isLoading={loadingAdditions}
-                    label="Addition"
-                    placeholder="Select product"
+                    label={copy.addition}
+                    placeholder={copy.selectProduct}
                     selectedKeys={add.id ? [add.id] : []}
                     size="sm"
                     variant="flat"
@@ -365,7 +371,7 @@ export function QuotationsAdditionsPanel({
                   <Input
                     isReadOnly
                     classNames={{ input: "w-16 text-center" }}
-                    label="Qty"
+                    label={copy.qty}
                     size="sm"
                     type="number"
                     value={String(row.quantity)}
@@ -374,7 +380,7 @@ export function QuotationsAdditionsPanel({
                   <Input
                     classNames={{ input: "w-20 text-center" }}
                     isReadOnly={!isAuthorizedManual}
-                    placeholder={`Value (${currency})`}
+                    placeholder={copy.valuePlaceholder(currency)}
                     size="sm"
                     type="number"
                     value={String(add.unitPrice)}
@@ -407,7 +413,7 @@ export function QuotationsAdditionsPanel({
                       onUpdateItem(row.id, { additions: updated });
                     }}
                   >
-                    X
+                    {copy.remove}
                   </Button>
                 </div>
               );

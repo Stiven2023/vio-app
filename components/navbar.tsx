@@ -35,7 +35,7 @@ import { isOperarioRole } from "@/src/utils/role-status";
 const permissionsStorageKey = "viomar.permissions.v1";
 const localeStorageKey = "preferredLanguage";
 
-type AppModule = "erp" | "mes" | "crm";
+type AppModule = "erp" | "mes" | "crm" | "hcm";
 type SupportedLocale = "en" | "es";
 
 const localeCookieName = "NEXT_LOCALE";
@@ -117,6 +117,7 @@ const resolvePreferredLocale = (pathname: string): SupportedLocale => {
 const getModuleFromPath = (pathname: string): AppModule => {
   if (pathname === "/mes" || pathname.startsWith("/mes/")) return "mes";
   if (pathname === "/crm" || pathname.startsWith("/crm/")) return "crm";
+  if (pathname === "/hcm" || pathname.startsWith("/hcm/")) return "hcm";
 
   return "erp";
 };
@@ -142,14 +143,23 @@ export const Navbar = () => {
       ? [
           { name: "MES", href: "/mes" },
           { name: "ERP", href: "/erp/dashboard" },
+          { name: "HCM", href: "/hcm" },
           { name: "CRM", href: "/crm" },
         ]
       : currentModule === "crm"
         ? [
             { name: "CRM", href: "/crm" },
             { name: "ERP", href: "/erp/dashboard" },
+            { name: "HCM", href: "/hcm" },
             { name: "MES", href: "/mes" },
           ]
+        : currentModule === "hcm"
+          ? [
+              { name: "HCM", href: "/hcm" },
+              { name: "ERP", href: "/erp/dashboard" },
+              { name: "MES", href: "/mes" },
+              { name: "CRM", href: "/crm" },
+            ]
         : [];
 
   const [canSeeClients, setCanSeeClients] = useState(false);
@@ -360,7 +370,8 @@ export const Navbar = () => {
       href === "/" ||
       href.startsWith("/erp") ||
       href.startsWith("/mes") ||
-      href.startsWith("/crm")
+      href.startsWith("/crm") ||
+      href.startsWith("/hcm")
     ) {
       return href;
     }

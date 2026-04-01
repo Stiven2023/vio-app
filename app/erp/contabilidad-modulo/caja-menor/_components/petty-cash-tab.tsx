@@ -28,128 +28,27 @@ import { BsDownload, BsPlus } from "react-icons/bs";
 
 import { usePaginatedApi } from "@/app/erp/orders/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
-
-/* ─────────────────────────────────────────
-   Types
-───────────────────────────────────────── */
-
-type TransactionType = "EXPENSE" | "REPLENISHMENT" | "OPENING" | "ADJUSTMENT";
-
-type FundOption = {
-  id: string;
-  name: string;
-  currentBalance: string;
-  currency: string;
-  status: string;
-};
-
-type TransactionRow = {
-  id: string;
-  transactionCode: string;
-  fundId: string;
-  fundName: string | null;
-  transactionDate: string;
-  transactionType: TransactionType;
-  category: string | null;
-  description: string;
-  amount: string;
-  balanceBefore: string;
-  balanceAfter: string;
-  referenceCode: string | null;
-  attachmentUrl: string | null;
-  notes: string | null;
-  currency: string | null;
-  createdAt: string | null;
-  createdByName: string | null;
-};
-
-type PettyCashData = {
-  items: TransactionRow[];
-  funds: FundOption[];
-  summary: {
-    totalExpenses: string;
-    totalReplenishments: string;
-    totalAdjustments: string;
-  };
-  page: number;
-  pageSize: number;
-  total: number;
-  hasNextPage: boolean;
-};
-
-type FundRow = {
-  id: string;
-  name: string;
-  description: string | null;
-  initialBalance: string;
-  currentBalance: string;
-  maxBalance: string | null;
-  currency: string;
-  status: string;
-  createdAt: string | null;
-  responsibleName: string | null;
-};
-
-type FundsData = {
-  items: FundRow[];
-};
-
-/* ─────────────────────────────────────────
-   Constants
-───────────────────────────────────────── */
-
-const TRANSACTION_TYPE_OPTIONS = [
-  { value: "ALL", label: "Todos los tipos" },
-  { value: "EXPENSE", label: "Egreso" },
-  { value: "REPLENISHMENT", label: "Reposición" },
-  { value: "OPENING", label: "Apertura" },
-  { value: "ADJUSTMENT", label: "Ajuste" },
-] as const;
-
-const TRANSACTION_TYPE_LABELS: Record<TransactionType, string> = {
-  EXPENSE: "Egreso",
-  REPLENISHMENT: "Reposición",
-  OPENING: "Apertura",
-  ADJUSTMENT: "Ajuste",
-};
-
-const EXPENSE_CATEGORIES = [
-  "Papelería",
-  "Transporte",
-  "Aseo",
-  "Cafetería",
-  "Materiales varios",
-  "Mensajería",
-  "Servicios públicos",
-  "Otros",
-] as const;
-
-/* ─────────────────────────────────────────
-   Helpers
-───────────────────────────────────────── */
-
-function toNumber(value: unknown): number {
-  const parsed = Number(value);
-
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatMoney(value: string | number | null | undefined): string {
-  return new Intl.NumberFormat("es-CO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(toNumber(value));
-}
-
-function txTypeColor(
-  type: TransactionType,
-): "danger" | "success" | "primary" | "warning" {
-  if (type === "EXPENSE") return "danger";
-  if (type === "REPLENISHMENT") return "success";
-  if (type === "OPENING") return "primary";
-
-  return "warning";
-}
+import {
+  getCurrencyOptions,
+  getExpenseCategoryOptions,
+  getTransactionTypeLabel,
+  getTransactionTypeOptions,
+  PETTY_CASH_COPY,
+} from "../_lib/petty-cash.constants";
+import {
+  formatMoney,
+  getMovementCountLabel,
+  getPettyCashUiLocale,
+  getSignedAmountPrefix,
+  getTransactionTypeColor,
+  toNumber,
+} from "../_lib/petty-cash.utils";
+import type {
+  FundsData,
+  PettyCashData,
+  TransactionRow,
+  TransactionType,
+} from "../_lib/types";
 
 /* ─────────────────────────────────────────
    Main Component
@@ -162,6 +61,17 @@ export function PettyCashTab({
   canCreate: boolean;
   canManage: boolean;
 }) {
+  const locale = useMemo(() => getPettyCashUiLocale(), []);
+  const copy = PETTY_CASH_COPY[locale];
+  const transactionTypeOptions = useMemo(
+    () => getTransactionTypeOptions(locale),
+    [locale],
+  );
+  const expenseCategoryOptions = useMemo(
+    () => getExpenseCategoryOptions(locale),
+    [locale],
+  );
+  const currencyOptions = useMemo(() => getCurrencyOptions(locale), [locale]);
   const [activeTab, setActiveTab] = useState<string>("movimientos");
 
   /* ── Transactions tab state ── */
@@ -222,19 +132,21 @@ export function PettyCashTab({
   };
 
   const saveTx = async () => {
-    if (!txFundId) return toast.error("Selecciona un fondo");
-    if (!txDate) return toast.error("La fecha es obligatoria");
-    if (!txDescription.trim())
-      return toast.error("La descripción es obligatoria");
-    if (!txAmount) return toast.error("El monto es obligatorio");
+    if (!txFundId) return toast.error(copy.transactions.validation.fundRequired);
+    if (!txDate) return toast.error(copy.transactions.validation.dateRequired);
+    if (!txDescription.trim()) {
+      return toast.error(copy.transactions.validation.descriptionRequired);
+    }
+    if (!txAmount) return toast.error(copy.transactions.validation.amountRequired);
 
     const numAmount = parseFloat(txAmount);
 
-    if (isNaN(numAmount) || numAmount <= 0)
-      return toast.error("El monto debe ser positivo");
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return toast.error(copy.transactions.validation.positiveAmount);
+    }
 
     if (txType === "EXPENSE" && numAmount > selectedFundBalance) {
-      return toast.error("Saldo insuficiente en el fondo");
+      return toast.error(copy.transactions.validation.insufficientBalance);
     }
 
     try {
@@ -252,7 +164,7 @@ export function PettyCashTab({
           notes: txNotes || null,
         }),
       });
-      toast.success("Movimiento registrado");
+      toast.success(copy.transactions.validation.saved);
       setCreateTxOpen(false);
       resetTxDraft();
       refresh();
@@ -304,15 +216,16 @@ export function PettyCashTab({
   };
 
   const saveFund = async () => {
-    if (!fundName.trim())
-      return toast.error("El nombre del fondo es obligatorio");
-    if (!fundInitialBalance)
-      return toast.error("El saldo inicial es obligatorio");
+    if (!fundName.trim()) return toast.error(copy.funds.validation.nameRequired);
+    if (!fundInitialBalance) {
+      return toast.error(copy.funds.validation.initialRequired);
+    }
 
     const numInitial = parseFloat(fundInitialBalance);
 
-    if (isNaN(numInitial) || numInitial < 0)
-      return toast.error("Saldo inicial inválido");
+    if (isNaN(numInitial) || numInitial < 0) {
+      return toast.error(copy.funds.validation.initialInvalid);
+    }
 
     try {
       setCreateFundLoading(true);
@@ -326,7 +239,7 @@ export function PettyCashTab({
           currency: fundCurrency,
         }),
       });
-      toast.success("Fondo creado correctamente");
+      toast.success(copy.funds.validation.saved);
       setCreateFundOpen(false);
       resetFundDraft();
       void loadFunds();
@@ -340,27 +253,35 @@ export function PettyCashTab({
   /* ── Export ── */
   const exportToExcel = () => {
     const rows = (pettyCashData?.items ?? []).map((row) => ({
-      Código: row.transactionCode,
-      Fecha: row.transactionDate,
-      Fondo: row.fundName ?? "",
-      Tipo: TRANSACTION_TYPE_LABELS[row.transactionType] ?? row.transactionType,
-      Categoría: row.category ?? "",
-      Descripción: row.description,
-      Moneda: row.currency ?? "COP",
-      Monto: toNumber(row.amount),
-      "Saldo Antes": toNumber(row.balanceBefore),
-      "Saldo Después": toNumber(row.balanceAfter),
-      Referencia: row.referenceCode ?? "",
-      Notas: row.notes ?? "",
-      "Registrado Por": row.createdByName ?? "",
-      "Creado En": row.createdAt ?? "",
+      [copy.transactions.table.code]: row.transactionCode,
+      [copy.transactions.table.date]: row.transactionDate,
+      [copy.transactions.table.fund]: row.fundName ?? "",
+      [copy.transactions.table.type]: getTransactionTypeLabel(
+        locale,
+        row.transactionType,
+      ),
+      [copy.transactions.table.category]: row.category ?? "",
+      [copy.transactions.table.description]: row.description,
+      [copy.funds.table.currency]: row.currency ?? "COP",
+      [copy.transactions.table.amount]: toNumber(row.amount),
+      [locale === "es" ? "Saldo antes" : "Balance before"]: toNumber(
+        row.balanceBefore,
+      ),
+      [locale === "es" ? "Saldo despues" : "Balance after"]: toNumber(
+        row.balanceAfter,
+      ),
+      [copy.transactions.table.reference]: row.referenceCode ?? "",
+      [copy.transactions.modal.notes]: row.notes ?? "",
+      [locale === "es" ? "Registrado por" : "Created by"]:
+        row.createdByName ?? "",
+      [locale === "es" ? "Creado en" : "Created at"]: row.createdAt ?? "",
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(wb, ws, "Caja Menor");
-    XLSX.writeFile(wb, "caja_menor.xlsx");
+    XLSX.utils.book_append_sheet(wb, ws, copy.exportSheetName);
+    XLSX.writeFile(wb, copy.exportFileName);
   };
 
   /* ── Summary totals ── */
@@ -380,19 +301,19 @@ export function PettyCashTab({
   return (
     <div className="space-y-4">
       <Tabs
-        aria-label="Caja Menor"
+        aria-label={copy.transactions.ariaLabel}
         selectedKey={activeTab}
         onSelectionChange={(key) => setActiveTab(String(key))}
       >
         {/* ══════════════════════════
             TAB 1 – MOVIMIENTOS
         ══════════════════════════ */}
-        <Tab key="movimientos" title="Movimientos">
+        <Tab key="movimientos" title={copy.tabs.transactions}>
           <div className="mt-4 space-y-4">
             {/* Actions row */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-default-500">
-                Registro de egresos, reposiciones y aperturas de caja menor.
+                {copy.transactions.helper}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -401,7 +322,7 @@ export function PettyCashTab({
                   variant="flat"
                   onPress={exportToExcel}
                 >
-                  Exportar Excel
+                  {copy.transactions.export}
                 </Button>
                 {canCreate ? (
                   <Button
@@ -410,7 +331,7 @@ export function PettyCashTab({
                     startContent={<BsPlus className="text-lg" />}
                     onPress={() => setCreateTxOpen(true)}
                   >
-                    Nuevo Movimiento
+                    {copy.transactions.new}
                   </Button>
                 ) : null}
               </div>
@@ -421,11 +342,11 @@ export function PettyCashTab({
               <Card>
                 <CardBody className="gap-1">
                   <div className="text-xs uppercase tracking-wide text-default-500">
-                    Total Egresos
+                    {copy.transactions.summary.expenses}
                   </div>
                   <div className="text-2xl font-semibold text-danger-600">
                     {pettyCashData?.summary
-                      ? formatMoney(pettyCashData.summary.totalExpenses)
+                      ? formatMoney(locale, pettyCashData.summary.totalExpenses)
                       : "—"}
                   </div>
                 </CardBody>
@@ -433,11 +354,14 @@ export function PettyCashTab({
               <Card>
                 <CardBody className="gap-1">
                   <div className="text-xs uppercase tracking-wide text-default-500">
-                    Total Reposiciones
+                    {copy.transactions.summary.replenishments}
                   </div>
                   <div className="text-2xl font-semibold text-success-600">
                     {pettyCashData?.summary
-                      ? formatMoney(pettyCashData.summary.totalReplenishments)
+                      ? formatMoney(
+                          locale,
+                          pettyCashData.summary.totalReplenishments,
+                        )
                       : "—"}
                   </div>
                 </CardBody>
@@ -445,10 +369,10 @@ export function PettyCashTab({
               <Card>
                 <CardBody className="gap-1">
                   <div className="text-xs uppercase tracking-wide text-default-500">
-                    Balance Actual (Fondos Activos)
+                    {copy.transactions.summary.activeBalance}
                   </div>
                   <div className="text-2xl font-semibold">
-                    {formatMoney(totalActiveFundsBalance)}
+                    {formatMoney(locale, totalActiveFundsBalance)}
                   </div>
                 </CardBody>
               </Card>
@@ -458,8 +382,8 @@ export function PettyCashTab({
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
               <Select
                 className="sm:w-64"
-                label="Fondo"
-                placeholder="Todos los fondos"
+                label={copy.transactions.filters.fund}
+                placeholder={copy.transactions.filters.allFunds}
                 selectedKeys={fundFilter ? [fundFilter] : []}
                 size="sm"
                 variant="bordered"
@@ -469,14 +393,14 @@ export function PettyCashTab({
               >
                 {(pettyCashData?.funds ?? []).map((f) => (
                   <SelectItem key={f.id}>
-                    {f.name} — {f.currency} {formatMoney(f.currentBalance)}
+                    {f.name} — {f.currency} {formatMoney(locale, f.currentBalance)}
                   </SelectItem>
                 ))}
               </Select>
 
               <Select
                 className="sm:w-52"
-                label="Tipo de movimiento"
+                label={copy.transactions.filters.transactionType}
                 selectedKeys={[typeFilter]}
                 size="sm"
                 variant="bordered"
@@ -484,14 +408,14 @@ export function PettyCashTab({
                   setTypeFilter(String(Array.from(keys)[0] ?? "ALL"))
                 }
               >
-                {TRANSACTION_TYPE_OPTIONS.map((opt) => (
+                {transactionTypeOptions.map((opt) => (
                   <SelectItem key={opt.value}>{opt.label}</SelectItem>
                 ))}
               </Select>
 
               <Input
                 className="sm:w-44"
-                label="Desde"
+                label={copy.transactions.filters.from}
                 size="sm"
                 type="date"
                 value={dateFrom}
@@ -501,7 +425,7 @@ export function PettyCashTab({
 
               <Input
                 className="sm:w-44"
-                label="Hasta"
+                label={copy.transactions.filters.to}
                 size="sm"
                 type="date"
                 value={dateTo}
@@ -520,30 +444,30 @@ export function PettyCashTab({
                     setDateTo("");
                   }}
                 >
-                  Limpiar
+                  {copy.transactions.filters.clear}
                 </Button>
                 <Button size="sm" variant="flat" onPress={refresh}>
-                  Actualizar
+                  {copy.transactions.filters.refresh}
                 </Button>
               </div>
             </div>
 
             {/* Table */}
-            <Table aria-label="Movimientos de caja menor">
+            <Table aria-label={copy.transactions.ariaLabel}>
               <TableHeader>
-                <TableColumn>Fecha</TableColumn>
-                <TableColumn>Código</TableColumn>
-                <TableColumn>Fondo</TableColumn>
-                <TableColumn>Tipo</TableColumn>
-                <TableColumn>Categoría</TableColumn>
-                <TableColumn>Descripción</TableColumn>
-                <TableColumn>Monto</TableColumn>
-                <TableColumn>Balance</TableColumn>
-                <TableColumn>Referencia</TableColumn>
+                <TableColumn>{copy.transactions.table.date}</TableColumn>
+                <TableColumn>{copy.transactions.table.code}</TableColumn>
+                <TableColumn>{copy.transactions.table.fund}</TableColumn>
+                <TableColumn>{copy.transactions.table.type}</TableColumn>
+                <TableColumn>{copy.transactions.table.category}</TableColumn>
+                <TableColumn>{copy.transactions.table.description}</TableColumn>
+                <TableColumn>{copy.transactions.table.amount}</TableColumn>
+                <TableColumn>{copy.transactions.table.balance}</TableColumn>
+                <TableColumn>{copy.transactions.table.reference}</TableColumn>
               </TableHeader>
               <TableBody
                 emptyContent={
-                  loading ? "Cargando..." : "Sin movimientos registrados"
+                  loading ? copy.transactions.table.loading : copy.transactions.table.empty
                 }
                 items={pettyCashData?.items ?? []}
               >
@@ -558,12 +482,11 @@ export function PettyCashTab({
                     <TableCell>{row.fundName ?? "—"}</TableCell>
                     <TableCell>
                       <Chip
-                        color={txTypeColor(row.transactionType)}
+                        color={getTransactionTypeColor(row.transactionType)}
                         size="sm"
                         variant="flat"
                       >
-                        {TRANSACTION_TYPE_LABELS[row.transactionType] ??
-                          row.transactionType}
+                        {getTransactionTypeLabel(locale, row.transactionType)}
                       </Chip>
                     </TableCell>
                     <TableCell>{row.category ?? "—"}</TableCell>
@@ -580,13 +503,13 @@ export function PettyCashTab({
                               : "font-medium text-success-600"
                         }
                       >
-                        {row.transactionType === "EXPENSE" ? "−" : "+"}
-                        {row.currency ?? "COP"} {formatMoney(row.amount)}
+                        {getSignedAmountPrefix(row.transactionType)}
+                        {row.currency ?? "COP"} {formatMoney(locale, row.amount)}
                       </span>
                     </TableCell>
                     <TableCell>
                       <span className="text-xs text-default-500">
-                        {row.currency ?? "COP"} {formatMoney(row.balanceAfter)}
+                        {row.currency ?? "COP"} {formatMoney(locale, row.balanceAfter)}
                       </span>
                     </TableCell>
                     <TableCell>{row.referenceCode ?? "—"}</TableCell>
@@ -599,8 +522,8 @@ export function PettyCashTab({
             {pettyCashData ? (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-default-500">
-                  Total: {pettyCashData.total ?? 0} movimiento
-                  {pettyCashData.total !== 1 ? "s" : ""}
+                  {copy.transactions.pagination.total}{" "}
+                  {getMovementCountLabel(locale, pettyCashData.total ?? 0)}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -609,7 +532,7 @@ export function PettyCashTab({
                     variant="flat"
                     onPress={() => setPage((p) => Math.max(1, p - 1))}
                   >
-                    Anterior
+                    {copy.transactions.pagination.previous}
                   </Button>
                   <Button
                     isDisabled={loading || !pettyCashData.hasNextPage}
@@ -617,7 +540,7 @@ export function PettyCashTab({
                     variant="flat"
                     onPress={() => setPage((p) => p + 1)}
                   >
-                    Siguiente
+                    {copy.transactions.pagination.next}
                   </Button>
                 </div>
               </div>
@@ -628,11 +551,11 @@ export function PettyCashTab({
         {/* ══════════════════════════
             TAB 2 – FONDOS
         ══════════════════════════ */}
-        <Tab key="fondos" title="Fondos">
+        <Tab key="fondos" title={copy.tabs.funds}>
           <div className="mt-4 space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-default-500">
-                Administración de fondos de caja menor activos e inactivos.
+                {copy.funds.helper}
               </p>
               {canManage ? (
                 <Button
@@ -641,25 +564,25 @@ export function PettyCashTab({
                   startContent={<BsPlus className="text-lg" />}
                   onPress={() => setCreateFundOpen(true)}
                 >
-                  Nuevo Fondo
+                  {copy.funds.new}
                 </Button>
               ) : null}
             </div>
 
-            <Table aria-label="Fondos de caja menor">
+            <Table aria-label={copy.tabs.funds}>
               <TableHeader>
-                <TableColumn>Nombre</TableColumn>
-                <TableColumn>Descripción</TableColumn>
-                <TableColumn>Responsable</TableColumn>
-                <TableColumn>Saldo Inicial</TableColumn>
-                <TableColumn>Saldo Actual</TableColumn>
-                <TableColumn>Saldo Máx.</TableColumn>
-                <TableColumn>Moneda</TableColumn>
-                <TableColumn>Estado</TableColumn>
+                <TableColumn>{copy.funds.table.name}</TableColumn>
+                <TableColumn>{copy.funds.table.description}</TableColumn>
+                <TableColumn>{copy.funds.table.responsible}</TableColumn>
+                <TableColumn>{copy.funds.table.initialBalance}</TableColumn>
+                <TableColumn>{copy.funds.table.currentBalance}</TableColumn>
+                <TableColumn>{copy.funds.table.maxBalance}</TableColumn>
+                <TableColumn>{copy.funds.table.currency}</TableColumn>
+                <TableColumn>{copy.funds.table.status}</TableColumn>
               </TableHeader>
               <TableBody
                 emptyContent={
-                  fundsLoading ? "Cargando..." : "Sin fondos registrados"
+                  fundsLoading ? copy.funds.table.loading : copy.funds.table.empty
                 }
                 items={fundsData?.items ?? []}
               >
@@ -669,16 +592,16 @@ export function PettyCashTab({
                     <TableCell>{fund.description ?? "—"}</TableCell>
                     <TableCell>{fund.responsibleName ?? "—"}</TableCell>
                     <TableCell>
-                      {fund.currency} {formatMoney(fund.initialBalance)}
+                      {fund.currency} {formatMoney(locale, fund.initialBalance)}
                     </TableCell>
                     <TableCell>
                       <span className="font-semibold">
-                        {fund.currency} {formatMoney(fund.currentBalance)}
+                        {fund.currency} {formatMoney(locale, fund.currentBalance)}
                       </span>
                     </TableCell>
                     <TableCell>
                       {toNumber(fund.maxBalance) > 0
-                        ? `${fund.currency} ${formatMoney(fund.maxBalance)}`
+                        ? `${fund.currency} ${formatMoney(locale, fund.maxBalance)}`
                         : "—"}
                     </TableCell>
                     <TableCell>{fund.currency}</TableCell>
@@ -688,7 +611,9 @@ export function PettyCashTab({
                         size="sm"
                         variant="flat"
                       >
-                        {fund.status === "ACTIVE" ? "Activo" : "Inactivo"}
+                        {fund.status === "ACTIVE"
+                          ? copy.funds.table.active
+                          : copy.funds.table.inactive}
                       </Chip>
                     </TableCell>
                   </TableRow>
@@ -712,12 +637,12 @@ export function PettyCashTab({
         }}
       >
         <ModalContent>
-          <ModalHeader>Registrar Movimiento de Caja Menor</ModalHeader>
+          <ModalHeader>{copy.transactions.modal.title}</ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Select
                 isRequired
-                label="Fondo"
+                label={copy.transactions.modal.fund}
                 selectedKeys={txFundId ? [txFundId] : []}
                 variant="bordered"
                 onSelectionChange={(keys) =>
@@ -726,15 +651,15 @@ export function PettyCashTab({
               >
                 {(pettyCashData?.funds ?? []).map((f) => (
                   <SelectItem key={f.id}>
-                    {f.name} — Saldo: {f.currency}{" "}
-                    {formatMoney(f.currentBalance)}
+                    {f.name} — {copy.transactions.modal.selectedFundPrefix} {f.currency}{" "}
+                    {formatMoney(locale, f.currentBalance)}
                   </SelectItem>
                 ))}
               </Select>
 
               <Input
                 isRequired
-                label="Fecha"
+                label={copy.transactions.modal.date}
                 type="date"
                 value={txDate}
                 variant="bordered"
@@ -743,7 +668,7 @@ export function PettyCashTab({
 
               <Select
                 isRequired
-                label="Tipo de movimiento"
+                label={copy.transactions.modal.type}
                 selectedKeys={[txType]}
                 variant="bordered"
                 onSelectionChange={(keys) =>
@@ -752,31 +677,32 @@ export function PettyCashTab({
                   )
                 }
               >
-                <SelectItem key="EXPENSE">Egreso</SelectItem>
-                <SelectItem key="REPLENISHMENT">Reposición</SelectItem>
-                <SelectItem key="OPENING">Apertura</SelectItem>
-                <SelectItem key="ADJUSTMENT">Ajuste</SelectItem>
+                {transactionTypeOptions
+                  .filter((option) => option.value !== "ALL")
+                  .map((option) => (
+                    <SelectItem key={option.value}>{option.label}</SelectItem>
+                  ))}
               </Select>
 
               <Select
-                label="Categoría"
-                placeholder="Seleccionar categoría"
+                label={copy.transactions.modal.category}
+                placeholder={copy.transactions.modal.categoryPlaceholder}
                 selectedKeys={txCategory ? [txCategory] : []}
                 variant="bordered"
                 onSelectionChange={(keys) =>
                   setTxCategory(String(Array.from(keys)[0] ?? ""))
                 }
               >
-                {EXPENSE_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat}>{cat}</SelectItem>
+                {expenseCategoryOptions.map((option) => (
+                  <SelectItem key={option.value}>{option.label}</SelectItem>
                 ))}
               </Select>
 
               <Input
                 isRequired
                 className="md:col-span-2"
-                label="Descripción"
-                placeholder="Detalle del movimiento"
+                label={copy.transactions.modal.description}
+                placeholder={copy.transactions.modal.descriptionPlaceholder}
                 value={txDescription}
                 variant="bordered"
                 onValueChange={setTxDescription}
@@ -784,7 +710,7 @@ export function PettyCashTab({
 
               <Input
                 isRequired
-                label="Monto"
+                label={copy.transactions.modal.amount}
                 min="0"
                 placeholder="0.00"
                 type="number"
@@ -797,17 +723,17 @@ export function PettyCashTab({
                 isDisabled
                 description={
                   txFundId
-                    ? `Saldo disponible en el fondo seleccionado`
-                    : "Selecciona un fondo para ver el saldo"
+                    ? copy.transactions.modal.currentBalanceHint
+                    : copy.transactions.modal.currentBalanceEmpty
                 }
-                label="Saldo actual del fondo"
-                value={txFundId ? formatMoney(selectedFundBalance) : "—"}
+                label={copy.transactions.modal.currentBalance}
+                value={txFundId ? formatMoney(locale, selectedFundBalance) : "—"}
                 variant="faded"
               />
 
               <Input
-                label="Código de referencia"
-                placeholder="Comprobante, factura, etc."
+                label={copy.transactions.modal.referenceCode}
+                placeholder={copy.transactions.modal.referencePlaceholder}
                 value={txReference}
                 variant="bordered"
                 onValueChange={setTxReference}
@@ -815,9 +741,9 @@ export function PettyCashTab({
 
               <Textarea
                 className="md:col-span-2"
-                label="Observaciones"
+                label={copy.transactions.modal.notes}
                 minRows={2}
-                placeholder="Notas adicionales (opcional)"
+                placeholder={copy.transactions.modal.notesPlaceholder}
                 value={txNotes}
                 variant="bordered"
                 onValueChange={setTxNotes}
@@ -826,14 +752,16 @@ export function PettyCashTab({
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setCreateTxOpen(false)}>
-              Cancelar
+              {copy.transactions.modal.cancel}
             </Button>
             <Button
               color="primary"
               isDisabled={createTxLoading}
               onPress={saveTx}
             >
-              {createTxLoading ? "Registrando..." : "Registrar"}
+              {createTxLoading
+                ? copy.transactions.modal.saving
+                : copy.transactions.modal.confirm}
             </Button>
           </ModalFooter>
         </ModalContent>
@@ -852,14 +780,14 @@ export function PettyCashTab({
         }}
       >
         <ModalContent>
-          <ModalHeader>Crear Fondo de Caja Menor</ModalHeader>
+          <ModalHeader>{copy.funds.modal.title}</ModalHeader>
           <ModalBody>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Input
                 isRequired
                 className="md:col-span-2"
-                label="Nombre del fondo"
-                placeholder="Ej. Caja Menor Administrativa"
+                label={copy.funds.modal.name}
+                placeholder={copy.funds.modal.namePlaceholder}
                 value={fundName}
                 variant="bordered"
                 onValueChange={setFundName}
@@ -867,9 +795,9 @@ export function PettyCashTab({
 
               <Textarea
                 className="md:col-span-2"
-                label="Descripción"
+                label={copy.funds.modal.description}
                 minRows={2}
-                placeholder="Propósito o descripción del fondo (opcional)"
+                placeholder={copy.funds.modal.descriptionPlaceholder}
                 value={fundDescription}
                 variant="bordered"
                 onValueChange={setFundDescription}
@@ -877,7 +805,7 @@ export function PettyCashTab({
 
               <Input
                 isRequired
-                label="Saldo inicial"
+                label={copy.funds.modal.initialBalance}
                 min="0"
                 placeholder="0.00"
                 type="number"
@@ -887,7 +815,7 @@ export function PettyCashTab({
               />
 
               <Input
-                label="Saldo máximo"
+                label={copy.funds.modal.maxBalance}
                 min="0"
                 placeholder="0.00"
                 type="number"
@@ -897,29 +825,29 @@ export function PettyCashTab({
               />
 
               <Select
-                label="Moneda"
+                label={copy.funds.modal.currency}
                 selectedKeys={[fundCurrency]}
                 variant="bordered"
                 onSelectionChange={(keys) =>
                   setFundCurrency(String(Array.from(keys)[0] ?? "COP"))
                 }
               >
-                <SelectItem key="COP">COP – Peso Colombiano</SelectItem>
-                <SelectItem key="USD">USD – Dólar Americano</SelectItem>
-                <SelectItem key="EUR">EUR – Euro</SelectItem>
+                {currencyOptions.map((option) => (
+                  <SelectItem key={option.value}>{option.label}</SelectItem>
+                ))}
               </Select>
             </div>
           </ModalBody>
           <ModalFooter>
             <Button variant="flat" onPress={() => setCreateFundOpen(false)}>
-              Cancelar
+              {copy.funds.modal.cancel}
             </Button>
             <Button
               color="primary"
               isDisabled={createFundLoading}
               onPress={saveFund}
             >
-              {createFundLoading ? "Creando..." : "Crear Fondo"}
+              {createFundLoading ? copy.funds.modal.saving : copy.funds.modal.confirm}
             </Button>
           </ModalFooter>
         </ModalContent>

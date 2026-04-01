@@ -365,17 +365,17 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
 
   const submitTransfer = async () => {
     if (transferring) return;
-    if (!transferStockId) return toast.error("Selecciona un item");
+    if (!transferStockId) return toast.error("Select an item");
 
     const selectedStock = transferCandidates.find(
       (row) => row.stockId === transferStockId,
     );
 
     if (!selectedStock?.inventoryItemId) {
-      return toast.error("No se pudo resolver el item a trasladar");
+      return toast.error("Could not resolve the item to transfer");
     }
 
-    if (!transferToWarehouseId) return toast.error("Selecciona bodega destino");
+    if (!transferToWarehouseId) return toast.error("Select a destination warehouse");
 
     const qty = Number(transferQty);
 
@@ -396,7 +396,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         }),
       });
 
-      toast.success("Traslado registrado");
+      toast.success("Transfer registered");
       setTransferQty("");
       setTransferNotes("");
       await fetchDetails();
@@ -409,16 +409,16 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
 
   const submitTransferRequest = async () => {
     if (requestingTransfer) return;
-    if (!requestFromWarehouseId) return toast.error("Selecciona bodega origen");
+    if (!requestFromWarehouseId) return toast.error("Select a source warehouse");
     if (!requestStockId)
-      return toast.error("Selecciona item de la bodega origen");
+      return toast.error("Select an item from the source warehouse");
 
     const selectedStock = requestSourceProducts.find(
       (row) => row.stockId === requestStockId,
     );
 
     if (!selectedStock?.inventoryItemId) {
-      return toast.error("No se pudo resolver el item a solicitar");
+      return toast.error("Could not resolve the item to request");
     }
 
     const qty = Number(requestQty);
@@ -441,7 +441,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         }),
       });
 
-      toast.success("Solicitud de traslado creada");
+      toast.success("Transfer request created");
       setRequestQty("");
       setRequestNotes("");
       await fetchTransferRequests();
@@ -462,7 +462,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         body: JSON.stringify({ id: requestId }),
       });
 
-      toast.success("Solicitud aprobada y traslado ejecutado");
+      toast.success("Request approved and transfer executed");
       await Promise.all([fetchTransferRequests(), fetchDetails()]);
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -481,7 +481,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         body: JSON.stringify({ id: requestId }),
       });
 
-      toast.success("Solicitud rechazada");
+      toast.success("Request rejected");
       await fetchTransferRequests();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -500,7 +500,7 @@ export function WarehouseDetailsClient({ id }: { id: string }) {
         body: JSON.stringify({ id: requestId }),
       });
 
-      toast.success("Solicitud cancelada");
+      toast.success("Request cancelled");
       await fetchTransferRequests();
     } catch (error) {
       toast.error(getErrorMessage(error));

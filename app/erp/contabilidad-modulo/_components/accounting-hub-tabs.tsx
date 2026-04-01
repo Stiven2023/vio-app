@@ -5,20 +5,15 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Card, CardBody } from "@heroui/card";
 import { Tab, Tabs } from "@heroui/tabs";
 
-type AccountingAccessLink = {
-  title: string;
-  href: string;
-  description: string;
-};
+import type { AccountingHubGroup } from "../_lib/hub";
 
-type AccountingGroup = {
-  key: string;
-  title: string;
-  description: string;
-  items: AccountingAccessLink[];
-};
-
-export function AccountingHubTabs({ groups }: { groups: AccountingGroup[] }) {
+export function AccountingHubTabs({
+  groups,
+  ariaLabel,
+}: {
+  groups: AccountingHubGroup[];
+  ariaLabel: string;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -43,7 +38,7 @@ export function AccountingHubTabs({ groups }: { groups: AccountingGroup[] }) {
 
   return (
     <Tabs
-      aria-label="Navegación contable"
+      aria-label={ariaLabel}
       selectedKey={selectedTabKey}
       variant="underlined"
       onSelectionChange={handleTabChange}

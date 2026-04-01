@@ -1,6 +1,6 @@
 {
   "name": "vio-app",
-  "version": "0.0.2",
+  "version": "0.0.5",
   "description": "Software de gestión para empresas de confección, venta y distribución de indumentaria deportiva",
   "author": {"name": "Stiven Alexis Aguirre Cardona", "email": "stivenalexis2005@gmail.com", "url": "https://portafoliostivenaguirre.org/"},
   "private": true,
@@ -12,6 +12,7 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "test:regression": "tsx --test tests/regression/**/*.test.ts",
     "lint": "eslint --fix",
     "db:migrate": "drizzle-kit push",
     "db:repair:stock-links": "tsx src/db/repair-warehouse-stock-links.ts",

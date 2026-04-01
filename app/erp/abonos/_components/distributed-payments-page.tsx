@@ -398,7 +398,7 @@ export function DistributedPaymentsPage({
 
     if (validAllocations.length === 0) {
       setErrors(nextErrors);
-      toast.error("Agrega al menos un pedido con valor asignado");
+      toast.error("Add at least one order with an assigned amount");
       const firstRow = allocations[0];
 
       if (firstRow) {
@@ -413,7 +413,7 @@ export function DistributedPaymentsPage({
     }
 
     if (assignedTotal > depositTotal) {
-      toast.error("El total asignado no puede superar la consignación total");
+      toast.error("The assigned total cannot exceed the total deposit");
 
       return;
     }
@@ -469,7 +469,7 @@ export function DistributedPaymentsPage({
       }
 
       setErrors(nextErrors);
-      toast.error("No repitas el mismo pedido en varias filas");
+      toast.error("Do not repeat the same order in multiple rows");
       if (duplicated) allocationOrderRefs.current[duplicated.id]?.focus();
 
       return;
@@ -482,7 +482,7 @@ export function DistributedPaymentsPage({
     );
 
     if (clientIds.size > 1) {
-      toast.error("No puedes distribuir entre pedidos de clientes diferentes");
+      toast.error("You cannot distribute across orders from different clients");
 
       return;
     }
@@ -513,7 +513,7 @@ export function DistributedPaymentsPage({
         }),
       });
 
-      toast.success("Abono distribuido registrado");
+      toast.success("Distributed payment registered");
       setDepositAmount("");
       setReferenceCode("");
       setMethod("TRANSFERENCIA");

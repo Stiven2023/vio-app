@@ -10,6 +10,7 @@ import {
 } from "@/src/utils/payment-banks";
 import { generatePaymentReferenceCodes } from "@/src/utils/payment-reference-code";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { hasDuplicateOrderAllocations } from "@/src/utils/business-rule-guards";
 
 function toNullableNumericString(v: unknown) {
   if (v === null || v === undefined || v === "") return null;
@@ -124,13 +125,13 @@ export async function POST(request: Request) {
     }
 
     // Validate that each orderId appears only once (prevent double-payment)
-    const orderIdSet = new Set(allocations.map((a) => a.orderId));
-    if (orderIdSet.size !== allocations.length) {
+    if (hasDuplicateOrderAllocations(allocations)) {
       return new Response(
         "Duplicate orderId in allocations (each order can only be paid once per deposit)",
         { status: 400 },
       );
     }
+    const orderIdSet = new Set(allocations.map((a) => a.orderId));
 
     const assignedTotal = allocations.reduce(
       (acc, item) => acc + Number(item.amount),

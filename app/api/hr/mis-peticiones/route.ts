@@ -9,6 +9,10 @@ import {
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import {
+  isPermissionHoursValid,
+  normalizePermissionHours,
+} from "@/src/utils/business-rule-guards";
 
 const VALID_TYPES = new Set([
   "PERMISO",
@@ -170,7 +174,7 @@ export async function POST(request: Request) {
         : null;
 
     if (type === "PERMISO" && requestHours !== null) {
-      if (!Number.isFinite(requestHours) || requestHours <= 0 || requestHours > 24) {
+      if (!isPermissionHoursValid(requestHours)) {
         return new Response(
           "Las horas del permiso deben estar entre 0.5 y 24",
           { status: 400 },
@@ -178,13 +182,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const normalizedRequestHours =
-      type === "PERMISO" &&
-      requestHours !== null &&
-      Number.isFinite(requestHours) &&
-      requestHours > 0
-        ? requestHours.toFixed(2)
-        : null;
+    const normalizedRequestHours = normalizePermissionHours(
+      type,
+      requestHoursRaw,
+    );
 
     const [employeeExists] = await db
       .select({ id: employees.id })

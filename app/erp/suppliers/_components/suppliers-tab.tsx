@@ -174,7 +174,7 @@ export function SuppliersTab({
       file.name.toLowerCase().endsWith(".csv") ||
       file.type === "application/vnd.ms-excel";
     if (!isCsv) {
-      toast.error("Selecciona un archivo CSV válido");
+      toast.error("Select a valid CSV file");
       return;
     }
     setImporting(true);
@@ -199,13 +199,13 @@ export function SuppliersTab({
         ? String(payload.errors[0]?.message ?? "")
         : "";
       if (createdCount === 0 && updatedCount === 0 && failedCount > 0) {
-        toast.error(`No se importó ningún registro. ${firstError || "Revisa el archivo CSV."}`);
+        toast.error(`No records imported. ${firstError || "Check the CSV file."}`);
         return;
       }
       if (failedCount > 0) {
-        toast.success(`Importación parcial: ${createdCount} creados, ${updatedCount} editados, ${failedCount} con error`);
+        toast.success(`Partial import: ${createdCount} created, ${updatedCount} updated, ${failedCount} with errors`);
       } else {
-        toast.success(`Importación exitosa: ${createdCount} creados, ${updatedCount} editados`);
+        toast.success(`Import successful: ${createdCount} created, ${updatedCount} updated`);
       }
       refresh();
     } catch (error) {

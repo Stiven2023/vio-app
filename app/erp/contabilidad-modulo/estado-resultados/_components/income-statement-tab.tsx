@@ -202,7 +202,7 @@ export function IncomeStatementTab() {
 
     XLSX.utils.book_append_sheet(wb, ws, "Estado de Resultados");
     XLSX.writeFile(wb, `estado-resultados-${year}-${periodType}.xlsx`);
-    toast.success("Archivo descargado");
+    toast.success("File downloaded");
   }
 
   // ── Loading state ──────────────────────────────────────────────────────────

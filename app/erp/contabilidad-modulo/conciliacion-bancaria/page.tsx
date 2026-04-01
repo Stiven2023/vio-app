@@ -26,10 +26,10 @@ export default async function BankReconciliationPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
-      <h1 className="text-2xl font-bold">Extractos bancarios</h1>
+      <h1 className="text-2xl font-bold">Bank Reconciliation</h1>
       <p className="mt-1 text-default-600">
-        Revisa y organiza los movimientos bancarios por período para su
-        conciliación posterior.
+        Review and organize bank movements by period for subsequent
+        reconciliation.
       </p>
       <div className="mt-6">
         <BankReconciliationTab

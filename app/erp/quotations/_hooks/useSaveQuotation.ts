@@ -9,12 +9,16 @@ import type { QuoteCalculations } from "./useQuoteCalculations";
 import { useCallback, useState } from "react";
 import { toast } from "react-hot-toast";
 
+import { QUOTATION_COPY } from "../_lib/constants";
+import { getQuotationUiLocale } from "../_lib/utils";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 
 export function useSaveQuotation(
   quoteId?: string,
   initialQuoteCode = "Assigned on save",
 ) {
+  const locale = getQuotationUiLocale();
+  const copy = QUOTATION_COPY[locale];
   const [quoteCode, setQuoteCode] = useState<string>(initialQuoteCode);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,13 +47,13 @@ export function useSaveQuotation(
       if (submitting) return { ok: false };
 
       if (!form.clientId) {
-        toast.error("Select an active client");
+        toast.error(copy.toasts.selectClient);
 
         return { ok: false };
       }
 
       if (!form.sellerId) {
-        toast.error("Seller from session not found. Reload the page.");
+        toast.error(copy.toasts.sellerNotFound);
 
         return { ok: false };
       }
@@ -59,7 +63,7 @@ export function useSaveQuotation(
       );
 
       if (validItems.length === 0) {
-        toast.error("Add at least one valid item");
+        toast.error(copy.toasts.addValidItem);
 
         return { ok: false };
       }
@@ -132,8 +136,8 @@ export function useSaveQuotation(
         setQuoteCode(created.quoteCode);
         toast.success(
           quoteId
-            ? `Cotización actualizada: ${created.quoteCode}`
-            : `Cotización creada: ${created.quoteCode}`,
+            ? copy.toasts.quotationUpdated(created.quoteCode)
+            : copy.toasts.quotationCreated(created.quoteCode),
         );
 
         return { ok: true, id: created.id, quoteCode: created.quoteCode };

@@ -20,7 +20,7 @@ const LEGACY_PREFIX_MAPPINGS: Array<[string, string]> = [
   ["/juridica", "/legal"],
 ];
 
-const INTERNAL_PATH_PREFIXES = ["/erp", "/mes", "/crm", "/portal"];
+const INTERNAL_PATH_PREFIXES = ["/erp", "/mes", "/crm", "/hcm", "/portal"];
 const LOCALE_PATH_REGEX = /^\/(es|en)(?=\/|$)/;
 const LEGACY_HCM_PATHS = [
   "/rrhh",
@@ -146,8 +146,6 @@ export function middleware(request: NextRequest) {
 
         return NextResponse.rewrite(retiredUrl, { status: 410 });
       }
-
-      legacyRedirectUrl.searchParams.set("legacy_hcm", "1");
       console.info(
         `[middleware] Legacy HCM route redirected: ${legacySourcePath} -> ${legacyRedirectUrl.pathname}`,
       );
@@ -209,6 +207,7 @@ export function middleware(request: NextRequest) {
     !localeAgnosticPath.startsWith("/portal") &&
     !localeAgnosticPath.startsWith("/mes") &&
     !localeAgnosticPath.startsWith("/crm") &&
+    !localeAgnosticPath.startsWith("/hcm") &&
     !PUBLIC_PATHS.has(localeAgnosticPath)
   ) {
     const canonicalErpUrl = request.nextUrl.clone();
@@ -220,6 +219,14 @@ export function middleware(request: NextRequest) {
 
   if (isLocalizedPath(pathname)) {
     return handleI18nRouting(request);
+  }
+
+  if (localeAgnosticPath === "/hcm" || localeAgnosticPath.startsWith("/hcm/")) {
+    const mirroredHcmUrl = request.nextUrl.clone();
+
+    mirroredHcmUrl.pathname = `/erp${localeAgnosticPath}`;
+
+    return NextResponse.rewrite(mirroredHcmUrl);
   }
 
   return NextResponse.next();

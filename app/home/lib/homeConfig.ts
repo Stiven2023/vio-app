@@ -40,7 +40,7 @@ export const MODULE_SECTIONS: ModuleSection[] = [
     fullTitle: "Human Capital Management",
     description:
       "Request vacation, check your requests, and access certificates and courses.",
-    route: "/portal/hcm",
+    route: "/hcm",
     accentWord: "EMPLOYEES",
     statValue: "24h",
     statLabel: "Response",

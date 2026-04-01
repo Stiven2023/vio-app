@@ -252,7 +252,7 @@ export function WithholdingsTab({
       ica > 100 ||
       iva > 100
     ) {
-      toast.error("Las tasas deben estar entre 0 y 100");
+      toast.error("Rates must be between 0 and 100");
 
       return;
     }
@@ -268,7 +268,7 @@ export function WithholdingsTab({
         }),
       });
 
-      toast.success("Tasas actualizadas");
+      toast.success("Rates updated");
       setEditRateOpen(false);
       resetRateDraft();
       await loadRates();
@@ -284,7 +284,7 @@ export function WithholdingsTab({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-default-500">
-          La tabla de retenciones usa tasas configurables por zona tributaria.
+          Withholding table uses configurable rates per tax zone.
         </div>
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="flat" onPress={refresh}>

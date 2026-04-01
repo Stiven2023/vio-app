@@ -19,7 +19,13 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 import { Modal, ModalBody, ModalContent, ModalHeader } from "@heroui/modal";
 
+import {
+  getOrderTypeOptions,
+  getProcessOptions,
+  QUOTATION_COPY,
+} from "../_lib/constants";
 import { QuotationsAdditionsPanel } from "./QuotationsAdditionsPanel";
+import { getQuotationUiLocale } from "../_lib/utils";
 
 type QuotationsProductsTableProps = {
   items: QuoteItem[];
@@ -50,6 +56,10 @@ export function QuotationsProductsTable({
   onAddAddition,
   asMoney,
 }: QuotationsProductsTableProps) {
+  const locale = getQuotationUiLocale();
+  const copy = QUOTATION_COPY[locale];
+  const orderTypeOptions = getOrderTypeOptions(locale);
+  const processOptions = getProcessOptions(locale);
   const isAuthorizedManual =
     currency === "COP" && clientPriceType === "AUTORIZADO";
   const additionsById = new Map(
@@ -76,7 +86,7 @@ export function QuotationsProductsTable({
       key: item.id,
       index: index + 1,
       code: item.code || "-",
-      product: item.product || "Producto sin seleccionar",
+      product: item.product || copy.products.unselectedProduct,
       process: item.process,
       quantity: item.quantity,
       lineTotal,
@@ -89,47 +99,49 @@ export function QuotationsProductsTable({
   return (
     <Card className="border border-default-200" radius="md" shadow="none">
       <CardHeader className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Product Details</span>
+        <span className="text-sm font-semibold">{copy.products.title}</span>
         <Button variant="flat" onPress={onAddItem}>
-          Add product
+          {copy.products.addProduct}
         </Button>
       </CardHeader>
       <CardBody className="space-y-4">
         <Card className="border border-default-200" radius="sm" shadow="none">
           <CardHeader className="py-3">
             <span className="text-sm font-semibold">
-              Products summary table
+              {copy.products.summaryTitle}
             </span>
           </CardHeader>
           <CardBody className="pt-0">
             {summaryRows.length === 0 ? (
-              <p className="text-xs text-default-500">No products added yet.</p>
+              <p className="text-xs text-default-500">{copy.products.empty}</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[720px] text-xs">
                   <thead>
                     <tr className="border-b border-default-200 text-default-600">
-                      <th className="py-2 px-2 text-left font-semibold">#</th>
                       <th className="py-2 px-2 text-left font-semibold">
-                        Product
+                        {copy.products.headers.index}
                       </th>
                       <th className="py-2 px-2 text-left font-semibold">
-                        Process
+                        {copy.products.headers.product}
+                      </th>
+                      <th className="py-2 px-2 text-left font-semibold">
+                        {copy.products.headers.process}
                       </th>
                       <th className="py-2 px-2 text-right font-semibold">
-                        Qty.
+                        {copy.products.headers.quantity}
                       </th>
                       <th className="py-2 px-2 text-right font-semibold">
-                        Design Total
+                        {copy.products.headers.designTotal}
                       </th>
                       <th className="py-2 px-2 text-right font-semibold">
-                        Additions
+                        {copy.products.headers.additions}
                       </th>
                       <th className="py-2 px-2 text-right font-semibold">
-                        Item Total
+                        {copy.products.headers.itemTotal}
                       </th>
                       <th className="py-2 px-2 text-right font-semibold">
-                        Actions
+                        {copy.products.headers.actions}
                       </th>
                     </tr>
                   </thead>
@@ -157,7 +169,7 @@ export function QuotationsProductsTable({
                               variant="flat"
                               onPress={() => setEditingItemId(row.key)}
                             >
-                              Edit
+                              {copy.products.edit}
                             </Button>
                             <Button
                               color="danger"
@@ -165,7 +177,7 @@ export function QuotationsProductsTable({
                               variant="light"
                               onPress={() => onRemoveItem(row.key)}
                             >
-                              Remove
+                              {copy.products.remove}
                             </Button>
                           </div>
                         </td>
@@ -189,8 +201,10 @@ export function QuotationsProductsTable({
         <ModalContent>
           <ModalHeader>
             {editingRow
-              ? `Edit product #${items.findIndex((i) => i.id === editingRow.id) + 1}`
-              : "Edit product"}
+              ? copy.products.editProductNumber(
+                  items.findIndex((i) => i.id === editingRow.id) + 1,
+                )
+              : copy.products.editProduct}
           </ModalHeader>
           <ModalBody className="space-y-4 pb-5">
             {editingRow ? (
@@ -199,7 +213,7 @@ export function QuotationsProductsTable({
                   <Select
                     aria-label="Design type"
                     classNames={{ trigger: "min-h-12 text-sm font-medium" }}
-                    label="Design Type"
+                    label={copy.products.designType}
                     selectedKeys={
                       editingRow.orderType ? [editingRow.orderType] : []
                     }
@@ -224,18 +238,15 @@ export function QuotationsProductsTable({
                       });
                     }}
                   >
-                    <SelectItem key="NORMAL">Nuevo</SelectItem>
-                    <SelectItem key="COMPLETACION">Completación</SelectItem>
-                    <SelectItem key="REFERENTE">Referente</SelectItem>
-                    <SelectItem key="REPOSICION">Reposición</SelectItem>
-                    <SelectItem key="MUESTRA">Muestra</SelectItem>
-                    <SelectItem key="OBSEQUIO">Obsequio</SelectItem>
+                        {orderTypeOptions.map((option) => (
+                          <SelectItem key={option.value}>{option.label}</SelectItem>
+                        ))}
                   </Select>
 
                   <Select
                     aria-label="Design process"
                     classNames={{ trigger: "min-h-12 text-sm font-medium" }}
-                    label="Process"
+                        label={copy.products.process}
                     selectedKeys={
                       editingRow.process ? [editingRow.process] : []
                     }
@@ -249,9 +260,9 @@ export function QuotationsProductsTable({
                       });
                     }}
                   >
-                    <SelectItem key="PRODUCCION">Producción</SelectItem>
-                    <SelectItem key="BODEGA">Bodega</SelectItem>
-                    <SelectItem key="COMPRAS">Compras</SelectItem>
+                    {processOptions.map((option) => (
+                      <SelectItem key={option.value}>{option.label}</SelectItem>
+                    ))}
                   </Select>
 
                   <Autocomplete
@@ -262,7 +273,7 @@ export function QuotationsProductsTable({
                     }}
                     defaultItems={products}
                     isLoading={loadingProducts}
-                    label="Product (search by code)"
+                    label={copy.products.productSearch}
                     selectedKey={editingRow.productId || null}
                     size="sm"
                     variant="bordered"
@@ -287,7 +298,7 @@ export function QuotationsProductsTable({
                   isReadOnly
                   aria-label="Description"
                   classNames={{ input: "text-sm leading-5" }}
-                  label="Description"
+                  label={copy.products.description}
                   size="sm"
                   value={editingRow.description}
                   variant="bordered"
@@ -296,7 +307,7 @@ export function QuotationsProductsTable({
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <Input
                     aria-label="Quantity"
-                    label="Quantity"
+                    label={copy.products.quantity}
                     size="sm"
                     type="number"
                     value={String(editingRow.quantity)}
@@ -310,7 +321,7 @@ export function QuotationsProductsTable({
                   <Input
                     aria-label="Unit price"
                     isReadOnly={!isAuthorizedManual}
-                    label="Unit Price"
+                    label={copy.products.unitPrice}
                     size="sm"
                     type="number"
                     value={String(editingRow.unitPrice)}
@@ -324,8 +335,8 @@ export function QuotationsProductsTable({
                   />
                   <Input
                     aria-label="Discount percentage"
-                    label="Discount %"
-                    placeholder="0"
+                    label={copy.products.discount}
+                    placeholder={copy.products.discountPlaceholder}
                     size="sm"
                     type="number"
                     value={String(editingRow.discount)}
@@ -339,7 +350,7 @@ export function QuotationsProductsTable({
                   <Input
                     isReadOnly
                     aria-label="Total value"
-                    label="Total Value"
+                    label={copy.products.totalValue}
                     size="sm"
                     value={asMoney(
                       editingRow.quantity * editingRow.unitPrice -

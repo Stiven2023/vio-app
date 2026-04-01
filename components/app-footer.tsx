@@ -17,11 +17,16 @@ const moduleMeta = {
     title: "CRM",
     description: "Commercial management and customer relationships",
   },
+  hcm: {
+    title: "HCM",
+    description: "Independent human capital module integrated with ERP",
+  },
 };
 
 function getModuleFromPath(pathname: string) {
   if (pathname === "/mes" || pathname.startsWith("/mes/")) return "mes";
   if (pathname === "/crm" || pathname.startsWith("/crm/")) return "crm";
+  if (pathname === "/hcm" || pathname.startsWith("/hcm/")) return "hcm";
 
   return "erp";
 }
@@ -42,6 +47,20 @@ export function AppFooter() {
 
   const moduleKey = getModuleFromPath(pathname);
   const meta = moduleMeta[moduleKey as keyof typeof moduleMeta];
+  const moduleLinks =
+    moduleKey === "hcm"
+      ? [
+          { href: "/hcm", label: "HCM" },
+          { href: "/erp", label: "ERP" },
+          { href: "/mes", label: "MES" },
+          { href: "/crm", label: "CRM" },
+        ]
+      : [
+          { href: "/erp", label: "ERP" },
+          { href: "/mes", label: "MES" },
+          { href: "/crm", label: "CRM" },
+          { href: "/hcm", label: "HCM" },
+        ];
 
   return (
     <footer className="border-t border-default-200/80 bg-content1/70 backdrop-blur">
@@ -53,15 +72,15 @@ export function AppFooter() {
           <div className="text-xs text-default-500">{meta.description}</div>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-          <NextLink className="hover:text-default-900" href="/erp">
-            ERP
-          </NextLink>
-          <NextLink className="hover:text-default-900" href="/mes">
-            MES
-          </NextLink>
-          <NextLink className="hover:text-default-900" href="/crm">
-            CRM
-          </NextLink>
+          {moduleLinks.map((link) => (
+            <NextLink
+              key={link.href}
+              className="hover:text-default-900"
+              href={link.href}
+            >
+              {link.label}
+            </NextLink>
+          ))}
           <span className="text-default-400">Viomar Platform v2</span>
         </div>
       </div>

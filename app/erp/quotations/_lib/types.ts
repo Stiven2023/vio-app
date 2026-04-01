@@ -1,6 +1,13 @@
 export type Currency = "COP" | "USD";
 export type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
 export type DocumentType = "F" | "R"; // F = Factura (con IVA), R = Razón social (sin IVA)
+export type PaymentTerm =
+  | "TRANSFERENCIA"
+  | "EFECTIVO"
+  | "TARJETA"
+  | "CHEQUE"
+  | "CREDITO"
+  | "OTROS";
 export type TaxZone =
   | "CONTINENTAL"
   | "FREE_ZONE"
@@ -14,6 +21,8 @@ export type OrderType =
   | "MUESTRA"
   | "OBSEQUIO";
 export type QuoteProcess = "PRODUCCION" | "BODEGA" | "COMPRAS";
+export type PrefactureOrderType = "VN" | "VI" | "VT" | "VW";
+export type UiLocale = "en" | "es";
 
 export type ClientOption = {
   id: string;
@@ -94,7 +103,7 @@ export type QuoteForm = {
   documentType: DocumentType; // F = Factura (con IVA), R = Razón social (sin IVA)
   currency: Currency;
   expiryDate: string;
-  paymentTerms: string;
+  paymentTerms: PaymentTerm;
   promissoryNoteNumber: string; // Solo si paymentTerms es CREDITO
 
   // Display only (not saved, fetched from client/seller on read)

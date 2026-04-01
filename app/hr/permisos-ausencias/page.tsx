@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function Page() {
-  redirect("/erp/hcm/permisos-ausencias");
+  redirect("/hcm/leaves-and-absences");
 }
