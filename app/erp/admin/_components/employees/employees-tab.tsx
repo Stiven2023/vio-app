@@ -87,6 +87,7 @@ export function EmployeesTab({
     employee: Employee;
     user: {
       id: string;
+      username: string | null;
       email: string;
       emailVerified: boolean | null;
       isActive: boolean | null;
@@ -208,6 +209,7 @@ export function EmployeesTab({
         employee: Employee;
         user: {
           id: string;
+          username: string | null;
           email: string;
           emailVerified: boolean | null;
           isActive: boolean | null;

@@ -12,7 +12,7 @@ interface SessionState {
   isAuthenticated: boolean;
   setSession: (user: User) => void;
   clearSession: () => void;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<boolean>;
   verifySession: () => Promise<void>;
 }
 
@@ -31,13 +31,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
     set({ user: null, isAuthenticated: false });
   },
-  login: async (email, password) => {
+  login: async (username, password) => {
     try {
       const res = await fetch("/api/users", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
 
       if (!res.ok) return false;

@@ -37,7 +37,13 @@ export function useReferenceData() {
 
       setRoles(rolesRes.items);
       setPermissions(permsRes.items);
-      setUsers(usersRes.items.map((u) => ({ id: u.id, email: u.email })));
+      setUsers(
+        usersRes.items.map((u) => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+        })),
+      );
     } catch (e) {
       toast.error(getErrorMessage(e));
     }

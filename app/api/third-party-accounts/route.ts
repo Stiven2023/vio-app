@@ -6,8 +6,9 @@ import { employees, roles, users } from "@/src/db/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { normalizeUsername } from "@/src/utils/username";
 
-const THIRD_ROLES = ["MENSAJERO", "CONFECCIONISTA", "EMPAQUE"] as const;
+const THIRD_ROLES = ["CONFECCIONISTA", "EMPAQUE"] as const;
 
 type ThirdRole = (typeof THIRD_ROLES)[number];
 
@@ -28,7 +29,7 @@ function requireAdmin(request: Request) {
 function makeUsername(role: ThirdRole, slot: number) {
   const base = role.toLowerCase();
 
-  return `${base}${slot}`;
+  return normalizeUsername(`${base}${slot}`);
 }
 
 async function buildNextEmployeeCode() {
@@ -98,6 +99,7 @@ export async function GET(request: Request) {
         employeeName: employees.name,
         roleId: employees.roleId,
         userId: users.id,
+        username: users.username,
         email: users.email,
         isActive: employees.isActive,
       })
@@ -173,7 +175,7 @@ export async function POST(request: Request) {
     const [existingUser] = await db
       .select({ id: users.id })
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.username, username))
       .limit(1);
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -184,6 +186,7 @@ export async function POST(request: Request) {
           await db
             .insert(users)
             .values({
+              username,
               email,
               passwordHash,
               emailVerified: true,
@@ -199,7 +202,7 @@ export async function POST(request: Request) {
     if (existingUser?.id) {
       await db
         .update(users)
-        .set({ passwordHash, isActive: true })
+        .set({ username, email, passwordHash, isActive: true })
         .where(eq(users.id, userId));
     }
 
@@ -212,7 +215,6 @@ export async function POST(request: Request) {
     if (!employee) {
       const employeeCode = await buildNextEmployeeCode();
       const baseByRole: Record<ThirdRole, number> = {
-        MENSAJERO: 77000000,
         CONFECCIONISTA: 78000000,
         EMPAQUE: 79000000,
       };

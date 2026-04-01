@@ -225,30 +225,21 @@ export function OperarioDashboard({ role }: { role: string }) {
 
   return (
     <div className="space-y-6">
-      {role !== "OPERARIO_MONTAJE" ? (
-        <Card>
-          <CardHeader>
-            <div>
-              <div className="text-lg font-semibold">
-                Dashboard operativo por rol
-              </div>
-              <div className="text-sm text-default-500">
-                Operarios, confeccionistas, mensajería y empaque.
-              </div>
+      <Card>
+        <CardHeader>
+          <div>
+            <div className="text-lg font-semibold">
+              Dashboard operativo por rol
             </div>
-          </CardHeader>
-          <CardBody>
-            <OperarioWorklogTable role={role} />
-          </CardBody>
-        </Card>
-      ) : (
-        <Card>
-          <CardBody className="text-sm text-default-500">
-            El formulario de operación de montaje ahora se gestiona en M.E.S. en
-            el tab Montaje.
-          </CardBody>
-        </Card>
-      )}
+            <div className="text-sm text-default-500">
+              Operarios, confeccionistas, mensajería y empaque.
+            </div>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <OperarioWorklogTable role={role} />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader className="flex items-center justify-between">

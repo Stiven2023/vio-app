@@ -345,7 +345,7 @@ export async function POST(request: Request) {
     void createNotificationsForPermission("VER_PILA", {
       title: "PILA generada",
       message: `Se generó la PILA para el período ${period}.`,
-      href: `/erp/hcm/pila`,
+      href: `/hcm/social-security-pila`,
     });
 
     return Response.json({

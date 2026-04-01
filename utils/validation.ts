@@ -1,4 +1,8 @@
 import { validatePassword } from "@/src/utils/password-validator";
+import {
+  isValidUsername,
+  usernameValidationMessage,
+} from "@/src/utils/username";
 
 export function validateUserRegister({
   email,
@@ -34,18 +38,14 @@ export function validateEmployeeRegister({
 }
 
 export function validateLogin({
-  email,
+  username,
   password,
 }: {
-  email: string;
+  username: string;
   password: string;
 }): string {
-  if (!email) return "El usuario/correo es obligatorio.";
-  const value = String(email ?? "").trim();
-
-  if (value.includes("@") && !/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(value)) {
-    return "Correo inválido.";
-  }
+  if (!username) return "El usuario es obligatorio.";
+  if (!isValidUsername(username)) return usernameValidationMessage();
   if (!password) return "La contraseña es obligatoria.";
 
   return "";

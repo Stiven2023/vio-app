@@ -56,6 +56,7 @@ type FormState = {
   companyImageUrl: string;
   roleId: string;
   isActive: boolean;
+  createUserUsername: string;
   createUserEmail: string;
   createUserPassword: string;
 };
@@ -125,6 +126,7 @@ export function EmployeeModal({
     companyImageUrl: "",
     roleId: "",
     isActive: true,
+    createUserUsername: "",
     createUserEmail: "",
     createUserPassword: "",
   });
@@ -160,6 +162,7 @@ export function EmployeeModal({
       companyImageUrl: source?.companyImageUrl ?? "",
       roleId: source?.roleId ?? "",
       isActive: Boolean(source?.isActive ?? true),
+      createUserUsername: prefill?.createUserUsername ?? "",
       createUserEmail:
         prefill?.createUserEmail ?? source?.email ?? prefill?.email ?? "",
       createUserPassword: "",
@@ -252,14 +255,23 @@ export function EmployeeModal({
       return;
     }
 
+    const createUserUsername = form.createUserUsername.trim().toLowerCase();
     const createUserEmail = form.createUserEmail.trim().toLowerCase();
     const createUserPassword = form.createUserPassword.trim();
     const shouldCreateUser =
       !parsed.data.userId &&
-      (createUserEmail.length > 0 || createUserPassword.length > 0);
+      (
+        createUserUsername.length > 0 ||
+        createUserEmail.length > 0 ||
+        createUserPassword.length > 0
+      );
 
     if (shouldCreateUser) {
       const nextErrors: Record<string, string> = {};
+
+      if (!createUserUsername) {
+        nextErrors.createUserUsername = "Usuario requerido para crear acceso";
+      }
 
       if (!createUserEmail) {
         nextErrors.createUserEmail = "Email requerido para crear usuario";
@@ -300,6 +312,7 @@ export function EmployeeModal({
             ...parsed.data,
             createUser: shouldCreateUser
               ? {
+                  username: createUserUsername,
                   email: createUserEmail,
                   password: createUserPassword,
                 }
@@ -538,7 +551,9 @@ export function EmployeeModal({
                     }}
                   >
                     {users.map((u) => (
-                      <SelectItem key={u.id}>{u.email}</SelectItem>
+                      <SelectItem key={u.id}>
+                        {u.username ? `${u.username} · ${u.email}` : u.email}
+                      </SelectItem>
                     ))}
                   </Select>
 
@@ -560,6 +575,17 @@ export function EmployeeModal({
                         textValue="Creador de usuario"
                       >
                         <div className="w-[280px] space-y-2 py-1">
+                          <Input
+                            autoComplete="username"
+                            errorMessage={errors.createUserUsername}
+                            isInvalid={Boolean(errors.createUserUsername)}
+                            label="Username"
+                            placeholder="usuario.interno"
+                            value={form.createUserUsername}
+                            onValueChange={(v) =>
+                              setForm((s) => ({ ...s, createUserUsername: v }))
+                            }
+                          />
                           <Input
                             autoComplete="email"
                             errorMessage={errors.createUserEmail}

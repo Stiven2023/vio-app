@@ -1,5 +1,14 @@
 import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
 
+const CONSOLIDATED_OPERARIO_ROLE = "OPERARIO";
+const LEGACY_OPERARIO_ROLES = new Set([
+  "OPERARIO_FLOTER",
+  "OPERARIO_SUBLIMACION",
+  "OPERARIO_CORTE_MANUAL",
+  "OPERARIO_CORTE_LASER",
+  "OPERARIO_MONTAJE",
+]);
+
 const STATUS_ROLE_MAP: Record<string, string[]> = {
   PENDIENTE: [
     "ADMINISTRADOR",
@@ -23,11 +32,11 @@ const STATUS_ROLE_MAP: Record<string, string[]> = {
     "COMPRA_INTERNACIONAL",
     "OPERARIO_BODEGA",
   ],
-  MONTAJE: ["OPERARIO_MONTAJE", "ADMINISTRADOR"],
-  IMPRESION: ["OPERARIO_FLOTER", "ADMINISTRADOR"],
-  SUBLIMACION: ["OPERARIO_SUBLIMACION", "ADMINISTRADOR"],
-  CORTE_MANUAL: ["OPERARIO_CORTE_MANUAL", "ADMINISTRADOR"],
-  CORTE_LASER: ["OPERARIO_CORTE_LASER", "ADMINISTRADOR"],
+  MONTAJE: [CONSOLIDATED_OPERARIO_ROLE, "ADMINISTRADOR"],
+  IMPRESION: [CONSOLIDATED_OPERARIO_ROLE, "ADMINISTRADOR"],
+  SUBLIMACION: [CONSOLIDATED_OPERARIO_ROLE, "ADMINISTRADOR"],
+  CORTE_MANUAL: [CONSOLIDATED_OPERARIO_ROLE, "ADMINISTRADOR"],
+  CORTE_LASER: [CONSOLIDATED_OPERARIO_ROLE, "ADMINISTRADOR"],
   PENDIENTE_CONFECCION: ["ADMINISTRADOR", "OPERARIO_INTEGRACION_CALIDAD"],
   CONFECCION: ["ADMINISTRADOR", "OPERARIO_INTEGRACION_CALIDAD", "EMPAQUE"],
   EN_BODEGA: ["ADMINISTRADOR", "EMPAQUE", "OPERARIO_BODEGA"],
@@ -101,8 +110,12 @@ export function getAllowedStatusesForRole(role: string | null) {
   if (role === "ADMINISTRADOR") return ALL_STATUSES.slice();
   if (role === "LIDER_OPERACIONAL") return leaderAllowed.slice();
 
+  const normalizedRole = LEGACY_OPERARIO_ROLES.has(role)
+    ? CONSOLIDATED_OPERARIO_ROLE
+    : role;
+
   return Object.entries(STATUS_ROLE_MAP)
-    .filter(([, roles]) => roles.includes(role))
+    .filter(([, roles]) => roles.includes(normalizedRole))
     .map(([status]) => status);
 }
 
@@ -148,10 +161,9 @@ export function isOperarioRole(role: string | null) {
   if (!role) return false;
 
   return (
+    role === CONSOLIDATED_OPERARIO_ROLE ||
     role.startsWith("OPERARIO_") ||
     role === "EMPAQUE" ||
-    role === "CONFECCIONISTA" ||
-    role === "MENSAJERO" ||
-    role === "CONDUCTOR"
+    role === "CONFECCIONISTA"
   );
 }

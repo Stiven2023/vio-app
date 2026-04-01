@@ -478,6 +478,7 @@ export const mesEnvioStatusEnum = mesEnvioStatusPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
+  username: varchar("username", { length: 64 }).unique(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   passwordHash: text("password_hash").notNull(),
   preferredLanguage: varchar("preferred_language", { length: 10 }).default(

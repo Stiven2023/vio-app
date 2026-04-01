@@ -14,6 +14,12 @@ import {
 import { signAuthToken } from "@/src/utils/auth";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { validatePassword } from "@/src/utils/password-validator";
+import {
+  deriveUsernameFromEmail,
+  isValidUsername,
+  normalizeUsername,
+  usernameValidationMessage,
+} from "@/src/utils/username";
 
 // Registro
 export async function POST(request: Request) {
@@ -25,13 +31,20 @@ export async function POST(request: Request) {
 
   if (limited) return limited;
 
-  const { email, password } = await request.json();
+  const { email, password, username } = await request.json();
   const normalizedEmail = String(email ?? "")
     .trim()
     .toLowerCase();
+  const normalizedUsername = normalizeUsername(
+    username || deriveUsernameFromEmail(normalizedEmail),
+  );
 
   if (!normalizedEmail || !password) {
     return new Response("Email and password required", { status: 400 });
+  }
+
+  if (!isValidUsername(normalizedUsername)) {
+    return new Response(usernameValidationMessage(), { status: 400 });
   }
 
   const passwordError = validatePassword(password);
@@ -42,7 +55,17 @@ export async function POST(request: Request) {
   const exists = await db
     .select()
     .from(users)
-    .where(eq(users.email, normalizedEmail));
+    .where(inArray(users.email, [normalizedEmail]));
+
+  const existingUsername = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, normalizedUsername))
+    .limit(1);
+
+  if (existingUsername.length > 0 && existingUsername[0]?.id !== exists[0]?.id) {
+    return new Response("Username already exists", { status: 409 });
+  }
 
   // Si el usuario ya existe pero NO está verificado, (re)enviamos token y
   // devolvemos el usuario para que el frontend muestre OTP.
@@ -85,7 +108,12 @@ export async function POST(request: Request) {
   const created = await db.transaction(async (tx) => {
     const newUser = await tx
       .insert(users)
-      .values({ email: normalizedEmail, passwordHash, isActive: true })
+      .values({
+        username: normalizedUsername,
+        email: normalizedEmail,
+        passwordHash,
+        isActive: true,
+      })
       .returning();
     const inserted = newUser[0];
 
@@ -124,10 +152,10 @@ export async function PUT(request: Request) {
 
   if (limited) return limited;
 
-  const { email, password } = await request.json();
+  const { username, password } = await request.json();
 
-  if (!email || !password) {
-    return new Response("Email and password required", { status: 400 });
+  if (!username || !password) {
+    return new Response("Username and password required", { status: 400 });
   }
   // Validación avanzada de contraseña (solo si es login, puede omitirse, pero la agrego por consistencia)
   if (password.length < 7) {
@@ -145,18 +173,16 @@ export async function PUT(request: Request) {
       status: 400,
     });
   }
-  const identifier = String(email ?? "")
-    .trim()
-    .toLowerCase();
+  const identifier = normalizeUsername(username);
 
-  const candidates = identifier.includes("@")
-    ? [identifier]
-    : [identifier, `${identifier}@terceros.viomar.local`];
+  if (!isValidUsername(identifier)) {
+    return new Response(usernameValidationMessage(), { status: 400 });
+  }
 
   const user = await db
     .select()
     .from(users)
-    .where(inArray(users.email, candidates));
+    .where(eq(users.username, identifier));
 
   if (user.length === 0) {
     return new Response("User not found", { status: 404 });

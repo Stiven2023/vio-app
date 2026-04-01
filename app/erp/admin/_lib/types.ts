@@ -11,13 +11,14 @@ export type Permission = { id: string; name: string };
 
 export type AdminUser = {
   id: string;
+  username: string | null;
   email: string;
   emailVerified: boolean | null;
   isActive: boolean | null;
   createdAt: string | null;
 };
 
-export type AdminUserOption = { id: string; email: string };
+export type AdminUserOption = { id: string; username: string | null; email: string };
 
 export type Employee = {
   id: string;

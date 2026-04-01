@@ -25,6 +25,7 @@ import { BsChevronDown } from "react-icons/bs";
 
 import { ThemeSwitch } from "@/components/theme-switch";
 import {
+  buildHcmNavbarSections,
   buildNavbarOtherItems,
   buildNavbarSections,
   otherMenuIcon as OtherMenuIcon,
@@ -432,6 +433,15 @@ export const Navbar = () => {
     [currentLocale, isAdmin, isAuthenticated],
   );
 
+  const hcmSections = useMemo(
+    () =>
+      buildHcmNavbarSections({
+        locale: currentLocale,
+        isAuthenticated,
+      }),
+    [currentLocale, isAuthenticated],
+  );
+
   const visibleSections = sections.filter((section) => section.visible);
 
   const handleUserMenuAction = async (actionKey: string) => {
@@ -484,7 +494,67 @@ export const Navbar = () => {
       </NavbarContent>
 
       <NavbarContent className="hidden xl:flex basis-2/4" justify="center">
-        {!isAuthenticated ? null : currentModule !== "erp" ? (
+        {!isAuthenticated ? null : currentModule === "hcm" ? (
+          <ul className="flex items-center gap-1">
+            {hcmSections.map((section) => (
+              <NavbarItem key={section.key}>
+                <Dropdown
+                  onOpenChange={(open) =>
+                    setOpenGroup(open ? section.key : null)
+                  }
+                >
+                  <DropdownTrigger>
+                    <Button
+                      className={clsx(
+                        openGroup === section.key ? "bg-default-200" : "",
+                      )}
+                      endContent={<BsChevronDown className="text-xs" />}
+                      size="sm"
+                      startContent={<section.icon className="text-sm" />}
+                      variant={
+                        section.items.some((item) =>
+                          isModuleHrefActive(item.href),
+                        )
+                          ? "solid"
+                          : "light"
+                      }
+                    >
+                      {section.label}
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label={section.label}>
+                    {section.items.map((item) => (
+                      <DropdownItem
+                        key={`${section.key}-${item.href}`}
+                        as={NextLink}
+                        href={item.href}
+                      >
+                        {item.name}
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                </Dropdown>
+              </NavbarItem>
+            ))}
+            <div className="mx-1 h-4 w-px bg-default-200" />
+            {[
+              { name: "ERP", href: "/erp/dashboard" },
+              { name: "MES", href: "/mes" },
+              { name: "CRM", href: "/crm" },
+            ].map((item) => (
+              <NavbarItem key={`hcm-cross-${item.href}`}>
+                <Button
+                  as={NextLink}
+                  href={item.href}
+                  size="sm"
+                  variant="light"
+                >
+                  {item.name}
+                </Button>
+              </NavbarItem>
+            ))}
+          </ul>
+        ) : currentModule !== "erp" ? (
           <ul className="flex gap-2 items-center">
             {moduleQuickItems.map((item) => (
               <NavbarItem key={`module-${item.href}`}>
@@ -768,7 +838,51 @@ export const Navbar = () => {
 
       <NavbarMenu className="overflow-x-hidden max-w-[100vw]">
         <div className="mt-2 mb-3 px-3 flex w-full max-w-full flex-col gap-2 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden">
-          {!isAuthenticated ? null : currentModule !== "erp" ? (
+          {!isAuthenticated ? null : currentModule === "hcm" ? (
+            <>
+              {hcmSections.map((section) => (
+                <div
+                  key={`mobile-hcm-${section.key}`}
+                  className="w-full min-w-0 max-w-full rounded-medium border border-default-200 p-2"
+                >
+                  <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-default-500 flex items-center gap-2">
+                    <section.icon className="text-sm" />
+                    {section.label}
+                  </div>
+                  <div className="flex flex-col">
+                    {section.items.map((item) => (
+                      <NavbarMenuItem
+                        key={`mobile-hcm-${section.key}-${item.href}`}
+                        className="w-full min-w-0"
+                      >
+                        <Link
+                          className="block w-full min-w-0 whitespace-normal break-words"
+                          color="foreground"
+                          href={item.href}
+                          size="md"
+                        >
+                          {item.name}
+                        </Link>
+                      </NavbarMenuItem>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <div className="border-t border-default-200 pt-2 mt-1 flex flex-col gap-1">
+                {[
+                  { name: "ERP", href: "/erp/dashboard" },
+                  { name: "MES", href: "/mes" },
+                  { name: "CRM", href: "/crm" },
+                ].map((item) => (
+                  <NavbarMenuItem key={`mobile-hcm-cross-${item.href}`}>
+                    <Link color="foreground" href={item.href} size="sm">
+                      {item.name}
+                    </Link>
+                  </NavbarMenuItem>
+                ))}
+              </div>
+            </>
+          ) : currentModule !== "erp" ? (
             moduleQuickItems.map((item) => (
               <NavbarMenuItem key={`mobile-module-${item.href}`}>
                 <Link color="foreground" href={item.href} size="lg">

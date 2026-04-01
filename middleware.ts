@@ -221,14 +221,6 @@ export function middleware(request: NextRequest) {
     return handleI18nRouting(request);
   }
 
-  if (localeAgnosticPath === "/hcm" || localeAgnosticPath.startsWith("/hcm/")) {
-    const mirroredHcmUrl = request.nextUrl.clone();
-
-    mirroredHcmUrl.pathname = `/erp${localeAgnosticPath}`;
-
-    return NextResponse.rewrite(mirroredHcmUrl);
-  }
-
   return NextResponse.next();
 }
 

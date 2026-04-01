@@ -17,22 +17,22 @@ export const PROCESO_PREFIX: Record<string, string> = {
 export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {
   montaje: {
     label: "Montaje",
-    role: "OPERARIO_MONTAJE",
+    role: "OPERARIO",
     operationType: "MONTAJE",
   },
   plotter: {
     label: "Plotter",
-    role: "OPERARIO_FLOTER",
+    role: "OPERARIO",
     operationType: "PLOTTER",
   },
   sublimacion: {
     label: "Sublimation",
-    role: "OPERARIO_SUBLIMACION",
+    role: "OPERARIO",
     operationType: "SUBLIMACION",
   },
   corte: {
     label: "Cutting",
-    role: "OPERARIO_CORTE_MANUAL",
+    role: "OPERARIO",
     operationType: "CORTE_MANUAL",
   },
   integracion: {

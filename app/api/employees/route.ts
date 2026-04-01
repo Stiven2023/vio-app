@@ -7,6 +7,11 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import {
+  isValidUsername,
+  normalizeUsername,
+  usernameValidationMessage,
+} from "@/src/utils/username";
 
 function formatMobile(intlCode: string, mobile: string): string {
   const clean = mobile.replace(/\s/g, "");
@@ -219,6 +224,8 @@ export async function POST(request: Request) {
     const createUser = payload.createUser;
 
     if (!userId && createUser) {
+      const rawUsername = String(createUser.username ?? "");
+      const normalizedUsername = normalizeUsername(rawUsername);
       const userEmail = String(createUser.email ?? "")
         .trim()
         .toLowerCase();
@@ -226,6 +233,10 @@ export async function POST(request: Request) {
 
       if (!userEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
         return new Response("Email de usuario inválido", { status: 400 });
+      }
+
+      if (!isValidUsername(normalizedUsername)) {
+        return new Response(usernameValidationMessage(), { status: 400 });
       }
 
       if (!isValidUserPassword(userPassword)) {
@@ -241,8 +252,20 @@ export async function POST(request: Request) {
         .where(eq(users.email, userEmail))
         .limit(1);
 
+      const existingUsername = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.username, normalizedUsername))
+        .limit(1);
+
       if (existingUser.length > 0) {
         return new Response("Ya existe un usuario con ese email", {
+          status: 409,
+        });
+      }
+
+      if (existingUsername.length > 0) {
+        return new Response("Ya existe un usuario con ese username", {
           status: 409,
         });
       }
@@ -251,6 +274,7 @@ export async function POST(request: Request) {
       const createdUser = await db
         .insert(users)
         .values({
+          username: normalizedUsername,
           email: userEmail,
           passwordHash,
           emailVerified: true,

@@ -11,6 +11,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { verifyEmailVerificationTicket } from "@/src/utils/auth";
 import { createUserSchema } from "@/app/erp/admin/_lib/schemas";
+import { normalizeUsername } from "@/src/utils/username";
 
 export async function POST(request: Request) {
   const limited = rateLimit(request, {
@@ -33,6 +34,7 @@ export async function POST(request: Request) {
   }
 
   const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  const normalizedUsername = normalizeUsername(parsed.data.username);
   const ticketRaw = String((body as any)?.emailVerificationTicket ?? "").trim();
 
   if (!ticketRaw) {
@@ -51,8 +53,18 @@ export async function POST(request: Request) {
     .where(eq(users.email, normalizedEmail))
     .limit(1);
 
+  const usernameExists = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, normalizedUsername))
+    .limit(1);
+
   if (exists.length > 0) {
     return new Response("User already exists", { status: 409 });
+  }
+
+  if (usernameExists.length > 0) {
+    return new Response("Username already exists", { status: 409 });
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
@@ -60,6 +72,7 @@ export async function POST(request: Request) {
   const created = await db
     .insert(users)
     .values({
+      username: normalizedUsername,
       email: normalizedEmail,
       passwordHash,
       emailVerified: true,
@@ -67,6 +80,7 @@ export async function POST(request: Request) {
     })
     .returning({
       id: users.id,
+      username: users.username,
       email: users.email,
       emailVerified: users.emailVerified,
     });
@@ -97,6 +111,7 @@ export async function GET(request: Request) {
     const items = await db
       .select({
         id: users.id,
+        username: users.username,
         email: users.email,
         emailVerified: users.emailVerified,
         isActive: users.isActive,
@@ -146,6 +161,7 @@ export async function PUT(request: Request) {
     .where(eq(users.id, id))
     .returning({
       id: users.id,
+      username: users.username,
       email: users.email,
       emailVerified: users.emailVerified,
       isActive: users.isActive,
@@ -188,7 +204,7 @@ export async function DELETE(request: Request) {
       const rows = await tx
         .delete(users)
         .where(eq(users.id, id))
-        .returning({ id: users.id, email: users.email });
+        .returning({ id: users.id, username: users.username, email: users.email });
 
       return rows;
     });

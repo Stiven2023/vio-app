@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import { BsEnvelopeFill, BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
+import {
+  BsEnvelopeFill,
+  BsEyeFill,
+  BsEyeSlashFill,
+  BsPersonFill,
+} from "react-icons/bs";
 import {
   Modal,
   ModalBody,
@@ -37,6 +42,7 @@ export function CreateUserModal({
   onOpenChange: (open: boolean) => void;
   onCreated: () => void;
 }) {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -52,8 +58,9 @@ export function CreateUserModal({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const canSubmit = useMemo(
-    () => email.trim() !== "" && password.trim() !== "",
-    [email, password],
+    () =>
+      username.trim() !== "" && email.trim() !== "" && password.trim() !== "",
+    [email, password, username],
   );
 
   useEffect(() => {
@@ -64,6 +71,7 @@ export function CreateUserModal({
   }, [expiresAt]);
 
   const reset = () => {
+    setUsername("");
     setEmail("");
     setPassword("");
     setShowPassword(false);
@@ -92,6 +100,7 @@ export function CreateUserModal({
     }
 
     const parsed = createUserSchema.safeParse({
+      username: username.trim().toLowerCase(),
       email: effectiveEmail,
       password,
     });
@@ -211,6 +220,14 @@ export function CreateUserModal({
       <ModalContent>
         <ModalHeader>Crear usuario</ModalHeader>
         <ModalBody>
+          <Input
+            errorMessage={errors.username}
+            isInvalid={Boolean(errors.username)}
+            label="Username"
+            startContent={<BsPersonFill className="text-xl text-default-500" />}
+            value={username}
+            onValueChange={setUsername}
+          />
           <Input
             errorMessage={errors.email}
             isInvalid={Boolean(errors.email)}

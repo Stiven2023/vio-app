@@ -24,7 +24,7 @@ type ToastState = {
 
 export default function LoginUser() {
   const [selected, setSelected] = useState("viomar");
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetRequestOpen, setResetRequestOpen] = useState(false);
@@ -53,7 +53,7 @@ export default function LoginUser() {
 
     setLoading(true);
     try {
-      const ok = await login(form.email, form.password);
+      const ok = await login(form.username, form.password);
 
       if (ok) {
         setToast({ message: "Login successful.", type: "success" });
@@ -80,7 +80,7 @@ export default function LoginUser() {
   const handleThirdPartySubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!form.email || !form.password) {
+    if (!form.username || !form.password) {
       setToast({
         message: "Username and password are required.",
         type: "error",
@@ -91,13 +91,7 @@ export default function LoginUser() {
 
     setLoading(true);
     try {
-      const identifier = form.email.trim();
-      const normalized = identifier.includes("@")
-        ? identifier
-        : identifier.toLowerCase().replace(/\s+/g, "") +
-          "@terceros.viomar.local";
-
-      const ok = await login(normalized, form.password);
+      const ok = await login(form.username.trim(), form.password);
 
       if (ok) {
         setToast({ message: "Login successful.", type: "success" });

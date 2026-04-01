@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { PASSWORD_REQUIREMENTS } from "@/src/utils/password-validator";
+import {
+  USERNAME_REQUIREMENTS,
+  usernameValidationMessage,
+} from "@/src/utils/username";
 
 const passwordSchema = z
   .string()
@@ -8,6 +12,12 @@ const passwordSchema = z
   .regex(PASSWORD_REQUIREMENTS.allowedCharactersRegex, `Solo ${PASSWORD_REQUIREMENTS.allowedCharactersDescription}`);
 
 export const createUserSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(USERNAME_REQUIREMENTS.minLength, usernameValidationMessage())
+    .max(USERNAME_REQUIREMENTS.maxLength, usernameValidationMessage())
+    .regex(USERNAME_REQUIREMENTS.pattern, usernameValidationMessage()),
   email: z.string().email("Email inválido"),
   password: passwordSchema,
 });

@@ -2,12 +2,16 @@ import { ChangeEvent, FormEvent } from "react";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { Tab, Tabs } from "@heroui/tabs";
-import { BsEnvelopeFill, BsEyeFill, BsEyeSlashFill } from "react-icons/bs";
+import {
+  BsEyeFill,
+  BsEyeSlashFill,
+  BsPersonFill,
+} from "react-icons/bs";
 
 import { ExternalAccessTab } from "@/components/login/external-access-tab";
 
 type FormState = {
-  email: string;
+  username: string;
   password: string;
 };
 
@@ -66,17 +70,16 @@ export function LoginAccessTabs({
           <div className="space-y-3">
             <Input
               required
-              autoComplete="email"
+              autoComplete="username"
               classNames={{
                 inputWrapper: "bg-content1/70 border border-default-200/30",
               }}
-              label="Email address"
-              name="email"
+              label="Username"
+              name="username"
               startContent={
-                <BsEnvelopeFill className="text-xl text-default-500" />
+                <BsPersonFill className="text-xl text-default-500" />
               }
-              type="email"
-              value={form.email}
+              value={form.username}
               onChange={onFormChange}
             />
             <Input
@@ -142,7 +145,7 @@ export function LoginAccessTabs({
         </div>
       </Tab>
 
-      <Tab key="tercero" title="Third-party / courier">
+      <Tab key="tercero" title="Third-party access">
         <form
           className="space-y-4 pt-2"
           onSubmit={(e) => void onSubmitThirdParty(e)}
@@ -154,9 +157,9 @@ export function LoginAccessTabs({
               inputWrapper: "bg-content1/70 border border-default-200/30",
             }}
             label="Username"
-            name="email"
-            placeholder="e.g. courier1, sewer2"
-            value={form.email}
+            name="username"
+            placeholder="e.g. confeccionista1, empaque1"
+            value={form.username}
             onChange={onFormChange}
           />
           <Input

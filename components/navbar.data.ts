@@ -319,3 +319,52 @@ export const buildNavbarOtherItems = ({
 
   return items;
 };
+
+export type BuildHcmSectionsArgs = {
+  locale: "en" | "es";
+  isAuthenticated: boolean;
+};
+
+export const buildHcmNavbarSections = ({
+  locale,
+  isAuthenticated,
+}: BuildHcmSectionsArgs): NavSection[] => {
+  if (!isAuthenticated) return [];
+
+  const labels = {
+    nonCompliance: locale === "es" ? "Incumplimientos" : "Non-compliance",
+    overtime: locale === "es" ? "Horas extra" : "Overtime",
+    vacations: locale === "es" ? "Vacaciones" : "Vacations",
+    settlement: locale === "es" ? "Liquidación" : "Settlement",
+    commissions: locale === "es" ? "Comisiones" : "Commissions",
+    bonuses: locale === "es" ? "Bonificaciones" : "Bonuses",
+    perDiem: locale === "es" ? "Viáticos" : "Per diem",
+    payrollProvisions:
+      locale === "es" ? "Provisiones de nómina" : "Payroll provisions",
+    leavesAbsences:
+      locale === "es" ? "Permisos y ausencias" : "Leaves & absences",
+    pila:
+      locale === "es" ? "Seguridad social (PILA)" : "Social security (PILA)",
+  };
+
+  return [
+    {
+      key: "hcm",
+      label: "HCM HUMAN CAPITAL MANAGMENT",
+      icon: FiUsers,
+      visible: true,
+      items: [
+        { name: labels.nonCompliance, href: "/hcm/non-compliance" },
+        { name: labels.overtime, href: "/hcm/overtime" },
+        { name: labels.vacations, href: "/hcm/vacations" },
+        { name: labels.settlement, href: "/hcm/settlement" },
+        { name: labels.commissions, href: "/hcm/commissions" },
+        { name: labels.bonuses, href: "/hcm/bonuses" },
+        { name: labels.perDiem, href: "/hcm/per-diem" },
+        { name: labels.payrollProvisions, href: "/hcm/payroll-provisions" },
+        { name: labels.leavesAbsences, href: "/hcm/leaves-and-absences" },
+        { name: labels.pila, href: "/hcm/social-security-pila" },
+      ],
+    },
+  ];
+};

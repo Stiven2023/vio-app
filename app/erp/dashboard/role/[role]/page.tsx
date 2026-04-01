@@ -177,55 +177,19 @@ const roleConfigs: Record<string, RoleConfig> = {
       },
     ],
   },
-  OPERARIO_CORTE_LASER: {
-    title: "Dashboard Operario Corte Laser",
-    description: "Cola de trabajo para corte laser.",
+  OPERARIO: {
+    title: "Dashboard Operario",
+    description: "Cola de trabajo consolidada para procesos operativos.",
     metrics: [
-      { label: "Cortes en cola", value: "10" },
-      { label: "En proceso", value: "2" },
-      { label: "Completados", value: "5" },
-      { label: "Pendientes de ajuste", value: "1" },
-    ],
-    quickActions: [
-      {
-        title: "Pedidos",
-        description: "Corte laser en cola.",
-        href: "/orders",
-        icon: <BsClipboardData className="text-lg" />,
-      },
-    ],
-  },
-  OPERARIO_CORTE_MANUAL: {
-    title: "Dashboard Operario Corte Manual",
-    description: "Cola de trabajo para corte manual.",
-    metrics: [
-      { label: "Cortes en cola", value: "9" },
-      { label: "En proceso", value: "3" },
-      { label: "Completados", value: "4" },
+      { label: "Procesos en cola", value: "10" },
+      { label: "En proceso", value: "4" },
+      { label: "Completados", value: "7" },
       { label: "Pendientes de ajuste", value: "2" },
     ],
     quickActions: [
       {
         title: "Pedidos",
-        description: "Corte manual en cola.",
-        href: "/orders",
-        icon: <BsClipboardData className="text-lg" />,
-      },
-    ],
-  },
-  OPERARIO_FLOTER: {
-    title: "Dashboard Operario Floter",
-    description: "Pedidos en impresion.",
-    metrics: [
-      { label: "Impresiones en cola", value: "11" },
-      { label: "En proceso", value: "2" },
-      { label: "Completadas", value: "6" },
-      { label: "Reimpresiones", value: "1" },
-    ],
-    quickActions: [
-      {
-        title: "Pedidos",
-        description: "Impresion pendiente.",
+        description: "Seguimiento consolidado de producción.",
         href: "/orders",
         icon: <BsClipboardData className="text-lg" />,
       },
@@ -244,42 +208,6 @@ const roleConfigs: Record<string, RoleConfig> = {
       {
         title: "Pedidos",
         description: "Estampacion pendiente.",
-        href: "/orders",
-        icon: <BsClipboardData className="text-lg" />,
-      },
-    ],
-  },
-  OPERARIO_MONTAJE: {
-    title: "Dashboard Operario Montaje",
-    description: "Pedidos en montaje.",
-    metrics: [
-      { label: "Montajes en cola", value: "7" },
-      { label: "En proceso", value: "2" },
-      { label: "Completados", value: "5" },
-      { label: "Retrabajos", value: "1" },
-    ],
-    quickActions: [
-      {
-        title: "Pedidos",
-        description: "Montaje pendiente.",
-        href: "/orders",
-        icon: <BsClipboardData className="text-lg" />,
-      },
-    ],
-  },
-  OPERARIO_SUBLIMACION: {
-    title: "Dashboard Operario Sublimacion",
-    description: "Pedidos en sublimacion.",
-    metrics: [
-      { label: "Sublimaciones en cola", value: "9" },
-      { label: "En proceso", value: "3" },
-      { label: "Completadas", value: "4" },
-      { label: "Revisiones", value: "2" },
-    ],
-    quickActions: [
-      {
-        title: "Pedidos",
-        description: "Sublimacion pendiente.",
         href: "/orders",
         icon: <BsClipboardData className="text-lg" />,
       },

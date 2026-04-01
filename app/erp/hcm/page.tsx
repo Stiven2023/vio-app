@@ -1,6 +1,9 @@
 export const dynamic = "force-dynamic";
 
-export * from "../hr/page";
-export { default } from "../hr/page";
+import { redirect } from "next/navigation";
+
+export default function HcmLegacyPage() {
+  redirect("/hcm");
+}
 
 

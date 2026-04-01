@@ -43,6 +43,7 @@ export async function GET(
     ? await db
         .select({
           id: users.id,
+          username: users.username,
           email: users.email,
           emailVerified: users.emailVerified,
           isActive: users.isActive,

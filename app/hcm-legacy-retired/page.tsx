@@ -42,12 +42,6 @@ export default async function HcmLegacyRetiredPage({ searchParams }: RetiredPage
           </Link>
           <Link
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
-            href="/erp/hcm"
-          >
-            Abrir ERP HCM
-          </Link>
-          <Link
-            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
             href="/portal/hcm"
           >
             Abrir Portal HCM
