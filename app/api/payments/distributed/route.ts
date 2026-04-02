@@ -1,7 +1,7 @@
 import { inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderPayments, orders } from "@/src/db/schema";
+import { orderPayments, orders } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import {

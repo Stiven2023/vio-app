@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { packers, clients, legalStatusRecords } from "@/src/db/schema";
+import { packers, clients, legalStatusRecords } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";

@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { products } from "@/src/db/schema";
+import { products } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";

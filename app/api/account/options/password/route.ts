@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { users } from "@/src/db/schema";
+import { iamDb } from "@/src/db";
+import { users } from "@/src/db/iam/schema";
 import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -48,7 +48,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const [user] = await db
+    const [user] = await iamDb
       .select({ id: users.id, passwordHash: users.passwordHash })
       .from(users)
       .where(eq(users.id, userId))
@@ -71,7 +71,10 @@ export async function PUT(request: Request) {
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+    await iamDb
+      .update(users)
+      .set({ passwordHash })
+      .where(eq(users.id, userId));
 
     return Response.json({ ok: true });
   } catch (error) {

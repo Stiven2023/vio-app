@@ -1,7 +1,7 @@
 import { desc, eq, getTableColumns, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, employees, clientLegalStatusHistory } from "@/src/db/schema";
+import { clients, employees, clientLegalStatusHistory } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {
   checkPermissions,

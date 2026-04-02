@@ -9,10 +9,10 @@ import {
   orderItems,
   orders,
   orderStatusHistory,
-  prefacturas,
+  preInvoices as prefacturas,
   products,
   quotations,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import {
   getEmployeeIdFromRequest,
   getUserIdFromRequest,

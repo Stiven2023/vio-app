@@ -1,7 +1,7 @@
 import { eq, desc } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clientLegalStatusHistory } from "@/src/db/schema";
+import { clientLegalStatusHistory } from "@/src/db/erp/schema";
 
 /**
  * Campos críticos que cuando cambian requieren revisión jurídica

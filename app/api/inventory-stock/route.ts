@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { warehouseStock } from "@/src/db/schema";
+import { warehouseStock } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { resolveWarehouseIdByLocation } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";

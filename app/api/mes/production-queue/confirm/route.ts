@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { mesProductionQueue } from "@/src/db/schema";
+import { mesDb } from "@/src/db";
+import { mesProductionQueue } from "@/src/db/mes/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   try {
     const now = new Date();
 
-    const updated = await db
+    const updated = await mesDb
       .update(mesProductionQueue)
       .set({
         confirmedAt: now,

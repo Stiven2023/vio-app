@@ -7,7 +7,7 @@ import {
   stockMovements,
   warehouseStock,
   warehouses,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 
 type InventoryLocation = "BODEGA_PRINCIPAL" | "TIENDA";
 

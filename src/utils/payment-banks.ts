@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { banks } from "@/src/db/schema";
+import { banks } from "@/src/db/erp/schema";
 
 export const PAYMENT_TRANSFER_CURRENCIES = new Set(["COP", "USD"]);
 

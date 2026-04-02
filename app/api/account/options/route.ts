@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { employees, users } from "@/src/db/schema";
+import { erpDb, iamDb } from "@/src/db";
+import { employees } from "@/src/db/erp/schema";
+import { users } from "@/src/db/iam/schema";
 import {
   getUserIdFromRequest,
   getEmployeeIdFromRequest,
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const [user] = await db
+    const [user] = await iamDb
       .select({
         id: users.id,
         email: users.email,
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
 
     const employeeId = getEmployeeIdFromRequest(request);
     const employee = employeeId
-      ? await db
+          ? await erpDb
           .select({
             id: employees.id,
             userId: employees.userId,
@@ -212,15 +213,15 @@ export async function PUT(request: Request) {
         : null;
 
     if (Object.keys(userPatch).length > 0) {
-      await db.update(users).set(userPatch).where(eq(users.id, userId));
+      await iamDb.update(users).set(userPatch).where(eq(users.id, userId));
     }
 
-    await db
+    await erpDb
       .update(employees)
       .set(employeePatch)
       .where(eq(employees.userId, userId));
 
-    const [updatedUser] = await db
+    const [updatedUser] = await iamDb
       .select({
         id: users.id,
         email: users.email,
@@ -230,7 +231,7 @@ export async function PUT(request: Request) {
       .where(eq(users.id, userId))
       .limit(1);
 
-    const [updatedEmployee] = await db
+    const [updatedEmployee] = await erpDb
       .select({
         id: employees.id,
         userId: employees.userId,

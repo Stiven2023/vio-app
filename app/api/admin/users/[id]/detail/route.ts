@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employees, roles, users } from "@/src/db/schema";
+import { employees, roles, users } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 

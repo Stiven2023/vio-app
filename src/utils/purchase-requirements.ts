@@ -5,7 +5,7 @@ import {
   orderItems,
   purchaseRequirementLines,
   purchaseRequirements,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { getDesignFullView } from "@/src/utils/design-overview";
 
 function toLineDescription(requirement: {

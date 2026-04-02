@@ -2,8 +2,8 @@ import crypto from "crypto";
 
 import { and, eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { users } from "@/src/db/schema";
+import { iamDb } from "@/src/db";
+import { users } from "@/src/db/iam/schema";
 import { emailVerificationTokens } from "@/src/db/email_verification_tokens";
 import { sendEmailVerificationToken } from "@/src/utils/gmail";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
   if (!email) return new Response("Email required", { status: 400 });
 
-  const row = await db
+  const row = await iamDb
     .select({ id: users.id, emailVerified: users.emailVerified })
     .from(users)
     .where(eq(users.email, String(email)))
@@ -39,10 +39,10 @@ export async function POST(request: Request) {
   const token = generateCode();
   const expiresAt = new Date(Date.now() + 15 * 60_000);
 
-  await db
+  await iamDb
     .delete(emailVerificationTokens)
     .where(eq(emailVerificationTokens.userId, row[0].id));
-  await db
+  await iamDb
     .insert(emailVerificationTokens)
     .values({ userId: row[0].id, token, expiresAt });
 
@@ -66,7 +66,7 @@ export async function PUT(request: Request) {
   if (!email || !token)
     return new Response("Email and token required", { status: 400 });
 
-  const row = await db
+  const row = await iamDb
     .select({ id: users.id, emailVerified: users.emailVerified })
     .from(users)
     .where(eq(users.email, String(email)))
@@ -76,7 +76,7 @@ export async function PUT(request: Request) {
   if (row[0].emailVerified)
     return new Response("Email already verified", { status: 200 });
 
-  const tokenRow = await db
+  const tokenRow = await iamDb
     .select()
     .from(emailVerificationTokens)
     .where(
@@ -92,11 +92,11 @@ export async function PUT(request: Request) {
   if (new Date(tokenRow[0].expiresAt) < new Date())
     return new Response("Token expired", { status: 400 });
 
-  await db
+  await iamDb
     .update(users)
     .set({ emailVerified: true })
     .where(eq(users.id, row[0].id));
-  await db
+  await iamDb
     .delete(emailVerificationTokens)
     .where(eq(emailVerificationTokens.id, tokenRow[0].id));
 

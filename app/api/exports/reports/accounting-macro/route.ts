@@ -12,7 +12,7 @@ import {
   orders,
   prefacturas,
   quotations,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { workbookToXlsxResponse } from "@/src/utils/exceljs-export";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

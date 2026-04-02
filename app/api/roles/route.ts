@@ -1,7 +1,8 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { employees, rolePermissions, roles } from "@/src/db/schema";
+import { erpDb, iamDb } from "@/src/db";
+import { employees } from "@/src/db/erp/schema";
+import { rolePermissions, roles } from "@/src/db/iam/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -23,10 +24,10 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
-    const [{ total }] = await db
+    const [{ total }] = await iamDb
       .select({ total: sql<number>`count(*)::int` })
       .from(roles);
-    const items = await db.select().from(roles).limit(pageSize).offset(offset);
+    const items = await iamDb.select().from(roles).limit(pageSize).offset(offset);
     const hasNextPage = offset + items.length < total;
 
     return Response.json({ items, page, pageSize, total, hasNextPage });
@@ -57,12 +58,12 @@ export async function POST(request: Request) {
     return new Response("Role name is required", { status: 400 });
   }
   // Check for duplicate
-  const exists = await db.select().from(roles).where(eq(roles.name, name));
+  const exists = await iamDb.select().from(roles).where(eq(roles.name, name));
 
   if (exists.length > 0) {
     return new Response("Role already exists", { status: 409 });
   }
-  const newRole = await db.insert(roles).values({ name }).returning();
+  const newRole = await iamDb.insert(roles).values({ name }).returning();
 
   return Response.json(newRole);
 }
@@ -88,18 +89,18 @@ export async function PUT(request: Request) {
     return new Response("Role name is required", { status: 400 });
   }
   // Check if role exists
-  const exists = await db.select().from(roles).where(eq(roles.id, id));
+  const exists = await iamDb.select().from(roles).where(eq(roles.id, id));
 
   if (exists.length === 0) {
     return new Response("Role not found", { status: 404 });
   }
   // Check for duplicate name
-  const duplicate = await db.select().from(roles).where(eq(roles.name, name));
+  const duplicate = await iamDb.select().from(roles).where(eq(roles.name, name));
 
   if (duplicate.length > 0 && duplicate[0].id !== id) {
     return new Response("Role name already in use", { status: 409 });
   }
-  const updated = await db
+  const updated = await iamDb
     .update(roles)
     .set({ name })
     .where(eq(roles.id, id))
@@ -126,20 +127,48 @@ export async function DELETE(request: Request) {
     return new Response("Role ID is required", { status: 400 });
   }
   // Check if role exists
-  const exists = await db.select().from(roles).where(eq(roles.id, id));
+  const exists = await iamDb.select().from(roles).where(eq(roles.id, id));
 
   if (exists.length === 0) {
     return new Response("Role not found", { status: 404 });
   }
-  const deleted = await db.transaction(async (tx) => {
-    await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, id));
-    await tx
+  const affectedEmployees = await erpDb
+    .select({ id: employees.id })
+    .from(employees)
+    .where(eq(employees.roleId, id));
+
+  if (affectedEmployees.length > 0) {
+    await erpDb
       .update(employees)
       .set({ roleId: null })
       .where(eq(employees.roleId, id));
+  }
 
-    return tx.delete(roles).where(eq(roles.id, id)).returning();
-  });
+  try {
+    const deleted = await iamDb.transaction(async (tx) => {
+      await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, id));
 
-  return Response.json(deleted);
+      return tx.delete(roles).where(eq(roles.id, id)).returning();
+    });
+
+    return Response.json(deleted);
+  } catch (error) {
+    if (affectedEmployees.length > 0) {
+      await erpDb
+        .update(employees)
+        .set({ roleId: id })
+        .where(
+          inArray(
+            employees.id,
+            affectedEmployees.map((employee) => employee.id),
+          ),
+        );
+    }
+
+    const response = dbErrorResponse(error);
+
+    if (response) return response;
+
+    return new Response("No se pudo eliminar rol", { status: 500 });
+  }
 }

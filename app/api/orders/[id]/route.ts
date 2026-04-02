@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, orders } from "@/src/db/schema";
+import { clients, orders } from "@/src/db/erp/schema";
 import { assertAdvisorOwnsOrder } from "@/src/utils/advisor-scope";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

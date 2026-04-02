@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, orderItems, orders } from "@/src/db/schema";
+import { clients, orderItems, orders } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 

@@ -1,7 +1,7 @@
 import { eq, and, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { rolePermissions } from "@/src/db/schema";
+import { iamDb } from "@/src/db";
+import { rolePermissions } from "@/src/db/iam/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -24,10 +24,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
 
-    const [{ total }] = await db
+    const [{ total }] = await iamDb
       .select({ total: sql<number>`count(*)::int` })
       .from(rolePermissions);
-    const items = await db
+    const items = await iamDb
       .select()
       .from(rolePermissions)
       .limit(pageSize)
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     });
   }
   // Check for duplicate
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(rolePermissions)
     .where(
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   if (exists.length > 0) {
     return new Response("Role-permission already exists", { status: 409 });
   }
-  const newRolePerm = await db
+  const newRolePerm = await iamDb
     .insert(rolePermissions)
     .values({ roleId, permissionId })
     .returning();
@@ -121,7 +121,7 @@ export async function PUT(request: Request) {
     });
   }
   // Check if exists
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(rolePermissions)
     .where(
@@ -172,7 +172,7 @@ export async function DELETE(request: Request) {
     });
   }
   // Check if exists
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(rolePermissions)
     .where(
@@ -185,7 +185,7 @@ export async function DELETE(request: Request) {
   if (exists.length === 0) {
     return new Response("Role-permission not found", { status: 404 });
   }
-  const deleted = await db
+  const deleted = await iamDb
     .delete(rolePermissions)
     .where(
       and(

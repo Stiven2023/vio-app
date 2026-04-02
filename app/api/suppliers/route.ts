@@ -3,7 +3,7 @@ import type { SupplierFormPrefill } from "./supplier-modal.types";
 import { eq, sql, desc } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { suppliers, clients, legalStatusRecords } from "@/src/db/schema";
+import { suppliers, clients, legalStatusRecords } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";

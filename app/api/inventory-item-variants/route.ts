@@ -6,7 +6,7 @@ import {
   inventoryItems,
   stockMovements,
   warehouseStock,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { syncInventoryForVariant } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

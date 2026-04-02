@@ -5,8 +5,8 @@ import type { PgTransaction } from "drizzle-orm/pg-core";
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import * as schema from "@/src/db/schema";
-import { clients } from "@/src/db/schema";
+import * as schema from "@/src/db/erp/schema";
+import { clients } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

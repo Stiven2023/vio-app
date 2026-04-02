@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { mesProductionQueue } from "@/src/db/schema";
+import { mesDb } from "@/src/db";
+import { mesProductionQueue } from "@/src/db/mes/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -39,7 +39,7 @@ export async function PATCH(
   try {
     const body = (await request.json()) as Record<string, unknown>;
 
-    const [existing] = await db
+    const [existing] = await mesDb
       .select()
       .from(mesProductionQueue)
       .where(eq(mesProductionQueue.id, id))
@@ -93,7 +93,7 @@ export async function PATCH(
       }
     }
 
-    const [updated] = await db
+    const [updated] = await mesDb
       .update(mesProductionQueue)
       .set(updates)
       .where(eq(mesProductionQueue.id, id))

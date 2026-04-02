@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, notInArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderItems, orders } from "@/src/db/schema";
+import { orderItems, orders } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {
   ensureDateRange,

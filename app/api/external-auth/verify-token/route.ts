@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, externalAccessOtps } from "@/src/db/schema";
+import { clients, externalAccessOtps } from "@/src/db/erp/schema";
 import { signExternalAccessToken } from "@/src/utils/auth";
 import { rateLimit } from "@/src/utils/rate-limit";
 

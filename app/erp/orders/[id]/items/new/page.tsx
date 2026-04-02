@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { OrderItemCreatePage } from "./_components/order-item-create-page";
 
 import { db } from "@/src/db";
-import { orders } from "@/src/db/schema";
+import { orders } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 const MONTAJE_LOCKED_STATUSES = new Set([

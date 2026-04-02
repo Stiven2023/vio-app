@@ -5,8 +5,8 @@
  */
 import { and, eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { mesItemTags } from "@/src/db/schema";
+import { mesDb } from "@/src/db";
+import { mesItemTags } from "@/src/db/mes/schema";
 import { mesItemTagValues } from "@/src/db/enums";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   if (!orderItemId)
     return new Response("orderItemId required", { status: 400 });
 
-  const rows = await db
+  const rows = await mesDb
     .select()
     .from(mesItemTags)
     .where(eq(mesItemTags.orderItemId, orderItemId));
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   const employeeId = getEmployeeIdFromRequest(request);
 
   // Upsert: if already exists, just update notes
-  const existing = await db
+  const existing = await mesDb
     .select({ id: mesItemTags.id })
     .from(mesItemTags)
     .where(
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (existing.length > 0) {
-    await db
+    await mesDb
       .update(mesItemTags)
       .set({ notes })
       .where(eq(mesItemTags.id, existing[0]!.id));
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     return Response.json({ id: existing[0]!.id, updated: true });
   }
 
-  const [inserted] = await db
+  const [inserted] = await mesDb
     .insert(mesItemTags)
     .values({
       orderId,
@@ -123,7 +123,7 @@ export async function DELETE(request: Request) {
 
   if (!id) return new Response("id required", { status: 400 });
 
-  await db.delete(mesItemTags).where(eq(mesItemTags.id, id));
+  await mesDb.delete(mesItemTags).where(eq(mesItemTags.id, id));
 
   return new Response(null, { status: 204 });
 }

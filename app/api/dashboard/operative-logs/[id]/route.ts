@@ -1,15 +1,15 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
-import { db } from "@/src/db";
+import { erpDb, mesDb } from "@/src/db";
 import {
-  operativeDashboardLogs,
   orderItemPackaging,
   orderItemSocks,
   orderItemStatusHistory,
   orderItems,
   orders,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
+import { operativeDashboardLogs } from "@/src/db/mes/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -137,7 +137,7 @@ function normalizeMatchText(v: unknown) {
 }
 
 async function resolveOrderItemByDesignAndSize(args: {
-  tx: any;
+  erpTx: any;
   orderCode: string;
   designName: string;
   size: string | null;
@@ -148,7 +148,7 @@ async function resolveOrderItemByDesignAndSize(args: {
 
   if (!orderCode || !designName) return null;
 
-  const candidates = await args.tx
+  const candidates = await args.erpTx
     .select({ id: orderItems.id })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
@@ -164,7 +164,7 @@ async function resolveOrderItemByDesignAndSize(args: {
   if (!size) return candidates[0];
 
   const ids = candidates.map((candidate: { id: string }) => candidate.id);
-  const packagingMatches = await args.tx
+  const packagingMatches = await args.erpTx
     .select({ orderItemId: orderItemPackaging.orderItemId })
     .from(orderItemPackaging)
     .where(
@@ -174,7 +174,7 @@ async function resolveOrderItemByDesignAndSize(args: {
       ),
     );
 
-  const socksMatches = await args.tx
+  const socksMatches = await args.erpTx
     .select({ orderItemId: orderItemSocks.orderItemId })
     .from(orderItemSocks)
     .where(
@@ -206,7 +206,7 @@ async function verifyAccess(request: Request, id: string) {
     return { error: new Response("Forbidden", { status: 403 }) } as const;
   }
 
-  const [existing] = await db
+  const [existing] = await mesDb
     .select()
     .from(operativeDashboardLogs)
     .where(eq(operativeDashboardLogs.id, id))
@@ -346,7 +346,7 @@ export async function PUT(
   }
 
   try {
-    const [updated] = await db
+    const [updated] = await mesDb
       .update(operativeDashboardLogs)
       .set(patch)
       .where(eq(operativeDashboardLogs.id, recordId))
@@ -386,7 +386,7 @@ export async function DELETE(
   if (access.error) return access.error;
 
   try {
-    const [deleted] = await db
+    const [deleted] = await mesDb
       .delete(operativeDashboardLogs)
       .where(eq(operativeDashboardLogs.id, recordId))
       .returning();
@@ -442,59 +442,66 @@ export async function POST(
   );
 
   try {
-    const result = await db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(operativeDashboardLogs)
-        .values({
-          roleArea: source.roleArea,
-          operationType: source.operationType,
-          orderCode: source.orderCode,
-          designName: source.designName,
-          details: source.details,
-          size: source.size,
-          quantityOp:
-            remainingQuantity > 0 ? remainingQuantity : source.quantityOp,
-          producedQuantity: 0,
-          startAt: null,
-          endAt: null,
-          isComplete: false,
-          isPartial: false,
-          observations: source.observations
-            ? `${source.observations} | Reposición automática desde registro parcial`
-            : "Reposición automática desde registro parcial",
-          repoCheck: true,
-          processCode: source.processCode,
-          createdByUserId: access.userId,
-        })
-        .returning();
-
-      const linkedItem = await resolveOrderItemByDesignAndSize({
-        tx,
+    const [created] = await mesDb
+      .insert(operativeDashboardLogs)
+      .values({
+        roleArea: source.roleArea,
+        operationType: source.operationType,
         orderCode: source.orderCode,
         designName: source.designName,
+        details: source.details,
         size: source.size,
+        quantityOp:
+          remainingQuantity > 0 ? remainingQuantity : source.quantityOp,
+        producedQuantity: 0,
+        startAt: null,
+        endAt: null,
+        isComplete: false,
+        isPartial: false,
+        observations: source.observations
+          ? `${source.observations} | Reposición automática desde registro parcial`
+          : "Reposición automática desde registro parcial",
+        repoCheck: true,
+        processCode: source.processCode,
+        createdByUserId: access.userId,
+      })
+      .returning();
+
+    try {
+      const result = await erpDb.transaction(async (erpTx) => {
+        const linkedItem = await resolveOrderItemByDesignAndSize({
+          erpTx,
+          orderCode: source.orderCode,
+          designName: source.designName,
+          size: source.size,
+        });
+
+        if (linkedItem?.id) {
+          await erpTx
+            .update(orderItems)
+            .set({ status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION })
+            .where(eq(orderItems.id, linkedItem.id));
+
+          await erpTx.insert(orderItemStatusHistory).values({
+            orderItemId: linkedItem.id,
+            status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
+            changedBy: changedByEmployeeId,
+          });
+        }
+
+        return {
+          ...created,
+          linkedOrderItemId: linkedItem?.id ?? null,
+        };
       });
 
-      if (linkedItem?.id) {
-        await tx
-          .update(orderItems)
-          .set({ status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION })
-          .where(eq(orderItems.id, linkedItem.id));
-
-        await tx.insert(orderItemStatusHistory).values({
-          orderItemId: linkedItem.id,
-          status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
-          changedBy: changedByEmployeeId,
-        });
-      }
-
-      return {
-        ...created,
-        linkedOrderItemId: linkedItem?.id ?? null,
-      };
-    });
-
-    return Response.json(result, { status: 201 });
+      return Response.json(result, { status: 201 });
+    } catch (error) {
+      await mesDb
+        .delete(operativeDashboardLogs)
+        .where(eq(operativeDashboardLogs.id, created.id));
+      throw error;
+    }
   } catch (error) {
     const response = dbErrorResponse(error);
 

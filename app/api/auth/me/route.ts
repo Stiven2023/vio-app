@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { employees } from "@/src/db/schema";
+import { erpDb } from "@/src/db";
+import { employees } from "@/src/db/erp/schema";
 import {
   getAuthFromRequest,
   getEmployeeIdFromRequest,
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   let employeeName: string | null = null;
 
   if (employeeId) {
-    const [employee] = await db
+    const [employee] = await erpDb
       .select({
         name: employees.name,
         employeeImageUrl: employees.employeeImageUrl,
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     avatarUrl = employee?.employeeImageUrl ?? null;
     employeeName = employee?.name ?? null;
   } else if (userId) {
-    const [employee] = await db
+    const [employee] = await erpDb
       .select({
         name: employees.name,
         employeeImageUrl: employees.employeeImageUrl,

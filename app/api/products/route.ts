@@ -1,7 +1,7 @@
 import { and, eq, ilike, isNotNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { categories, products } from "@/src/db/schema";
+import { categories, products } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

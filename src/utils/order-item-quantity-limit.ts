@@ -1,6 +1,6 @@
 import { eq, ne, sql } from "drizzle-orm";
 
-import { orderItems, prefacturas, quotationItems } from "@/src/db/schema";
+import { orderItems, prefacturas, quotationItems } from "@/src/db/erp/schema";
 
 function asNumber(value: unknown) {
   const parsed = Number(String(value ?? "0"));

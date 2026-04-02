@@ -4,14 +4,14 @@ import { db } from "@/src/db";
 import {
   cashReceiptApplications,
   cashReceipts,
-  prefacturas,
-} from "@/src/db/schema";
+  preInvoices,
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 function prefacturaAmountExpr() {
-  return sql`case when coalesce(${prefacturas.totalAfterWithholdings}, 0) > 0 then coalesce(${prefacturas.totalAfterWithholdings}, 0) else coalesce(${prefacturas.total}, 0) end`;
+  return sql`case when coalesce(${preInvoices.totalAfterWithholdings}, 0) > 0 then coalesce(${preInvoices.totalAfterWithholdings}, 0) else coalesce(${preInvoices.total}, 0) end`;
 }
 
 export async function GET(request: Request) {
@@ -36,24 +36,24 @@ export async function GET(request: Request) {
     const totalExpr = prefacturaAmountExpr();
     const rows = await db
       .select({
-        id: prefacturas.id,
-        prefacturaCode: prefacturas.prefacturaCode,
-        orderId: prefacturas.orderId,
+        id: preInvoices.id,
+        prefacturaCode: preInvoices.prefacturaCode,
+        orderId: preInvoices.orderId,
         total: totalExpr,
         applied: sql<string>`coalesce(sum(case when ${cashReceipts.status} = 'CONFIRMED' then ${cashReceiptApplications.appliedAmount} else 0 end), 0)::text`,
       })
-      .from(prefacturas)
+      .from(preInvoices)
       .leftJoin(
         cashReceiptApplications,
-        eq(cashReceiptApplications.prefacturaId, prefacturas.id),
+        eq(cashReceiptApplications.prefacturaId, preInvoices.id),
       )
       .leftJoin(
         cashReceipts,
         eq(cashReceiptApplications.cashReceiptId, cashReceipts.id),
       )
-      .where(eq(prefacturas.clientId, clientId))
-      .groupBy(prefacturas.id)
-      .orderBy(asc(prefacturas.prefacturaCode));
+      .where(eq(preInvoices.clientId, clientId))
+      .groupBy(preInvoices.id)
+      .orderBy(asc(preInvoices.prefacturaCode));
 
     return Response.json({
       items: rows

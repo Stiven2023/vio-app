@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { clientLegalStatus, clients } from "@/src/db/schema";
+import { erpDb } from "@/src/db";
+import { clientLegalStatus, clients } from "@/src/db/erp/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -40,7 +40,7 @@ export async function GET(
   const { clientId } = await params;
 
   try {
-    const [row] = await db
+    const [row] = await erpDb
       .select({
         id: clientLegalStatus.id,
         clientId: clientLegalStatus.clientId,
@@ -118,7 +118,7 @@ export async function PUT(
     }
 
     // Verify the client exists
-    const [clientRow] = await db
+    const [clientRow] = await erpDb
       .select({ id: clients.id })
       .from(clients)
       .where(eq(clients.id, clientId))
@@ -130,7 +130,7 @@ export async function PUT(
 
     const now = new Date();
 
-    const [existing] = await db
+    const [existing] = await erpDb
       .select({ id: clientLegalStatus.id })
       .from(clientLegalStatus)
       .where(eq(clientLegalStatus.clientId, clientId))
@@ -139,7 +139,7 @@ export async function PUT(
     let result;
 
     if (existing) {
-      [result] = await db
+      [result] = await erpDb
         .update(clientLegalStatus)
         .set({
           isLegallyEnabled,
@@ -152,7 +152,7 @@ export async function PUT(
         .where(eq(clientLegalStatus.clientId, clientId))
         .returning();
     } else {
-      [result] = await db
+      [result] = await erpDb
         .insert(clientLegalStatus)
         .values({
           clientId,

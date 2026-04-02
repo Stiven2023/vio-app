@@ -171,6 +171,7 @@ export {
 import {
   boolean,
   date,
+  index,
   integer,
   jsonb,
   numeric,
@@ -362,7 +363,7 @@ export const stockMovementReasonPgEnum = pgEnum(
   "stock_movement_reason",
   stockMovementReasonValues,
 );
-export const stockMovementReferenceTypePgEnum = pgEnum( 
+export const stockMovementReferenceTypePgEnum = pgEnum(
   "stock_movement_reference_type",
   stockMovementReferenceTypeValues,
 );
@@ -413,9 +414,18 @@ export const pettyCashFundStatusPgEnum = pgEnum(
   pettyCashFundStatusValues,
 );
 export const mesItemTagPgEnum = pgEnum("mes_item_tag", mesItemTagValues);
-export const mesShipmentAreaPgEnum = pgEnum("mes_shipment_area", mesShipmentAreaValues);
-export const mesTransportTypePgEnum = pgEnum("mes_transport_type", mesTransportTypeValues);
-export const mesEnvioStatusPgEnum = pgEnum("mes_envio_status", mesEnvioStatusValues);
+export const mesShipmentAreaPgEnum = pgEnum(
+  "mes_shipment_area",
+  mesShipmentAreaValues,
+);
+export const mesTransportTypePgEnum = pgEnum(
+  "mes_transport_type",
+  mesTransportTypeValues,
+);
+export const mesEnvioStatusPgEnum = pgEnum(
+  "mes_envio_status",
+  mesEnvioStatusValues,
+);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -554,62 +564,71 @@ export const rolePermissions = pgTable(
 /* =========================
    EMPLOYEES (Ajustado)
 ========================= */
-export const employees = pgTable("employees", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id),
+export const employees = pgTable(
+  "employees",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // External reference to IAM users.id (no cross-database FK)
+    userId: uuid("user_id"),
 
-  // --- CÓDIGO AUTOGENERADO ---
-  employeeCode: varchar("employee_code", { length: 20 }).unique().notNull(),
+    // --- CÓDIGO AUTOGENERADO ---
+    employeeCode: varchar("employee_code", { length: 20 }).unique().notNull(),
 
-  // --- DOCUMENTOS (Igual que clientes) ---
-  identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE
-  rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT
-  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
-    length: 500,
-  }), // Cámara de comercio
-  passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte
-  taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
-    length: 500,
-  }), // Certificado tributario
-  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa
+    // --- DOCUMENTOS (Igual que clientes) ---
+    identityDocumentUrl: varchar("identity_document_url", { length: 500 }), // Cédula (CC) / CE
+    rutDocumentUrl: varchar("rut_document_url", { length: 500 }), // RUT
+    commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+      length: 500,
+    }), // Cámara de comercio
+    passportDocumentUrl: varchar("passport_document_url", { length: 500 }), // Pasaporte
+    taxCertificateDocumentUrl: varchar("tax_certificate_document_url", {
+      length: 500,
+    }), // Certificado tributario
+    companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }), // ID de empresa
 
-  // --- DOCUMENTOS DEL EMPLEADO ---
-  hojaDeVidaUrl: varchar("hoja_de_vida_url", { length: 500 }),
-  certificadoLaboralUrl: varchar("certificado_laboral_url", { length: 500 }),
-  certificadoEstudiosUrl: varchar("certificado_estudios_url", { length: 500 }),
-  epsCertificateUrl: varchar("eps_certificate_url", { length: 500 }),
-  pensionCertificateUrl: varchar("pension_certificate_url", { length: 500 }),
-  bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
-  employeeImageUrl: varchar("employee_image_url", { length: 500 }),
-  signatureImageUrl: varchar("signature_image_url", { length: 500 }),
-  companyImageUrl: varchar("company_image_url", { length: 500 }),
+    // --- DOCUMENTOS DEL EMPLEADO ---
+    hojaDeVidaUrl: varchar("hoja_de_vida_url", { length: 500 }),
+    certificadoLaboralUrl: varchar("certificado_laboral_url", { length: 500 }),
+    certificadoEstudiosUrl: varchar("certificado_estudios_url", {
+      length: 500,
+    }),
+    epsCertificateUrl: varchar("eps_certificate_url", { length: 500 }),
+    pensionCertificateUrl: varchar("pension_certificate_url", { length: 500 }),
+    bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
+    employeeImageUrl: varchar("employee_image_url", { length: 500 }),
+    signatureImageUrl: varchar("signature_image_url", { length: 500 }),
+    companyImageUrl: varchar("company_image_url", { length: 500 }),
 
-  // --- IDENTIFICACIÓN Y NOMBRE ---
-  name: varchar("name", { length: 255 }).notNull(),
-  identificationType: identificationTypeEnum("identification_type").notNull(),
-  identification: varchar("identification", { length: 20 }).unique().notNull(),
-  dv: varchar("dv", { length: 1 }),
+    // --- IDENTIFICACIÓN Y NOMBRE ---
+    name: varchar("name", { length: 255 }).notNull(),
+    identificationType: identificationTypeEnum("identification_type").notNull(),
+    identification: varchar("identification", { length: 20 })
+      .unique()
+      .notNull(),
+    dv: varchar("dv", { length: 1 }),
 
-  // --- CONTACTO DETALLADO ---
-  email: varchar("email", { length: 255 }).notNull(),
-  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
-  mobile: varchar("mobile", { length: 20 }),
-  fullMobile: varchar("full_mobile", { length: 25 }),
-  landline: varchar("landline", { length: 20 }),
-  extension: varchar("extension", { length: 10 }),
+    // --- CONTACTO DETALLADO ---
+    email: varchar("email", { length: 255 }).notNull(),
+    intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
+    mobile: varchar("mobile", { length: 20 }),
+    fullMobile: varchar("full_mobile", { length: 25 }),
+    landline: varchar("landline", { length: 20 }),
+    extension: varchar("extension", { length: 10 }),
 
-  // --- UBICACIÓN ---
-  address: varchar("address", { length: 255 }),
-  city: varchar("city", { length: 100 }).default("Medellín"),
-  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+    // --- UBICACIÓN ---
+    address: varchar("address", { length: 255 }),
+    city: varchar("city", { length: 100 }).default("Medellín"),
+    department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
 
-  // --- ROL Y ESTADO ---
-  roleId: uuid("role_id").references(() => roles.id),
-  contractType: contractTypeEnum("contract_type"),
-  isActive: boolean("is_active").default(false),
+    // --- ROL Y ESTADO ---
+    roleId: uuid("role_id").references(() => roles.id),
+    contractType: contractTypeEnum("contract_type"),
+    isActive: boolean("is_active").default(false),
 
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [index("idx_employees_user_id").on(t.userId)],
+);
 
 /* =========================
    CLIENTS
@@ -1565,7 +1584,9 @@ export const purchaseRequirementLines = pgTable("purchase_requirement_lines", {
   coverageStatus: varchar("coverage_status", { length: 30 })
     .notNull()
     .default("PENDIENTE"),
-  inventoryItemId: uuid("inventory_item_id").references(() => inventoryItems.id),
+  inventoryItemId: uuid("inventory_item_id").references(
+    () => inventoryItems.id,
+  ),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -1642,26 +1663,29 @@ export const purchaseOrderReceipts = pgTable("purchase_order_receipts", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const purchaseOrderReceiptLines = pgTable("purchase_order_receipt_lines", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  receiptId: uuid("receipt_id")
-    .notNull()
-    .references(() => purchaseOrderReceipts.id, { onDelete: "cascade" }),
-  purchaseOrderItemId: uuid("purchase_order_item_id")
-    .notNull()
-    .references(() => purchaseOrderItems.id, { onDelete: "cascade" }),
-  inventoryItemId: uuid("inventory_item_id")
-    .notNull()
-    .references(() => inventoryItems.id),
-  receivedQty: numeric("received_qty", { precision: 12, scale: 2 })
-    .notNull()
-    .default("0"),
-  unitCost: numeric("unit_cost", { precision: 14, scale: 2 })
-    .notNull()
-    .default("0"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-});
+export const purchaseOrderReceiptLines = pgTable(
+  "purchase_order_receipt_lines",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    receiptId: uuid("receipt_id")
+      .notNull()
+      .references(() => purchaseOrderReceipts.id, { onDelete: "cascade" }),
+    purchaseOrderItemId: uuid("purchase_order_item_id")
+      .notNull()
+      .references(() => purchaseOrderItems.id, { onDelete: "cascade" }),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItems.id),
+    receivedQty: numeric("received_qty", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    unitCost: numeric("unit_cost", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+);
 
 export const purchaseOrderHistory = pgTable("purchase_order_history", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -2336,119 +2360,18 @@ export const orderItemMoldingInsumos = pgTable(
    MES - COLA DE PRODUCCIÓN
 ========================= */
 
-export const mesProductionQueue = pgTable("mes_production_queue", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  orderId: uuid("order_id")
-    .notNull()
-    .references(() => orders.id, { onDelete: "cascade" }),
-  orderItemId: uuid("order_item_id")
-    .notNull()
-    .references(() => orderItems.id, { onDelete: "cascade" }),
-  design: varchar("design", { length: 255 }).notNull(),
-  size: varchar("size", { length: 40 }),
-  quantityTotal: integer("quantity_total").notNull().default(0),
-  priority: mesPriorityEnum("priority").notNull().default("NORMAL"),
-  prioritySetBy: uuid("priority_set_by").references(() => employees.id),
-  prioritySetAt: timestamp("priority_set_at", { withTimezone: true }),
-  suggestedOrder: integer("suggested_order").notNull().default(0),
-  finalOrder: integer("final_order").notNull().default(0),
-  status: mesQueueStatusEnum("status").notNull().default("EN_COLA"),
-  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
-  confirmedBy: uuid("confirmed_by").references(() => employees.id),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
-
-/* =========================
-   MES - ASIGNACIÓN DE TICKETS POR TURNO
-========================= */
-
-export const mesTicketAssignments = pgTable("mes_ticket_assignments", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  ticketRef: varchar("ticket_ref", { length: 50 }).notNull(),
-  employeeId: uuid("employee_id").references(() => employees.id),
-  process: varchar("process", { length: 50 }).notNull(),
-  shiftLabel: varchar("shift_label", { length: 100 }),
-  assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow(),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  status: mesAssignmentStatusEnum("status").notNull().default("ASIGNADO"),
-  quantityReported: integer("quantity_reported").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-});
+export {
+  mesProductionQueue,
+  mesTicketAssignments,
+  mesItemTags,
+  mesEnvios,
+  mesEnvioItems,
+  mesShipments,
+  mesShipmentItems,
+} from "./mes/schema";
 
 /* =========================
    ESTADO JURÍDICO ACTUAL DE CLIENTES
-  /* =========================
-     MES — TAGS POR DISEÑO
-  ========================= */
-
-  export const mesItemTags = pgTable("mes_item_tags", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    orderId: uuid("order_id")
-      .notNull()
-      .references(() => orders.id, { onDelete: "cascade" }),
-    orderItemId: uuid("order_item_id")
-      .notNull()
-      .references(() => orderItems.id, { onDelete: "cascade" }),
-    tag: mesItemTagEnum("tag").notNull(),
-    notes: text("notes"),
-    setBy: uuid("set_by").references(() => employees.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-  });
-
-  /* =========================
-     MES — ENVÍOS ENTRE ÁREAS
-  ========================= */
-
-  export const mesEnvios = pgTable("mes_envios", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    orderId: uuid("order_id")
-      .notNull()
-      .references(() => orders.id, { onDelete: "cascade" }),
-    origenArea: mesShipmentAreaEnum("origen_area").notNull(),
-    origenNombre: varchar("origen_nombre", { length: 150 }),
-    destinoArea: mesShipmentAreaEnum("destino_area").notNull(),
-    destinoNombre: varchar("destino_nombre", { length: 150 }),
-    transporteTipo: mesTransportTypeEnum("transporte_tipo").notNull(),
-    transportistaEmpleadoId: uuid("transportista_empleado_id").references(
-      () => employees.id,
-    ),
-    transportistaNombre: varchar("transportista_nombre", { length: 150 }),
-    empresaTercero: varchar("empresa_tercero", { length: 150 }),
-    guiaNumero: varchar("guia_numero", { length: 80 }),
-    placa: varchar("placa", { length: 20 }),
-    requiereSegundaParada: boolean("requiere_segunda_parada")
-      .notNull()
-      .default(false),
-    segundaParadaTipo: varchar("segunda_parada_tipo", { length: 80 }),
-    segundaParadaDestino: varchar("segunda_parada_destino", { length: 200 }),
-    observaciones: text("observaciones"),
-    evidenciaUrl: text("evidencia_url"),
-    status: mesEnvioStatusEnum("status").notNull().default("CREADO"),
-    salidaAt: timestamp("salida_at", { withTimezone: true }),
-    llegadaAt: timestamp("llegada_at", { withTimezone: true }),
-    retornoAt: timestamp("retorno_at", { withTimezone: true }),
-    createdBy: uuid("created_by").references(() => employees.id),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
-  });
-
-  export const mesEnvioItems = pgTable("mes_envio_items", {
-    id: uuid("id").defaultRandom().primaryKey(),
-    envioId: uuid("envio_id")
-      .notNull()
-      .references(() => mesEnvios.id, { onDelete: "cascade" }),
-    orderItemId: uuid("order_item_id")
-      .notNull()
-      .references(() => orderItems.id, { onDelete: "cascade" }),
-    quantity: integer("quantity").notNull().default(0),
-    notes: text("notes"),
-  });
-
-  /* =========================
-     ESTADO JURÍDICO ACTUAL DE CLIENTES
 ========================= */
 
 export const clientLegalStatus = pgTable("client_legal_status", {

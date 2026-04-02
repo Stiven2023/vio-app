@@ -1,7 +1,7 @@
 import { and, gte, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderPayments, orders } from "@/src/db/schema";
+import { orderPayments, orders } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

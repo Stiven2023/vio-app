@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { bankReconciliations } from "@/src/db/schema";
+import { bankReconciliations } from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

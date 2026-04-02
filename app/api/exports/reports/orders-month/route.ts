@@ -7,7 +7,7 @@ import ExcelJS from "exceljs";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, employees, orderPayments, orders } from "@/src/db/schema";
+import { clients, employees, orderPayments, orders } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { workbookToXlsxResponse } from "@/src/utils/exceljs-export";

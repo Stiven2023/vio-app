@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 import { db } from "@/src/db";
-import { clients, employees, roles, users, legalStatusRecords } from "@/src/db/schema";
+import { clients, employees, roles, users, legalStatusRecords } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

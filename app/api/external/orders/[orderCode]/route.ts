@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, orderItems, orderPayments, orders } from "@/src/db/schema";
+import { clients, orderItems, orderPayments, orders } from "@/src/db/erp/schema";
 import { requireExternalAccessActiveClient } from "@/src/utils/external-auth";
 import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 

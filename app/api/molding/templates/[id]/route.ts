@@ -5,7 +5,7 @@ import {
   employees,
   moldingTemplateInsumos,
   moldingTemplates,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

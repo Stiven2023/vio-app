@@ -1,7 +1,7 @@
 import { desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { warehouseStock, warehouses } from "@/src/db/schema";
+import { warehouseStock, warehouses } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";

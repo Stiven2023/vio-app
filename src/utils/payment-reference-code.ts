@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 
-import { orderPayments } from "@/src/db/schema";
+import { orderPayments } from "@/src/db/erp/schema";
 
 type PaymentCodeMethod = "EFECTIVO" | "TRANSFERENCIA" | "CREDITO";
 

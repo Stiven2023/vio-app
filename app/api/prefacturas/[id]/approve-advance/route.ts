@@ -5,8 +5,8 @@ import {
   orderPayments,
   orders,
   orderStatusHistory,
-  prefacturas,
-} from "@/src/db/schema";
+  preInvoices as prefacturas,
+} from "@/src/db/erp/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,

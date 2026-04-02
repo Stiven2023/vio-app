@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, factoringRecords, prefacturas } from "@/src/db/schema";
+import { clients, factoringRecords, preInvoices } from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
         clientId: factoringRecords.clientId,
         clientName: clients.name,
         prefacturaId: factoringRecords.prefacturaId,
-        prefacturaCode: prefacturas.prefacturaCode,
+        prefacturaCode: preInvoices.prefacturaCode,
         factoringEntity: factoringRecords.factoringEntity,
         assignmentDate: factoringRecords.assignmentDate,
         invoiceValue: factoringRecords.invoiceValue,
@@ -127,7 +127,7 @@ export async function GET(request: Request) {
       })
       .from(factoringRecords)
       .innerJoin(clients, eq(factoringRecords.clientId, clients.id))
-      .innerJoin(prefacturas, eq(factoringRecords.prefacturaId, prefacturas.id))
+      .innerJoin(preInvoices, eq(factoringRecords.prefacturaId, preInvoices.id))
       .where(where)
       .orderBy(
         desc(factoringRecords.assignmentDate),
@@ -153,25 +153,25 @@ export async function GET(request: Request) {
 
     const prefacturaOptions = await db
       .select({
-        id: prefacturas.id,
-        prefacturaCode: prefacturas.prefacturaCode,
-        clientId: prefacturas.clientId,
+        id: preInvoices.id,
+        prefacturaCode: preInvoices.prefacturaCode,
+        clientId: preInvoices.clientId,
         clientName: clients.name,
-        invoiceValue: prefacturas.total,
+        invoiceValue: preInvoices.total,
       })
-      .from(prefacturas)
-      .innerJoin(clients, eq(prefacturas.clientId, clients.id))
+      .from(preInvoices)
+      .innerJoin(clients, eq(preInvoices.clientId, clients.id))
       .leftJoin(
         factoringRecords,
-        eq(factoringRecords.prefacturaId, prefacturas.id),
+        eq(factoringRecords.prefacturaId, preInvoices.id),
       )
       .where(
         and(
-          eq(prefacturas.paymentType, "CREDIT" as any),
+          eq(preInvoices.paymentType, "CREDIT" as any),
           isNull(factoringRecords.id),
         ),
       )
-      .orderBy(desc(prefacturas.createdAt));
+      .orderBy(desc(preInvoices.createdAt));
 
     return Response.json({
       items: rows,
@@ -244,14 +244,14 @@ export async function POST(request: Request) {
 
     const [prefacturaRow] = await db
       .select({
-        id: prefacturas.id,
-        prefacturaCode: prefacturas.prefacturaCode,
-        paymentType: prefacturas.paymentType,
-        invoiceValue: prefacturas.total,
-        clientId: prefacturas.clientId,
+        id: preInvoices.id,
+        prefacturaCode: preInvoices.prefacturaCode,
+        paymentType: preInvoices.paymentType,
+        invoiceValue: preInvoices.total,
+        clientId: preInvoices.clientId,
       })
-      .from(prefacturas)
-      .where(eq(prefacturas.id, prefacturaId))
+      .from(preInvoices)
+      .where(eq(preInvoices.id, prefacturaId))
       .limit(1);
 
     if (!prefacturaRow?.id) {

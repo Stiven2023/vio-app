@@ -6,7 +6,7 @@ import {
   orderItemStatusHistory,
   orderItems,
   orders,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

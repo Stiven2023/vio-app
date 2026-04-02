@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderStatusHistory, orders } from "@/src/db/schema";
+import { orderStatusHistory, orders } from "@/src/db/erp/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,

@@ -4,8 +4,8 @@ import { db } from "@/src/db";
 import {
   cashReceiptApplications,
   cashReceipts,
-  prefacturas,
-} from "@/src/db/schema";
+  preInvoices,
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -13,7 +13,7 @@ import { rateLimit } from "@/src/utils/rate-limit";
 type NextStatus = "CONFIRMED" | "VOIDED";
 
 function prefacturaAmountExpr() {
-  return sql`case when coalesce(${prefacturas.totalAfterWithholdings}, 0) > 0 then coalesce(${prefacturas.totalAfterWithholdings}, 0) else coalesce(${prefacturas.total}, 0) end`;
+  return sql`case when coalesce(${preInvoices.totalAfterWithholdings}, 0) > 0 then coalesce(${preInvoices.totalAfterWithholdings}, 0) else coalesce(${preInvoices.total}, 0) end`;
 }
 
 async function getOutstandingBalances(prefacturaIds: string[]) {
@@ -22,21 +22,21 @@ async function getOutstandingBalances(prefacturaIds: string[]) {
   const totalExpr = prefacturaAmountExpr();
   const rows = await db
     .select({
-      id: prefacturas.id,
+      id: preInvoices.id,
       total: totalExpr,
       applied: sql<string>`coalesce(sum(case when ${cashReceipts.status} = 'CONFIRMED' then ${cashReceiptApplications.appliedAmount} else 0 end), 0)::text`,
     })
-    .from(prefacturas)
+    .from(preInvoices)
     .leftJoin(
       cashReceiptApplications,
-      eq(cashReceiptApplications.prefacturaId, prefacturas.id),
+      eq(cashReceiptApplications.prefacturaId, preInvoices.id),
     )
     .leftJoin(
       cashReceipts,
       eq(cashReceiptApplications.cashReceiptId, cashReceipts.id),
     )
-    .where(inArray(prefacturas.id, prefacturaIds))
-    .groupBy(prefacturas.id);
+    .where(inArray(preInvoices.id, prefacturaIds))
+    .groupBy(preInvoices.id);
 
   return new Map(
     rows.map((row) => {

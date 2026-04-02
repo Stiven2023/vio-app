@@ -4,8 +4,9 @@
  */
 import { desc, eq, inArray, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { mesEnvios, mesEnvioItems, orderItems } from "@/src/db/schema";
+import { erpDb, mesDb } from "@/src/db";
+import { orderItems } from "@/src/db/erp/schema";
+import { mesShipmentItems, mesShipments } from "@/src/db/mes/schema";
 import {
   mesShipmentAreaValues,
   mesTransportTypeValues,
@@ -33,61 +34,76 @@ export async function GET(request: Request) {
   const orderId = String(searchParams.get("orderId") ?? "").trim();
   if (!orderId) return new Response("orderId required", { status: 400 });
 
-  const [{ total }] = await db
+  const [{ total }] = await mesDb
     .select({ total: sql<number>`count(*)::int` })
-    .from(mesEnvios)
-    .where(eq(mesEnvios.orderId, orderId));
+    .from(mesShipments)
+    .where(eq(mesShipments.orderId, orderId));
 
-  const rows = await db
+  const rows = await mesDb
     .select({
-      id: mesEnvios.id,
-      orderId: mesEnvios.orderId,
-      origenArea: mesEnvios.origenArea,
-      origenNombre: mesEnvios.origenNombre,
-      destinoArea: mesEnvios.destinoArea,
-      destinoNombre: mesEnvios.destinoNombre,
-      transporteTipo: mesEnvios.transporteTipo,
-      transportistaNombre: mesEnvios.transportistaNombre,
-      empresaTercero: mesEnvios.empresaTercero,
-      guiaNumero: mesEnvios.guiaNumero,
-      placa: mesEnvios.placa,
-      requiereSegundaParada: mesEnvios.requiereSegundaParada,
-      segundaParadaTipo: mesEnvios.segundaParadaTipo,
-      segundaParadaDestino: mesEnvios.segundaParadaDestino,
-      observaciones: mesEnvios.observaciones,
-      evidenciaUrl: mesEnvios.evidenciaUrl,
-      status: mesEnvios.status,
-      salidaAt: mesEnvios.salidaAt,
-      llegadaAt: mesEnvios.llegadaAt,
-      retornoAt: mesEnvios.retornoAt,
-      createdAt: mesEnvios.createdAt,
+      id: mesShipments.id,
+      orderId: mesShipments.orderId,
+      origenArea: mesShipments.origenArea,
+      origenNombre: mesShipments.origenNombre,
+      destinoArea: mesShipments.destinoArea,
+      destinoNombre: mesShipments.destinoNombre,
+      transporteTipo: mesShipments.transporteTipo,
+      transportistaNombre: mesShipments.transportistaNombre,
+      empresaTercero: mesShipments.empresaTercero,
+      guiaNumero: mesShipments.guiaNumero,
+      placa: mesShipments.placa,
+      requiereSegundaParada: mesShipments.requiereSegundaParada,
+      segundaParadaTipo: mesShipments.segundaParadaTipo,
+      segundaParadaDestino: mesShipments.segundaParadaDestino,
+      observaciones: mesShipments.observaciones,
+      evidenciaUrl: mesShipments.evidenciaUrl,
+      status: mesShipments.status,
+      salidaAt: mesShipments.salidaAt,
+      llegadaAt: mesShipments.llegadaAt,
+      retornoAt: mesShipments.retornoAt,
+      createdAt: mesShipments.createdAt,
     })
-    .from(mesEnvios)
-    .where(eq(mesEnvios.orderId, orderId))
-    .orderBy(desc(mesEnvios.createdAt))
+    .from(mesShipments)
+    .where(eq(mesShipments.orderId, orderId))
+    .orderBy(desc(mesShipments.createdAt))
     .limit(pageSize)
     .offset(offset);
 
   const envioIds = rows.map((r) => r.id);
   const allItems = envioIds.length
-    ? await db
+    ? await mesDb
         .select({
-          id: mesEnvioItems.id,
-          envioId: mesEnvioItems.envioId,
-          orderItemId: mesEnvioItems.orderItemId,
-          quantity: mesEnvioItems.quantity,
-          notes: mesEnvioItems.notes,
-          itemName: orderItems.name,
+          id: mesShipmentItems.id,
+          envioId: mesShipmentItems.envioId,
+          orderItemId: mesShipmentItems.orderItemId,
+          quantity: mesShipmentItems.quantity,
+          notes: mesShipmentItems.notes,
         })
-        .from(mesEnvioItems)
-        .leftJoin(orderItems, eq(mesEnvioItems.orderItemId, orderItems.id))
-        .where(inArray(mesEnvioItems.envioId, envioIds))
+        .from(mesShipmentItems)
+        .where(inArray(mesShipmentItems.envioId, envioIds))
     : [];
+
+  const orderItemIds = Array.from(
+    new Set(allItems.map((row) => String(row.orderItemId ?? "").trim()).filter(Boolean)),
+  );
+  const orderItemsRows = orderItemIds.length
+    ? await erpDb
+        .select({ id: orderItems.id, name: orderItems.name })
+        .from(orderItems)
+        .where(inArray(orderItems.id, orderItemIds))
+    : [];
+  const orderItemNameById = new Map(orderItemsRows.map((row) => [row.id, row.name]));
 
   const itemsByEnvio = new Map<string, typeof allItems>();
   for (const item of allItems) {
     const key = String(item.envioId);
-    itemsByEnvio.set(key, [...(itemsByEnvio.get(key) ?? []), item]);
+    itemsByEnvio.set(key, [
+      ...(itemsByEnvio.get(key) ?? []),
+      {
+        ...item,
+        itemName: orderItemNameById.get(String(item.orderItemId)) ?? null,
+      } as typeof item,
+    ]);
   }
 
   return Response.json({
@@ -128,9 +144,9 @@ export async function POST(request: Request) {
   const itemsRaw: Array<{ orderItemId: string; quantity: number; notes?: string }> =
     Array.isArray(body?.items) ? body.items : [];
 
-  const createdEnvio = await db.transaction(async (tx) => {
+  const createdEnvio = await mesDb.transaction(async (tx) => {
     const [envio] = await tx
-      .insert(mesEnvios)
+      .insert(mesShipments)
       .values({
         orderId,
         origenArea: origenArea as any,
@@ -152,12 +168,12 @@ export async function POST(request: Request) {
         salidaAt: body?.salidaAt ? new Date(body.salidaAt) : null,
         createdBy: empleadoId,
       } as any)
-      .returning({ id: mesEnvios.id });
+      .returning({ id: mesShipments.id });
 
     if (!envio?.id) throw new Error("No se pudo crear el envio");
 
     if (itemsRaw.length > 0) {
-      await tx.insert(mesEnvioItems).values(
+      await tx.insert(mesShipmentItems).values(
         itemsRaw.map((item) => ({
           envioId: envio.id,
           orderItemId: String(item.orderItemId),

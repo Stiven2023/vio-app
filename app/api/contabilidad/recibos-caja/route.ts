@@ -5,8 +5,8 @@ import {
   cashReceiptApplications,
   cashReceipts,
   clients,
-  prefacturas,
-} from "@/src/db/schema";
+  preInvoices,
+} from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
@@ -57,7 +57,7 @@ function parseDate(value: unknown) {
 }
 
 function prefacturaAmountExpr() {
-  return sql`case when coalesce(${prefacturas.totalAfterWithholdings}, 0) > 0 then coalesce(${prefacturas.totalAfterWithholdings}, 0) else coalesce(${prefacturas.total}, 0) end`;
+  return sql`case when coalesce(${preInvoices.totalAfterWithholdings}, 0) > 0 then coalesce(${preInvoices.totalAfterWithholdings}, 0) else coalesce(${preInvoices.total}, 0) end`;
 }
 
 async function generateReceiptCode(tx: any) {
@@ -89,21 +89,21 @@ async function getOutstandingBalances(prefacturaIds: string[]) {
   const totalExpr = prefacturaAmountExpr();
   const rows = await db
     .select({
-      id: prefacturas.id,
+      id: preInvoices.id,
       total: totalExpr,
       applied: sql<string>`coalesce(sum(case when ${cashReceipts.status} = 'CONFIRMED' then ${cashReceiptApplications.appliedAmount} else 0 end), 0)::text`,
     })
-    .from(prefacturas)
+    .from(preInvoices)
     .leftJoin(
       cashReceiptApplications,
-      eq(cashReceiptApplications.prefacturaId, prefacturas.id),
+      eq(cashReceiptApplications.prefacturaId, preInvoices.id),
     )
     .leftJoin(
       cashReceipts,
       eq(cashReceiptApplications.cashReceiptId, cashReceipts.id),
     )
-    .where(inArray(prefacturas.id, prefacturaIds))
-    .groupBy(prefacturas.id);
+    .where(inArray(preInvoices.id, prefacturaIds))
+    .groupBy(preInvoices.id);
 
   return new Map(
     rows.map((row) => {
@@ -204,16 +204,16 @@ export async function GET(request: Request) {
               id: cashReceiptApplications.id,
               cashReceiptId: cashReceiptApplications.cashReceiptId,
               prefacturaId: cashReceiptApplications.prefacturaId,
-              prefacturaCode: prefacturas.prefacturaCode,
+              prefacturaCode: preInvoices.prefacturaCode,
               appliedAmount: cashReceiptApplications.appliedAmount,
             })
             .from(cashReceiptApplications)
             .innerJoin(
-              prefacturas,
-              eq(cashReceiptApplications.prefacturaId, prefacturas.id),
+              preInvoices,
+              eq(cashReceiptApplications.prefacturaId, preInvoices.id),
             )
             .where(inArray(cashReceiptApplications.cashReceiptId, receiptIds))
-            .orderBy(asc(prefacturas.prefacturaCode))
+            .orderBy(asc(preInvoices.prefacturaCode))
         : [];
 
     const applicationsByReceipt = new Map<string, typeof applicationRows>();
@@ -383,13 +383,13 @@ export async function POST(request: Request) {
       uniquePrefacturaIds.length > 0
         ? await db
             .select({
-              id: prefacturas.id,
-              prefacturaCode: prefacturas.prefacturaCode,
-              clientId: prefacturas.clientId,
-              orderId: prefacturas.orderId,
+              id: preInvoices.id,
+              prefacturaCode: preInvoices.prefacturaCode,
+              clientId: preInvoices.clientId,
+              orderId: preInvoices.orderId,
             })
-            .from(prefacturas)
-            .where(inArray(prefacturas.id, uniquePrefacturaIds))
+            .from(preInvoices)
+            .where(inArray(preInvoices.id, uniquePrefacturaIds))
         : [];
 
     if (selectedPrefacturas.length !== uniquePrefacturaIds.length) {

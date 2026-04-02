@@ -7,7 +7,7 @@ import {
   stockMovements,
   suppliers,
   warehouses,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {
   resolveWarehouseIdByLocation,

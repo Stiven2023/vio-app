@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { categories, products } from "@/src/db/schema";
+import { categories, products } from "@/src/db/erp/schema";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

@@ -1,7 +1,7 @@
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { banks, purchaseOrders } from "@/src/db/schema";
+import { banks, purchaseOrders } from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

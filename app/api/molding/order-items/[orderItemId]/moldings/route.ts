@@ -5,7 +5,7 @@ import {
   moldingTemplates,
   orderItemMoldings,
   orderItems,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

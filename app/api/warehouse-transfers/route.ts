@@ -7,7 +7,7 @@ import {
   inventoryItemVariants,
   stockMovements,
   warehouses,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,

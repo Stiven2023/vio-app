@@ -5,7 +5,7 @@ import {
   clientLegalStatusHistory,
   clients,
   siigoSyncJobs,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";

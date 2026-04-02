@@ -23,7 +23,7 @@ import {
   notifications,
   orderPayments,
   orders,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { orderStatusValues } from "@/src/db/enums";
 import { AdminCharts } from "@/app/erp/dashboard/_components/admin-charts";
 import { ExchangeRateWidget } from "@/app/erp/dashboard/_components/exchange-rate-widget";

@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { categories } from "@/src/db/schema";
+import { categories } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

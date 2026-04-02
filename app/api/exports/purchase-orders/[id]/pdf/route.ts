@@ -11,7 +11,7 @@ import {
   purchaseOrderItems,
   purchaseOrders,
   suppliers,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 

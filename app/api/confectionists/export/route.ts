@@ -1,5 +1,5 @@
 import { db } from "@/src/db";
-import { confectionists } from "@/src/db/schema";
+import { confectionists } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

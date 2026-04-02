@@ -1,7 +1,7 @@
 import { and, eq, isNotNull, or } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { additions, clients, products, taxZoneRates } from "@/src/db/schema";
+import { additions, clients, products, taxZoneRates } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

@@ -3,8 +3,9 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { eq, and, inArray } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { users, employees, roles } from "@/src/db/schema";
+import { erpDb, iamDb } from "@/src/db";
+import { employees } from "@/src/db/erp/schema";
+import { roles, users } from "@/src/db/iam/schema";
 import { passwordResetTokens } from "@/src/db/password_reset_tokens";
 import { emailVerificationTokens } from "@/src/db/email_verification_tokens";
 import {
@@ -52,12 +53,12 @@ export async function POST(request: Request) {
     return new Response(passwordError, { status: 400 });
   }
 
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(users)
     .where(inArray(users.email, [normalizedEmail]));
 
-  const existingUsername = await db
+  const existingUsername = await iamDb
     .select({ id: users.id })
     .from(users)
     .where(eq(users.username, normalizedUsername))
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     const token = String(crypto.randomInt(100_000, 1_000_000));
     const expiresAt = new Date(Date.now() + 15 * 60_000);
 
-    await db.transaction(async (tx) => {
+    await iamDb.transaction(async (tx) => {
       await tx
         .delete(emailVerificationTokens)
         .where(eq(emailVerificationTokens.userId, existing.id));
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
   const token = String(crypto.randomInt(100_000, 1_000_000));
   const expiresAt = new Date(Date.now() + 15 * 60_000);
 
-  const created = await db.transaction(async (tx) => {
+  const created = await iamDb.transaction(async (tx) => {
     const newUser = await tx
       .insert(users)
       .values({
@@ -179,7 +180,7 @@ export async function PUT(request: Request) {
     return new Response(usernameValidationMessage(), { status: 400 });
   }
 
-  const user = await db
+  const user = await iamDb
     .select()
     .from(users)
     .where(eq(users.username, identifier));
@@ -194,7 +195,7 @@ export async function PUT(request: Request) {
   }
   // Generar JWT con datos útiles y setear cookie httpOnly
   // Buscar empleado asociado al usuario
-  const employee = await db
+  const employee = await erpDb
     .select()
     .from(employees)
     .where(eq(employees.userId, user[0].id));
@@ -206,7 +207,7 @@ export async function PUT(request: Request) {
     name = employee[0].name;
     roleId = employee[0].roleId;
     if (roleId) {
-      const role = await db.select().from(roles).where(eq(roles.id, roleId));
+      const role = await iamDb.select().from(roles).where(eq(roles.id, roleId));
 
       if (role.length > 0) {
         roleName = role[0].name;
@@ -261,7 +262,7 @@ export async function PATCH(request: Request) {
   if (!email) {
     return new Response("Email required", { status: 400 });
   }
-  const user = await db.select().from(users).where(eq(users.email, email));
+  const user = await iamDb.select().from(users).where(eq(users.email, email));
 
   if (user.length === 0) {
     return new Response("User not found", { status: 404 });
@@ -270,7 +271,7 @@ export async function PATCH(request: Request) {
   const token = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 30); // 30 minutos
 
-  await db
+  await iamDb
     .insert(passwordResetTokens)
     .values({ userId: user[0].id, token, expiresAt });
   await sendPasswordResetEmail(email, token);
@@ -309,7 +310,7 @@ export async function DELETE(request: Request) {
       status: 400,
     });
   }
-  const user = await db
+  const user = await iamDb
     .select({ id: users.id })
     .from(users)
     .where(eq(users.email, email))
@@ -319,7 +320,7 @@ export async function DELETE(request: Request) {
     return new Response("User not found", { status: 404 });
   }
 
-  const tokenRow = await db
+  const tokenRow = await iamDb
     .select()
     .from(passwordResetTokens)
     .where(
@@ -338,13 +339,13 @@ export async function DELETE(request: Request) {
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  const updated = await db
+  const updated = await iamDb
     .update(users)
     .set({ passwordHash })
     .where(eq(users.id, user[0].id))
     .returning();
 
-  await db
+  await iamDb
     .delete(passwordResetTokens)
     .where(eq(passwordResetTokens.id, tokenRow[0].id));
 

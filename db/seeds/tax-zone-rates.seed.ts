@@ -1,7 +1,7 @@
 import "dotenv/config";
 
 import { db } from "@/src/db";
-import { taxZoneRates } from "@/src/db/schema";
+import { taxZoneRates } from "@/src/db/erp/schema";
 
 const ROWS = [
   {

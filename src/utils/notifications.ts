@@ -6,7 +6,7 @@ import {
   permissions,
   rolePermissions,
   roles,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 
 type NotificationPayload = {
   title: string;

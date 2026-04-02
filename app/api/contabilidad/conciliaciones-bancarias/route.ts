@@ -5,7 +5,7 @@ import {
   bankReconciliationItems,
   bankReconciliations,
   banks,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 import { requirePermission } from "@/src/utils/permission-middleware";

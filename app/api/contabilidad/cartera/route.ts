@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, prefacturas } from "@/src/db/schema";
+import { clients, preInvoices } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -29,20 +29,20 @@ const VALID_CREDIT_BACKING = new Set<CreditBackingType>([
 ]);
 
 function prefacturaAmountExpr() {
-  return sql<string>`case when coalesce(${prefacturas.totalAfterWithholdings}, 0) > 0 then coalesce(${prefacturas.totalAfterWithholdings}, 0) else coalesce(${prefacturas.total}, 0) end`;
+  return sql<string>`case when coalesce(${preInvoices.totalAfterWithholdings}, 0) > 0 then coalesce(${preInvoices.totalAfterWithholdings}, 0) else coalesce(${preInvoices.total}, 0) end`;
 }
 
 function daysOverdueExpr() {
-  return sql<number>`case when ${prefacturas.dueDate} is null then null else extract(day from (current_date - ${prefacturas.dueDate}::date))::int end`;
+  return sql<number>`case when ${preInvoices.dueDate} is null then null else extract(day from (current_date - ${preInvoices.dueDate}::date))::int end`;
 }
 
 function agingBucketSqlExpr() {
   return sql<string>`case
-    when ${prefacturas.dueDate} is null then 'CURRENT'
-    when current_date <= ${prefacturas.dueDate}::date then 'CURRENT'
-    when extract(day from (current_date - ${prefacturas.dueDate}::date)) <= 30 then '1_30'
-    when extract(day from (current_date - ${prefacturas.dueDate}::date)) <= 60 then '31_60'
-    when extract(day from (current_date - ${prefacturas.dueDate}::date)) <= 90 then '61_90'
+    when ${preInvoices.dueDate} is null then 'CURRENT'
+    when current_date <= ${preInvoices.dueDate}::date then 'CURRENT'
+    when extract(day from (current_date - ${preInvoices.dueDate}::date)) <= 30 then '1_30'
+    when extract(day from (current_date - ${preInvoices.dueDate}::date)) <= 60 then '31_60'
+    when extract(day from (current_date - ${preInvoices.dueDate}::date)) <= 90 then '61_90'
     else '90_PLUS'
   end`;
 }
@@ -50,15 +50,15 @@ function agingBucketSqlExpr() {
 function agingBucketClause(bucket: AgingBucket) {
   switch (bucket) {
     case "CURRENT":
-      return sql`(${prefacturas.dueDate} is null or current_date <= ${prefacturas.dueDate}::date)`;
+      return sql`(${preInvoices.dueDate} is null or current_date <= ${preInvoices.dueDate}::date)`;
     case "1_30":
-      return sql`(${prefacturas.dueDate} is not null and current_date > ${prefacturas.dueDate}::date and extract(day from (current_date - ${prefacturas.dueDate}::date)) <= 30)`;
+      return sql`(${preInvoices.dueDate} is not null and current_date > ${preInvoices.dueDate}::date and extract(day from (current_date - ${preInvoices.dueDate}::date)) <= 30)`;
     case "31_60":
-      return sql`(${prefacturas.dueDate} is not null and extract(day from (current_date - ${prefacturas.dueDate}::date)) > 30 and extract(day from (current_date - ${prefacturas.dueDate}::date)) <= 60)`;
+      return sql`(${preInvoices.dueDate} is not null and extract(day from (current_date - ${preInvoices.dueDate}::date)) > 30 and extract(day from (current_date - ${preInvoices.dueDate}::date)) <= 60)`;
     case "61_90":
-      return sql`(${prefacturas.dueDate} is not null and extract(day from (current_date - ${prefacturas.dueDate}::date)) > 60 and extract(day from (current_date - ${prefacturas.dueDate}::date)) <= 90)`;
+      return sql`(${preInvoices.dueDate} is not null and extract(day from (current_date - ${preInvoices.dueDate}::date)) > 60 and extract(day from (current_date - ${preInvoices.dueDate}::date)) <= 90)`;
     case "90_PLUS":
-      return sql`(${prefacturas.dueDate} is not null and extract(day from (current_date - ${prefacturas.dueDate}::date)) > 90)`;
+      return sql`(${preInvoices.dueDate} is not null and extract(day from (current_date - ${preInvoices.dueDate}::date)) > 90)`;
   }
 }
 
@@ -109,23 +109,23 @@ export async function GET(request: Request) {
       : null;
 
     const clauses: ReturnType<typeof sql>[] = [
-      sql`${prefacturas.paymentType} = ${paymentType}`,
-      sql`${prefacturas.clientId} is not null`,
+      sql`${preInvoices.paymentType} = ${paymentType}`,
+      sql`${preInvoices.clientId} is not null`,
     ];
 
     if (clientId) {
-      clauses.push(sql`${prefacturas.clientId} = ${clientId}::uuid`);
+      clauses.push(sql`${preInvoices.clientId} = ${clientId}::uuid`);
     }
 
     if (dateFrom) {
-      clauses.push(gte(prefacturas.approvedAt, new Date(dateFrom)));
+      clauses.push(gte(preInvoices.approvedAt, new Date(dateFrom)));
     }
 
     if (dateTo) {
       const toDate = new Date(dateTo);
 
       toDate.setHours(23, 59, 59, 999);
-      clauses.push(lte(prefacturas.approvedAt, toDate));
+      clauses.push(lte(preInvoices.approvedAt, toDate));
     }
 
     if (creditBackingType && paymentType === "CREDIT") {
@@ -138,23 +138,23 @@ export async function GET(request: Request) {
 
     const where = and(...clauses);
     const amountExpr = prefacturaAmountExpr();
-    const appliedExpr = sql<string>`coalesce((select sum(cra.applied_amount) from cash_receipt_applications cra join cash_receipts cr on cra.cash_receipt_id = cr.id where cra.prefactura_id = ${prefacturas.id} and cr.status = 'CONFIRMED'), 0)::text`;
+    const appliedExpr = sql<string>`coalesce((select sum(cra.applied_amount) from cash_receipt_applications cra join cash_receipts cr on cra.cash_receipt_id = cr.id where cra.prefactura_id = ${preInvoices.id} and cr.status = 'CONFIRMED'), 0)::text`;
 
     const [countRow] = await db
       .select({ count: sql<number>`count(*)::int` })
-      .from(prefacturas)
-      .leftJoin(clients, eq(prefacturas.clientId, clients.id))
+      .from(preInvoices)
+      .leftJoin(clients, eq(preInvoices.clientId, clients.id))
       .where(where);
 
     const total = countRow?.count ?? 0;
 
     const items = await db
       .select({
-        id: prefacturas.id,
-        prefacturaCode: prefacturas.prefacturaCode,
-        approvedAt: prefacturas.approvedAt,
-        dueDate: prefacturas.dueDate,
-        paymentType: prefacturas.paymentType,
+        id: preInvoices.id,
+        prefacturaCode: preInvoices.prefacturaCode,
+        approvedAt: preInvoices.approvedAt,
+        dueDate: preInvoices.dueDate,
+        paymentType: preInvoices.paymentType,
         totalAmount: amountExpr,
         amountPaid: appliedExpr,
         clientId: clients.id,
@@ -163,10 +163,10 @@ export async function GET(request: Request) {
         daysOverdue: daysOverdueExpr(),
         agingBucket: agingBucketSqlExpr(),
       })
-      .from(prefacturas)
-      .leftJoin(clients, eq(prefacturas.clientId, clients.id))
+      .from(preInvoices)
+      .leftJoin(clients, eq(preInvoices.clientId, clients.id))
       .where(where)
-      .orderBy(asc(prefacturas.dueDate), asc(prefacturas.approvedAt))
+      .orderBy(asc(preInvoices.dueDate), asc(preInvoices.approvedAt))
       .limit(pageSize)
       .offset(offset);
 
@@ -185,9 +185,9 @@ export async function GET(request: Request) {
 
     const clientOptions = await db
       .selectDistinct({ id: clients.id, name: clients.name })
-      .from(prefacturas)
-      .innerJoin(clients, eq(prefacturas.clientId, clients.id))
-      .where(sql`${prefacturas.paymentType} = ${paymentType}`)
+      .from(preInvoices)
+      .innerJoin(clients, eq(preInvoices.clientId, clients.id))
+      .where(sql`${preInvoices.paymentType} = ${paymentType}`)
       .orderBy(asc(clients.name));
 
     let summary: Record<string, string> | null = null;
@@ -196,10 +196,10 @@ export async function GET(request: Request) {
       const summaryRows = await db
         .select({
           bucket: agingBucketSqlExpr(),
-          totalBalance: sql<string>`sum(greatest(0, case when coalesce(${prefacturas.totalAfterWithholdings}, 0) > 0 then coalesce(${prefacturas.totalAfterWithholdings}, 0) else coalesce(${prefacturas.total}, 0) end - coalesce((select sum(cra2.applied_amount) from cash_receipt_applications cra2 join cash_receipts cr2 on cra2.cash_receipt_id = cr2.id where cra2.prefactura_id = ${prefacturas.id} and cr2.status = 'CONFIRMED'), 0)))::text`,
+          totalBalance: sql<string>`sum(greatest(0, case when coalesce(${preInvoices.totalAfterWithholdings}, 0) > 0 then coalesce(${preInvoices.totalAfterWithholdings}, 0) else coalesce(${preInvoices.total}, 0) end - coalesce((select sum(cra2.applied_amount) from cash_receipt_applications cra2 join cash_receipts cr2 on cra2.cash_receipt_id = cr2.id where cra2.prefactura_id = ${preInvoices.id} and cr2.status = 'CONFIRMED'), 0)))::text`,
         })
-        .from(prefacturas)
-        .leftJoin(clients, eq(prefacturas.clientId, clients.id))
+        .from(preInvoices)
+        .leftJoin(clients, eq(preInvoices.clientId, clients.id))
         .where(where)
         .groupBy(agingBucketSqlExpr());
 

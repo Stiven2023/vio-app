@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { orderPayments } from "@/src/db/schema";
+import { orderPayments } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import {
   resolvePaymentBankById,

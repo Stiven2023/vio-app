@@ -6,7 +6,7 @@ import {
   quotationItemAdditions,
   quotationItems,
   quotations,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { buildExpiryDateFromDelivery } from "@/src/utils/quotation-delivery";

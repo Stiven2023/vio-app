@@ -2,7 +2,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { taxZoneValues } from "@/src/db/enums";
-import { clients, prefacturas, taxZoneRates } from "@/src/db/schema";
+import { clients, preInvoices, taxZoneRates } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -46,8 +46,8 @@ export async function GET(request: Request) {
     const taxRateExpr = sql`coalesce(${taxZoneRates.withholdingTaxRate}, 0)::numeric`;
     const icaRateExpr = sql`coalesce(${taxZoneRates.withholdingIcaRate}, 0)::numeric`;
     const ivaRateExpr = sql`coalesce(${taxZoneRates.withholdingIvaRate}, 0)::numeric`;
-    const subtotalExpr = sql`coalesce(${prefacturas.subtotal}, 0)::numeric`;
-    const ivaAmountExpr = sql`coalesce(${prefacturas.ivaAmount}, 0)::numeric`;
+    const subtotalExpr = sql`coalesce(${preInvoices.subtotal}, 0)::numeric`;
+    const ivaAmountExpr = sql`coalesce(${preInvoices.ivaAmount}, 0)::numeric`;
     const withholdingTaxExpr = sql`round(${subtotalExpr} * ${taxRateExpr} / 100, 2)`;
     const withholdingIcaExpr = sql`round(${subtotalExpr} * ${icaRateExpr} / 100, 2)`;
     const withholdingIvaExpr = sql`round(${ivaAmountExpr} * ${ivaRateExpr} / 100, 2)`;
@@ -58,21 +58,21 @@ export async function GET(request: Request) {
     if (query) {
       clauses.push(
         sql`(
-          ${prefacturas.prefacturaCode} ilike ${`%${query}%`}
+          ${preInvoices.prefacturaCode} ilike ${`%${query}%`}
           or ${clients.name} ilike ${`%${query}%`}
           or ${clients.identification} ilike ${`%${query}%`}
         )`,
       );
     }
-    if (clientId) clauses.push(eq(prefacturas.clientId, clientId));
+    if (clientId) clauses.push(eq(preInvoices.clientId, clientId));
     if (taxZoneValues.includes(taxZone as TaxZone)) {
       clauses.push(eq(clients.taxZone, taxZone as TaxZone));
     }
     if (dateFrom) {
-      clauses.push(sql`date(${prefacturas.createdAt}) >= ${dateFrom}::date`);
+      clauses.push(sql`date(${preInvoices.createdAt}) >= ${dateFrom}::date`);
     }
     if (dateTo) {
-      clauses.push(sql`date(${prefacturas.createdAt}) <= ${dateTo}::date`);
+      clauses.push(sql`date(${preInvoices.createdAt}) <= ${dateTo}::date`);
     }
 
     clauses.push(sql`${withholdingTotalExpr} > 0`);
@@ -81,23 +81,23 @@ export async function GET(request: Request) {
 
     const [{ total }] = await db
       .select({ total: sql<number>`count(*)::int` })
-      .from(prefacturas)
-      .innerJoin(clients, eq(prefacturas.clientId, clients.id))
+      .from(preInvoices)
+      .innerJoin(clients, eq(preInvoices.clientId, clients.id))
       .leftJoin(taxZoneRates, eq(clients.taxZone, taxZoneRates.taxZone))
       .where(where);
 
     const items = await db
       .select({
-        id: prefacturas.id,
-        prefacturaCode: prefacturas.prefacturaCode,
-        createdAt: prefacturas.createdAt,
+        id: preInvoices.id,
+        prefacturaCode: preInvoices.prefacturaCode,
+        createdAt: preInvoices.createdAt,
         clientId: clients.id,
         clientName: clients.name,
         clientIdentification: clients.identification,
         taxZone: clients.taxZone,
-        subtotal: prefacturas.subtotal,
-        ivaAmount: prefacturas.ivaAmount,
-        total: prefacturas.total,
+        subtotal: preInvoices.subtotal,
+        ivaAmount: preInvoices.ivaAmount,
+        total: preInvoices.total,
         withholdingTaxRate: taxRateExpr,
         withholdingIcaRate: icaRateExpr,
         withholdingIvaRate: ivaRateExpr,
@@ -105,13 +105,13 @@ export async function GET(request: Request) {
         withholdingIcaAmount: withholdingIcaExpr,
         withholdingIvaAmount: withholdingIvaExpr,
         totalWithholding: withholdingTotalExpr,
-        totalAfterWithholding: sql`coalesce(${prefacturas.total}, 0)::numeric - (${withholdingTotalExpr})`,
+        totalAfterWithholding: sql`coalesce(${preInvoices.total}, 0)::numeric - (${withholdingTotalExpr})`,
       })
-      .from(prefacturas)
-      .innerJoin(clients, eq(prefacturas.clientId, clients.id))
+      .from(preInvoices)
+      .innerJoin(clients, eq(preInvoices.clientId, clients.id))
       .leftJoin(taxZoneRates, eq(clients.taxZone, taxZoneRates.taxZone))
       .where(where)
-      .orderBy(desc(prefacturas.createdAt), asc(prefacturas.prefacturaCode))
+      .orderBy(desc(preInvoices.createdAt), asc(preInvoices.prefacturaCode))
       .limit(pageSize)
       .offset(offset);
 
@@ -124,8 +124,8 @@ export async function GET(request: Request) {
         totalReteIva: sql<string>`coalesce(sum(${withholdingIvaExpr}), 0)::text`,
         totalWithholding: sql<string>`coalesce(sum(${withholdingTotalExpr}), 0)::text`,
       })
-      .from(prefacturas)
-      .innerJoin(clients, eq(prefacturas.clientId, clients.id))
+      .from(preInvoices)
+      .innerJoin(clients, eq(preInvoices.clientId, clients.id))
       .leftJoin(taxZoneRates, eq(clients.taxZone, taxZoneRates.taxZone))
       .where(where);
 

@@ -9,7 +9,7 @@ import {
   orderItemTeams,
   orderItems,
   orders,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import type {
   AppliedMoldingSummary,
   DesignFullView,

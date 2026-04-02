@@ -7,7 +7,7 @@ import {
   stockMovements,
   warehouseStock,
   warehouses,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

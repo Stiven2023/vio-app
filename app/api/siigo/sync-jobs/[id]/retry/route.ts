@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { POST as syncCustomersPost } from "@/app/api/siigo/sync-customers/route";
 import { db } from "@/src/db";
-import { siigoSyncJobs } from "@/src/db/schema";
+import { siigoSyncJobs } from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";

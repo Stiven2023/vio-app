@@ -1,7 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { siigoSyncJobs } from "@/src/db/schema";
+import { siigoSyncJobs } from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

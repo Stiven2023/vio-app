@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { and, desc, eq, inArray, isNotNull, like } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employees, roles, users } from "@/src/db/schema";
+import { employees, roles, users } from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { rateLimit } from "@/src/utils/rate-limit";

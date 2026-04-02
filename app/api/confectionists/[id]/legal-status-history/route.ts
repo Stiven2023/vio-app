@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { legalStatusRecords } from "@/src/db/schema";
+import { legalStatusRecords } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 
 export async function GET(

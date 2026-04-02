@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { verifyExternalAccessToken } from "@/src/utils/auth";
 import { db } from "@/src/db";
-import { clients } from "@/src/db/schema";
+import { clients } from "@/src/db/erp/schema";
 
 function getCookieValue(request: Request, name: string) {
   const cookie = request.headers.get("cookie");

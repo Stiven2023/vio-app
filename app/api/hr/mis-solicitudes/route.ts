@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employeeLeaves, employees } from "@/src/db/schema";
+import { employeeLeaves, employees } from "@/src/db/erp/schema";
 import {
   getEmployeeIdFromRequest,
   getUserIdFromRequest,

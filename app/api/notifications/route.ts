@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { notifications } from "@/src/db/schema";
+import { notifications } from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";

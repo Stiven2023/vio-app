@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { prefacturas } from "@/src/db/schema";
+import { preInvoices as prefacturas } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";

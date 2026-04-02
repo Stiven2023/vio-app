@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clientLegalStatusHistory, clients } from "@/src/db/schema";
+import { clientLegalStatusHistory, clients } from "@/src/db/erp/schema";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { requirePermission } from "@/src/utils/permission-middleware";
 

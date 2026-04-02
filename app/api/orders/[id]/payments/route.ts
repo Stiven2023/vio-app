@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { banks, orderPayments, orders } from "@/src/db/schema";
+import { banks, orderPayments, orders } from "@/src/db/erp/schema";
 import { assertAdvisorOwnsOrder } from "@/src/utils/advisor-scope";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

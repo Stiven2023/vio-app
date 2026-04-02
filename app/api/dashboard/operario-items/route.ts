@@ -7,7 +7,7 @@ import {
   orderItemMaterials,
   orderItems,
   orders,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { parsePagination } from "@/src/utils/pagination";

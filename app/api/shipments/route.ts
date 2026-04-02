@@ -1,12 +1,12 @@
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
+import { db, mesDb } from "@/src/db";
 import {
   clientLegalStatusHistory,
-  operativeDashboardLogs,
   orders,
   shipments,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
+import { operativeDashboardLogs } from "@/src/db/mes/schema";
 import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         "ENTREGADO",
       ].includes(String(orderRow.status ?? ""));
 
-      const [progressRow] = await db
+      const [progressRow] = await mesDb
         .select({
           totalQty: sql<number>`coalesce(sum(${operativeDashboardLogs.quantityOp}), 0)::int`,
           producedQty: sql<number>`coalesce(sum(${operativeDashboardLogs.producedQuantity}), 0)::int`,

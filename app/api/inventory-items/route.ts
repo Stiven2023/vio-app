@@ -5,7 +5,7 @@ import {
   inventoryCategories,
   inventoryItemVariants,
   inventoryItems,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { ensureInventoryBaseData } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";

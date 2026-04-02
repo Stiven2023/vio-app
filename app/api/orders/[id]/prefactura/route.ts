@@ -9,7 +9,7 @@ import {
   prefacturas,
   products,
   quotationItems,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import {
   getProjectedOrderDesignUnits,
   resolveOrderAgreedUnits,

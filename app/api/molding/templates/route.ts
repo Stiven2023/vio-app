@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employees, moldingTemplates } from "@/src/db/schema";
+import { employees, moldingTemplates } from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";

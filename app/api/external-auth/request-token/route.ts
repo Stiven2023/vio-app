@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { desc, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, externalAccessOtps } from "@/src/db/schema";
+import { clients, externalAccessOtps } from "@/src/db/erp/schema";
 import { sendExternalAccessToken } from "@/src/utils/gmail";
 import { rateLimit } from "@/src/utils/rate-limit";
 

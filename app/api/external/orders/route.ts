@@ -1,7 +1,7 @@
 import { and, desc, eq, ilike } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { clients, orders } from "@/src/db/schema";
+import { clients, orders } from "@/src/db/erp/schema";
 import { requireExternalAccessActiveClient } from "@/src/utils/external-auth";
 
 export async function GET(request: Request) {

@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { permissions, rolePermissions } from "@/src/db/schema";
+import { iamDb } from "@/src/db";
+import { permissions, rolePermissions } from "@/src/db/iam/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
@@ -23,10 +23,10 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
-    const [{ total }] = await db
+    const [{ total }] = await iamDb
       .select({ total: sql<number>`count(*)::int` })
       .from(permissions);
-    const items = await db
+    const items = await iamDb
       .select()
       .from(permissions)
       .limit(pageSize)
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     return new Response("Permission name is required", { status: 400 });
   }
   // Check for duplicate
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(permissions)
     .where(eq(permissions.name, name));
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   if (exists.length > 0) {
     return new Response("Permission already exists", { status: 409 });
   }
-  const newPerm = await db.insert(permissions).values({ name }).returning();
+  const newPerm = await iamDb.insert(permissions).values({ name }).returning();
 
   return Response.json(newPerm);
 }
@@ -95,7 +95,7 @@ export async function PUT(request: Request) {
     return new Response("Permission name is required", { status: 400 });
   }
   // Check if permission exists
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(permissions)
     .where(eq(permissions.id, id));
@@ -104,7 +104,7 @@ export async function PUT(request: Request) {
     return new Response("Permission not found", { status: 404 });
   }
   // Check for duplicate name
-  const duplicate = await db
+  const duplicate = await iamDb
     .select()
     .from(permissions)
     .where(eq(permissions.name, name));
@@ -112,7 +112,7 @@ export async function PUT(request: Request) {
   if (duplicate.length > 0 && duplicate[0].id !== id) {
     return new Response("Permission name already in use", { status: 409 });
   }
-  const updated = await db
+  const updated = await iamDb
     .update(permissions)
     .set({ name })
     .where(eq(permissions.id, id))
@@ -139,7 +139,7 @@ export async function DELETE(request: Request) {
     return new Response("Permission ID is required", { status: 400 });
   }
   // Check if permission exists
-  const exists = await db
+  const exists = await iamDb
     .select()
     .from(permissions)
     .where(eq(permissions.id, id));
@@ -147,7 +147,7 @@ export async function DELETE(request: Request) {
   if (exists.length === 0) {
     return new Response("Permission not found", { status: 404 });
   }
-  const deleted = await db.transaction(async (tx) => {
+  const deleted = await iamDb.transaction(async (tx) => {
     await tx
       .delete(rolePermissions)
       .where(eq(rolePermissions.permissionId, id));

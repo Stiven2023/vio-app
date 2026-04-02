@@ -1,7 +1,7 @@
 import { desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { additions, exchangeRates, products } from "@/src/db/schema";
+import { additions, exchangeRates, products } from "@/src/db/erp/schema";
 
 const DEFAULT_FLOOR_RATE = 3600;
 const PROVIDER_NAME = "datos.gov.co (TRM Colombia)";

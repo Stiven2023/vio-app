@@ -6,9 +6,9 @@ import {
   clients,
   orderPayments,
   orders,
-  prefacturas,
+  preInvoices as prefacturas,
   quotations,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { resolveAdvisorEmployeeId } from "@/src/utils/advisor-scope";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {

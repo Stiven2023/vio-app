@@ -1,7 +1,7 @@
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employees, orderPayments, orders } from "@/src/db/schema";
+import { employees, orderPayments, orders } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import {
   getEmployeeIdFromRequest,

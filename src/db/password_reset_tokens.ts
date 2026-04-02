@@ -1,1 +1,1 @@
-export { passwordResetTokens } from "./schema";
+export { passwordResetTokens } from "./iam/schema";

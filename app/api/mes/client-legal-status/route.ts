@@ -1,7 +1,7 @@
 import { asc, eq, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { clientLegalStatus, clients } from "@/src/db/schema";
+import { erpDb } from "@/src/db";
+import { clientLegalStatus, clients } from "@/src/db/erp/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
@@ -14,8 +14,6 @@ const READ_ROLES = new Set([
   "OPERARIO_DESPACHO",
   "PROGRAMACION",
 ]);
-
-const WRITE_ROLES = new Set(["ADMINISTRADOR", "LIDER_JURIDICA"]);
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -40,7 +38,7 @@ export async function GET(request: Request) {
       .trim()
       .toLowerCase();
 
-    const baseQuery = db
+    const baseQuery = erpDb
       .select({
         id: clientLegalStatus.id,
         clientId: clientLegalStatus.clientId,
@@ -59,7 +57,7 @@ export async function GET(request: Request) {
       ? baseQuery.where(sql`lower(${clients.name}) like ${"%" + search + "%"}`)
       : baseQuery;
 
-    const [{ total }] = await db
+    const [{ total }] = await erpDb
       .select({ total: sql<number>`count(*)::int` })
       .from(clientLegalStatus)
       .innerJoin(clients, eq(clientLegalStatus.clientId, clients.id))

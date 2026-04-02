@@ -1,16 +1,16 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
+import { erpDb, mesDb } from "@/src/db";
 import {
-  employees,
   clients,
-  mesProductionQueue,
   orderItemPackaging,
   orderItems,
   orders,
-  prefacturas,
+  preInvoices,
   quotations,
-} from "@/src/db/schema";
+  employees,
+} from "@/src/db/erp/schema";
+import { mesProductionQueue } from "@/src/db/mes/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -41,7 +41,7 @@ function toQueueKey(orderItemId: string, size: string | null | undefined) {
 }
 
 async function ensureQueueFromProgramacionOrders() {
-  const candidates = await db
+  const candidates = await erpDb
     .select({
       orderId: orders.id,
       orderItemId: orderItems.id,
@@ -52,8 +52,8 @@ async function ensureQueueFromProgramacionOrders() {
     })
     .from(orderItems)
     .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
-    .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
+    .leftJoin(preInvoices, eq(preInvoices.orderId, orders.id))
+    .leftJoin(quotations, eq(quotations.id, preInvoices.quotationId))
     .where(
       and(
         eq(orders.status, "PROGRAMACION" as any),
@@ -74,7 +74,7 @@ async function ensureQueueFromProgramacionOrders() {
   ).filter(Boolean);
 
   const packagingRows = orderItemIds.length
-    ? await db
+    ? await erpDb
         .select({
           orderItemId: orderItemPackaging.orderItemId,
           mode: orderItemPackaging.mode,
@@ -113,7 +113,7 @@ async function ensureQueueFromProgramacionOrders() {
     packagingByItem.set(itemId, current);
   }
 
-  const existingRows = await db
+  const existingRows = await mesDb
     .select({
       orderItemId: mesProductionQueue.orderItemId,
       size: mesProductionQueue.size,
@@ -185,7 +185,7 @@ async function ensureQueueFromProgramacionOrders() {
   }
 
   if (toInsert.length > 0) {
-    await db.insert(mesProductionQueue).values(toInsert);
+    await mesDb.insert(mesProductionQueue).values(toInsert);
   }
 }
 
@@ -207,7 +207,7 @@ export async function GET(request: Request) {
   try {
     await ensureQueueFromProgramacionOrders();
 
-    const items = await db
+    const mesItems = await mesDb
       .select({
         id: mesProductionQueue.id,
         orderId: mesProductionQueue.orderId,
@@ -225,22 +225,8 @@ export async function GET(request: Request) {
         confirmedBy: mesProductionQueue.confirmedBy,
         createdAt: mesProductionQueue.createdAt,
         updatedAt: mesProductionQueue.updatedAt,
-        orderCode: orders.orderCode,
-        clientName: clients.name,
-        deliveryDate: sql<string | null>`coalesce(${orders.deliveryDate}, ${quotations.deliveryDate})`,
-        orderCreatedAt: orders.createdAt,
-        shippingEnabled: quotations.shippingEnabled,
-        accountingStatus: prefacturas.status,
-        advanceReceived: prefacturas.advanceReceived,
-        advanceStatus: prefacturas.advanceStatus,
-        productionLeaderName: employees.name,
       })
       .from(mesProductionQueue)
-      .innerJoin(orders, eq(mesProductionQueue.orderId, orders.id))
-      .leftJoin(clients, eq(orders.clientId, clients.id))
-      .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
-      .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
-      .leftJoin(employees, eq(mesProductionQueue.confirmedBy, employees.id))
       .where(eq(mesProductionQueue.status, "EN_COLA"))
       .orderBy(
         // URGENTE always first
@@ -249,6 +235,114 @@ export async function GET(request: Request) {
         asc(mesProductionQueue.suggestedOrder),
       )
       .limit(1_000);
+
+    const orderIds = Array.from(new Set(mesItems.map((row) => row.orderId))).filter(Boolean);
+    const confirmedByIds = Array.from(
+      new Set(
+        mesItems
+          .map((row) => String(row.confirmedBy ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    const erpOrders = orderIds.length
+      ? await erpDb
+          .select({
+            id: orders.id,
+            clientId: orders.clientId,
+            orderCode: orders.orderCode,
+            deliveryDate: orders.deliveryDate,
+            createdAt: orders.createdAt,
+          })
+          .from(orders)
+          .where(inArray(orders.id, orderIds))
+      : [];
+
+    const orderById = new Map(erpOrders.map((row) => [row.id, row]));
+    const clientIds = Array.from(
+      new Set(
+        erpOrders.map((row) => String(row.clientId ?? "").trim()).filter(Boolean),
+      ),
+    );
+
+    const prefacturasRows = orderIds.length
+      ? await erpDb
+          .select({
+            orderId: preInvoices.orderId,
+            status: preInvoices.status,
+            advanceReceived: preInvoices.advanceReceived,
+            advanceStatus: preInvoices.advanceStatus,
+            quotationId: preInvoices.quotationId,
+          })
+          .from(preInvoices)
+          .where(inArray(preInvoices.orderId, orderIds))
+      : [];
+
+    const prefacturaByOrderId = new Map(prefacturasRows.map((row) => [row.orderId, row]));
+
+    const quotationIds = Array.from(
+      new Set(
+        prefacturasRows
+          .map((row) => String(row.quotationId ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    const quotationsRows = quotationIds.length
+      ? await erpDb
+          .select({
+            id: quotations.id,
+            deliveryDate: quotations.deliveryDate,
+            shippingEnabled: quotations.shippingEnabled,
+          })
+          .from(quotations)
+          .where(inArray(quotations.id, quotationIds))
+      : [];
+
+    const quotationById = new Map(quotationsRows.map((row) => [row.id, row]));
+
+    const clientsRows = clientIds.length
+      ? await erpDb
+          .select({ id: clients.id, name: clients.name })
+          .from(clients)
+          .where(inArray(clients.id, clientIds))
+      : [];
+
+    const clientById = new Map(clientsRows.map((row) => [row.id, row]));
+
+    const employeesRows = confirmedByIds.length
+      ? await erpDb
+          .select({ id: employees.id, name: employees.name })
+          .from(employees)
+          .where(inArray(employees.id, confirmedByIds))
+      : [];
+
+    const employeeById = new Map(employeesRows.map((row) => [row.id, row]));
+
+    const items = mesItems.map((row) => {
+      const order = orderById.get(row.orderId);
+      const prefactura = prefacturaByOrderId.get(row.orderId);
+      const quotation = prefactura?.quotationId
+        ? quotationById.get(String(prefactura.quotationId))
+        : null;
+      const client = order?.clientId ? clientById.get(String(order.clientId)) : null;
+      const leader = row.confirmedBy
+        ? employeeById.get(String(row.confirmedBy))
+        : null;
+
+      return {
+        ...row,
+        orderCode: order?.orderCode ?? null,
+        clientName: client?.name ?? null,
+        deliveryDate: order?.deliveryDate ?? quotation?.deliveryDate ?? null,
+        orderCreatedAt: order?.createdAt ?? null,
+        shippingEnabled: quotation?.shippingEnabled ?? null,
+        accountingStatus: prefactura?.status ?? null,
+        advanceReceived: prefactura?.advanceReceived ?? null,
+        advanceStatus: prefactura?.advanceStatus ?? null,
+        productionLeaderName: leader?.name ?? null,
+      };
+    });
 
     return Response.json({ items, truncated: items.length === 1_000 });
   } catch (error) {
@@ -302,14 +396,14 @@ export async function POST(request: Request) {
     if (!design) return new Response("design es requerido", { status: 400 });
 
     // Calculate suggested order by delivery date (from quotation via prefactura)
-    const [orderRow] = await db
+    const [orderRow] = await erpDb
       .select({
         deliveryDate: sql<string | null>`coalesce(${orders.deliveryDate}, ${quotations.deliveryDate})`,
         createdAt: orders.createdAt,
       })
       .from(orders)
-      .leftJoin(prefacturas, eq(prefacturas.orderId, orders.id))
-      .leftJoin(quotations, eq(quotations.id, prefacturas.quotationId))
+      .leftJoin(preInvoices, eq(preInvoices.orderId, orders.id))
+      .leftJoin(quotations, eq(quotations.id, preInvoices.quotationId))
       .where(eq(orders.id, orderId))
       .limit(1);
 
@@ -322,7 +416,7 @@ export async function POST(request: Request) {
     const suggestedOrder = Math.floor(deliveryTs / 1000);
 
     // Count urgent items to place URGENTE at top
-    const [{ cnt }] = await db
+    const [{ cnt }] = await mesDb
       .select({ cnt: sql<number>`count(*)::int` })
       .from(mesProductionQueue)
       .where(
@@ -335,7 +429,7 @@ export async function POST(request: Request) {
     const finalOrder =
       priority === "URGENTE" ? cnt + 1 : suggestedOrder + 1_000_000;
 
-    const [created] = await db
+    const [created] = await mesDb
       .insert(mesProductionQueue)
       .values({
         orderId,

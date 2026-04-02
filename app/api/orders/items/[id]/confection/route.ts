@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { confectionists, orderItemConfection } from "@/src/db/schema";
+import { confectionists, orderItemConfection } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 

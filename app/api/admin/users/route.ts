@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 import { db } from "@/src/db";
-import { employees, users } from "@/src/db/schema";
+import { employees, users } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { emailVerificationTokens } from "@/src/db/email_verification_tokens";
 import { passwordResetTokens } from "@/src/db/password_reset_tokens";

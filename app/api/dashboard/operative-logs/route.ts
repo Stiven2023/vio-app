@@ -5,16 +5,16 @@ import {
   ORDER_ITEM_STATUS_VALUES,
   ORDER_STATUS,
 } from "@/src/utils/order-status";
-import { db } from "@/src/db";
+import { erpDb, mesDb } from "@/src/db";
 import {
-  operativeDashboardLogs,
   orderItemPackaging,
   orderItemSocks,
   orderItemStatusHistory,
   orderItems,
   orderStatusHistory,
   orders,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
+import { operativeDashboardLogs } from "@/src/db/mes/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -186,13 +186,13 @@ function shouldMoveForward(current: string | null, next: OrderItemStatusType) {
 }
 
 async function resolveLinkedStatusByKeys(args: {
-  tx: any;
+  erpTx: any;
   orderCode: string;
   designName: string;
   size: string | null;
 }) {
   const linked = await resolveOrderItemByDesignAndSize({
-    tx: args.tx,
+    erpTx: args.erpTx,
     orderCode: args.orderCode,
     designName: args.designName,
     size: args.size,
@@ -202,7 +202,7 @@ async function resolveLinkedStatusByKeys(args: {
 }
 
 async function resolveOrderItemByDesignAndSize(args: {
-  tx: any;
+  erpTx: any;
   orderCode: string;
   designName: string;
   size: string | null;
@@ -213,7 +213,7 @@ async function resolveOrderItemByDesignAndSize(args: {
 
   if (!orderCode || !designName) return null;
 
-  const candidates = await args.tx
+  const candidates = await args.erpTx
     .select({
       id: orderItems.id,
       status: orderItems.status,
@@ -237,7 +237,7 @@ async function resolveOrderItemByDesignAndSize(args: {
   const candidateIds = candidates.map(
     (candidate: { id: string }) => candidate.id,
   );
-  const packagingMatches = await args.tx
+  const packagingMatches = await args.erpTx
     .select({ orderItemId: orderItemPackaging.orderItemId })
     .from(orderItemPackaging)
     .where(
@@ -247,7 +247,7 @@ async function resolveOrderItemByDesignAndSize(args: {
       ),
     );
 
-  const socksMatches = await args.tx
+  const socksMatches = await args.erpTx
     .select({ orderItemId: orderItemSocks.orderItemId })
     .from(orderItemSocks)
     .where(
@@ -273,17 +273,17 @@ async function resolveOrderItemByDesignAndSize(args: {
 }
 
 async function updateOrderItemStatus(args: {
-  tx: any;
+  erpTx: any;
   orderItemId: string;
   nextStatus: OrderItemStatusType;
   changedByEmployeeId: string | null;
 }) {
-  await args.tx
+  await args.erpTx
     .update(orderItems)
     .set({ status: args.nextStatus })
     .where(eq(orderItems.id, args.orderItemId));
 
-  await args.tx.insert(orderItemStatusHistory).values({
+  await args.erpTx.insert(orderItemStatusHistory).values({
     orderItemId: args.orderItemId,
     status: args.nextStatus,
     changedBy: args.changedByEmployeeId,
@@ -291,10 +291,10 @@ async function updateOrderItemStatus(args: {
 }
 
 async function resolveActiveMontajeTakeOrder(args: {
-  tx: any;
+  mesTx: any;
   orderCode: string;
 }) {
-  const [assignment] = await args.tx
+  const [assignment] = await args.mesTx
     .select()
     .from(operativeDashboardLogs)
     .where(
@@ -312,11 +312,11 @@ async function resolveActiveMontajeTakeOrder(args: {
 }
 
 async function moveOrderToProduccionWhenTaken(args: {
-  tx: any;
+  erpTx: any;
   orderCode: string;
   changedByEmployeeId: string | null;
 }) {
-  const [orderRow] = await args.tx
+  const [orderRow] = await args.erpTx
     .select({ id: orders.id, status: orders.status })
     .from(orders)
     .where(eq(orders.orderCode, args.orderCode))
@@ -325,12 +325,12 @@ async function moveOrderToProduccionWhenTaken(args: {
   if (!orderRow) return;
   if (orderRow.status !== ORDER_STATUS.PROGRAMACION) return;
 
-  await args.tx
+  await args.erpTx
     .update(orders)
     .set({ status: ORDER_STATUS.PRODUCCION as any })
     .where(eq(orders.id, orderRow.id));
 
-  await args.tx.insert(orderStatusHistory).values({
+  await args.erpTx.insert(orderStatusHistory).values({
     orderId: orderRow.id,
     status: ORDER_STATUS.PRODUCCION,
     changedBy: args.changedByEmployeeId,
@@ -405,7 +405,7 @@ export async function GET(request: Request) {
 
     const where = filters.length ? and(...filters) : undefined;
 
-    const totalQuery = db
+    const totalQuery = mesDb
       .select({ total: sql<number>`count(*)::int` })
       .from(operativeDashboardLogs);
 
@@ -413,7 +413,7 @@ export async function GET(request: Request) {
       ? await totalQuery.where(where)
       : await totalQuery;
 
-    const itemsQuery = db
+    const itemsQuery = mesDb
       .select()
       .from(operativeDashboardLogs)
       .orderBy(desc(operativeDashboardLogs.createdAt))
@@ -425,7 +425,7 @@ export async function GET(request: Request) {
     const itemsWithLinkedStatus = await Promise.all(
       items.map(async (item) => {
         const linkedOrderItemStatus = await resolveLinkedStatusByKeys({
-          tx: db,
+          erpTx: erpDb,
           orderCode: String(item.orderCode ?? ""),
           designName: String(item.designName ?? ""),
           size: item.size,
@@ -532,196 +532,244 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await db.transaction(async (tx) => {
-      if (operationType === "MONTAJE") {
-        const activeTakeOrder = await resolveActiveMontajeTakeOrder({
-          tx,
-          orderCode,
-        });
+    let activeTakeOrder =
+      operationType === "MONTAJE"
+        ? await resolveActiveMontajeTakeOrder({
+            mesTx: mesDb,
+            orderCode,
+          })
+        : null;
 
-        if (takeOrder) {
-          if (
-            activeTakeOrder &&
-            activeTakeOrder.createdByUserId &&
-            activeTakeOrder.createdByUserId !== createdByUserId
-          ) {
-            return {
+    if (operationType === "MONTAJE") {
+      if (takeOrder) {
+        if (
+          activeTakeOrder &&
+          activeTakeOrder.createdByUserId &&
+          activeTakeOrder.createdByUserId !== createdByUserId
+        ) {
+          return Response.json(
+            {
               conflict: true,
               claimedByUserId: activeTakeOrder.createdByUserId,
               takenAt: activeTakeOrder.startAt ?? activeTakeOrder.createdAt,
-            };
-          }
+            },
+            { status: 409 },
+          );
+        }
 
-          if (activeTakeOrder?.id) {
-            return {
+        if (activeTakeOrder?.id) {
+          return Response.json(
+            {
               ...activeTakeOrder,
               linkedOrderItemId: null,
               appliedStatus: null,
               isTakeOrder: true,
-            };
-          }
+            },
+            { status: 201 },
+          );
+        }
 
-          const [createdTakeOrder] = await tx
-            .insert(operativeDashboardLogs)
-            .values({
-              roleArea,
-              operationType,
-              orderCode,
-              designName,
-              details: MONTAJE_TAKE_ORDER_MARKER,
-              size: null,
-              quantityOp: 0,
-              producedQuantity: 0,
-              startAt: new Date(),
-              endAt: null,
-              isComplete: false,
-              isPartial: false,
-              observations: toOptionalText(body.observations),
-              repoCheck: false,
-              processCode,
-              createdByUserId,
-            })
-            .returning();
-
-          await moveOrderToProduccionWhenTaken({
-            tx,
+        const [createdTakeOrder] = await mesDb
+          .insert(operativeDashboardLogs)
+          .values({
+            roleArea,
+            operationType,
             orderCode,
-            changedByEmployeeId,
-          });
+            designName,
+            details: MONTAJE_TAKE_ORDER_MARKER,
+            size: null,
+            quantityOp: 0,
+            producedQuantity: 0,
+            startAt: new Date(),
+            endAt: null,
+            isComplete: false,
+            isPartial: false,
+            observations: toOptionalText(body.observations),
+            repoCheck: false,
+            processCode,
+            createdByUserId,
+          })
+          .returning();
 
-          return {
+        try {
+          await erpDb.transaction(async (erpTx) => {
+            await moveOrderToProduccionWhenTaken({
+              erpTx,
+              orderCode,
+              changedByEmployeeId,
+            });
+          });
+        } catch (error) {
+          await mesDb
+            .delete(operativeDashboardLogs)
+            .where(eq(operativeDashboardLogs.id, createdTakeOrder.id));
+          throw error;
+        }
+
+        return Response.json(
+          {
             ...createdTakeOrder,
             linkedOrderItemId: null,
             appliedStatus: null,
             isTakeOrder: true,
-          };
-        }
+          },
+          { status: 201 },
+        );
+      }
 
-        if (!activeTakeOrder?.id) {
-          return {
+      if (!activeTakeOrder?.id) {
+        return Response.json(
+          {
             conflict: true,
             message:
               "Debes tomar el pedido en montaje antes de registrar producción.",
-          };
-        }
+          },
+          { status: 409 },
+        );
+      }
 
-        if (
-          activeTakeOrder.createdByUserId &&
-          activeTakeOrder.createdByUserId !== createdByUserId
-        ) {
-          return {
+      if (
+        activeTakeOrder.createdByUserId &&
+        activeTakeOrder.createdByUserId !== createdByUserId
+      ) {
+        return Response.json(
+          {
             conflict: true,
             message: "Este pedido ya fue tomado por otro operario en montaje.",
             claimedByUserId: activeTakeOrder.createdByUserId,
             takenAt: activeTakeOrder.startAt ?? activeTakeOrder.createdAt,
-          };
-        }
+          },
+          { status: 409 },
+        );
       }
+    }
 
-      let effectiveStartAt = parsedStartAt;
-      let effectiveEndAt = parsedEndAt;
+    let effectiveStartAt = parsedStartAt;
+    let effectiveEndAt = parsedEndAt;
 
-      if (operationType === "MONTAJE") {
-        const activeTakeOrder = await resolveActiveMontajeTakeOrder({
-          tx,
-          orderCode,
-        });
+    if (operationType === "MONTAJE") {
+      effectiveStartAt =
+        activeTakeOrder?.startAt ?? activeTakeOrder?.createdAt ?? new Date();
+      effectiveEndAt = isComplete ? new Date() : null;
+    }
 
-        effectiveStartAt =
-          activeTakeOrder?.startAt ?? activeTakeOrder?.createdAt ?? new Date();
-        effectiveEndAt = isComplete ? new Date() : null;
-      }
+    const [created] = await mesDb
+      .insert(operativeDashboardLogs)
+      .values({
+        roleArea,
+        operationType,
+        orderCode,
+        designName,
+        details: toOptionalText(body.details),
+        size: toOptionalText(body.size),
+        quantityOp,
+        producedQuantity,
+        startAt: effectiveStartAt,
+        endAt: effectiveEndAt,
+        isComplete,
+        isPartial,
+        observations: toOptionalText(body.observations),
+        repoCheck,
+        processCode,
+        createdByUserId,
+      })
+      .returning();
 
-      const [created] = await tx
-        .insert(operativeDashboardLogs)
-        .values({
-          roleArea,
-          operationType,
+    let completedTakeOrderUpdated = false;
+
+    if (operationType === "MONTAJE" && isComplete) {
+      await mesDb
+        .update(operativeDashboardLogs)
+        .set({
+          isComplete: true,
+          endAt: effectiveEndAt,
+        })
+        .where(
+          and(
+            eq(operativeDashboardLogs.orderCode, orderCode),
+            eq(operativeDashboardLogs.operationType, "MONTAJE"),
+            eq(operativeDashboardLogs.details, MONTAJE_TAKE_ORDER_MARKER),
+            eq(operativeDashboardLogs.isComplete, false),
+          ),
+        );
+      completedTakeOrderUpdated = true;
+    }
+
+    try {
+      const erpResult = await erpDb.transaction(async (erpTx) => {
+        const linkedItem = await resolveOrderItemByDesignAndSize({
+          erpTx,
           orderCode,
           designName,
-          details: toOptionalText(body.details),
           size: toOptionalText(body.size),
-          quantityOp,
-          producedQuantity,
-          startAt: effectiveStartAt,
-          endAt: effectiveEndAt,
-          isComplete,
-          isPartial,
-          observations: toOptionalText(body.observations),
-          repoCheck,
-          processCode,
-          createdByUserId,
-        })
-        .returning();
+        });
 
-      if (operationType === "MONTAJE" && isComplete) {
-        await tx
+        let linkedOrderItemId: string | null = linkedItem?.id ?? null;
+        let appliedStatus: OrderItemStatusType | null = null;
+
+        if (linkedItem?.id) {
+          if (isComplete && operationType) {
+            const nextStatus =
+              operationType === "MONTAJE" &&
+              (authorizeManualCut || processCode === "C")
+                ? ORDER_ITEM_STATUS.CORTE_MANUAL
+                : NEXT_STATUS_BY_OPERATION[operationType];
+
+            if (shouldMoveForward(linkedItem.status, nextStatus)) {
+              await updateOrderItemStatus({
+                erpTx,
+                orderItemId: linkedItem.id,
+                nextStatus,
+                changedByEmployeeId,
+              });
+              appliedStatus = nextStatus;
+            }
+          }
+
+          if (isPartial && repoCheck) {
+            await updateOrderItemStatus({
+              erpTx,
+              orderItemId: linkedItem.id,
+              nextStatus: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
+              changedByEmployeeId,
+            });
+            appliedStatus = ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION;
+          }
+        }
+
+        return { linkedOrderItemId, appliedStatus };
+      });
+
+      return Response.json(
+        {
+          ...created,
+          ...erpResult,
+        },
+        { status: 201 },
+      );
+    } catch (error) {
+      await mesDb
+        .delete(operativeDashboardLogs)
+        .where(eq(operativeDashboardLogs.id, created.id));
+
+      if (completedTakeOrderUpdated) {
+        await mesDb
           .update(operativeDashboardLogs)
           .set({
-            isComplete: true,
-            endAt: effectiveEndAt,
+            isComplete: false,
+            endAt: null,
           })
           .where(
             and(
               eq(operativeDashboardLogs.orderCode, orderCode),
               eq(operativeDashboardLogs.operationType, "MONTAJE"),
               eq(operativeDashboardLogs.details, MONTAJE_TAKE_ORDER_MARKER),
-              eq(operativeDashboardLogs.isComplete, false),
             ),
           );
       }
 
-      const linkedItem = await resolveOrderItemByDesignAndSize({
-        tx,
-        orderCode,
-        designName,
-        size: toOptionalText(body.size),
-      });
-
-      let linkedOrderItemId: string | null = linkedItem?.id ?? null;
-      let appliedStatus: OrderItemStatusType | null = null;
-
-      if (linkedItem?.id) {
-        if (isComplete && operationType) {
-          const nextStatus =
-            operationType === "MONTAJE" && (authorizeManualCut || processCode === "C")
-              ? ORDER_ITEM_STATUS.CORTE_MANUAL
-              : NEXT_STATUS_BY_OPERATION[operationType];
-
-          if (shouldMoveForward(linkedItem.status, nextStatus)) {
-            await updateOrderItemStatus({
-              tx,
-              orderItemId: linkedItem.id,
-              nextStatus,
-              changedByEmployeeId,
-            });
-            appliedStatus = nextStatus;
-          }
-        }
-
-        if (isPartial && repoCheck) {
-          await updateOrderItemStatus({
-            tx,
-            orderItemId: linkedItem.id,
-            nextStatus: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
-            changedByEmployeeId,
-          });
-          appliedStatus = ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION;
-        }
-      }
-
-      return {
-        ...created,
-        linkedOrderItemId,
-        appliedStatus,
-      };
-    });
-
-    if ((result as any)?.conflict) {
-      return Response.json(result, { status: 409 });
+      throw error;
     }
-
-    return Response.json(result, { status: 201 });
   } catch (error) {
     const response = dbErrorResponse(error);
 

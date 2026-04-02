@@ -1,1 +1,1 @@
-export { emailVerificationTokens } from "./schema";
+export { emailVerificationTokens } from "./iam/schema";

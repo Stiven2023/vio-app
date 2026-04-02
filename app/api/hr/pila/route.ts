@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employees, payrollProvisions, pilaGenerations } from "@/src/db/schema";
+import { employees, payrollProvisions, pilaGenerations } from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";

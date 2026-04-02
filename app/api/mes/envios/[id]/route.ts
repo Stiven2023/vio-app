@@ -3,8 +3,8 @@
  */
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { mesEnvios } from "@/src/db/schema";
+import { mesDb } from "@/src/db";
+import { mesShipments } from "@/src/db/mes/schema";
 import { mesEnvioStatusValues } from "@/src/db/enums";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -44,7 +44,10 @@ export async function PATCH(
   if (body?.evidenciaUrl != null)
     update.evidenciaUrl = String(body.evidenciaUrl).trim() || null;
 
-  await db.update(mesEnvios).set(update as any).where(eq(mesEnvios.id, envioId));
+  await mesDb
+    .update(mesShipments)
+    .set(update as any)
+    .where(eq(mesShipments.id, envioId));
 
   return new Response(null, { status: 204 });
 }

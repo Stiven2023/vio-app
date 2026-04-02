@@ -8,7 +8,7 @@ import {
   quotationItems,
   quotations,
   users,
-} from "@/src/db/schema";
+} from "@/src/db/erp/schema";
 import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { createNotificationsForPermission } from "@/src/utils/notifications";

@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { banks, clients, orderPayments, orders } from "@/src/db/schema";
+import { banks, clients, orderPayments, orders } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";

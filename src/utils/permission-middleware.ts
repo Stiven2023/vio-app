@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { roles, permissions, rolePermissions } from "@/src/db/schema";
+import { iamDb } from "@/src/db";
+import { permissions, rolePermissions, roles } from "@/src/db/iam/schema";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 
 const ROLE_PERMISSION_OVERRIDES: Record<string, string[]> = {
@@ -76,7 +76,7 @@ export async function requirePermission(
   );
 
   // Single JOIN query: roles → role_permissions → permissions
-  const rows = await db
+  const rows = await iamDb
     .select({ permId: rolePermissions.permissionId })
     .from(rolePermissions)
     .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
@@ -133,7 +133,7 @@ export async function checkPermissions(
 
   const allCandidates = Array.from(candidateToOriginal.keys());
 
-  const rows = await db
+  const rows = await iamDb
     .select({ permName: permissions.name })
     .from(rolePermissions)
     .innerJoin(roles, eq(rolePermissions.roleId, roles.id))

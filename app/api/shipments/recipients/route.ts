@@ -1,7 +1,7 @@
 import { and, asc, eq, ilike } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { confectionists } from "@/src/db/schema";
+import { confectionists } from "@/src/db/erp/schema";
 import { getUserIdFromRequest } from "@/src/utils/auth-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
