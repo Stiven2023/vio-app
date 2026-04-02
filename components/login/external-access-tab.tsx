@@ -26,7 +26,6 @@ export function ExternalAccessTab({
   const router = useRouter();
   const [clientCode, setClientCode] = useState("");
   const [otp, setOtp] = useState("");
-  const [orderCode, setOrderCode] = useState("");
   const [tokenSent, setTokenSent] = useState(false);
   const [verified, setVerified] = useState(false);
   const [retryAt, setRetryAt] = useState<string | null>(null);
@@ -123,7 +122,10 @@ export function ExternalAccessTab({
       }
 
       setVerified(true);
-      setToast({ message: "Access verified for 1 day.", type: "success" });
+      setToast({ message: "Access verified. Redirecting...", type: "success" });
+      setTimeout(() => {
+        router.push("/portal/pedidos");
+      }, 1000);
     } catch {
       setToast({ message: "Could not verify the token.", type: "error" });
     } finally {
@@ -133,30 +135,40 @@ export function ExternalAccessTab({
 
   return (
     <div className="space-y-4">
+      <p className="text-xs text-default-500">
+        Enter your client ID and we will send a one-time code to your registered email.
+      </p>
+
       <Input
         isRequired
+        classNames={{
+          inputWrapper: "bg-content1/70 border border-default-200/30",
+        }}
+        isDisabled={tokenSent && !verified}
         label="Client ID"
         placeholder="e.g. CN10001"
         value={clientCode}
         onChange={(e) => setClientCode(e.target.value)}
       />
 
-      <Button
-        className="w-full"
-        isDisabled={loading || remainingSeconds > 0}
-        isLoading={loading}
-        variant="flat"
-        onPress={requestToken}
-      >
-        {remainingSeconds > 0
-          ? `Request token (${remainingSeconds}s)`
-          : "Request token"}
-      </Button>
+      {!tokenSent ? (
+        <Button
+          className="w-full font-semibold uppercase tracking-[0.15em]"
+          color="primary"
+          isDisabled={loading || remainingSeconds > 0 || !clientCode.trim()}
+          isLoading={loading}
+          onPress={requestToken}
+        >
+          {remainingSeconds > 0
+            ? `Resend code in ${remainingSeconds}s`
+            : "Send access code"}
+        </Button>
+      ) : null}
 
-      {tokenSent ? (
-        <div className="space-y-2">
+      {tokenSent && !verified ? (
+        <div className="space-y-3">
           <p className="text-sm text-default-600">
-            Enter the 6-digit OTP code sent to the client's email.
+            Enter the 6-digit code sent to your email.
           </p>
           <OtpInput
             focusOnMount
@@ -165,39 +177,27 @@ export function ExternalAccessTab({
             onValueChange={setOtp}
           />
           <Button
-            className="w-full"
+            className="w-full font-semibold uppercase tracking-[0.15em]"
             color="primary"
             isDisabled={loading || otp.length !== 6}
             isLoading={loading}
             onPress={verifyToken}
           >
-            Verify token
+            Verify code
           </Button>
-        </div>
-      ) : null}
-
-      {verified ? (
-        <div className="space-y-2 border border-default-200 rounded-medium p-3">
-          <Input
-            label="Order code"
-            placeholder="e.g. VN-1001"
-            value={orderCode}
-            onChange={(e) => setOrderCode(e.target.value)}
-          />
           <Button
             className="w-full"
-            color="primary"
+            isDisabled={loading || remainingSeconds > 0}
+            size="sm"
+            variant="light"
             onPress={() => {
-              const normalized = orderCode.trim().toUpperCase();
-
-              router.push(
-                normalized
-                  ? `/portal/pedidos?orderCode=${encodeURIComponent(normalized)}`
-                  : "/portal/pedidos",
-              );
+              setTokenSent(false);
+              setOtp("");
             }}
           >
-            Enter portal
+            {remainingSeconds > 0
+              ? `Resend in ${remainingSeconds}s`
+              : "Send new code"}
           </Button>
         </div>
       ) : null}

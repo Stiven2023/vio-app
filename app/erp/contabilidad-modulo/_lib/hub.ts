@@ -48,6 +48,7 @@ export const ACCOUNTING_HUB_COPY: Record<
     pageDescription: string;
     loading: string;
     navigationAriaLabel: string;
+    downloadQaFormat: string;
   }
 > = {
   en: {
@@ -56,6 +57,7 @@ export const ACCOUNTING_HUB_COPY: Record<
       "Grouped operational access to execute the full accounting cycle.",
     loading: "Loading...",
     navigationAriaLabel: "Accounting navigation",
+    downloadQaFormat: "Download QA format (CSV)",
   },
   es: {
     pageTitle: "Contabilidad",
@@ -63,6 +65,7 @@ export const ACCOUNTING_HUB_COPY: Record<
       "Accesos agrupados por bloque operativo para ejecutar el ciclo contable completo.",
     loading: "Cargando...",
     navigationAriaLabel: "Navegacion contable",
+    downloadQaFormat: "Descargar formato de prueba (CSV)",
   },
 };
 

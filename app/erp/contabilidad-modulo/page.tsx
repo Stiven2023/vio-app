@@ -57,7 +57,7 @@ export default async function AccountingLandingPage() {
             className="inline-flex items-center justify-center rounded-medium border border-default-300 bg-content2 px-4 py-2 text-sm font-medium transition hover:border-primary hover:text-primary"
             href="/api/contabilidad/formato-pruebas?format=csv"
           >
-            Descargar formato de prueba (CSV)
+            {copy.downloadQaFormat}
           </a>
         </div>
       </header>

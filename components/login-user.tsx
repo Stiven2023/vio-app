@@ -10,6 +10,7 @@ import { ModuleLogo } from "@/components/module-logo";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ViomarLogo } from "@/components/viomar-logo";
 import { useSessionStore } from "@/store/session";
+import { Role } from "@/src/db/enums";
 import {
   RequestPasswordResetModal,
   ResetPasswordModal,
@@ -22,11 +23,31 @@ type ToastState = {
   type: "success" | "error" | "info";
 };
 
+// Roles that belong to the production floor — redirect to MES after login
+const MES_ROLES = new Set<string>([
+  Role.CONFECCIONISTA,
+  Role.EMPAQUE,
+  Role.OPERARIO,
+  Role.LIDER_OPERACIONAL,
+  Role.OPERARIO_INTEGRACION_CALIDAD,
+  Role.OPERARIO_DESPACHO,
+  Role.PROGRAMACION,
+  "MENSAJERO", // Not in Role enum yet — kept as string
+]);
+
+function resolvePostLoginPath(role: string | null | undefined): string {
+  if (!role) return "/";
+  if (MES_ROLES.has(role.toUpperCase())) return "/mes";
+  return "/";
+}
+
 export default function LoginUser() {
   const [selected, setSelected] = useState("viomar");
-  const [form, setForm] = useState({ username: "", password: "" });
+  const [staffForm, setStaffForm] = useState({ username: "", password: "" });
+  const [thirdPartyForm, setThirdPartyForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
+  const [showThirdPartyPassword, setShowThirdPartyPassword] = useState(false);
   const [resetRequestOpen, setResetRequestOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState<string>("");
@@ -35,15 +56,17 @@ export default function LoginUser() {
   const router = useRouter();
   const login = useSessionStore((s) => s.login);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleStaffChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setStaffForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const validate = () => validateLogin(form);
+  const handleThirdPartyChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setThirdPartyForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const err = validate();
+    const err = validateLogin(staffForm);
 
     if (err) {
       setToast({ message: err, type: "error" });
@@ -53,13 +76,13 @@ export default function LoginUser() {
 
     setLoading(true);
     try {
-      const ok = await login(form.username, form.password);
+      const ok = await login(staffForm.username, staffForm.password);
 
       if (ok) {
         setToast({ message: "Login successful.", type: "success" });
         setTimeout(() => {
           router.push("/");
-        }, 1200);
+        }, 1000);
       } else {
         setToast({
           message: "Invalid credentials or user not found.",
@@ -68,8 +91,7 @@ export default function LoginUser() {
       }
     } catch {
       setToast({
-        message:
-          "Could not sign in. Please check your credentials and try again.",
+        message: "Could not sign in. Please check your credentials and try again.",
         type: "error",
       });
     } finally {
@@ -79,25 +101,27 @@ export default function LoginUser() {
 
   const handleThirdPartySubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const err = validateLogin(thirdPartyForm);
 
-    if (!form.username || !form.password) {
-      setToast({
-        message: "Username and password are required.",
-        type: "error",
-      });
+    if (err) {
+      setToast({ message: err, type: "error" });
 
       return;
     }
 
     setLoading(true);
     try {
-      const ok = await login(form.username.trim(), form.password);
+      const ok = await login(thirdPartyForm.username.trim(), thirdPartyForm.password);
 
       if (ok) {
         setToast({ message: "Login successful.", type: "success" });
+        // Read role from store (set by login()) to determine where to redirect
+        const role = useSessionStore.getState().user?.role;
+        const destination = resolvePostLoginPath(role);
+
         setTimeout(() => {
-          router.push("/erp/dashboard");
-        }, 1200);
+          router.push(destination);
+        }, 1000);
       } else {
         setToast({ message: "Invalid credentials.", type: "error" });
       }
@@ -190,18 +214,22 @@ export default function LoginUser() {
                 </div>
 
                 <LoginAccessTabs
-                  form={form}
                   loading={loading}
                   selected={selected}
                   setLoading={setLoading}
                   setSelected={setSelected}
                   setToast={setToast}
-                  showPassword={showPassword}
-                  toggleShowPassword={() => setShowPassword((v) => !v)}
-                  onFormChange={handleChange}
+                  showStaffPassword={showStaffPassword}
+                  showThirdPartyPassword={showThirdPartyPassword}
+                  staffForm={staffForm}
+                  thirdPartyForm={thirdPartyForm}
+                  toggleShowStaffPassword={() => setShowStaffPassword((v) => !v)}
+                  toggleShowThirdPartyPassword={() => setShowThirdPartyPassword((v) => !v)}
                   onOpenResetRequest={() => setResetRequestOpen(true)}
+                  onStaffFormChange={handleStaffChange}
                   onSubmitThirdParty={handleThirdPartySubmit}
                   onSubmitViomar={handleSubmit}
+                  onThirdPartyFormChange={handleThirdPartyChange}
                 />
               </div>
             </Card>

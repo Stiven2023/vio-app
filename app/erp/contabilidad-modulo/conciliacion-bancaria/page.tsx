@@ -6,11 +6,19 @@ import { redirect } from "next/navigation";
 import { BankReconciliationTab } from "./_components/bank-reconciliation-tab";
 
 import { checkPermissions } from "@/src/utils/permission-middleware";
+import {
+  ACCOUNTING_HUB_COPY,
+  resolveAccountingLocale,
+} from "../_lib/hub";
 
 export default async function BankReconciliationPage() {
   const token = (await cookies()).get("auth_token")?.value;
 
   if (!token) redirect("/login");
+
+  const cookieStore = await cookies();
+  const locale = resolveAccountingLocale(cookieStore.get("NEXT_LOCALE")?.value);
+  const isEs = locale === "es";
 
   const req = new Request("http://localhost", {
     headers: new Headers(await headers()),
@@ -26,10 +34,13 @@ export default async function BankReconciliationPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
-      <h1 className="text-2xl font-bold">Bank Reconciliation</h1>
+      <h1 className="text-2xl font-bold">
+        {isEs ? "Conciliación bancaria" : "Bank Reconciliation"}
+      </h1>
       <p className="mt-1 text-default-600">
-        Review and organize bank movements by period for subsequent
-        reconciliation.
+        {isEs
+          ? "Revisa y organiza los movimientos bancarios por período para la conciliación contable."
+          : "Review and organize bank movements by period for subsequent reconciliation."}
       </p>
       <div className="mt-6">
         <BankReconciliationTab
