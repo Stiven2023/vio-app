@@ -23,11 +23,15 @@ type ToastState = {
 export function LoginAccessTabs({
   selected,
   setSelected,
-  form,
-  onFormChange,
+  staffForm,
+  thirdPartyForm,
+  onStaffFormChange,
+  onThirdPartyFormChange,
   loading,
-  showPassword,
-  toggleShowPassword,
+  showStaffPassword,
+  showThirdPartyPassword,
+  toggleShowStaffPassword,
+  toggleShowThirdPartyPassword,
   onSubmitViomar,
   onSubmitThirdParty,
   onOpenResetRequest,
@@ -36,11 +40,15 @@ export function LoginAccessTabs({
 }: {
   selected: string;
   setSelected: (next: string) => void;
-  form: FormState;
-  onFormChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  staffForm: FormState;
+  thirdPartyForm: FormState;
+  onStaffFormChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  onThirdPartyFormChange: (e: ChangeEvent<HTMLInputElement>) => void;
   loading: boolean;
-  showPassword: boolean;
-  toggleShowPassword: () => void;
+  showStaffPassword: boolean;
+  showThirdPartyPassword: boolean;
+  toggleShowStaffPassword: () => void;
+  toggleShowThirdPartyPassword: () => void;
   onSubmitViomar: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   onSubmitThirdParty: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   onOpenResetRequest: () => void;
@@ -62,11 +70,15 @@ export function LoginAccessTabs({
       variant="underlined"
       onSelectionChange={(key) => setSelected(String(key))}
     >
+      {/* ── Tab 1: Viomar Staff ── */}
       <Tab key="viomar" title="Viomar staff">
         <form
           className="space-y-4 pt-2"
           onSubmit={(e) => void onSubmitViomar(e)}
         >
+          <p className="text-xs text-default-500">
+            Internal Viomar employees. Use your assigned username and password.
+          </p>
           <div className="space-y-3">
             <Input
               required
@@ -79,8 +91,8 @@ export function LoginAccessTabs({
               startContent={
                 <BsPersonFill className="text-xl text-default-500" />
               }
-              value={form.username}
-              onChange={onFormChange}
+              value={staffForm.username}
+              onChange={onStaffFormChange}
             />
             <Input
               required
@@ -90,14 +102,14 @@ export function LoginAccessTabs({
               }}
               endContent={
                 <Button
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showStaffPassword ? "Hide password" : "Show password"}
                   className="min-w-10 px-0"
                   size="sm"
                   type="button"
                   variant="light"
-                  onPress={toggleShowPassword}
+                  onPress={toggleShowStaffPassword}
                 >
-                  {showPassword ? (
+                  {showStaffPassword ? (
                     <BsEyeSlashFill className="text-lg" />
                   ) : (
                     <BsEyeFill className="text-lg" />
@@ -106,9 +118,9 @@ export function LoginAccessTabs({
               }
               label="Password"
               name="password"
-              type={showPassword ? "text" : "password"}
-              value={form.password}
-              onChange={onFormChange}
+              type={showStaffPassword ? "text" : "password"}
+              value={staffForm.password}
+              onChange={onStaffFormChange}
             />
           </div>
 
@@ -117,9 +129,10 @@ export function LoginAccessTabs({
               className="w-full font-semibold uppercase tracking-[0.2em]"
               color="primary"
               isDisabled={loading}
+              isLoading={loading}
               type="submit"
             >
-              {loading ? "Signing in..." : "Sign in"}
+              Sign in
             </Button>
 
             <Button
@@ -134,6 +147,7 @@ export function LoginAccessTabs({
         </form>
       </Tab>
 
+      {/* ── Tab 2: Client (OTP) ── */}
       <Tab key="cliente" title="I'm a client">
         <div className="pt-2">
           <ExternalAccessTab
@@ -145,11 +159,16 @@ export function LoginAccessTabs({
         </div>
       </Tab>
 
-      <Tab key="tercero" title="Third-party access">
+      {/* ── Tab 3: Third-party (confeccionistas, empaque, mensajeros) ── */}
+      <Tab key="tercero" title="Third-party">
         <form
           className="space-y-4 pt-2"
           onSubmit={(e) => void onSubmitThirdParty(e)}
         >
+          <p className="text-xs text-default-500">
+            For <strong>confectionists</strong>, <strong>packers</strong> and{" "}
+            <strong>couriers</strong>. Use the credentials provided by Viomar.
+          </p>
           <Input
             required
             autoComplete="username"
@@ -158,9 +177,12 @@ export function LoginAccessTabs({
             }}
             label="Username"
             name="username"
-            placeholder="e.g. confeccionista1, empaque1"
-            value={form.username}
-            onChange={onFormChange}
+            placeholder="e.g. confeccionista1"
+            startContent={
+              <BsPersonFill className="text-xl text-default-500" />
+            }
+            value={thirdPartyForm.username}
+            onChange={onThirdPartyFormChange}
           />
           <Input
             required
@@ -170,14 +192,14 @@ export function LoginAccessTabs({
             }}
             endContent={
               <Button
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-label={showThirdPartyPassword ? "Hide password" : "Show password"}
                 className="min-w-10 px-0"
                 size="sm"
                 type="button"
                 variant="light"
-                onPress={toggleShowPassword}
+                onPress={toggleShowThirdPartyPassword}
               >
-                {showPassword ? (
+                {showThirdPartyPassword ? (
                   <BsEyeSlashFill className="text-lg" />
                 ) : (
                   <BsEyeFill className="text-lg" />
@@ -186,17 +208,18 @@ export function LoginAccessTabs({
             }
             label="Password"
             name="password"
-            type={showPassword ? "text" : "password"}
-            value={form.password}
-            onChange={onFormChange}
+            type={showThirdPartyPassword ? "text" : "password"}
+            value={thirdPartyForm.password}
+            onChange={onThirdPartyFormChange}
           />
           <Button
-            className="w-full"
+            className="w-full font-semibold uppercase tracking-[0.2em]"
             color="primary"
             isDisabled={loading}
+            isLoading={loading}
             type="submit"
           >
-            {loading ? "Signing in..." : "Sign in as third-party"}
+            Sign in
           </Button>
         </form>
       </Tab>

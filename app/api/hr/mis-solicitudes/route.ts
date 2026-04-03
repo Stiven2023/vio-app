@@ -9,10 +9,8 @@ import {
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
-
-function isIsoDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
+import { createLeaveSchema } from "@/src/schemas/hcm";
+import { zodFirstErrorResponse } from "@/src/utils/zod-response";
 
 async function resolveEmployeeId(request: Request): Promise<string | null> {
   const direct = getEmployeeIdFromRequest(request);
@@ -132,31 +130,13 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const startDate = String(body?.startDate ?? "").trim();
-    const endDate = String(body?.endDate ?? "").trim();
-    const notes = String(body?.notes ?? "").trim();
-    // Solicitudes de empleado siempre son tipo PAID (vacaciones remuneradas)
+    const parsed = createLeaveSchema.safeParse(body);
+
+    if (!parsed.success) return zodFirstErrorResponse(parsed.error);
+
+    const { startDate, endDate, notes } = parsed.data;
+    // Employee-submitted leaves are always PAID type
     const leaveType = "PAID" as const;
-
-    if (!isIsoDate(startDate) || !isIsoDate(endDate)) {
-      return new Response("Fechas inválidas (formato esperado: YYYY-MM-DD)", {
-        status: 400,
-      });
-    }
-
-    if (startDate > endDate) {
-      return new Response("La fecha final no puede ser menor que la inicial", {
-        status: 400,
-      });
-    }
-
-    const today = new Date().toISOString().slice(0, 10);
-
-    if (startDate < today) {
-      return new Response("La fecha de inicio no puede ser en el pasado", {
-        status: 400,
-      });
-    }
 
     const [employeeExists] = await db
       .select({ id: employees.id, name: employees.name })

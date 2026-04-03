@@ -1,6 +1,7 @@
 import type { EstadoProceso, ProcessRoleConfig } from "./mes-types";
 
 import React from "react";
+import { Role } from "@/src/db/enums";
 import { MdCheckCircle, MdSchedule, MdWarning } from "react-icons/md";
 
 export const PROCESO_PREFIX: Record<string, string> = {
@@ -17,38 +18,38 @@ export const PROCESO_PREFIX: Record<string, string> = {
 export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {
   montaje: {
     label: "Montaje",
-    role: "OPERARIO",
+    role: Role.OPERARIO,
     operationType: "MONTAJE",
   },
   plotter: {
     label: "Plotter",
-    role: "OPERARIO",
+    role: Role.OPERARIO,
     operationType: "PLOTTER",
   },
   sublimacion: {
     label: "Sublimation",
-    role: "OPERARIO",
+    role: Role.OPERARIO,
     operationType: "SUBLIMACION",
   },
   corte: {
     label: "Cutting",
-    role: "OPERARIO",
+    role: Role.OPERARIO,
     operationType: "CORTE_MANUAL",
   },
   integracion: {
     label: "Integration",
-    role: "OPERARIO_INTEGRACION_CALIDAD",
+    role: Role.OPERARIO_INTEGRACION_CALIDAD,
     operationType: "INTEGRACION",
   },
   confeccion: {
     label: "Sewing",
-    role: "CONFECCIONISTA",
+    role: Role.CONFECCIONISTA,
     operationType: "CONFECCION",
   },
-  empaque: { label: "Packing", role: "EMPAQUE", operationType: "EMPAQUE" },
+  empaque: { label: "Packing", role: Role.EMPAQUE, operationType: "EMPAQUE" },
   despacho: {
     label: "Dispatch",
-    role: "OPERARIO_DESPACHO",
+    role: Role.OPERARIO_DESPACHO,
     operationType: "DESPACHO",
   },
 };

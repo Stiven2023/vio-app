@@ -9,23 +9,9 @@ import {
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
-import {
-  isPermissionHoursValid,
-  normalizePermissionHours,
-} from "@/src/utils/business-rule-guards";
-
-const VALID_TYPES = new Set([
-  "PERMISO",
-  "RECLAMO",
-  "SOLICITUD",
-  "SUGERENCIA",
-  "PQR",
-]);
-const VALID_PRIORITIES = new Set(["BAJA", "MEDIA", "ALTA"]);
-
-function isIsoDate(value: string) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
+import { normalizePermissionHours } from "@/src/utils/business-rule-guards";
+import { createPetitionSchema } from "@/src/schemas/hcm";
+import { zodFirstErrorResponse } from "@/src/utils/zod-response";
 
 async function resolveEmployeeId(request: Request): Promise<string | null> {
   const direct = getEmployeeIdFromRequest(request);
@@ -134,53 +120,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    const type = String(body?.type ?? "").trim().toUpperCase();
-    const subject = String(body?.subject ?? "").trim();
-    const description = String(body?.description ?? "").trim();
-    const requestDate = String(body?.requestDate ?? "").trim();
-    const requestHoursRaw = body?.requestHours;
-    const priority = String(body?.priority ?? "MEDIA").trim().toUpperCase();
+    const parsed = createPetitionSchema.safeParse(body);
 
-    if (!VALID_TYPES.has(type)) {
-      return new Response("Tipo de petición inválido", { status: 400 });
-    }
+    if (!parsed.success) return zodFirstErrorResponse(parsed.error);
 
-    if (!subject) {
-      return new Response("El asunto es requerido", { status: 400 });
-    }
-
-    if (!description) {
-      return new Response("La descripción es requerida", { status: 400 });
-    }
-
-    if (type === "PERMISO") {
-      if (!isIsoDate(requestDate)) {
-        return new Response(
-          "Para permisos, la fecha es requerida (formato YYYY-MM-DD)",
-          { status: 400 },
-        );
-      }
-    }
-
-    const resolvedPriority = VALID_PRIORITIES.has(priority)
-      ? (priority as "BAJA" | "MEDIA" | "ALTA")
-      : ("MEDIA" as const);
-
-    const requestHours =
-      requestHoursRaw !== undefined &&
-      requestHoursRaw !== null &&
-      requestHoursRaw !== ""
-        ? Number(requestHoursRaw)
-        : null;
-
-    if (type === "PERMISO" && requestHours !== null) {
-      if (!isPermissionHoursValid(requestHours)) {
-        return new Response(
-          "Las horas del permiso deben estar entre 0.5 y 24",
-          { status: 400 },
-        );
-      }
-    }
+    const { type, subject, description, requestDate, requestHours: requestHoursRaw, priority: resolvedPriority } = parsed.data;
 
     const normalizedRequestHours = normalizePermissionHours(
       type,
@@ -201,10 +145,10 @@ export async function POST(request: Request) {
       .insert(employeeRequests)
       .values({
         employeeId,
-        type: type as "PERMISO" | "RECLAMO" | "SOLICITUD" | "SUGERENCIA" | "PQR",
+        type,
         subject,
         description,
-        requestDate: isIsoDate(requestDate) ? requestDate : null,
+        requestDate: requestDate ?? null,
         requestHours: normalizedRequestHours,
         priority: resolvedPriority,
         status: "PENDIENTE",

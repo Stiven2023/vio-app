@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { Button } from "@heroui/button";
 
-export default function Error({
+export default function MesError({
   error,
   reset,
 }: {
@@ -19,10 +19,10 @@ export default function Error({
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-4 text-center">
       <div className="space-y-2">
         <p className="text-5xl font-black text-danger">!</p>
-        <h2 className="text-xl font-bold">Ocurrió un error inesperado</h2>
+        <h2 className="text-xl font-bold">Error en el módulo MES</h2>
         <p className="text-sm text-default-500">
-          Algo salió mal al cargar esta página. Puedes intentar de nuevo o
-          contactar al soporte si el problema persiste.
+          No se pudo cargar esta sección. Intenta de nuevo o contacta soporte si
+          el problema persiste.
         </p>
         {error.digest ? (
           <p className="font-mono text-xs text-default-400">

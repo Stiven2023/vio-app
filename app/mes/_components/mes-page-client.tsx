@@ -55,6 +55,7 @@ import {
 } from "@/app/mes/_components/mes-data";
 import { buildProcessQueue } from "@/app/mes/_components/mes-utils";
 import { useSessionStore } from "@/store/session";
+import { Role } from "@/src/db/enums";
 import { MesProductionQueueTab } from "@/app/mes/_components/mes-production-queue-tab";
 import { MontajeExcelDownload } from "@/app/mes/_components/mes-montaje-excel";
 import { PlotterRepoWizard } from "@/app/mes/_components/mes-plotter-repo-wizard";
@@ -109,8 +110,8 @@ export default function MesPageClient() {
   const currentUserId = String(sessionUser?.id ?? "").trim();
   const currentUserRole = String(sessionUser?.role ?? "").trim();
   const isLider =
-    currentUserRole === "LIDER_OPERACIONAL" ||
-    currentUserRole === "ADMINISTRADOR";
+    currentUserRole === Role.LIDER_OPERACIONAL ||
+    currentUserRole === Role.ADMINISTRADOR;
   const activeProcessConfig =
     PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
   const usesTicketFlow = [
@@ -229,7 +230,7 @@ export default function MesPageClient() {
           tallas: row.tallas,
           designDetails: row.designDetails,
         });
-        toast.success("Pedido tomado en montaje");
+        toast.success("Order taken for assembly");
       } catch (error) {
         const message =
           error instanceof Error && error.message
@@ -416,7 +417,7 @@ export default function MesPageClient() {
           {[
             ...(isLider ? [{ key: "workflow", label: "Workflow" }] : []),
             { key: "programacion", label: "Scheduling" },
-            { key: "montaje", label: "Montaje" },
+            { key: "montaje", label: "Assembly" },
             { key: "plotter", label: "Plotter" },
             { key: "sublimacion", label: "Sublimation" },
             { key: "corte", label: "Cutting" },
