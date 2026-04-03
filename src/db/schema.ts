@@ -181,6 +181,7 @@ export {
   mesShipmentAreaValues,
   mesTransportTypeValues,
   mesEnvioStatusValues,
+  mesPaymentStatusValues,
 } from "./enums";
 
 import {
@@ -263,6 +264,7 @@ import {
   mesShipmentAreaValues,
   mesTransportTypeValues,
   mesEnvioStatusValues,
+  mesPaymentStatusValues,
 } from "./enums";
 
 /* ========================= */
@@ -466,6 +468,10 @@ export const mesEnvioStatusPgEnum = pgEnum(
   "mes_envio_status",
   mesEnvioStatusValues,
 );
+export const mesPaymentStatusPgEnum = pgEnum(
+  "mes_payment_status",
+  mesPaymentStatusValues,
+);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -530,6 +536,7 @@ export const mesItemTagEnum = mesItemTagPgEnum;
 export const mesShipmentAreaEnum = mesShipmentAreaPgEnum;
 export const mesTransportTypeEnum = mesTransportTypePgEnum;
 export const mesEnvioStatusEnum = mesEnvioStatusPgEnum;
+export const mesPaymentStatusEnum = mesPaymentStatusPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
