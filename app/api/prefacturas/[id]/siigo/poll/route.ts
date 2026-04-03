@@ -4,6 +4,13 @@ import { db } from "@/src/db";
 import { preInvoices as prefacturas } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+import {
+  getEmployeeIdFromRequest,
+} from "@/src/utils/auth-middleware";
+import {
+  getSalesPostingPayload,
+  postSalesAccountingEntry,
+} from "@/src/utils/accounting-entries";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
 
 type SiigoStamp = {
@@ -148,6 +155,29 @@ export async function POST(
             : null,
       })
       .where(eq(prefacturas.id, prefacturaId));
+
+    // Post sales accounting entry when SIIGO confirms the invoice as ACCEPTED.
+    // Non-blocking: the status update above already persisted.
+    if (newStatus === "ACCEPTED") {
+      const employeeId = getEmployeeIdFromRequest(request);
+
+      try {
+        const salesPayload = await getSalesPostingPayload(db, prefacturaId, {
+          issuedAt: issuedAt ?? new Date(),
+        });
+
+        if (salesPayload) {
+          await db.transaction(async (tx) => {
+            await postSalesAccountingEntry(tx, salesPayload, employeeId);
+          });
+        }
+      } catch (_accErr) {
+        console.error(
+          `[accounting] Sales entry failed for prefactura ${prefacturaId}:`,
+          _accErr instanceof Error ? _accErr.message : _accErr,
+        );
+      }
+    }
 
     return Response.json({
       ok: true,

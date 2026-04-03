@@ -30,7 +30,7 @@ export const createLeaveSchema = z
 export const createPetitionSchema = z
   .object({
     type: z.enum(["PERMISO", "RECLAMO", "SOLICITUD", "SUGERENCIA", "PQR"], {
-      errorMap: () => ({ message: "Tipo de petición inválido" }),
+      message: "Tipo de petición inválido",
     }),
     subject: z.string().trim().min(1, "El asunto es requerido").max(255),
     description: z.string().trim().min(1, "La descripción es requerida").max(5000),
@@ -51,7 +51,7 @@ export const createPetitionSchema = z
 export const resolvePetitionSchema = z.object({
   status: z.enum(
     ["PENDIENTE", "APROBADO", "RECHAZADO", "EN_REVISION", "CERRADO"],
-    { errorMap: () => ({ message: "Estado inválido" }) },
+    { message: "Estado inválido" },
   ),
   responseNotes: z.string().trim().max(2000).optional(),
 });

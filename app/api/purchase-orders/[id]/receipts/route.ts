@@ -13,6 +13,7 @@ import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { postPurchaseReceiptEntry } from "@/src/utils/accounting-entries";
 
 type ReceiptBody = {
   notes?: unknown;
@@ -299,6 +300,29 @@ export async function POST(
       });
 
       await tx.insert(purchaseOrderReceiptLines).values(lines as any);
+
+      // Post accounting entry (DR Inventario MP / CR GRNI)
+      const receiptTotalValue = lines.reduce(
+        (sum, line) => sum + Number(line.receivedQty) * Number(line.unitCost),
+        0,
+      );
+      if (receiptTotalValue > 0) {
+        const [poRow] = await tx
+          .select({ supplierId: purchaseOrders.supplierId })
+          .from(purchaseOrders)
+          .where(eq(purchaseOrders.id, orderId))
+          .limit(1);
+        const supplierId = poRow?.supplierId ?? null;
+        if (supplierId) {
+          await postPurchaseReceiptEntry(tx, {
+            receiptId: receipt.id,
+            receiptCode: receipt.receiptCode,
+            supplierId,
+            receiptDate: new Date().toISOString().slice(0, 10),
+            totalValue: receiptTotalValue,
+          }, employeeId).catch(() => undefined);
+        }
+      }
 
       const requirementReceivedDelta = new Map<string, number>();
 

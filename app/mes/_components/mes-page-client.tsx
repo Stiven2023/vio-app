@@ -187,7 +187,7 @@ export default function MesPageClient() {
   const takeMontajeOrder = useCallback(
     async (row: ProcessQueueRow) => {
       if (!currentUserId) {
-        toast.error("Could not identify the active user to take the order.");
+        toast.error("No se pudo identificar el usuario activo para tomar el pedido.");
 
         return;
       }
@@ -230,12 +230,12 @@ export default function MesPageClient() {
           tallas: row.tallas,
           designDetails: row.designDetails,
         });
-        toast.success("Order taken for assembly");
+        toast.success("Pedido tomado para montaje");
       } catch (error) {
         const message =
           error instanceof Error && error.message
             ? error.message
-            : "Could not take the order";
+            : "No se pudo tomar el pedido";
 
         toast.error(message);
       }
@@ -251,7 +251,7 @@ export default function MesPageClient() {
       } catch {
         setData([]);
         setMontajeAssignments(new Map());
-        toast.error("Could not load MES data");
+        toast.error("Error al cargar datos del MES");
       } finally {
         setLoading(false);
       }
@@ -366,25 +366,25 @@ export default function MesPageClient() {
       <header className="space-y-1">
         <h1 className="text-xl font-semibold">M.E.S.</h1>
         <p className="text-sm text-default-500">
-          Real-time production tracking for the Manufacturing Execution System.
+          Seguimiento en tiempo real de producción para el Sistema de Ejecución de Manufactura.
         </p>
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           {
-            label: "Total orders",
+            label: "Total pedidos",
             value: stats.total,
             color: "text-foreground",
           },
           {
-            label: "In progress",
+            label: "En proceso",
             value: stats.enProceso,
             color: "text-primary",
           },
-          { label: "Late", value: stats.tarde, color: "text-danger" },
+          { label: "Tarde", value: stats.tarde, color: "text-danger" },
           {
-            label: "Completed",
+            label: "Completado",
             value: stats.completado,
             color: "text-success",
           },
@@ -416,15 +416,15 @@ export default function MesPageClient() {
         >
           {[
             ...(isLider ? [{ key: "workflow", label: "Workflow" }] : []),
-            { key: "programacion", label: "Scheduling" },
-            { key: "montaje", label: "Assembly" },
+            { key: "programacion", label: "Programación" },
+            { key: "montaje", label: "Montaje" },
             { key: "plotter", label: "Plotter" },
-            { key: "sublimacion", label: "Sublimation" },
-            { key: "corte", label: "Cutting" },
-            { key: "integracion", label: "Integration" },
-            { key: "confeccion", label: "Sewing" },
-            { key: "empaque", label: "Packing" },
-            { key: "despacho", label: "Dispatch" },
+            { key: "sublimacion", label: "Sublimación" },
+            { key: "corte", label: "Corte" },
+            { key: "integracion", label: "Integración" },
+            { key: "confeccion", label: "Confección" },
+            { key: "empaque", label: "Empaque" },
+            { key: "despacho", label: "Despacho" },
           ].map((tab) => (
             <Tab
               key={tab.key}
@@ -455,7 +455,7 @@ export default function MesPageClient() {
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
             <Input
               className="max-w-xs"
-              placeholder="Search order or client..."
+              placeholder="Buscar pedido o cliente..."
               radius="sm"
               size="sm"
               startContent={<MdSearch className="text-default-400" />}
@@ -465,7 +465,7 @@ export default function MesPageClient() {
             />
             <Select
               className="max-w-[160px]"
-              placeholder="Status"
+              placeholder="Estado"
               radius="sm"
               selectedKeys={[filterEstado]}
               size="sm"
@@ -475,11 +475,11 @@ export default function MesPageClient() {
                 setFilterEstado(Array.from(keys)[0] as string)
               }
             >
-              <SelectItem key="all">All</SelectItem>
-              <SelectItem key="SIN TRAMITAR">Not started</SelectItem>
-              <SelectItem key="EN PROCESO">In progress</SelectItem>
-              <SelectItem key="COMPLETADO">Completed</SelectItem>
-              <SelectItem key="TARDE">Late</SelectItem>
+              <SelectItem key="all">Todos</SelectItem>
+              <SelectItem key="SIN TRAMITAR">Sin tramitar</SelectItem>
+              <SelectItem key="EN PROCESO">En proceso</SelectItem>
+              <SelectItem key="COMPLETADO">Completado</SelectItem>
+              <SelectItem key="TARDE">Tarde</SelectItem>
             </Select>
 
             <div className="flex gap-2 ml-auto">
@@ -493,7 +493,7 @@ export default function MesPageClient() {
                   setFilterEstado("all");
                 }}
               >
-                Clear
+                Limpiar
               </Button>
               <Button
                 color="primary"
@@ -502,7 +502,7 @@ export default function MesPageClient() {
                 startContent={<MdPrint />}
                 variant="flat"
               >
-                Export
+                Exportar
               </Button>
             </div>
           </div>
@@ -516,7 +516,7 @@ export default function MesPageClient() {
               <CardBody className="py-12 flex items-center justify-center">
                 <div className="text-center text-default-400">
                   <MdSchedule className="mx-auto mb-2 animate-spin" size={36} />
-                  <p className="text-sm">Loading orders in scheduling...</p>
+                  <p className="text-sm">Cargando pedidos en programación...</p>
                 </div>
               </CardBody>
             </Card>
@@ -529,7 +529,7 @@ export default function MesPageClient() {
               <CardBody className="py-12 flex items-center justify-center">
                 <div className="text-center text-default-400">
                   <MdError className="mx-auto mb-2 opacity-40" size={36} />
-                  <p className="text-sm">No orders found</p>
+                  <p className="text-sm">No se encontraron pedidos</p>
                 </div>
               </CardBody>
             </Card>
@@ -555,14 +555,14 @@ export default function MesPageClient() {
               <CardBody className="py-3 px-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip color="secondary" size="sm" variant="flat">
-                    Next turn in {activeProcessConfig.label.toLowerCase()}:{" "}
+                    Siguiente turno en {activeProcessConfig.label.toLowerCase()}:{" "}
                     {nextProcessTurn.ticket}
                   </Chip>
-                  <span className="text-xs text-default-400">Order:</span>
+                  <span className="text-xs text-default-400">Pedido:</span>
                   <span className="text-xs font-medium">
                     {nextProcessTurn.pedido}
                   </span>
-                  <span className="text-xs text-default-400">Design:</span>
+                  <span className="text-xs text-default-400">Diseño:</span>
                   <span className="text-xs font-medium">
                     {nextProcessTurn.diseno}
                   </span>
@@ -599,14 +599,14 @@ export default function MesPageClient() {
                 aria-label={`Cola de ${activeProcessConfig.label.toLowerCase()}`}
               >
                 <TableHeader>
-                  <TableColumn>{usesTicketFlow ? "Turn" : "Orden"}</TableColumn>
+                  <TableColumn>{usesTicketFlow ? "Turno" : "Orden"}</TableColumn>
                   <TableColumn>{usesTicketFlow ? "Ticket" : "Seguimiento"}</TableColumn>
-                  <TableColumn>Order</TableColumn>
-                  <TableColumn>Client</TableColumn>
+                  <TableColumn>Pedido</TableColumn>
+                  <TableColumn>Cliente</TableColumn>
                   <TableColumn>Detalle</TableColumn>
-                  <TableColumn>Total units</TableColumn>
-                  <TableColumn>Pending sizes</TableColumn>
-                  <TableColumn>Action</TableColumn>
+                  <TableColumn>Total unidades</TableColumn>
+                  <TableColumn>Tallas pendientes</TableColumn>
+                  <TableColumn>Acción</TableColumn>
                 </TableHeader>
                 <TableBody items={processQueue}>
                   {(row) => {
@@ -648,7 +648,7 @@ export default function MesPageClient() {
                                 </Chip>
                                 {usesTurnGate && nextProcessTurn?.ticket === row.ticket ? (
                                   <Chip color="warning" size="sm" variant="flat">
-                                    Next
+                                    Siguiente
                                   </Chip>
                                 ) : null}
                               </>
@@ -665,8 +665,8 @@ export default function MesPageClient() {
                         <TableCell>{row.totalUnidades}</TableCell>
                         <TableCell>
                           <Chip color="warning" size="sm" variant="flat">
-                            {row.totalTallasPendientes} sizes ·{" "}
-                            {row.unidadesPendientes} units
+                            {row.totalTallasPendientes} tallas ·{" "}
+                            {row.unidadesPendientes} uds
                           </Chip>
                         </TableCell>
                         <TableCell>
@@ -679,7 +679,7 @@ export default function MesPageClient() {
                                 variant={isTakenByMe ? "flat" : "solid"}
                                 onPress={() => takeMontajeOrder(row)}
                               >
-                                {isTakenByMe ? "Order taken" : "Take order"}
+                                {isTakenByMe ? "Pedido tomado" : "Tomar pedido"}
                               </Button>
                               <Button
                                 color="primary"
@@ -704,12 +704,12 @@ export default function MesPageClient() {
                                   })
                                 }
                               >
-                                Handle order
+                                Gestionar pedido
                               </Button>
                               {isTakenByOther ? (
                                 <Chip color="warning" size="sm" variant="flat">
-                                  Taken by{" "}
-                                  {assignment?.userLabel ?? "another operator"}
+                                  Tomado por{" "}
+                                  {assignment?.userLabel ?? "otro operario"}
                                 </Chip>
                               ) : null}
                             </div>
@@ -776,7 +776,7 @@ export default function MesPageClient() {
                       </div>
                       <div className="text-sm text-default-500">
                         {usesTicketFlow
-                          ? `Ticket ${selectedMontajeTicket.ticketMontaje} · Order ${selectedMontajeTicket.pedido}`
+                          ? `Ticket ${selectedMontajeTicket.ticketMontaje} · Pedido ${selectedMontajeTicket.pedido}`
                           : `Seguimiento · Pedido ${selectedMontajeTicket.pedido}`}
                       </div>
                     </div>

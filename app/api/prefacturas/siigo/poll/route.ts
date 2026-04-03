@@ -2,9 +2,16 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { preInvoices as prefacturas } from "@/src/db/erp/schema";
-import { getRoleFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getEmployeeIdFromRequest,
+  getRoleFromRequest,
+} from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
+import {
+  postSalesAccountingEntry,
+  type SalesPostingInput,
+} from "@/src/utils/accounting-entries";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
 
 const ACCOUNTING_ROLES = new Set([
@@ -44,6 +51,8 @@ export async function POST(request: Request) {
     if (forbidden) return forbidden;
   }
 
+  const employeeId = getEmployeeIdFromRequest(request);
+
   try {
     // Find all prefacturas with siigoStatus = SENT
     const sentPrefacturas = await db
@@ -51,6 +60,10 @@ export async function POST(request: Request) {
         id: prefacturas.id,
         prefacturaCode: prefacturas.prefacturaCode,
         siigoInvoiceId: prefacturas.siigoInvoiceId,
+        clientId: prefacturas.clientId,
+        subtotal: prefacturas.subtotal,
+        ivaAmount: prefacturas.ivaAmount,
+        total: prefacturas.total,
       })
       .from(prefacturas)
       .where(eq(prefacturas.siigoStatus, "SENT"));
@@ -125,16 +138,42 @@ export async function POST(request: Request) {
           stampStatus === "PROCESADO";
 
         if (isInvoiced) {
+          const issuedDate = invoiceDate ? new Date(invoiceDate) : new Date();
+
           await db
             .update(prefacturas)
             .set({
               siigoStatus: "INVOICED",
               siigoInvoiceNumber: invoiceNumber,
-              siigoIssuedAt: invoiceDate ? new Date(invoiceDate) : new Date(),
+              siigoIssuedAt: issuedDate,
               siigoLastSyncAt: new Date(),
               siigoErrorMessage: null,
             })
             .where(eq(prefacturas.id, pf.id));
+
+          // Post sales accounting entry (non-blocking — SIIGO status already saved).
+          if (pf.clientId) {
+            const salesPayload: SalesPostingInput = {
+              prefacturaId: pf.id,
+              prefacturaCode: pf.prefacturaCode,
+              clientId: pf.clientId,
+              invoiceDate: issuedDate.toISOString().slice(0, 10),
+              subtotal: String(pf.subtotal ?? "0"),
+              ivaAmount: String(pf.ivaAmount ?? "0"),
+              total: String(pf.total ?? "0"),
+            };
+
+            try {
+              await db.transaction(async (tx) => {
+                await postSalesAccountingEntry(tx, salesPayload, employeeId);
+              });
+            } catch (_accErr) {
+              console.error(
+                `[accounting] Sales entry failed for prefactura ${pf.id}:`,
+                _accErr instanceof Error ? _accErr.message : _accErr,
+              );
+            }
+          }
 
           results.push({
             id: pf.id,

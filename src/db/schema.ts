@@ -36,6 +36,16 @@ export {
   ReconciliationItemTypeEnum,
   FactoringStatus,
   FactoringStatusEnum,
+  AccountingAccountType,
+  AccountingAccountTypeEnum,
+  AccountingNormalBalance,
+  AccountingNormalBalanceEnum,
+  AccountingPeriodStatus,
+  AccountingPeriodStatusEnum,
+  AccountingEntryStatus,
+  AccountingEntryStatusEnum,
+  AccountingSourceModule,
+  AccountingSourceModuleEnum,
   ContractType,
   ContractTypeEnum,
   LeaveType,
@@ -125,6 +135,11 @@ export {
   cashReceiptStatusValues,
   reconciliationItemTypeValues,
   factoringStatusValues,
+  accountingAccountTypeValues,
+  accountingNormalBalanceValues,
+  accountingPeriodStatusValues,
+  accountingEntryStatusValues,
+  accountingSourceModuleValues,
   contractTypeValues,
   leaveTypeValues,
   employeeRequestTypeValues,
@@ -204,6 +219,11 @@ import {
   cashReceiptStatusValues,
   reconciliationItemTypeValues,
   factoringStatusValues,
+  accountingAccountTypeValues,
+  accountingNormalBalanceValues,
+  accountingPeriodStatusValues,
+  accountingEntryStatusValues,
+  accountingSourceModuleValues,
   contractTypeValues,
   leaveTypeValues,
   employeeRequestTypeValues,
@@ -302,6 +322,26 @@ export const reconciliationItemTypePgEnum = pgEnum(
 export const factoringStatusPgEnum = pgEnum(
   "factoring_status",
   factoringStatusValues,
+);
+export const accountingAccountTypePgEnum = pgEnum(
+  "accounting_account_type",
+  accountingAccountTypeValues,
+);
+export const accountingNormalBalancePgEnum = pgEnum(
+  "accounting_normal_balance",
+  accountingNormalBalanceValues,
+);
+export const accountingPeriodStatusPgEnum = pgEnum(
+  "accounting_period_status",
+  accountingPeriodStatusValues,
+);
+export const accountingEntryStatusPgEnum = pgEnum(
+  "accounting_entry_status",
+  accountingEntryStatusValues,
+);
+export const accountingSourceModulePgEnum = pgEnum(
+  "accounting_source_module",
+  accountingSourceModuleValues,
 );
 export const contractTypePgEnum = pgEnum("contract_type", contractTypeValues);
 export const leaveTypePgEnum = pgEnum("leave_type", leaveTypeValues);
@@ -446,6 +486,11 @@ export const creditBackingTypeEnum = creditBackingTypePgEnum;
 export const cashReceiptStatusEnum = cashReceiptStatusPgEnum;
 export const reconciliationItemTypeEnum = reconciliationItemTypePgEnum;
 export const factoringStatusEnum = factoringStatusPgEnum;
+export const accountingAccountTypeEnum = accountingAccountTypePgEnum;
+export const accountingNormalBalanceEnum = accountingNormalBalancePgEnum;
+export const accountingPeriodStatusEnum = accountingPeriodStatusPgEnum;
+export const accountingEntryStatusEnum = accountingEntryStatusPgEnum;
+export const accountingSourceModuleEnum = accountingSourceModulePgEnum;
 export const contractTypeEnum = contractTypePgEnum;
 export const leaveTypeEnum = leaveTypePgEnum;
 export const employeeRequestTypeEnum = employeeRequestTypePgEnum;
@@ -1309,6 +1354,13 @@ export const orderItemConfection = pgTable("order_item_confection", {
   confectionistId: uuid("confectionist_id").references(() => confectionists.id),
   assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow(),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
+  // Payment fields (added migration 0069)
+  status: varchar("status", { length: 30 }).notNull().default("ASIGNADO"),
+  qtyAssigned: integer("qty_assigned"),
+  unitRate: numeric("unit_rate", { precision: 12, scale: 2 }),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }),
+  paymentNotes: text("payment_notes"),
+  confectionistRateId: uuid("confectionist_rate_id"),
 });
 
 /* =========================
@@ -1431,6 +1483,13 @@ export const orderItemPacker = pgTable("order_item_packer", {
   packerId: uuid("packer_id").references(() => packers.id),
   assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow(),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
+  // Payment fields (added migration 0069)
+  status: varchar("status", { length: 30 }).notNull().default("ASIGNADO"),
+  qtyAssigned: integer("qty_assigned"),
+  unitRate: numeric("unit_rate", { precision: 12, scale: 2 }),
+  totalAmount: numeric("total_amount", { precision: 12, scale: 2 }),
+  paymentNotes: text("payment_notes"),
+  packerRateId: uuid("packer_rate_id"),
 });
 
 /* =========================
@@ -1587,6 +1646,8 @@ export const purchaseRequirementLines = pgTable("purchase_requirement_lines", {
   inventoryItemId: uuid("inventory_item_id").references(
     () => inventoryItems.id,
   ),
+  // BOM link (added migration 0068)
+  orderItemMoldingInsumoId: uuid("order_item_molding_insumo_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
@@ -1717,6 +1778,214 @@ export const purchaseOrderRoutes = pgTable("purchase_order_routes", {
   createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+/* =========================
+   CONFECTIONIST RATES (Tarifas globales confeccionistas)
+========================= */
+export const confectionistRates = pgTable(
+  "confectionist_rates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    garmentType: varchar("garment_type", { length: 40 }).notNull(),
+    garmentSubtype: varchar("garment_subtype", { length: 40 }),
+    process: varchar("process", { length: 40 }),
+    sizeRange: varchar("size_range", { length: 20 }),
+    ratePerUnit: numeric("rate_per_unit", { precision: 12, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("COP"),
+    unit: varchar("unit", { length: 20 }).notNull().default("UN"),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to"),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    garmentIdx: index("confectionist_rates_garment_idx").on(t.garmentType, t.process),
+    activeIdx: index("confectionist_rates_active_idx").on(t.isActive, t.validFrom, t.validTo),
+  }),
+);
+
+/* =========================
+   PACKER RATES (Tarifas globales empacadores)
+========================= */
+export const packerRates = pgTable(
+  "packer_rates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    garmentType: varchar("garment_type", { length: 40 }).notNull(),
+    garmentSubtype: varchar("garment_subtype", { length: 40 }),
+    process: varchar("process", { length: 40 }),
+    sizeRange: varchar("size_range", { length: 20 }),
+    ratePerUnit: numeric("rate_per_unit", { precision: 12, scale: 2 }).notNull(),
+    currency: varchar("currency", { length: 10 }).notNull().default("COP"),
+    unit: varchar("unit", { length: 20 }).notNull().default("UN"),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to"),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    garmentIdx: index("packer_rates_garment_idx").on(t.garmentType, t.process),
+  }),
+);
+
+/* =========================
+   CONFECTIONIST PAYMENT REQUESTS (Solicitudes de pago confeccionistas)
+========================= */
+export const confectionistPaymentRequests = pgTable(
+  "confectionist_payment_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requestCode: varchar("request_code", { length: 30 }).notNull(),
+    orderItemConfectionId: uuid("order_item_confection_id")
+      .notNull()
+      .references(() => orderItemConfection.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("PENDIENTE"),
+    notes: text("notes"),
+    requestedBy: uuid("requested_by").references(() => employees.id),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow(),
+    verifiedBy: uuid("verified_by").references(() => employees.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    approvedBy: uuid("approved_by").references(() => employees.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    paymentReference: varchar("payment_reference", { length: 120 }),
+    bankId: uuid("bank_id").references(() => banks.id),
+    accountingEntryId: uuid("accounting_entry_id"),
+    rejectionReason: text("rejection_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    codeUnique: uniqueIndex("confectionist_payment_requests_code_unique").on(t.requestCode),
+    statusIdx: index("cpr_status_idx").on(t.status),
+    confectionIdx: index("cpr_confection_idx").on(t.orderItemConfectionId),
+  }),
+);
+
+/* =========================
+   PACKER PAYMENT REQUESTS (Solicitudes de pago empacadores)
+========================= */
+export const packerPaymentRequests = pgTable(
+  "packer_payment_requests",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    requestCode: varchar("request_code", { length: 30 }).notNull(),
+    orderItemPackerId: uuid("order_item_packer_id")
+      .notNull()
+      .references(() => orderItemPacker.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    status: varchar("status", { length: 30 }).notNull().default("PENDIENTE"),
+    notes: text("notes"),
+    requestedBy: uuid("requested_by").references(() => employees.id),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow(),
+    verifiedBy: uuid("verified_by").references(() => employees.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    approvedBy: uuid("approved_by").references(() => employees.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    paymentReference: varchar("payment_reference", { length: 120 }),
+    bankId: uuid("bank_id").references(() => banks.id),
+    accountingEntryId: uuid("accounting_entry_id"),
+    rejectionReason: text("rejection_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    codeUnique: uniqueIndex("packer_payment_requests_code_unique").on(t.requestCode),
+    statusIdx: index("ppr_status_idx").on(t.status),
+    packerIdx: index("ppr_packer_idx").on(t.orderItemPackerId),
+  }),
+);
+
+/* =========================
+   SUPPLIER INVOICES (Facturas de proveedores)
+========================= */
+export const supplierInvoices = pgTable(
+  "supplier_invoices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    invoiceCode: varchar("invoice_code", { length: 30 }).notNull(),
+    supplierId: uuid("supplier_id")
+      .notNull()
+      .references(() => suppliers.id),
+    purchaseOrderId: uuid("purchase_order_id")
+      .notNull()
+      .references(() => purchaseOrders.id),
+    purchaseOrderReceiptId: uuid("purchase_order_receipt_id").references(
+      () => purchaseOrderReceipts.id,
+      { onDelete: "set null" },
+    ),
+    supplierInvoiceNumber: varchar("supplier_invoice_number", { length: 80 }),
+    invoiceDate: date("invoice_date").notNull(),
+    dueDate: date("due_date"),
+    currency: varchar("currency", { length: 10 }).notNull().default("COP"),
+    subtotal: numeric("subtotal", { precision: 14, scale: 2 }).notNull().default("0"),
+    ivaAmount: numeric("iva_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+    withholdingTax: numeric("withholding_tax", { precision: 14, scale: 2 }).notNull().default("0"),
+    withholdingIva: numeric("withholding_iva", { precision: 14, scale: 2 }).notNull().default("0"),
+    withholdingIca: numeric("withholding_ica", { precision: 14, scale: 2 }).notNull().default("0"),
+    total: numeric("total", { precision: 14, scale: 2 }).notNull().default("0"),
+    // status: RECIBIDA → VERIFICADA → APROBADA → CONTABILIZADA → PAGADA | RECHAZADA
+    status: varchar("status", { length: 30 }).notNull().default("RECIBIDA"),
+    notes: text("notes"),
+    documentUrl: text("document_url"),
+    verifiedBy: uuid("verified_by").references(() => employees.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    approvedBy: uuid("approved_by").references(() => employees.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    accountingEntryId: uuid("accounting_entry_id"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    codeUnique: uniqueIndex("supplier_invoices_code_unique").on(t.invoiceCode),
+    supplierIdx: index("si_supplier_idx").on(t.supplierId),
+    poIdx: index("si_po_idx").on(t.purchaseOrderId),
+    receiptIdx: index("si_receipt_idx").on(t.purchaseOrderReceiptId),
+    statusIdx: index("si_status_idx").on(t.status),
+  }),
+);
+
+/* =========================
+   SUPPLIER PAYMENTS (Pagos a proveedores)
+========================= */
+export const supplierPayments = pgTable(
+  "supplier_payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    paymentCode: varchar("payment_code", { length: 30 }).notNull(),
+    supplierInvoiceId: uuid("supplier_invoice_id")
+      .notNull()
+      .references(() => supplierInvoices.id, { onDelete: "cascade" }),
+    supplierId: uuid("supplier_id")
+      .notNull()
+      .references(() => suppliers.id),
+    paymentDate: date("payment_date").notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+    bankId: uuid("bank_id").references(() => banks.id),
+    referenceNumber: varchar("reference_number", { length: 120 }),
+    // status: PENDIENTE → COMPLETADO | RECHAZADO
+    status: varchar("status", { length: 30 }).notNull().default("PENDIENTE"),
+    notes: text("notes"),
+    accountingEntryId: uuid("accounting_entry_id"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    codeUnique: uniqueIndex("supplier_payments_code_unique").on(t.paymentCode),
+    invoiceIdx: index("sp_invoice_idx").on(t.supplierInvoiceId),
+    statusIdx: index("sp_status_idx").on(t.status),
+  }),
+);
 
 export const stockMovements = pgTable("stock_movements", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1875,6 +2144,169 @@ export const factoringRecords = pgTable("factoring_records", {
   createdBy: uuid("created_by").references(() => employees.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+export const accountingAccounts = pgTable(
+  "accounting_accounts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 20 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    type: accountingAccountTypeEnum("type").notNull(),
+    normalBalance: accountingNormalBalanceEnum("normal_balance").notNull(),
+    parentAccountId: uuid("parent_account_id"),
+    description: text("description"),
+    isPostable: boolean("is_postable").notNull().default(true),
+    isActive: boolean("is_active").notNull().default(true),
+    metadata: jsonb("metadata"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    updatedBy: uuid("updated_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    codeUnique: uniqueIndex("accounting_accounts_code_unique").on(table.code),
+    nameIdx: index("accounting_accounts_name_idx").on(table.name),
+    parentIdx: index("accounting_accounts_parent_idx").on(table.parentAccountId),
+  }),
+);
+
+export const accountingPeriods = pgTable(
+  "accounting_periods",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    period: varchar("period", { length: 7 }).notNull(),
+    status: accountingPeriodStatusEnum("status").notNull().default("OPEN"),
+    openedAt: timestamp("opened_at", { withTimezone: true }).defaultNow(),
+    openedBy: uuid("opened_by").references(() => employees.id),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    closedBy: uuid("closed_by").references(() => employees.id),
+    closeReason: text("close_reason"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    periodUnique: uniqueIndex("accounting_periods_period_unique").on(
+      table.period,
+    ),
+    statusIdx: index("accounting_periods_status_idx").on(table.status),
+  }),
+);
+
+export const accountingEntries = pgTable(
+  "accounting_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entryNumber: varchar("entry_number", { length: 30 }).notNull(),
+    period: varchar("period", { length: 7 }).notNull(),
+    entryDate: date("entry_date").notNull(),
+    status: accountingEntryStatusEnum("status").notNull().default("DRAFT"),
+    sourceModule: accountingSourceModuleEnum("source_module")
+      .notNull()
+      .default("GENERAL"),
+    sourceType: varchar("source_type", { length: 80 }),
+    sourceId: uuid("source_id"),
+    idempotencyKey: varchar("idempotency_key", { length: 160 }),
+    description: text("description").notNull(),
+    externalReference: varchar("external_reference", { length: 120 }),
+    postedAt: timestamp("posted_at", { withTimezone: true }),
+    postedBy: uuid("posted_by").references(() => employees.id),
+    reversalOfId: uuid("reversal_of_id"),
+    reversedAt: timestamp("reversed_at", { withTimezone: true }),
+    reversedBy: uuid("reversed_by").references(() => employees.id),
+    metadata: jsonb("metadata"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    entryNumberUnique: uniqueIndex("accounting_entries_number_unique").on(
+      table.entryNumber,
+    ),
+    idempotencyUnique: uniqueIndex("accounting_entries_idempotency_unique").on(
+      table.idempotencyKey,
+    ),
+    periodIdx: index("accounting_entries_period_idx").on(table.period),
+    sourceIdx: index("accounting_entries_source_idx").on(
+      table.sourceModule,
+      table.sourceType,
+    ),
+  }),
+);
+
+export const accountingEntryLines = pgTable(
+  "accounting_entry_lines",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => accountingEntries.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accountingAccounts.id),
+    thirdPartyType: thirdPartyTypeEnum("third_party_type"),
+    thirdPartyId: uuid("third_party_id"),
+    description: text("description"),
+    debit: numeric("debit", { precision: 14, scale: 2 }).notNull().default("0"),
+    credit: numeric("credit", { precision: 14, scale: 2 }).notNull().default("0"),
+    lineOrder: integer("line_order").notNull().default(0),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    entryIdx: index("accounting_entry_lines_entry_idx").on(table.entryId),
+    accountIdx: index("accounting_entry_lines_account_idx").on(table.accountId),
+    entryOrderUnique: uniqueIndex("accounting_entry_lines_entry_order_unique").on(
+      table.entryId,
+      table.lineOrder,
+    ),
+  }),
+);
+
+export const accountingEventMappings = pgTable(
+  "accounting_event_mappings",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventCode: varchar("event_code", { length: 80 }).notNull(),
+    sourceModule: accountingSourceModuleEnum("source_module")
+      .notNull()
+      .default("GENERAL"),
+    description: text("description"),
+    config: jsonb("config").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    version: integer("version").notNull().default(1),
+    createdBy: uuid("created_by").references(() => employees.id),
+    updatedBy: uuid("updated_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    eventCodeUnique: uniqueIndex("accounting_event_mappings_code_unique").on(
+      table.eventCode,
+    ),
+    moduleIdx: index("accounting_event_mappings_module_idx").on(
+      table.sourceModule,
+    ),
+  }),
+);
+
+export const accountingEntryHistory = pgTable(
+  "accounting_entry_history",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => accountingEntries.id, { onDelete: "cascade" }),
+    action: varchar("action", { length: 80 }).notNull(),
+    notes: text("notes"),
+    payload: jsonb("payload"),
+    performedBy: uuid("performed_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    entryHistoryIdx: index("accounting_entry_history_entry_idx").on(table.entryId),
+  }),
+);
 
 export const bankReconciliations = pgTable("bank_reconciliations", {
   id: uuid("id").defaultRandom().primaryKey(),

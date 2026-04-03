@@ -21,6 +21,13 @@ type EnvioItem = {
   itemName: string | null;
 };
 
+type ApprovalStep = {
+  approved: boolean;
+  approverName: string | null;
+  approvedAt: string | null;
+  notes: string | null;
+};
+
 type Envio = {
   id: string;
   origenArea: string;
@@ -36,6 +43,12 @@ type Envio = {
   segundaParadaTipo: string | null;
   segundaParadaDestino: string | null;
   observaciones: string | null;
+  dispatchApprovals?: {
+    seller?: ApprovalStep | null;
+    cartera?: ApprovalStep | null;
+    accounting?: ApprovalStep | null;
+    partial?: ApprovalStep | null;
+  } | null;
   status: string;
   salidaAt: string | null;
   llegadaAt: string | null;
@@ -43,7 +56,6 @@ type Envio = {
   createdAt: string;
   items: EnvioItem[];
 };
-
 const STATUS_COLOR: Record<
   string,
   "default" | "primary" | "success" | "warning" | "danger"
@@ -71,6 +83,24 @@ const TRANSPORT_LABEL: Record<string, string> = {
 
 function getErrorMessage(e: unknown) {
   return e instanceof Error ? e.message : String(e ?? "Error");
+}
+
+async function readApiErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload = await response.json();
+
+    if (typeof payload?.message === "string" && payload.message.trim()) {
+      return payload.message.trim();
+    }
+  } catch {}
+
+  try {
+    const text = await response.text();
+
+    if (text.trim()) return text.trim();
+  } catch {}
+
+  return fallback;
 }
 
 function formatTs(ts: string | null) {
@@ -136,7 +166,11 @@ export function MesEnvioStatusCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        throw new Error(
+          await readApiErrorMessage(res, "No se pudo actualizar el envío."),
+        );
+      }
       toast.success(`Estado actualizado: ${STATUS_LABEL[status] ?? status}`);
       refresh();
       onEnvioUpdated?.();
@@ -191,6 +225,30 @@ export function MesEnvioStatusCard({
                     {envio.observaciones}
                   </p>
                 )}
+                {envio.dispatchApprovals ? (
+                  <div className="flex flex-wrap gap-2 text-xs text-default-500">
+                    {envio.dispatchApprovals.seller?.approved ? (
+                      <Chip size="sm" variant="flat" color="success">
+                        Vendedor: {envio.dispatchApprovals.seller.approverName ?? "OK"}
+                      </Chip>
+                    ) : null}
+                    {envio.dispatchApprovals.cartera?.approved ? (
+                      <Chip size="sm" variant="flat" color="success">
+                        Cartera: {envio.dispatchApprovals.cartera.approverName ?? "OK"}
+                      </Chip>
+                    ) : null}
+                    {envio.dispatchApprovals.accounting?.approved ? (
+                      <Chip size="sm" variant="flat" color="success">
+                        Contabilidad: {envio.dispatchApprovals.accounting.approverName ?? "OK"}
+                      </Chip>
+                    ) : null}
+                    {envio.dispatchApprovals.partial?.approved ? (
+                      <Chip size="sm" variant="flat" color="warning">
+                        Parcial: {envio.dispatchApprovals.partial.approverName ?? "OK"}
+                      </Chip>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               <Chip
                 color={STATUS_COLOR[envio.status] ?? "default"}

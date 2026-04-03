@@ -2,8 +2,13 @@ import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { notifications } from "@/src/db/erp/schema";
+import { dbJsonError, jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
-import { dbErrorResponse } from "@/src/utils/db-errors";
+import {
+  isUnreadOnly,
+  notificationsBulkPatchSchema,
+  notificationsQuerySchema,
+} from "@/src/utils/notifications-contract";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -30,11 +35,27 @@ export async function GET(request: Request) {
 
   if (limited) return limited;
 
-  const roleFromToken = getRoleFromRequest(request);
   const { searchParams } = new URL(request.url);
+  const queryResult = notificationsQuerySchema.safeParse({
+    page: searchParams.get("page") ?? undefined,
+    pageSize: searchParams.get("pageSize") ?? undefined,
+    role: searchParams.get("role") ?? undefined,
+    startDate: searchParams.get("startDate") ?? undefined,
+    endDate: searchParams.get("endDate") ?? undefined,
+    unreadOnly: searchParams.get("unreadOnly") ?? undefined,
+  });
+
+  if (!queryResult.success) {
+    return zodFirstErrorEnvelope(
+      queryResult.error,
+      "Parámetros de notificaciones inválidos.",
+    );
+  }
+
+  const roleFromToken = getRoleFromRequest(request);
   const { page, pageSize, offset } = parsePagination(searchParams);
 
-  const roleParam = String(searchParams.get("role") ?? "").trim();
+  const roleParam = queryResult.data.role ?? "";
   const isAdmin = roleFromToken === "ADMINISTRADOR";
   const role = isAdmin && roleParam ? roleParam : roleFromToken;
 
@@ -49,15 +70,14 @@ export async function GET(request: Request) {
     });
   }
 
-  const startDate = toStartDate(searchParams.get("startDate"));
-  const endDate = toEndDate(searchParams.get("endDate"));
-  const unreadOnly = String(searchParams.get("unreadOnly") ?? "").trim();
+  const startDate = toStartDate(queryResult.data.startDate ?? null);
+  const endDate = toEndDate(queryResult.data.endDate ?? null);
 
   const filters = [
     role ? eq(notifications.role, role) : undefined,
     startDate ? gte(notifications.createdAt, startDate) : undefined,
     endDate ? lte(notifications.createdAt, endDate) : undefined,
-    unreadOnly === "1" || unreadOnly.toLowerCase() === "true"
+    isUnreadOnly(queryResult.data.unreadOnly)
       ? eq(notifications.isRead, false)
       : undefined,
   ].filter(Boolean);
@@ -109,11 +129,18 @@ export async function GET(request: Request) {
       unreadCount,
     });
   } catch (error) {
-    const response = dbErrorResponse(error);
+    const response = dbJsonError(
+      error,
+      "No se pudo consultar notificaciones.",
+    );
 
     if (response) return response;
 
-    return new Response("No se pudo consultar notificaciones", { status: 500 });
+    return jsonError(
+      500,
+      "INTERNAL_ERROR",
+      "No se pudo consultar notificaciones.",
+    );
   }
 }
 
@@ -128,20 +155,53 @@ export async function PATCH(request: Request) {
 
   const role = getRoleFromRequest(request);
 
-  if (!role) return new Response("Role not found", { status: 403 });
+  if (!role) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para ver notificaciones.");
+  }
 
-  const body = (await request.json()) as { ids?: string[] };
-  const ids = Array.isArray(body?.ids) ? body.ids.filter(Boolean) : [];
+  const body = (await request.json().catch(() => null)) as unknown;
+
+  if (body === null) {
+    return jsonError(400, "INVALID_JSON", "El cuerpo JSON es inválido.");
+  }
+
+  const parseResult = notificationsBulkPatchSchema.safeParse(body);
+
+  if (!parseResult.success) {
+    return zodFirstErrorEnvelope(
+      parseResult.error,
+      "Datos de notificaciones inválidos.",
+    );
+  }
+
+  const ids = Array.isArray(parseResult.data.ids)
+    ? parseResult.data.ids.filter(Boolean)
+    : [];
 
   const where = ids.length
     ? and(eq(notifications.role, role), inArray(notifications.id, ids))
     : eq(notifications.role, role);
 
-  const updated = await db
-    .update(notifications)
-    .set({ isRead: true })
-    .where(where)
-    .returning({ id: notifications.id });
+  try {
+    const updated = await db
+      .update(notifications)
+      .set({ isRead: true })
+      .where(where)
+      .returning({ id: notifications.id });
 
-  return Response.json({ updated: updated.length });
+    return Response.json({ updated: updated.length });
+  } catch (error) {
+    const response = dbJsonError(
+      error,
+      "No se pudieron actualizar notificaciones.",
+    );
+
+    if (response) return response;
+
+    return jsonError(
+      500,
+      "INTERNAL_ERROR",
+      "No se pudieron actualizar notificaciones.",
+    );
+  }
 }

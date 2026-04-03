@@ -8,6 +8,7 @@ import { Chip } from "@heroui/chip";
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 
+import { roleValues } from "@/src/db/enums";
 import { useSessionStore } from "@/store/session";
 
 type NotificationRow = {
@@ -19,31 +20,6 @@ type NotificationRow = {
   isRead: boolean | null;
   createdAt: string | null;
 };
-
-const roleOptions = [
-  "ADMINISTRADOR",
-  "LIDER_JURIDICA",
-  "RH",
-  "AUXILIAR_RH",
-  "LIDER_FINANCIERA",
-  "AUXILIAR_CONTABLE",
-  "TESORERIA_Y_CARTERA",
-  "LIDER_COMERCIAL",
-  "ASESOR",
-  "LIDER_SUMINISTROS",
-  "COMPRA_NACIONAL",
-  "COMPRA_INTERNACIONAL",
-  "LIDER_DISEÑO",
-  "DISEÑADOR",
-  "LIDER_OPERACIONAL",
-  "PROGRAMACION",
-  "OPERARIO_DESPACHO",
-  "OPERARIO_BODEGA",
-  "OPERARIO",
-  "OPERARIO_INTEGRACION_CALIDAD",
-  "CONFECCIONISTA",
-  "EMPAQUE",
-];
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -183,7 +159,7 @@ export function NotificationsPage() {
                   setPage(1);
                 }}
               >
-                {roleOptions.map((r) => (
+                {roleValues.map((r) => (
                   <SelectItem key={r}>{r}</SelectItem>
                 ))}
               </Select>

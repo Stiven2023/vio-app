@@ -27,28 +27,28 @@ export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {
     operationType: "PLOTTER",
   },
   sublimacion: {
-    label: "Sublimation",
+    label: "Sublimación",
     role: Role.OPERARIO,
     operationType: "SUBLIMACION",
   },
   corte: {
-    label: "Cutting",
+    label: "Corte",
     role: Role.OPERARIO,
     operationType: "CORTE_MANUAL",
   },
   integracion: {
-    label: "Integration",
+    label: "Integración",
     role: Role.OPERARIO_INTEGRACION_CALIDAD,
     operationType: "INTEGRACION",
   },
   confeccion: {
-    label: "Sewing",
+    label: "Confección",
     role: Role.CONFECCIONISTA,
     operationType: "CONFECCION",
   },
-  empaque: { label: "Packing", role: Role.EMPAQUE, operationType: "EMPAQUE" },
+  empaque: { label: "Empaque", role: Role.EMPAQUE, operationType: "EMPAQUE" },
   despacho: {
-    label: "Dispatch",
+    label: "Despacho",
     role: Role.OPERARIO_DESPACHO,
     operationType: "DESPACHO",
   },
@@ -63,22 +63,22 @@ export const ESTADO_CONFIG: Record<
   }
 > = {
   completado: {
-    label: "Completed",
+    label: "Completado",
     color: "success",
     icon: <MdCheckCircle size={12} />,
   },
   en_proceso: {
-    label: "In progress",
+    label: "En proceso",
     color: "primary",
     icon: <MdSchedule size={12} />,
   },
   pendiente: {
-    label: "Pending",
+    label: "Pendiente",
     color: "default",
     icon: <MdSchedule size={12} />,
   },
   reponer: {
-    label: "Restock",
+    label: "Reponer",
     color: "danger",
     icon: <MdWarning size={12} />,
   },

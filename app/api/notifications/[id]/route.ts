@@ -2,8 +2,13 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { notifications } from "@/src/db/erp/schema";
+import {
+  dbJsonError,
+  jsonError,
+  zodFirstErrorEnvelope,
+} from "@/src/utils/api-error";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
-import { dbErrorResponse } from "@/src/utils/db-errors";
+import { notificationParamsSchema } from "@/src/utils/notifications-contract";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -21,16 +26,26 @@ export async function PATCH(
 
   const forbidden = await requirePermission(request, "VER_NOTIFICACION");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para ver notificaciones.");
+  }
 
   const role = getRoleFromRequest(request);
 
-  if (!role) return new Response("Role not found", { status: 403 });
+  if (!role) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para ver notificaciones.");
+  }
 
-  const { id } = await params;
-  const nid = String(id ?? "").trim();
+  const parsedParams = notificationParamsSchema.safeParse(await params);
 
-  if (!nid) return new Response("id required", { status: 400 });
+  if (!parsedParams.success) {
+    return zodFirstErrorEnvelope(
+      parsedParams.error,
+      "Parámetros de notificación inválidos.",
+    );
+  }
+
+  const nid = parsedParams.data.id;
 
   try {
     const [updated] = await db
@@ -39,16 +54,23 @@ export async function PATCH(
       .where(and(eq(notifications.id, nid), eq(notifications.role, role)))
       .returning({ id: notifications.id });
 
-    if (!updated) return new Response("Not found", { status: 404 });
+    if (!updated) {
+      return jsonError(404, "NOT_FOUND", "Notificación no encontrada.");
+    }
 
     return Response.json(updated);
   } catch (error) {
-    const response = dbErrorResponse(error);
+    const response = dbJsonError(
+      error,
+      "No se pudo actualizar la notificación.",
+    );
 
     if (response) return response;
 
-    return new Response("No se pudo actualizar notificacion", {
-      status: 500,
-    });
+    return jsonError(
+      500,
+      "INTERNAL_ERROR",
+      "No se pudo actualizar la notificación.",
+    );
   }
 }

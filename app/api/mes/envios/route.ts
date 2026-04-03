@@ -5,14 +5,23 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
 
 import { erpDb, mesDb } from "@/src/db";
-import { orderItems } from "@/src/db/erp/schema";
-import { mesShipmentItems, mesShipments } from "@/src/db/mes/schema";
 import {
-  mesShipmentAreaValues,
-  mesTransportTypeValues,
-} from "@/src/db/enums";
+  clientLegalStatus,
+  orderItems,
+  orders,
+  preInvoices,
+} from "@/src/db/erp/schema";
+import { mesItemTags, mesShipmentItems, mesShipments } from "@/src/db/mes/schema";
+import { jsonError, jsonForbidden, jsonNotFound, zodFirstErrorEnvelope, dbJsonError } from "@/src/utils/api-error";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import {
+  getDispatchBlockingRule,
+  hasAccountingApproval,
+  isDispatchShipment,
+  mesEnvioCreateSchema,
+  normalizeDispatchApprovals,
+} from "@/src/utils/mes-workflow";
 import { parsePaginationStrict } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -24,7 +33,7 @@ export async function GET(request: Request) {
   const limited = rateLimit(request, { key: "mes:envios:get", limit: 300, windowMs: 60_000 });
   if (limited) return limited;
   const forbidden = await requirePermission(request, "VER_MES");
-  if (forbidden) return forbidden;
+  if (forbidden) return jsonForbidden();
 
   const { searchParams } = new URL(request.url);
   const { page, pageSize, offset } = parsePaginationStrict(searchParams, {
@@ -32,7 +41,11 @@ export async function GET(request: Request) {
     maxPageSize: 100,
   });
   const orderId = String(searchParams.get("orderId") ?? "").trim();
-  if (!orderId) return new Response("orderId required", { status: 400 });
+  if (!orderId) {
+    return jsonError(400, "VALIDATION_ERROR", "El pedido es obligatorio.", {
+      orderId: ["Debes indicar el pedido a consultar."],
+    });
+  }
 
   const [{ total }] = await mesDb
     .select({ total: sql<number>`count(*)::int` })
@@ -57,6 +70,7 @@ export async function GET(request: Request) {
       segundaParadaDestino: mesShipments.segundaParadaDestino,
       observaciones: mesShipments.observaciones,
       evidenciaUrl: mesShipments.evidenciaUrl,
+      dispatchApprovals: mesShipments.dispatchApprovals,
       status: mesShipments.status,
       salidaAt: mesShipments.salidaAt,
       llegadaAt: mesShipments.llegadaAt,
@@ -119,71 +133,186 @@ export async function POST(request: Request) {
   const limited = rateLimit(request, { key: "mes:envios:post", limit: 60, windowMs: 60_000 });
   if (limited) return limited;
   const forbidden = await requirePermission(request, "EDITAR_MES");
-  if (forbidden) return forbidden;
+  if (forbidden) return jsonForbidden();
 
-  const body = await request.json();
-  const orderId = toStr(body?.orderId);
-  if (!orderId) return new Response("orderId required", { status: 400 });
+  let body: unknown;
 
-  const origenArea = String(body?.origenArea ?? "").toUpperCase();
-  if (!(mesShipmentAreaValues as readonly string[]).includes(origenArea))
-    return new Response("origenArea invalido", { status: 400 });
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
 
-  const destinoArea = String(body?.destinoArea ?? "").toUpperCase();
-  if (!(mesShipmentAreaValues as readonly string[]).includes(destinoArea))
-    return new Response("destinoArea invalido", { status: 400 });
+  const parsed = mesEnvioCreateSchema.safeParse(body);
 
-  const transporteTipo = String(body?.transporteTipo ?? "").toUpperCase();
-  if (!(mesTransportTypeValues as readonly string[]).includes(transporteTipo))
-    return new Response("transporteTipo invalido", { status: 400 });
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos del envío son inválidos.");
+  }
 
-  if (transporteTipo === "LINEA_TERCERO" && !toStr(body?.empresaTercero))
-    return new Response("empresaTercero requerida para LINEA_TERCERO", { status: 400 });
+  const payload = parsed.data;
+  const orderId = payload.orderId;
+  const origenArea = payload.origenArea;
+  const destinoArea = payload.destinoArea;
+  const transporteTipo = payload.transporteTipo;
 
   const empleadoId = getEmployeeIdFromRequest(request);
-  const itemsRaw: Array<{ orderItemId: string; quantity: number; notes?: string }> =
-    Array.isArray(body?.items) ? body.items : [];
+  const itemsRaw = payload.items.map((item) => ({
+    orderItemId: String(item.orderItemId).trim(),
+    quantity: Math.max(0, Number(item.quantity) || 0),
+    notes: toStr(item.notes),
+  }));
 
-  const createdEnvio = await mesDb.transaction(async (tx) => {
-    const [envio] = await tx
-      .insert(mesShipments)
-      .values({
-        orderId,
-        origenArea: origenArea as any,
-        origenNombre: toStr(body?.origenNombre),
-        destinoArea: destinoArea as any,
-        destinoNombre: toStr(body?.destinoNombre),
-        transporteTipo: transporteTipo as any,
-        transportistaEmpleadoId: toStr(body?.transportistaEmpleadoId),
-        transportistaNombre: toStr(body?.transportistaNombre),
-        empresaTercero: toStr(body?.empresaTercero),
-        guiaNumero: toStr(body?.guiaNumero),
-        placa: toStr(body?.placa),
-        requiereSegundaParada: Boolean(body?.requiereSegundaParada),
-        segundaParadaTipo: toStr(body?.segundaParadaTipo),
-        segundaParadaDestino: toStr(body?.segundaParadaDestino),
-        observaciones: toStr(body?.observaciones),
-        evidenciaUrl: toStr(body?.evidenciaUrl),
-        status: "CREADO",
-        salidaAt: body?.salidaAt ? new Date(body.salidaAt) : null,
-        createdBy: empleadoId,
-      } as any)
-      .returning({ id: mesShipments.id });
+  try {
+    const [orderRow] = await erpDb
+      .select({ id: orders.id, clientId: orders.clientId, orderCode: orders.orderCode })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
 
-    if (!envio?.id) throw new Error("No se pudo crear el envio");
+    if (!orderRow) {
+      return jsonNotFound("El pedido indicado no existe.");
+    }
 
-    if (itemsRaw.length > 0) {
+    const itemIds = itemsRaw.map((item) => item.orderItemId);
+    const orderItemsRows = itemIds.length
+      ? await erpDb
+          .select({ id: orderItems.id, orderId: orderItems.orderId })
+          .from(orderItems)
+          .where(inArray(orderItems.id, itemIds))
+      : [];
+
+    const validItemIds = new Set(
+      orderItemsRows
+        .filter((item) => String(item.orderId ?? "") === orderId)
+        .map((item) => String(item.id ?? "").trim()),
+    );
+
+    if (validItemIds.size !== itemIds.length) {
+      return jsonError(
+        422,
+        "INVALID_ORDER_ITEMS",
+        "Uno o más diseños no pertenecen al pedido seleccionado.",
+        {
+          items: ["Verifica los diseños incluidos en el envío."],
+        },
+      );
+    }
+
+    if (isDispatchShipment({ origenArea, destinoArea })) {
+      const [prefacturaRow] = await erpDb
+        .select({
+          accountingStatus: preInvoices.status,
+          advanceReceived: preInvoices.advanceReceived,
+          advanceStatus: preInvoices.advanceStatus,
+        })
+        .from(preInvoices)
+        .where(eq(preInvoices.orderId, orderId))
+        .limit(1);
+
+      const [legalStatusRow] = orderRow.clientId
+        ? await erpDb
+            .select({ isLegallyEnabled: clientLegalStatus.isLegallyEnabled })
+            .from(clientLegalStatus)
+            .where(eq(clientLegalStatus.clientId, orderRow.clientId))
+            .limit(1)
+        : [];
+
+      const [{ totalItems }] = await erpDb
+        .select({ totalItems: sql<number>`count(*)::int` })
+        .from(orderItems)
+        .where(eq(orderItems.orderId, orderId));
+
+      const isPartialDispatch = Number(totalItems ?? 0) > itemIds.length;
+      const partialApprovalRows = isPartialDispatch
+        ? await mesDb
+            .select({ id: mesItemTags.id })
+            .from(mesItemTags)
+            .where(
+              sql`${mesItemTags.orderId} = ${orderId} and ${mesItemTags.tag} = 'DESPACHO_PARCIAL' and ${mesItemTags.orderItemId} in ${itemIds}`,
+            )
+            .limit(1)
+        : [];
+
+      const dispatchApprovals = normalizeDispatchApprovals(
+        payload.dispatchApprovals,
+      );
+
+      const blockingRule = getDispatchBlockingRule({
+        legalEnabled: legalStatusRow?.isLegallyEnabled ?? true,
+        sellerApproved: Boolean(dispatchApprovals?.seller.approved),
+        carteraApproved: Boolean(dispatchApprovals?.cartera.approved),
+        accountingApproved:
+          hasAccountingApproval({
+            accountingStatus: prefacturaRow?.accountingStatus ?? null,
+            advanceReceived: prefacturaRow?.advanceReceived ?? null,
+            advanceStatus: prefacturaRow?.advanceStatus ?? null,
+          }) && Boolean(dispatchApprovals?.accounting.approved),
+        isPartialDispatch,
+        partialDispatchApproved:
+          partialApprovalRows.length > 0 ||
+          !isPartialDispatch ||
+          Boolean(dispatchApprovals?.partial?.approved),
+      });
+
+      if (blockingRule) {
+        return jsonError(
+          blockingRule.status,
+          blockingRule.code,
+          blockingRule.message,
+          blockingRule.fieldErrors,
+        );
+      }
+    }
+
+    const createdEnvio = await mesDb.transaction(async (tx) => {
+      const [envio] = await tx
+        .insert(mesShipments)
+        .values({
+          orderId,
+          origenArea: origenArea as any,
+          origenNombre: toStr(payload.origenNombre),
+          destinoArea: destinoArea as any,
+          destinoNombre: toStr(payload.destinoNombre),
+          transporteTipo: transporteTipo as any,
+          transportistaEmpleadoId: toStr(payload.transportistaEmpleadoId),
+          transportistaNombre: toStr(payload.transportistaNombre),
+          empresaTercero: toStr(payload.empresaTercero),
+          guiaNumero: toStr(payload.guiaNumero),
+          placa: toStr(payload.placa),
+          requiereSegundaParada: Boolean(payload.requiereSegundaParada),
+          segundaParadaTipo: toStr(payload.segundaParadaTipo),
+          segundaParadaDestino: toStr(payload.segundaParadaDestino),
+          observaciones: toStr(payload.observaciones),
+          evidenciaUrl: toStr(payload.evidenciaUrl),
+          dispatchApprovals: normalizeDispatchApprovals(payload.dispatchApprovals),
+          status: "CREADO",
+          salidaAt: payload.salidaAt ? new Date(payload.salidaAt) : null,
+          createdBy: empleadoId,
+        } as any)
+        .returning({ id: mesShipments.id });
+
+      if (!envio?.id) throw new Error("No se pudo crear el envío");
+
       await tx.insert(mesShipmentItems).values(
         itemsRaw.map((item) => ({
           envioId: envio.id,
-          orderItemId: String(item.orderItemId),
-          quantity: Math.max(0, Number(item.quantity) || 0),
-          notes: item.notes ? String(item.notes).trim() : null,
+          orderItemId: item.orderItemId,
+          quantity: item.quantity,
+          notes: item.notes,
         })),
       );
-    }
-    return envio;
-  });
 
-  return Response.json({ id: createdEnvio.id }, { status: 201 });
+      return envio;
+    });
+
+    return Response.json({ id: createdEnvio.id }, { status: 201 });
+  } catch (error) {
+    const resp = dbJsonError(error, "No se pudo registrar el envío.");
+
+    if (resp) return resp;
+
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo registrar el envío.");
+  }
 }

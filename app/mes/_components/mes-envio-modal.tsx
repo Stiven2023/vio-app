@@ -36,6 +36,12 @@ export type EnvioItem = {
   quantity: number;
 };
 
+type DispatchApprovalState = {
+  approved: boolean;
+  approverName: string;
+  notes: string;
+};
+
 export type MesEnvioModalProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,6 +65,24 @@ const TRANSPORT_OPTIONS: { value: TransporteTipo; label: string }[] = [
 
 function getErrorMessage(e: unknown) {
   return e instanceof Error ? e.message : String(e ?? "Error desconocido");
+}
+
+async function readApiErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload = await response.json();
+
+    if (typeof payload?.message === "string" && payload.message.trim()) {
+      return payload.message.trim();
+    }
+  } catch {}
+
+  try {
+    const text = await response.text();
+
+    if (text.trim()) return text.trim();
+  } catch {}
+
+  return fallback;
 }
 
 export function MesEnvioModal({
@@ -85,6 +109,26 @@ export function MesEnvioModal({
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
     () => new Set(availableItems.map((i) => i.orderItemId)),
   );
+  const [sellerApproval, setSellerApproval] = useState<DispatchApprovalState>({
+    approved: false,
+    approverName: "",
+    notes: "",
+  });
+  const [carteraApproval, setCarteraApproval] = useState<DispatchApprovalState>({
+    approved: false,
+    approverName: "",
+    notes: "",
+  });
+  const [accountingApproval, setAccountingApproval] = useState<DispatchApprovalState>({
+    approved: false,
+    approverName: "",
+    notes: "",
+  });
+  const [partialDispatchApproval, setPartialDispatchApproval] = useState<DispatchApprovalState>({
+    approved: false,
+    approverName: "",
+    notes: "",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const toggleItem = (id: string) => {
@@ -107,6 +151,10 @@ export function MesEnvioModal({
     setSegundaParadaTipo("");
     setSegundaParadaDestino("");
     setSelectedItemIds(new Set(availableItems.map((i) => i.orderItemId)));
+    setSellerApproval({ approved: false, approverName: "", notes: "" });
+    setCarteraApproval({ approved: false, approverName: "", notes: "" });
+    setAccountingApproval({ approved: false, approverName: "", notes: "" });
+    setPartialDispatchApproval({ approved: false, approverName: "", notes: "" });
     setSubmitting(false);
   };
 
@@ -129,6 +177,42 @@ export function MesEnvioModal({
     ) {
       toast.error("Ingresa el nombre de la empresa de transporte");
       return;
+    }
+
+    const isDispatchFlow = origenArea === "DESPACHO" && destinoArea === "DESPACHO";
+    const isPartialDispatch =
+      isDispatchFlow && selectedItemIds.size < availableItems.length;
+
+    const approvalsRequiringName = [
+      [sellerApproval.approved, sellerApproval.approverName, "vendedor"],
+      [carteraApproval.approved, carteraApproval.approverName, "cartera"],
+      [accountingApproval.approved, accountingApproval.approverName, "contabilidad"],
+      [partialDispatchApproval.approved, partialDispatchApproval.approverName, "despacho parcial"],
+    ] as const;
+
+    if (isDispatchFlow) {
+      if (
+        !sellerApproval.approved ||
+        !carteraApproval.approved ||
+        !accountingApproval.approved
+      ) {
+        toast.error(
+          "Registra las aprobaciones de vendedor, cartera y contabilidad antes de despachar",
+        );
+        return;
+      }
+
+      if (isPartialDispatch && !partialDispatchApproval.approved) {
+        toast.error("El despacho parcial requiere aprobación explícita");
+        return;
+      }
+
+      for (const [approved, approverName, label] of approvalsRequiringName) {
+        if (approved && !approverName.trim()) {
+          toast.error(`Indica quién aprobó ${label}`);
+          return;
+        }
+      }
     }
 
     const items = availableItems
@@ -155,13 +239,41 @@ export function MesEnvioModal({
           segundaParadaTipo: segundaParadaTipo.trim() || null,
           segundaParadaDestino: segundaParadaDestino.trim() || null,
           observaciones: observaciones.trim() || null,
+          dispatchApprovals: isDispatchFlow
+            ? {
+                seller: {
+                  approved: sellerApproval.approved,
+                  approverName: sellerApproval.approverName.trim() || null,
+                  notes: sellerApproval.notes.trim() || null,
+                },
+                cartera: {
+                  approved: carteraApproval.approved,
+                  approverName: carteraApproval.approverName.trim() || null,
+                  notes: carteraApproval.notes.trim() || null,
+                },
+                accounting: {
+                  approved: accountingApproval.approved,
+                  approverName: accountingApproval.approverName.trim() || null,
+                  notes: accountingApproval.notes.trim() || null,
+                },
+                partial: {
+                  approved: partialDispatchApproval.approved,
+                  approverName:
+                    partialDispatchApproval.approverName.trim() || null,
+                  notes: partialDispatchApproval.notes.trim() || null,
+                },
+              }
+            : undefined,
           items,
         }),
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Error al crear el envío");
+        const message = await readApiErrorMessage(
+          res,
+          "Error al crear el envío",
+        );
+        throw new Error(message);
       }
 
       toast.success("Envío registrado correctamente");
@@ -294,8 +406,93 @@ export function MesEnvioModal({
             value={observaciones}
             onValueChange={setObservaciones}
           />
-        </ModalBody>
 
+          {origenArea === "DESPACHO" && destinoArea === "DESPACHO" ? (
+            <div className="space-y-4 rounded-medium border border-default-200 p-3">
+              <p className="text-sm font-semibold">Aprobaciones de despacho</p>
+              <div className="grid gap-3 md:grid-cols-3">
+                {[
+                  {
+                    label: "Vendedor",
+                    state: sellerApproval,
+                    setState: setSellerApproval,
+                  },
+                  {
+                    label: "Cartera",
+                    state: carteraApproval,
+                    setState: setCarteraApproval,
+                  },
+                  {
+                    label: "Contabilidad",
+                    state: accountingApproval,
+                    setState: setAccountingApproval,
+                  },
+                ].map(({ label, state, setState }) => (
+                  <div
+                    key={label}
+                    className="space-y-2 rounded-medium border border-default-100 p-3"
+                  >
+                    <Switch
+                      isSelected={state.approved}
+                      onValueChange={(approved) =>
+                        setState((prev) => ({ ...prev, approved }))
+                      }
+                    >
+                      OK {label}
+                    </Switch>
+                    <Input
+                      label={`Aprobado por ${label}`}
+                      placeholder="Nombre de quien aprueba"
+                      value={state.approverName}
+                      onValueChange={(approverName) =>
+                        setState((prev) => ({ ...prev, approverName }))
+                      }
+                    />
+                    <Textarea
+                      label={`Notas ${label}`}
+                      minRows={1}
+                      placeholder="Opcional"
+                      value={state.notes}
+                      onValueChange={(notes) =>
+                        setState((prev) => ({ ...prev, notes }))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {selectedItemIds.size < availableItems.length ? (
+                <div className="space-y-2 rounded-medium border border-warning-200 bg-warning-50 p-3">
+                  <Switch
+                    isSelected={partialDispatchApproval.approved}
+                    onValueChange={(approved) =>
+                      setPartialDispatchApproval((prev) => ({ ...prev, approved }))
+                    }
+                  >
+                    OK despacho parcial
+                  </Switch>
+                  <Input
+                    label="Aprobado por despacho parcial"
+                    placeholder="Nombre de quien autoriza el parcial"
+                    value={partialDispatchApproval.approverName}
+                    onValueChange={(approverName) =>
+                      setPartialDispatchApproval((prev) => ({ ...prev, approverName }))
+                    }
+                  />
+                  <Textarea
+                    label="Notas despacho parcial"
+                    minRows={1}
+                    placeholder="Motivo o alcance del parcial"
+                    value={partialDispatchApproval.notes}
+                    onValueChange={(notes) =>
+                      setPartialDispatchApproval((prev) => ({ ...prev, notes }))
+                    }
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </ModalBody>
         <ModalFooter>
           <Button
             variant="light"
@@ -315,3 +512,4 @@ export function MesEnvioModal({
     </Modal>
   );
 }
+

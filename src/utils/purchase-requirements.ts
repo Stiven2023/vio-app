@@ -1,7 +1,10 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  inventoryItems,
+  orderItemMoldingInsumos,
+  orderItemMoldings,
   orderItems,
   purchaseRequirementLines,
   purchaseRequirements,
@@ -22,6 +25,10 @@ function toLineDescription(requirement: {
   return `${base}. ${requirement.details}`;
 }
 
+/**
+ * Builds BOM-based purchase requirement lines from `order_item_molding_insumos`
+ * where `qty_to_purchase > 0`. Falls back to hint-based lines if no BOM data.
+ */
 export async function ensurePurchaseRequirementsForOrder(args: {
   dbOrTx?: any;
   orderId: string;
@@ -65,11 +72,114 @@ export async function ensurePurchaseRequirementsForOrder(args: {
       continue;
     }
 
+    // ── BOM path: query real molding insumos ──────────────────────────────
+    const moldings = await dbOrTx
+      .select({ id: orderItemMoldings.id })
+      .from(orderItemMoldings)
+      .where(eq(orderItemMoldings.orderItemId, item.id));
+
+    const moldingIds: string[] = moldings.map(
+      (m: { id: string }) => m.id,
+    );
+
+    let bomLines: Array<{
+      purchaseRequirementId: string;
+      category: string;
+      description: string;
+      qtyPlanned: string;
+      unit: string;
+      coverageStatus: string;
+      inventoryItemId: string | null;
+      orderItemMoldingInsumoId: string | null;
+    }> = [];
+
+    const insumoIdsToMarkSolicited: string[] = [];
+
+    if (moldingIds.length > 0) {
+      const insumos = await dbOrTx
+        .select({
+          id: orderItemMoldingInsumos.id,
+          inventoryItemId: orderItemMoldingInsumos.inventoryItemId,
+          qtyToPurchase: orderItemMoldingInsumos.qtyToPurchase,
+          unit: orderItemMoldingInsumos.unit,
+          size: orderItemMoldingInsumos.size,
+          itemName: inventoryItems.name,
+          itemCode: inventoryItems.itemCode,
+        })
+        .from(orderItemMoldingInsumos)
+        .innerJoin(
+          inventoryItems,
+          eq(orderItemMoldingInsumos.inventoryItemId, inventoryItems.id),
+        )
+        .where(
+          and(
+            inArray(orderItemMoldingInsumos.orderItemMoldingId, moldingIds),
+            gt(orderItemMoldingInsumos.qtyToPurchase, "0"),
+          ),
+        );
+
+      bomLines = insumos.map(
+        (ins: {
+          id: string;
+          inventoryItemId: string;
+          qtyToPurchase: string;
+          unit: string;
+          size: string | null;
+          itemName: string;
+          itemCode: string;
+        }) => {
+          insumoIdsToMarkSolicited.push(ins.id);
+          const sizeLabel = ins.size ? ` (talla ${ins.size})` : "";
+          return {
+            purchaseRequirementId: "", // filled after insert
+            category: "INSUMO",
+            description: `${ins.itemCode} - ${ins.itemName}${sizeLabel}`,
+            qtyPlanned: String(ins.qtyToPurchase),
+            unit: ins.unit,
+            coverageStatus: "PENDIENTE",
+            inventoryItemId: ins.inventoryItemId,
+            orderItemMoldingInsumoId: ins.id,
+          };
+        },
+      );
+    }
+
+    // ── Fallback: qualitative hints ───────────────────────────────────────
+    let hintLines: Array<{
+      purchaseRequirementId: string;
+      category: string;
+      description: string;
+      qtyPlanned: string;
+      unit: string;
+      coverageStatus: string;
+      inventoryItemId: null;
+      orderItemMoldingInsumoId: null;
+    }> = [];
+
     const design = await getDesignFullView(item.id).catch(() => null);
     const hints = design?.purchaseHints ?? null;
-    const qtyTotal = Number(hints?.qtyTotal ?? item.quantity ?? 0);
-    const qtyPlanned = Number.isFinite(qtyTotal) ? String(Math.max(0, qtyTotal)) : "0";
 
+    if (bomLines.length === 0) {
+      const qtyTotal = Number(hints?.qtyTotal ?? item.quantity ?? 0);
+      const qtyPlanned = Number.isFinite(qtyTotal)
+        ? String(Math.max(0, qtyTotal))
+        : "0";
+
+      hintLines = (hints?.requirements ?? [])
+        .filter((req: any) => req.status !== "DISABLED")
+        .map((req: any) => ({
+          purchaseRequirementId: "",
+          category: req.source ?? "GENERAL",
+          description: toLineDescription(req),
+          qtyPlanned,
+          unit: "UN",
+          coverageStatus: "PENDIENTE",
+          inventoryItemId: null,
+          orderItemMoldingInsumoId: null,
+        }));
+    }
+
+    // ── Insert requirement header ─────────────────────────────────────────
     const [createdRequirement] = await dbOrTx
       .insert(purchaseRequirements)
       .values({
@@ -83,19 +193,21 @@ export async function ensurePurchaseRequirementsForOrder(args: {
 
     if (!createdRequirement) continue;
 
-    const lines = (hints?.requirements ?? [])
-      .filter((req) => req.status !== "DISABLED")
-      .map((req) => ({
-        purchaseRequirementId: createdRequirement.id,
-        category: req.source,
-        description: toLineDescription(req),
-        qtyPlanned,
-        unit: "UN",
-        coverageStatus: req.status === "WARNING" ? "PENDIENTE" : "PENDIENTE",
-      }));
+    const allLines = [...bomLines, ...hintLines].map((l) => ({
+      ...l,
+      purchaseRequirementId: createdRequirement.id,
+    }));
 
-    if (lines.length > 0) {
-      await dbOrTx.insert(purchaseRequirementLines).values(lines as any);
+    if (allLines.length > 0) {
+      await dbOrTx.insert(purchaseRequirementLines).values(allLines as any);
+    }
+
+    // Mark insumos as SOLICITADO_COMPRAS so MES knows they're in purchasing
+    if (insumoIdsToMarkSolicited.length > 0) {
+      await dbOrTx
+        .update(orderItemMoldingInsumos)
+        .set({ status: "SOLICITADO_COMPRAS" })
+        .where(inArray(orderItemMoldingInsumos.id, insumoIdsToMarkSolicited));
     }
 
     created += 1;

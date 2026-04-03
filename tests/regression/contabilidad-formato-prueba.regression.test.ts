@@ -2,9 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  assertErrorEnvelopeShape,
+  assertFieldError,
+  assertStatus,
+} from "@/tests/templates/endpoint-test-helpers";
+import {
   buildAccountingQaTemplateCsv,
   buildAccountingQaTemplateFilename,
 } from "@/src/utils/accounting-test-format";
+import { jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
+import { mesEnvioCreateSchema } from "@/src/utils/mes-workflow";
 
 test("contabilidad formato QA: genera encabezados esperados", () => {
   const csv = buildAccountingQaTemplateCsv();

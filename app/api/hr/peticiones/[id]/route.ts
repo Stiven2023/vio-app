@@ -48,16 +48,21 @@ export async function PATCH(
 
     const responseNotes = parsedNotes !== undefined ? (parsedNotes || null) : undefined;
     const resolvedBy = getEmployeeIdFromRequest(request);
-    const isResolved = rawStatus === "APROBADO" || rawStatus === "RECHAZADO" || rawStatus === "CERRADO";
+    const normalizedStatus: NonNullable<typeof employeeRequests.$inferInsert.status> =
+      rawStatus === "CERRADO" ? "RESUELTO" : rawStatus;
+    const isResolved =
+      normalizedStatus === "APROBADO" ||
+      normalizedStatus === "RECHAZADO" ||
+      normalizedStatus === "RESUELTO";
 
     const patch: {
-      status: typeof rawStatus;
+      status: NonNullable<typeof employeeRequests.$inferInsert.status>;
       responseNotes?: string | null;
       resolvedBy?: string | null;
       resolvedAt?: Date | null;
       updatedAt: Date;
     } = {
-      status: rawStatus,
+      status: normalizedStatus,
       updatedAt: new Date(),
     };
 

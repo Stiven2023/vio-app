@@ -30,6 +30,7 @@ export async function GET(request: Request) {
 
     const employeeId = String(searchParams.get("employeeId") ?? "").trim();
     const rawStatus = String(searchParams.get("status") ?? "").trim().toUpperCase();
+    const normalizedStatus = rawStatus === "CERRADO" ? "RESUELTO" : rawStatus;
     const rawType = String(searchParams.get("type") ?? "").trim().toUpperCase();
     const dateFrom = String(searchParams.get("dateFrom") ?? "").trim();
     const dateTo = String(searchParams.get("dateTo") ?? "").trim();
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
 
     if (employeeId) clauses.push(eq(employeeRequests.employeeId, employeeId));
     if (VALID_STATUSES.has(rawStatus)) {
-      clauses.push(eq(employeeRequests.status, rawStatus as any));
+      clauses.push(eq(employeeRequests.status, normalizedStatus as any));
     }
     if (VALID_TYPES.has(rawType)) {
       clauses.push(eq(employeeRequests.type, rawType as any));

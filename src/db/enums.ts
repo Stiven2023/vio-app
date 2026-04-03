@@ -338,6 +338,103 @@ Object.defineProperty(FactoringStatusEnum, "enumValues", {
   value: factoringStatusValues,
 });
 
+export const AccountingAccountType = {
+  ASSET: "ASSET",
+  LIABILITY: "LIABILITY",
+  EQUITY: "EQUITY",
+  REVENUE: "REVENUE",
+  EXPENSE: "EXPENSE",
+  COST: "COST",
+  MEMO: "MEMO",
+} as const;
+
+export const accountingAccountTypeValues = [
+  "ASSET",
+  "LIABILITY",
+  "EQUITY",
+  "REVENUE",
+  "EXPENSE",
+  "COST",
+  "MEMO",
+] as const;
+
+export const AccountingAccountTypeEnum = z.enum(accountingAccountTypeValues);
+Object.defineProperty(AccountingAccountTypeEnum, "enumValues", {
+  value: accountingAccountTypeValues,
+});
+
+export const AccountingNormalBalance = {
+  DEBIT: "DEBIT",
+  CREDIT: "CREDIT",
+} as const;
+
+export const accountingNormalBalanceValues = ["DEBIT", "CREDIT"] as const;
+
+export const AccountingNormalBalanceEnum = z.enum(
+  accountingNormalBalanceValues,
+);
+Object.defineProperty(AccountingNormalBalanceEnum, "enumValues", {
+  value: accountingNormalBalanceValues,
+});
+
+export const AccountingPeriodStatus = {
+  OPEN: "OPEN",
+  CLOSED: "CLOSED",
+} as const;
+
+export const accountingPeriodStatusValues = ["OPEN", "CLOSED"] as const;
+
+export const AccountingPeriodStatusEnum = z.enum(accountingPeriodStatusValues);
+Object.defineProperty(AccountingPeriodStatusEnum, "enumValues", {
+  value: accountingPeriodStatusValues,
+});
+
+export const AccountingEntryStatus = {
+  DRAFT: "DRAFT",
+  POSTED: "POSTED",
+  REVERSED: "REVERSED",
+} as const;
+
+export const accountingEntryStatusValues = [
+  "DRAFT",
+  "POSTED",
+  "REVERSED",
+] as const;
+
+export const AccountingEntryStatusEnum = z.enum(accountingEntryStatusValues);
+Object.defineProperty(AccountingEntryStatusEnum, "enumValues", {
+  value: accountingEntryStatusValues,
+});
+
+export const AccountingSourceModule = {
+  SALES: "SALES",
+  PURCHASES: "PURCHASES",
+  INVENTORY: "INVENTORY",
+  PAYROLL: "PAYROLL",
+  TAX: "TAX",
+  TREASURY: "TREASURY",
+  BANKING: "BANKING",
+  GENERAL: "GENERAL",
+} as const;
+
+export const accountingSourceModuleValues = [
+  "SALES",
+  "PURCHASES",
+  "INVENTORY",
+  "PAYROLL",
+  "TAX",
+  "TREASURY",
+  "BANKING",
+  "GENERAL",
+] as const;
+
+export const AccountingSourceModuleEnum = z.enum(
+  accountingSourceModuleValues,
+);
+Object.defineProperty(AccountingSourceModuleEnum, "enumValues", {
+  value: accountingSourceModuleValues,
+});
+
 /* ========================= */
 /*     HR ENUMS             */
 /* ========================= */
@@ -1308,7 +1405,9 @@ export const mesItemTagValues = [
 ] as const;
 export type MesItemTag = (typeof mesItemTagValues)[number];
 export const MesItemTagEnum = z.enum(mesItemTagValues);
-Object.defineProperty(MesItemTagEnum, "enumValues", { value: mesItemTagValues });
+Object.defineProperty(MesItemTagEnum, "enumValues", {
+  value: mesItemTagValues,
+});
 
 /* ===========================
    MES — ENVÍOS ENTRE ÁREAS
@@ -1321,7 +1420,9 @@ export const mesShipmentAreaValues = [
 ] as const;
 export type MesShipmentArea = (typeof mesShipmentAreaValues)[number];
 export const MesShipmentAreaEnum = z.enum(mesShipmentAreaValues);
-Object.defineProperty(MesShipmentAreaEnum, "enumValues", { value: mesShipmentAreaValues });
+Object.defineProperty(MesShipmentAreaEnum, "enumValues", {
+  value: mesShipmentAreaValues,
+});
 
 export const mesTransportTypeValues = [
   "MENSAJERO",
@@ -1330,7 +1431,9 @@ export const mesTransportTypeValues = [
 ] as const;
 export type MesTransportType = (typeof mesTransportTypeValues)[number];
 export const MesTransportTypeEnum = z.enum(mesTransportTypeValues);
-Object.defineProperty(MesTransportTypeEnum, "enumValues", { value: mesTransportTypeValues });
+Object.defineProperty(MesTransportTypeEnum, "enumValues", {
+  value: mesTransportTypeValues,
+});
 
 export const mesEnvioStatusValues = [
   "CREADO",
@@ -1341,4 +1444,70 @@ export const mesEnvioStatusValues = [
 ] as const;
 export type MesEnvioStatus = (typeof mesEnvioStatusValues)[number];
 export const MesEnvioStatusEnum = z.enum(mesEnvioStatusValues);
-Object.defineProperty(MesEnvioStatusEnum, "enumValues", { value: mesEnvioStatusValues });
+Object.defineProperty(MesEnvioStatusEnum, "enumValues", {
+  value: mesEnvioStatusValues,
+});
+
+/* ===========================
+   MES — ESTADO DE PAGO ENVÍO
+=========================== */
+export const mesPaymentStatusValues = [
+  "PENDIENTE",
+  "PARCIAL",
+  "PAGADO",
+  "NOTIFICADO_WHATSAPP",
+] as const;
+export type MesPaymentStatus = (typeof mesPaymentStatusValues)[number];
+export const MesPaymentStatusEnum = z.enum(mesPaymentStatusValues);
+Object.defineProperty(MesPaymentStatusEnum, "enumValues", {
+  value: mesPaymentStatusValues,
+});
+
+/* ===========================
+   MES — ESTADO APROBACIÓN MUESTRA
+=========================== */
+export const mesSampleApprovalStatusValues = [
+  "PENDIENTE",
+  "APROBADO",
+  "RECHAZADO",
+] as const;
+export type MesSampleApprovalStatus = (typeof mesSampleApprovalStatusValues)[number];
+export const MesSampleApprovalStatusEnum = z.enum(
+  mesSampleApprovalStatusValues,
+);
+Object.defineProperty(MesSampleApprovalStatusEnum, "enumValues", {
+  value: mesSampleApprovalStatusValues,
+});
+
+/* ===========================
+   MES — ESTADO REPOSICIÓN
+=========================== */
+export const mesReposicionStatusValues = [
+  "ABIERTA",
+  "EN_PROCESO",
+  "CERRADA",
+] as const;
+export type MesReposicionStatus = (typeof mesReposicionStatusValues)[number];
+export const MesReposicionStatusEnum = z.enum(mesReposicionStatusValues);
+Object.defineProperty(MesReposicionStatusEnum, "enumValues", {
+  value: mesReposicionStatusValues,
+});
+
+/* ===========================
+   MES — ÁREA ETAPA PRODUCCIÓN
+=========================== */
+export const mesProductionStageAreaValues = [
+  "MONTAJE",
+  "SUBLIMACION",
+  "PLOTTER",
+  "CORTE_LASER",
+  "CORTE_MANUAL",
+  "CONFECCION",
+  "CONTROL_CALIDAD",
+  "DESPACHO",
+] as const;
+export type MesProductionStageArea = (typeof mesProductionStageAreaValues)[number];
+export const MesProductionStageAreaEnum = z.enum(mesProductionStageAreaValues);
+Object.defineProperty(MesProductionStageAreaEnum, "enumValues", {
+  value: mesProductionStageAreaValues,
+});

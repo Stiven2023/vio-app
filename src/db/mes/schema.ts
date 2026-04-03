@@ -2,6 +2,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -14,8 +15,13 @@ import {
   mesAssignmentStatusValues,
   mesEnvioStatusValues,
   mesItemTagValues,
+  mesPaymentStatusValues,
   mesPriorityValues,
+  mesProductionStageAreaValues,
   mesQueueStatusValues,
+  mesRepoReasonValues,
+  mesReposicionStatusValues,
+  mesSampleApprovalStatusValues,
   mesShipmentAreaValues,
   mesTransportTypeValues,
 } from "../enums";
@@ -43,6 +49,31 @@ export const mesEnvioStatusPgEnum = pgEnum(
   mesEnvioStatusValues,
 );
 
+export const mesPaymentStatusPgEnum = pgEnum(
+  "mes_payment_status",
+  mesPaymentStatusValues,
+);
+
+export const mesSampleApprovalStatusPgEnum = pgEnum(
+  "mes_sample_approval_status",
+  mesSampleApprovalStatusValues,
+);
+
+export const mesReposicionStatusPgEnum = pgEnum(
+  "mes_reposicion_status",
+  mesReposicionStatusValues,
+);
+
+export const mesProductionStageAreaPgEnum = pgEnum(
+  "mes_production_stage_area",
+  mesProductionStageAreaValues,
+);
+
+export const mesRepoReasonPgEnum = pgEnum(
+  "mes_repo_reason",
+  mesRepoReasonValues,
+);
+
 export const mesPriorityEnum = mesPriorityPgEnum;
 export const mesQueueStatusEnum = mesQueueStatusPgEnum;
 export const mesAssignmentStatusEnum = mesAssignmentStatusPgEnum;
@@ -50,6 +81,11 @@ export const mesItemTagEnum = mesItemTagPgEnum;
 export const mesShipmentAreaEnum = mesShipmentAreaPgEnum;
 export const mesTransportTypeEnum = mesTransportTypePgEnum;
 export const mesEnvioStatusEnum = mesEnvioStatusPgEnum;
+export const mesPaymentStatusEnum = mesPaymentStatusPgEnum;
+export const mesSampleApprovalStatusEnum = mesSampleApprovalStatusPgEnum;
+export const mesReposicionStatusEnum = mesReposicionStatusPgEnum;
+export const mesProductionStageAreaEnum = mesProductionStageAreaPgEnum;
+export const mesRepoReasonEnum = mesRepoReasonPgEnum;
 
 export const operativeDashboardLogs = pgTable(
   "operative_dashboard_logs",
@@ -179,10 +215,19 @@ export const mesEnvios = pgTable(
     segundaParadaDestino: varchar("segunda_parada_destino", { length: 200 }),
     observaciones: text("observaciones"),
     evidenciaUrl: text("evidencia_url"),
+    dispatchApprovals: jsonb("dispatch_approvals"),
     status: mesEnvioStatusEnum("status").notNull().default("CREADO"),
     salidaAt: timestamp("salida_at", { withTimezone: true }),
     llegadaAt: timestamp("llegada_at", { withTimezone: true }),
     retornoAt: timestamp("retorno_at", { withTimezone: true }),
+    // Tracking despacho matriz
+    logisticOperator: varchar("logistic_operator", { length: 100 }),
+    destinationAddress: text("destination_address"),
+    paymentStatus: mesPaymentStatusEnum("payment_status").notNull().default("PENDIENTE"),
+    requiresDeclaredValue: boolean("requires_declared_value").notNull().default(false),
+    courierBroughtBy: varchar("courier_brought_by", { length: 150 }),
+    receptionLocation: varchar("reception_location", { length: 200 }),
+    receptionStatus: varchar("reception_status", { length: 50 }),
     // External reference to ERP employees.id
     createdBy: uuid("created_by"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -207,6 +252,7 @@ export const mesEnvioItems = pgTable(
     // External reference to ERP order_items.id
     orderItemId: uuid("order_item_id").notNull(),
     quantity: integer("quantity").notNull().default(0),
+    packedQuantity: integer("packed_quantity"),
     notes: text("notes"),
   },
   (t) => [index("idx_mes_envio_items_order_item_id").on(t.orderItemId)],
@@ -216,3 +262,90 @@ export const mesShipmentStatusPgEnum = mesEnvioStatusPgEnum;
 export const mesShipmentStatusEnum = mesEnvioStatusEnum;
 export const mesShipments = mesEnvios;
 export const mesShipmentItems = mesEnvioItems;
+
+// ─── Etapas de producción por área ─────────────────────────────────────────
+
+export const mesProductionStages = pgTable(
+  "mes_production_stages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // External references to ERP orders/order_items
+    orderId: uuid("order_id").notNull(),
+    orderItemId: uuid("order_item_id").notNull(),
+    area: mesProductionStageAreaEnum("area").notNull(),
+    stageName: varchar("stage_name", { length: 100 }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    // External references to ERP employees / MES machines
+    operatorId: uuid("operator_id"),
+    operatorName: varchar("operator_name", { length: 150 }),
+    machineId: varchar("machine_id", { length: 60 }),
+    machineName: varchar("machine_name", { length: 100 }),
+    quantityProcessed: integer("quantity_processed").notNull().default(0),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("idx_mes_production_stages_order_id").on(t.orderId),
+    index("idx_mes_production_stages_order_item_id").on(t.orderItemId),
+    index("idx_mes_production_stages_operator_id").on(t.operatorId),
+    index("idx_mes_production_stages_area").on(t.area),
+  ],
+);
+
+// ─── Reposiciones ────────────────────────────────────────────────────────────
+
+export const mesReposiciones = pgTable(
+  "mes_reposiciones",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    repositionCode: varchar("reposition_code", { length: 20 }).notNull().unique(),
+    // External references to ERP
+    orderId: uuid("order_id").notNull(),
+    orderItemId: uuid("order_item_id").notNull(),
+    causeCode: mesRepoReasonEnum("cause_code").notNull(),
+    requestingProcess: varchar("requesting_process", { length: 80 }),
+    quantityRequested: integer("quantity_requested").notNull().default(1),
+    status: mesReposicionStatusEnum("status").notNull().default("ABIERTA"),
+    notes: text("notes"),
+    // External references to ERP employees.id
+    requestedBy: uuid("requested_by"),
+    closedBy: uuid("closed_by"),
+    closedAt: timestamp("closed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("idx_mes_reposiciones_order_id").on(t.orderId),
+    index("idx_mes_reposiciones_order_item_id").on(t.orderItemId),
+    index("idx_mes_reposiciones_reposition_code").on(t.repositionCode),
+    index("idx_mes_reposiciones_status").on(t.status),
+  ],
+);
+
+// ─── Seguimiento de aprobación de muestra en orden ──────────────────────────
+// Extiende mesProductionQueue con pin de montaje y aprobación de muestra.
+// Se persiste en tabla separada para no alterar el PK de la cola existente.
+
+export const mesSampleApprovals = pgTable(
+  "mes_sample_approvals",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // External reference to ERP orders.id (1-to-1)
+    orderId: uuid("order_id").notNull().unique(),
+    assemblyPin: varchar("assembly_pin", { length: 50 }),
+    sampleApprovalStatus: mesSampleApprovalStatusEnum("sample_approval_status")
+      .notNull()
+      .default("PENDIENTE"),
+    sampleApprovedAt: timestamp("sample_approved_at", { withTimezone: true }),
+    sampleApprovedBy: varchar("sample_approved_by", { length: 150 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("idx_mes_sample_approvals_order_id").on(t.orderId),
+    index("idx_mes_sample_approvals_status").on(t.sampleApprovalStatus),
+  ],
+);

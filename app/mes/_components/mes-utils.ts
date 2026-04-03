@@ -197,7 +197,7 @@ export function buildPedidoGroups(
         currentProcess:
           currentProcessByDesign?.get(
             buildProcessDesignKey(orderCode, row.design ?? ""),
-          ) ?? "Not started",
+          ) ?? "Sin iniciar",
         processHistory:
           processHistoryByDesign?.get(
             buildProcessDesignKey(orderCode, row.design ?? ""),

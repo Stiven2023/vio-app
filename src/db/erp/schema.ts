@@ -258,4 +258,10 @@ export {
   clientLegalStatus,
   pettyCashFunds,
   pettyCashTransactions,
+  confectionistRates,
+  packerRates,
+  confectionistPaymentRequests,
+  packerPaymentRequests,
+  supplierInvoices,
+  supplierPayments,
 } from "../schema";

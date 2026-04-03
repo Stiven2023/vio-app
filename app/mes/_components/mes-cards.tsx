@@ -36,7 +36,7 @@ function TicketBadge({ ticket, proceso }: { ticket: string; proceso: string }) {
   const bg = colors[prefix] ?? "bg-gray-600/90";
 
   return (
-    <Tooltip content={`${proceso} ticket`} placement="left">
+    <Tooltip content={`Ticket ${proceso}`} placement="left">
       <div
         className={[
           "absolute top-3 right-3 z-10",
@@ -62,7 +62,7 @@ function DisenoCard({
   diseno: DisenoGroup;
   showProcessTracking?: boolean;
 }) {
-  const currentProcess = diseno.currentProcess ?? "Not started";
+  const currentProcess = diseno.currentProcess ?? "Sin iniciar";
   const processHistory = diseno.processHistory ?? [];
   const total = diseno.tallas.reduce((s, t) => s + t.cantidad, 0);
   const completadas = diseno.tallas
@@ -75,7 +75,7 @@ function DisenoCard({
       <CardHeader className="pb-1 pt-3 px-4 flex flex-col items-start gap-0">
         <div className="flex items-center gap-2 w-full">
           <span className="text-xs font-semibold uppercase tracking-widest text-default-400">
-            Design {diseno.diseno}
+            Diseño {diseno.diseno}
           </span>
           <Chip
             className="ml-auto text-[10px] h-5 px-2"
@@ -83,7 +83,7 @@ function DisenoCard({
             size="sm"
             variant="flat"
           >
-            {pct}% completed
+            {pct}% completado
           </Chip>
         </div>
         <p className="text-sm font-bold text-foreground mt-0.5">
@@ -91,20 +91,20 @@ function DisenoCard({
         </p>
         <div className="flex gap-3 mt-1">
           <span className="text-xs text-default-400">
-            Fabric:{" "}
+            Tela:{" "}
             <span className="text-foreground font-medium">{diseno.tela}</span>
           </span>
           <span className="text-xs text-default-400">
-            Gender:{" "}
+            Género:{" "}
             <span className="text-foreground font-medium">{diseno.genero}</span>
           </span>
           <span className="text-xs text-default-400">
             Total:{" "}
-            <span className="text-foreground font-bold">{total} units</span>
+            <span className="text-foreground font-bold">{total} unidades</span>
           </span>
           {showProcessTracking ? (
             <span className="text-xs text-default-400">
-              Current process:{" "}
+              Proceso actual:{" "}
               <span className="text-foreground font-semibold">
                 {currentProcess}
               </span>
@@ -141,13 +141,13 @@ function DisenoCard({
           }}
         >
           <TableHeader>
-            <TableColumn>Size</TableColumn>
-            <TableColumn>Quantity</TableColumn>
-            <TableColumn>Status</TableColumn>
-            <TableColumn>Responsible</TableColumn>
-            <TableColumn>Start date</TableColumn>
-            <TableColumn>End date</TableColumn>
-            <TableColumn>Observation</TableColumn>
+            <TableColumn>Talla</TableColumn>
+            <TableColumn>Cantidad</TableColumn>
+            <TableColumn>Estado</TableColumn>
+            <TableColumn>Responsable</TableColumn>
+            <TableColumn>Fecha inicio</TableColumn>
+            <TableColumn>Fecha fin</TableColumn>
+            <TableColumn>Observación</TableColumn>
           </TableHeader>
           <TableBody>
             {diseno.tallas.map((talla, ti) => {
@@ -216,11 +216,11 @@ function DisenoCard({
         {showProcessTracking ? (
           <div className="mt-2 rounded-medium border border-default-200 bg-default-50 p-2">
             <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-default-500">
-              Previous process records
+              Historial de procesos
             </div>
             {processHistory.length === 0 ? (
               <div className="text-xs text-default-400">
-                No previous records yet.
+                Sin registros anteriores.
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5">
@@ -293,19 +293,19 @@ export function PedidoSection({
 
         <div className="flex items-center gap-2 ml-auto flex-wrap justify-end">
           <span className="text-xs text-default-400">
-            Seller:{" "}
+            Vendedor:{" "}
             <span className="text-foreground font-medium">
               {pedido.vendedor}
             </span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Lead time:{" "}
+            Plazo:{" "}
             <span className="text-foreground font-medium">{pedido.plazo}d</span>
           </span>
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
-            Delivery:{" "}
+            Entrega:{" "}
             <span className="text-foreground font-medium">
               {pedido.fechaEntrega}
             </span>
@@ -313,7 +313,7 @@ export function PedidoSection({
           <Divider className="h-4" orientation="vertical" />
           <span className="text-xs text-default-400">
             Total:{" "}
-            <span className="text-foreground font-bold">{totalUds} units</span>
+            <span className="text-foreground font-bold">{totalUds} unidades</span>
           </span>
           <Chip
             className="text-[10px]"
@@ -329,7 +329,7 @@ export function PedidoSection({
             size="sm"
             variant="bordered"
           >
-            {pedido.disenos.length} design
+            {pedido.disenos.length} diseño
             {pedido.disenos.length !== 1 ? "s" : ""}
           </Chip>
         </div>
@@ -372,30 +372,30 @@ export function MontajeAssignmentHeader({
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {isTakenByMe ? (
           <Chip color="success" size="sm" variant="flat">
-            Taken by me
+            Tomado por mí
           </Chip>
         ) : null}
         {isTakenByOther ? (
           <Chip color="warning" size="sm" variant="flat">
-            Taken by another operator
+            Tomado por otro operario
           </Chip>
         ) : null}
         {!assignment ? (
           <Chip color="default" size="sm" variant="flat">
-            Not taken
+            Sin tomar
           </Chip>
         ) : null}
       </div>
       {activeProceso === "montaje" ? (
         <div className="text-xs text-default-500">
-          Taken by {assignment?.userLabel ?? "-"}
+          Tomado por {assignment?.userLabel ?? "-"}
           {assignment?.takenAt ? ` · ${formatDate(assignment.takenAt)}` : ""}
         </div>
       ) : null}
       {activeProceso === "montaje" && isTakenByOther ? (
         <div className="mt-2 rounded-medium border border-warning-300 bg-warning-50 px-3 py-2 text-xs text-warning-800">
-          This order is taken by another operator. You cannot register
-          production until it is released.
+          Este pedido está tomado por otro operario. No puedes registrar
+          producción hasta que sea liberado.
         </div>
       ) : null}
     </>

@@ -63,6 +63,24 @@ type QueueOrderRow = {
   itemIds: string[];
 };
 
+async function readApiErrorMessage(response: Response, fallback: string) {
+  try {
+    const payload = await response.json();
+
+    if (typeof payload?.message === "string" && payload.message.trim()) {
+      return payload.message.trim();
+    }
+  } catch {}
+
+  try {
+    const text = await response.text();
+
+    if (text.trim()) return text.trim();
+  } catch {}
+
+  return fallback;
+}
+
 export function MesProductionQueueTab() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,15 +314,23 @@ export function MesProductionQueueTab() {
         method: "POST",
       });
 
-      if (!res.ok) throw new Error("No se pudo confirmar la cola");
+      if (!res.ok) {
+        throw new Error(
+          await readApiErrorMessage(res, "No se pudo confirmar la cola"),
+        );
+      }
       const data = await res.json();
 
       toast.success(
         `Cola confirmada. ${data.confirmed} tickets activados para Montaje inicial/final.`,
       );
       await load();
-    } catch {
-      toast.error("No se pudo confirmar la cola de producción");
+    } catch (error) {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "No se pudo confirmar la cola de producción",
+      );
     } finally {
       setConfirming(false);
     }
