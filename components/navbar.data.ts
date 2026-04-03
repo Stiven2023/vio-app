@@ -148,6 +148,9 @@ export const buildNavbarSections = ({
       locale === "es" ? "Permisos y ausencias" : "Leaves & absences",
     pila:
       locale === "es" ? "Seguridad social (PILA)" : "Social security (PILA)",
+    schedule: locale === "es" ? "Horario" : "Schedule",
+    certifications: locale === "es" ? "Certificaciones" : "Certifications",
+    scheduleCalendar: locale === "es" ? "Calendario de horarios" : "Schedule calendar",
   };
 
   return [
@@ -275,6 +278,8 @@ export const buildNavbarSections = ({
       icon: FiUsers,
       visible: true,
       items: [
+        { name: labels.scheduleCalendar, href: "/hr/permisos-ausencias" },
+        { name: labels.leavesAbsences, href: "/hcm/leaves-and-absences" },
         { name: labels.nonCompliance, href: "/hcm/non-compliance" },
         { name: labels.overtime, href: "/hcm/overtime" },
         { name: labels.vacations, href: "/hcm/vacations" },
@@ -286,7 +291,6 @@ export const buildNavbarSections = ({
           name: labels.payrollProvisions,
           href: "/hcm/payroll-provisions",
         },
-        { name: labels.leavesAbsences, href: "/hcm/leaves-and-absences" },
         { name: labels.pila, href: "/hcm/social-security-pila" },
       ],
     },
@@ -332,6 +336,8 @@ export const buildHcmNavbarSections = ({
   if (!isAuthenticated) return [];
 
   const labels = {
+    schedule: locale === "es" ? "Horario" : "Schedule",
+    certifications: locale === "es" ? "Certificaciones" : "Certifications",
     nonCompliance: locale === "es" ? "Incumplimientos" : "Non-compliance",
     overtime: locale === "es" ? "Horas extra" : "Overtime",
     vacations: locale === "es" ? "Vacaciones" : "Vacations",
@@ -354,6 +360,9 @@ export const buildHcmNavbarSections = ({
       icon: FiUsers,
       visible: true,
       items: [
+        { name: labels.schedule, href: "/hcm" },
+        { name: labels.certifications, href: "/hcm" },
+        { name: labels.leavesAbsences, href: "/hcm/leaves-and-absences" },
         { name: labels.nonCompliance, href: "/hcm/non-compliance" },
         { name: labels.overtime, href: "/hcm/overtime" },
         { name: labels.vacations, href: "/hcm/vacations" },
@@ -362,7 +371,6 @@ export const buildHcmNavbarSections = ({
         { name: labels.bonuses, href: "/hcm/bonuses" },
         { name: labels.perDiem, href: "/hcm/per-diem" },
         { name: labels.payrollProvisions, href: "/hcm/payroll-provisions" },
-        { name: labels.leavesAbsences, href: "/hcm/leaves-and-absences" },
         { name: labels.pila, href: "/hcm/social-security-pila" },
       ],
     },

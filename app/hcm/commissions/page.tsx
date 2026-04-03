@@ -1,7 +1,16 @@
-export const dynamic = "force-dynamic";
+﻿export const dynamic = "force-dynamic";
 
-import { redirect } from "next/navigation";
+import { HcmModuleRequestsTab } from "../_components/hcm-module-requests-tab";
 
-export default function CommissionsPage() {
-  redirect("/erp/under-construction?modulo=hcm&area=commissions");
+export default function Page() {
+  return (
+    <div className="container mx-auto max-w-7xl px-6 pt-16">
+      <HcmModuleRequestsTab
+        defaultType="SOLICITUD"
+        description="Registro y trazabilidad de solicitudes relacionadas con comisiones."
+        moduleKey="COMMISSIONS"
+        title="HCM | Comisiones"
+      />
+    </div>
+  );
 }

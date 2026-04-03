@@ -12,7 +12,7 @@ if (!url) {
 }
 
 export default {
-  schema: "./src/db/erp/schema.ts",
+  schema: "./src/db/schema.ts",
   out: "./drizzle/erp",
   dialect: "postgresql",
   dbCredentials: { url },

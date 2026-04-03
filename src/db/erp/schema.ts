@@ -179,6 +179,13 @@ export const factoringRecords = pgTable("factoring_records", {
 });
 
 export {
+  cashReceiptStatusEnum,
+  factoringStatusEnum,
+  paymentMethodEnum,
+  taxZoneEnum,
+} from "../schema";
+
+export {
   employees,
   clients,
   clientLegalStatusHistory,
