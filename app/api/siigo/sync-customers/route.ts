@@ -10,7 +10,7 @@ import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
-import { requireOfficialBankForSiigo } from "@/src/utils/siigo-bank-guard";
+import { getOptionalOfficialBankForSiigo } from "@/src/utils/siigo-bank-guard";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
 
 const ACCOUNTING_ROLES = new Set([
@@ -450,16 +450,19 @@ export async function POST(request: Request) {
   const employeeId = getEmployeeIdFromRequest(request);
 
   let syncJobId: string | null = null;
+  let officialBankId: string | null = null;
 
   try {
-    const officialBank = await requireOfficialBankForSiigo(request);
+    const officialBank = await getOptionalOfficialBankForSiigo(request);
+
+    officialBankId = officialBank?.id ?? null;
 
     const [createdJob] = await db
       .insert(siigoSyncJobs)
       .values({
         jobType: "SYNC_CUSTOMERS",
         status: "RUNNING",
-        bankId: officialBank.id,
+        bankId: officialBankId,
         requestedBy: employeeId,
         payload: {
           source: "api/siigo/sync-customers",
@@ -654,7 +657,7 @@ export async function POST(request: Request) {
           status: "SUCCESS",
           result: {
             ...payload,
-            bankId: officialBank.id,
+            bankId: officialBankId,
           },
           finishedAt: new Date(),
           updatedAt: new Date(),
@@ -664,18 +667,26 @@ export async function POST(request: Request) {
 
     return Response.json(payload);
   } catch (err) {
+    const errorMessage =
+      err instanceof Error ? err.message : String(err ?? "unknown");
+
     if (syncJobId) {
-      await db
-        .update(siigoSyncJobs)
-        .set({
-          status: "FAILED",
-          result: {
-            error: err instanceof Error ? err.message : "unknown",
-          },
-          finishedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(siigoSyncJobs.id, syncJobId));
+      try {
+        await db
+          .update(siigoSyncJobs)
+          .set({
+            status: "FAILED",
+            result: {
+              error: errorMessage,
+              cause: err instanceof Error ? err.cause : null,
+            },
+            finishedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(siigoSyncJobs.id, syncJobId));
+      } catch {
+        // Log silently if sync job update fails
+      }
     }
 
     if (err instanceof SiigoApiError) {
@@ -685,8 +696,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Return detailed error for debugging
     return Response.json(
-      { ok: false, error: "Error en sincronización con Siigo" },
+      {
+        ok: false,
+        error: errorMessage || "Error unknown in Siigo sync",
+        hint: errorMessage.includes("Missing")
+          ? "Verify bank id, x-siigo-bank-id header, or SIIGO_OFFICIAL_BANK_ID env"
+          : errorMessage.includes("No official bank configured for Siigo")
+            ? "No hay banco oficial y en sync de clientes no es obligatorio. Reintente y si persiste revise conectividad SIIGO."
+          : errorMessage.includes("does not exist")
+            ? "The bank ID provided does not exist in the system"
+            : errorMessage.includes("inactive")
+              ? "The bank is inactive, cannot sync"
+              : errorMessage.includes("official")
+                ? "Only official banks can be used for Siigo sync"
+                : undefined,
+      },
       { status: 500 },
     );
   }

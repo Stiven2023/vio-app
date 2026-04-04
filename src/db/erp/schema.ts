@@ -213,6 +213,7 @@ export {
   suppliers,
   packers,
   orderItemPacker,
+  messengers,
   inventoryCategories,
   warehouses,
   inventoryItems,

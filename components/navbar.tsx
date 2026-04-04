@@ -523,9 +523,9 @@ export const Navbar = () => {
                     </Button>
                   </DropdownTrigger>
                   <DropdownMenu aria-label={section.label}>
-                    {section.items.map((item) => (
+                    {section.items.map((item, index) => (
                       <DropdownItem
-                        key={`${section.key}-${item.href}`}
+                        key={`${section.key}-${item.href}-${index}`}
                         as={NextLink}
                         href={item.href}
                       >
@@ -850,9 +850,9 @@ export const Navbar = () => {
                     {section.label}
                   </div>
                   <div className="flex flex-col">
-                    {section.items.map((item) => (
+                    {section.items.map((item, index) => (
                       <NavbarMenuItem
-                        key={`mobile-hcm-${section.key}-${item.href}`}
+                        key={`mobile-hcm-${section.key}-${item.href}-${index}`}
                         className="w-full min-w-0"
                       >
                         <Link

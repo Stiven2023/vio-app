@@ -59,6 +59,22 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
   return JSON.parse(content) as T;
 }
 
+function normalizeOrderCode(value: string | null | undefined): string {
+  const text = String(value ?? "").trim().toUpperCase();
+
+  if (!text) {
+    return "";
+  }
+
+  const match = text.match(/\b(VN|VT|VI|VW|VR|VP)\s*-?\s*(\d+)\b/);
+
+  if (match) {
+    return `${match[1]} - ${match[2]}`;
+  }
+
+  return text.replace(/\s+/g, " ");
+}
+
 function parseAmount(value: string | number | null): string | null {
   if (value == null) {
     return null;
@@ -89,7 +105,7 @@ async function main() {
   let skipped = 0;
 
   for (const row of rows) {
-    const orderCode = (row.order_code_ref ?? "").trim();
+    const orderCode = normalizeOrderCode(row.order_code_ref);
     if (!orderCode) {
       skipped += 1;
       continue;

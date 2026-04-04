@@ -1,17 +1,18 @@
 import "dotenv/config";
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { and, eq, inArray } from "drizzle-orm";
 
 import { erpDb } from "../src/db/erp";
+import { mesDb } from "../src/db/mes";
 import {
-  operativeDashboardLogs,
   orderItemPackaging,
   orderItems,
   orders,
 } from "../src/db/schema";
+import { operativeDashboardLogs as mesOperativeDashboardLogs } from "../src/db/mes/schema";
 
 type RawOrder = {
   id: string;
@@ -26,6 +27,7 @@ type RawOrder = {
 
 type RawOrderItem = {
   id: string;
+  order_id_ref?: string;
   order_code_ref: string;
   diseno_numero: number;
   name: string | null;
@@ -68,6 +70,21 @@ type CliOptions = {
   dir: string;
   base: string;
   dryRun: boolean;
+};
+
+type MesLogReportRow = {
+  logId: string;
+  orderCode: string;
+  orderItemLegacyId: string;
+  orderItemDbId: string;
+  status: "inserted" | "would_insert";
+};
+
+type MissingItemReportRow = {
+  logId: string;
+  orderCode: string;
+  orderItemLegacyId: string;
+  reason: string;
 };
 
 type OrderInsert = typeof orders.$inferInsert;
@@ -128,6 +145,22 @@ function parseOptions(argv: string[]): CliOptions {
   return options;
 }
 
+function normalizeOrderCode(value: string | null | undefined): string {
+  const text = String(value ?? "").trim().toUpperCase();
+
+  if (!text) {
+    return "";
+  }
+
+  const match = text.match(/\b(VN|VT|VI|VW|VR|VP)\s*-?\s*(\d+)\b/);
+
+  if (match) {
+    return `${match[1]} - ${match[2]}`;
+  }
+
+  return text.replace(/\s+/g, " ");
+}
+
 function mapOrderType(orderCode: string): OrderTypeValue {
   const prefix = orderCode.split(" - ")[0]?.trim().toUpperCase() ?? "";
   return ORDER_TYPE_BY_PREFIX[prefix] ?? "VN";
@@ -160,7 +193,17 @@ function toDate(value: string | null): Date | null {
 
 function safeName(value: string | null): string {
   const trimmed = (value ?? "").trim();
-  return trimmed.length > 0 ? trimmed : "Diseño migrado";
+  return clampText(trimmed.length > 0 ? trimmed : "Diseño migrado", 255) ?? "Diseño migrado";
+}
+
+function clampText(value: string | null | undefined, max: number): string | undefined {
+  const text = String(value ?? "").trim();
+
+  if (!text) {
+    return undefined;
+  }
+
+  return text.slice(0, max);
 }
 
 function makeItemKey(orderId: string, row: RawOrderItem): string {
@@ -191,7 +234,13 @@ async function main() {
   const rawPackaging = await readJsonFile<RawPackaging[]>(packagingPath);
   const rawLogs = await readJsonFile<RawLog[]>(logsPath);
 
-  const orderCodes = [...new Set(rawOrders.map((row) => row.order_code))];
+  const orderCodes = [
+    ...new Set(
+      rawOrders
+        .map((row) => normalizeOrderCode(row.order_code))
+        .filter((code) => code.length > 0),
+    ),
+  ];
 
   const existingOrders =
     orderCodes.length === 0
@@ -202,18 +251,23 @@ async function main() {
           .where(inArray(orders.orderCode, orderCodes));
 
   const orderIdByCode = new Map(existingOrders.map((row) => [row.orderCode, row.id]));
+  const orderIdByLegacyId = new Map<string, string>();
 
   let insertedOrders = 0;
   let skippedOrders = 0;
 
   for (const row of rawOrders) {
-    const existingId = orderIdByCode.get(row.order_code);
+    const normalizedOrderCode = normalizeOrderCode(row.order_code);
+    const existingId = orderIdByCode.get(normalizedOrderCode);
     if (existingId) {
+      orderIdByLegacyId.set(row.id, existingId);
       skippedOrders += 1;
       continue;
     }
 
     if (options.dryRun) {
+      orderIdByCode.set(normalizedOrderCode, row.id);
+      orderIdByLegacyId.set(row.id, row.id);
       insertedOrders += 1;
       continue;
     }
@@ -222,8 +276,8 @@ async function main() {
       .insert(orders)
       .values({
         id: row.id,
-        orderCode: row.order_code,
-        type: mapOrderType(row.order_code),
+        orderCode: normalizedOrderCode,
+        type: mapOrderType(normalizedOrderCode),
         kind: row.kind === "COMPLETACION" || row.kind === "REFERENTE" ? row.kind : "NUEVO",
         status: mapOrderStatus(row.status),
         deliveryDate: row.delivery_date ?? undefined,
@@ -233,7 +287,8 @@ async function main() {
       })
       .onConflictDoNothing({ target: orders.orderCode });
 
-    orderIdByCode.set(row.order_code, row.id);
+    orderIdByCode.set(normalizedOrderCode, row.id);
+    orderIdByLegacyId.set(row.id, row.id);
     insertedOrders += 1;
   }
 
@@ -275,7 +330,9 @@ async function main() {
   const legacyItemIdToDbId = new Map<string, string>();
 
   for (const row of rawItems) {
-    const orderId = orderIdByCode.get(row.order_code_ref);
+    const orderId =
+      (row.order_id_ref ? orderIdByLegacyId.get(String(row.order_id_ref).trim()) : undefined) ??
+      orderIdByCode.get(normalizeOrderCode(row.order_code_ref));
     if (!orderId) {
       skippedItems += 1;
       continue;
@@ -307,9 +364,9 @@ async function main() {
       id: row.id,
       orderId,
       name: safeName(row.name),
-      garmentType: row.garment_type ?? undefined,
-      fabric: row.fabric ?? undefined,
-      gender: row.gender ?? undefined,
+      garmentType: clampText(row.garment_type, 30),
+      fabric: clampText(row.fabric, 100),
+      gender: clampText(row.gender, 50),
       quantity: Math.max(0, Number(row.quantity ?? 0)),
       estimatedLeadDays: row.estimated_lead_days ?? undefined,
       status: mapItemStatus(row.status),
@@ -374,18 +431,34 @@ async function main() {
 
   let insertedLogs = 0;
   let skippedLogs = 0;
+  const mesLogsInsertedReport: MesLogReportRow[] = [];
+  const mesLogsMissingItemReport: MissingItemReportRow[] = [];
+  const orderCodesNotLinkedSet = new Set<string>();
 
   for (const row of rawLogs) {
+    const normalizedLogOrderCode = normalizeOrderCode(row.order_code);
+    const hasErpOrderLink = orderIdByCode.has(normalizedLogOrderCode);
+
+    if (!hasErpOrderLink && normalizedLogOrderCode) {
+      orderCodesNotLinkedSet.add(normalizedLogOrderCode);
+    }
+
     const dbItemId = legacyItemIdToDbId.get(row.order_item_id);
     if (!dbItemId) {
+      mesLogsMissingItemReport.push({
+        logId: row.id,
+        orderCode: normalizedLogOrderCode,
+        orderItemLegacyId: row.order_item_id,
+        reason: "order_item_id sin relación en ERP (no encontrado en order_items mapeados)",
+      });
       skippedLogs += 1;
       continue;
     }
 
-    const existingLog = await erpDb
-      .select({ id: operativeDashboardLogs.id })
-      .from(operativeDashboardLogs)
-      .where(eq(operativeDashboardLogs.id, row.id))
+    const existingLog = await mesDb
+      .select({ id: mesOperativeDashboardLogs.id })
+      .from(mesOperativeDashboardLogs)
+      .where(eq(mesOperativeDashboardLogs.id, row.id))
       .limit(1);
 
     if (existingLog.length > 0) {
@@ -394,11 +467,18 @@ async function main() {
     }
 
     if (options.dryRun) {
+      mesLogsInsertedReport.push({
+        logId: row.id,
+        orderCode: normalizedLogOrderCode,
+        orderItemLegacyId: row.order_item_id,
+        orderItemDbId: dbItemId,
+        status: "would_insert",
+      });
       insertedLogs += 1;
       continue;
     }
 
-    await erpDb.insert(operativeDashboardLogs).values({
+    await mesDb.insert(mesOperativeDashboardLogs).values({
       id: row.id,
       roleArea: row.role_area ?? "OPERARIOS",
       operationType: row.operation_type ?? undefined,
@@ -416,14 +496,52 @@ async function main() {
       repoCheck: Boolean(row.repo_check),
     });
 
+    mesLogsInsertedReport.push({
+      logId: row.id,
+      orderCode: normalizedLogOrderCode,
+      orderItemLegacyId: row.order_item_id,
+      orderItemDbId: dbItemId,
+      status: "inserted",
+    });
+
     insertedLogs += 1;
   }
+
+  const report = {
+    generatedAt: new Date().toISOString(),
+    mode: options.dryRun ? "DRY_RUN" : "APPLY",
+    summary: {
+      orders: { inserted: insertedOrders, skipped: skippedOrders },
+      orderItems: { inserted: insertedItems, skipped: skippedItems },
+      orderItemPackaging: {
+        inserted: insertedPackaging,
+        skipped: skippedPackaging,
+      },
+      mesOperativeDashboardLogs: { inserted: insertedLogs, skipped: skippedLogs },
+    },
+    sections: {
+      // 1) Logs de producción insertados (o a insertar) en MES
+      logsMesInserted: mesLogsInsertedReport,
+      // 2) Logs omitidos por item no encontrado
+      logsSkippedByMissingItem: mesLogsMissingItemReport,
+      // 3) Order codes no enlazados a ERP
+      orderCodesNotLinkedToErp: [...orderCodesNotLinkedSet].sort(),
+    },
+  };
+
+  const reportPath = path.join(
+    options.dir,
+    `${options.base}.seguimiento.conciliacion.json`,
+  );
+
+  await writeFile(reportPath, JSON.stringify(report, null, 2), "utf-8");
 
   console.log(`mode=${options.dryRun ? "DRY_RUN" : "APPLY"}`);
   console.log(`orders: inserted=${insertedOrders}, skipped=${skippedOrders}`);
   console.log(`order_items: inserted=${insertedItems}, skipped=${skippedItems}`);
   console.log(`order_item_packaging: inserted=${insertedPackaging}, skipped=${skippedPackaging}`);
-  console.log(`operative_dashboard_logs: inserted=${insertedLogs}, skipped=${skippedLogs}`);
+  console.log(`mes.operative_dashboard_logs: inserted=${insertedLogs}, skipped=${skippedLogs}`);
+  console.log(`reporte: ${reportPath}`);
 }
 
 void main();

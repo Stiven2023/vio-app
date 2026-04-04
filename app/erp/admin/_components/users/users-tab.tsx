@@ -126,9 +126,9 @@ export function UsersTab() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+    <div className="space-y-3 min-w-0 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end">
           <FilterSearch
             className="sm:w-72"
             placeholder="Buscar por email…"
@@ -164,7 +164,13 @@ export function UsersTab() {
           headers={["Email", "Activo", "Verificado", "Acciones"]}
         />
       ) : (
-        <Table aria-label="Usuarios">
+        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
+          <Table
+            aria-label="Usuarios"
+            className="w-full table-fixed"
+            classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
+            removeWrapper
+          >
           <TableHeader>
             <TableColumn>Email</TableColumn>
             <TableColumn>Activo</TableColumn>
@@ -223,7 +229,8 @@ export function UsersTab() {
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       )}
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}

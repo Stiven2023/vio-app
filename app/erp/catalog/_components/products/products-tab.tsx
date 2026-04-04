@@ -130,6 +130,7 @@ export function ProductsTab({
   const [pendingDelete, setPendingDelete] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [syncingSiigo, setSyncingSiigo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -279,18 +280,59 @@ export function ProductsTab({
     }
   };
 
+  const migrateFromSiigo = async () => {
+    if (syncingSiigo) return;
+
+    setSyncingSiigo(true);
+    try {
+      const response = await fetch("/api/siigo/import-products", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const errorMsg =
+          (payload as { error?: string; message?: string } | null)?.error ??
+          (payload as { error?: string; message?: string } | null)?.message ??
+          "Error al migrar desde SIIGO";
+
+        throw new Error(errorMsg);
+      }
+
+      const created = Number(payload?.created ?? 0);
+      const skipped = Number(payload?.skipped ?? 0);
+      const errors = Number((payload?.errors ?? []).length);
+
+      if (errors > 0) {
+        toast.success(
+          `Migración parcial: ${created} creados, ${skipped} omitidos, ${errors} con error`,
+        );
+      } else {
+        toast.success(`SIIGO: ${created} creados, ${skipped} ya existían`);
+      }
+
+      refreshProducts();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSyncingSiigo(false);
+    }
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 overflow-x-hidden">
       <div className="space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:overflow-x-hidden">
           <FilterSearch
-            className="sm:w-72"
+            className="sm:flex-1 sm:min-w-60"
             placeholder="Buscar por código…"
             value={searchCode}
             onValueChange={setSearchCode}
           />
           <FilterSelect
-            className="sm:w-64"
+            className="sm:flex-1 sm:min-w-48"
             label="Categoría"
             options={[
               { value: "all", label: "Todas" },
@@ -303,7 +345,7 @@ export function ProductsTab({
             onChange={setCategoryFilter}
           />
           <FilterSelect
-            className="sm:w-56"
+            className="sm:flex-1 sm:min-w-40"
             label="Estado"
             options={[
               { value: "all", label: "Todos" },
@@ -314,7 +356,7 @@ export function ProductsTab({
             onChange={(v) => setStatus(v as StatusFilter)}
           />
           <FilterSelect
-            className="sm:w-56"
+            className="sm:flex-1 sm:min-w-40"
             label="Orden"
             options={[
               { value: "codeAsc", label: "Código (asc)" },
@@ -325,7 +367,7 @@ export function ProductsTab({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:overflow-x-hidden">
           <input
             ref={fileInputRef}
             accept=".csv,text/csv"
@@ -338,31 +380,44 @@ export function ProductsTab({
               importCsv(file);
             }}
           />
-          <Button variant="flat" onPress={exportCsv}>
+          <Button variant="flat" onPress={exportCsv} className="sm:flex-1 sm:max-w-xs">
             Exportar CSV
           </Button>
-          <Button variant="flat" onPress={downloadTemplate}>
+          <Button variant="flat" onPress={downloadTemplate} className="sm:flex-1 sm:max-w-xs">
             Descargar plantilla CSV
           </Button>
           <Button
             color="secondary"
             isDisabled={importing}
             onPress={() => fileInputRef.current?.click()}
+            className="sm:flex-1 sm:max-w-xs"
           >
             {importing ? "Importando..." : "Importar CSV"}
           </Button>
           {canCreate ? (
-            <Button
-              color="primary"
-              onPress={() => {
-                setEditing(null);
-                setModalOpen(true);
-              }}
-            >
-              Crear producto
-            </Button>
+            <>
+              <Button
+                color="secondary"
+                isDisabled={syncingSiigo}
+                variant="flat"
+                className="sm:flex-1 sm:max-w-xs"
+                onPress={migrateFromSiigo}
+              >
+                {syncingSiigo ? "Migrando..." : "Migrar desde SIIGO"}
+              </Button>
+              <Button
+                color="primary"
+                className="sm:flex-1 sm:max-w-xs"
+                onPress={() => {
+                  setEditing(null);
+                  setModalOpen(true);
+                }}
+              >
+                Crear producto
+              </Button>
+            </>
           ) : null}
-          <Button variant="flat" onPress={refreshProducts}>
+          <Button variant="flat" className="sm:flex-1 sm:max-w-xs" onPress={refreshProducts}>
             Refrescar
           </Button>
         </div>
@@ -374,107 +429,109 @@ export function ProductsTab({
           headers={["Código", "Nombre", "Categoría", "Activo", "Acciones"]}
         />
       ) : (
-        <Table removeWrapper aria-label="Productos">
-          <TableHeader>
-            <TableColumn>Código</TableColumn>
-            <TableColumn>Nombre</TableColumn>
-            <TableColumn>Categoría</TableColumn>
-            <TableColumn>
-              {currentCatalog === "INTERNACIONAL"
-                ? "Precio USD"
-                : "Precio Base (1-499)"}
-            </TableColumn>
-            <TableColumn>Activo</TableColumn>
-            <TableColumn>Acciones</TableColumn>
-          </TableHeader>
-          <TableBody
-            emptyContent={emptyContent}
-            items={productsData?.items ?? []}
-          >
-            {(p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-medium text-default-700">
-                  {p.productCode ?? "-"}
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{p.name}</div>
-                    {p.description ? (
-                      <div className="text-xs text-default-500 line-clamp-1">
-                        {p.description}
-                      </div>
-                    ) : null}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {p.categoryId
-                    ? (categoryNameById.get(p.categoryId) ?? "-")
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm font-mono">
-                    {currentCatalog === "INTERNACIONAL"
-                      ? formatCurrency(p.priceUSD, "USD")
-                      : formatCurrency(p.priceCopR1, "COP")}
-                  </span>
-                </TableCell>
-                <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
-                <TableCell>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isDisabled={Boolean(deletingId)}
-                        size="sm"
-                        variant="flat"
-                      >
-                        <BsThreeDotsVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu aria-label="Acciones">
-                      <DropdownItem
-                        key="detail"
-                        startContent={<BsEye />}
-                        onPress={() => {
-                          setSelectedProduct(p);
-                          setDetailsOpen(true);
-                        }}
-                      >
-                        Ver detalles
-                      </DropdownItem>
-
-                      {canEdit ? (
+        <div className="w-full min-w-0 overflow-x-hidden">
+          <Table className="w-full table-fixed" removeWrapper aria-label="Productos">
+            <TableHeader>
+              <TableColumn>Código</TableColumn>
+              <TableColumn>Nombre</TableColumn>
+              <TableColumn>Categoría</TableColumn>
+              <TableColumn>
+                {currentCatalog === "INTERNACIONAL"
+                  ? "Precio USD"
+                  : "Precio Base (1-499)"}
+              </TableColumn>
+              <TableColumn>Activo</TableColumn>
+              <TableColumn>Acciones</TableColumn>
+            </TableHeader>
+            <TableBody
+              emptyContent={emptyContent}
+              items={productsData?.items ?? []}
+            >
+              {(p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-medium text-default-700">
+                    {p.productCode ?? "-"}
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{p.name}</div>
+                      {p.description ? (
+                        <div className="text-xs text-default-500 line-clamp-1">
+                          {p.description}
+                        </div>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {p.categoryId
+                      ? (categoryNameById.get(p.categoryId) ?? "-")
+                      : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm font-mono">
+                      {currentCatalog === "INTERNACIONAL"
+                        ? formatCurrency(p.priceUSD, "USD")
+                        : formatCurrency(p.priceCopR1, "COP")}
+                    </span>
+                  </TableCell>
+                  <TableCell>{p.isActive ? "Sí" : "No"}</TableCell>
+                  <TableCell>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isDisabled={Boolean(deletingId)}
+                          size="sm"
+                          variant="flat"
+                        >
+                          <BsThreeDotsVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Acciones">
                         <DropdownItem
-                          key="edit"
-                          startContent={<BsPencilSquare />}
+                          key="detail"
+                          startContent={<BsEye />}
                           onPress={() => {
-                            setEditing(p);
-                            setModalOpen(true);
+                            setSelectedProduct(p);
+                            setDetailsOpen(true);
                           }}
                         >
-                          Editar
+                          Ver detalles
                         </DropdownItem>
-                      ) : null}
 
-                      {canDelete ? (
-                        <DropdownItem
-                          key="delete"
-                          className="text-danger"
-                          startContent={<BsTrash />}
-                          onPress={() => {
-                            setPendingDelete(p);
-                            setConfirmOpen(true);
-                          }}
-                        >
-                          Eliminar
-                        </DropdownItem>
-                      ) : null}
-                    </DropdownMenu>
-                  </Dropdown>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                        {canEdit ? (
+                          <DropdownItem
+                            key="edit"
+                            startContent={<BsPencilSquare />}
+                            onPress={() => {
+                              setEditing(p);
+                              setModalOpen(true);
+                            }}
+                          >
+                            Editar
+                          </DropdownItem>
+                        ) : null}
+
+                        {canDelete ? (
+                          <DropdownItem
+                            key="delete"
+                            className="text-danger"
+                            startContent={<BsTrash />}
+                            onPress={() => {
+                              setPendingDelete(p);
+                              setConfirmOpen(true);
+                            }}
+                          >
+                            Eliminar
+                          </DropdownItem>
+                        ) : null}
+                      </DropdownMenu>
+                    </Dropdown>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {productsData ? (

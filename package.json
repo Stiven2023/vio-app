@@ -9,7 +9,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --turbopack -p 3001",
     "build": "next build",
     "start": "next start",
     "test:regression": "tsx --test tests/regression/**/*.test.ts",
@@ -30,7 +30,14 @@
     "db:seed:employees": "tsx db/seeds/employees-users.seed.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:test": "tsx src/db/seed-test.ts",
-    "db:seed:molding": "tsx src/db/seed-molding-templates.ts"
+    "db:seed:molding": "tsx src/db/seed-molding-templates.ts",
+    "db:import:despacho:dry": "tsx scripts/import-despacho.ts --dry-run",
+    "db:import:despacho": "tsx scripts/import-despacho.ts",
+    "db:import:ventas:dry": "tsx scripts/import-ventas.ts --dry-run",
+    "db:import:ventas": "tsx scripts/import-ventas.ts",
+    "db:import:seguimiento:dry": "tsx scripts/import-seguimiento.ts --dry-run",
+    "db:import:seguimiento": "tsx scripts/import-seguimiento.ts",
+    "db:verify:seguimiento": "tsx scripts/verify-seguimiento-import.ts"
 
   },
   "dependencies": {

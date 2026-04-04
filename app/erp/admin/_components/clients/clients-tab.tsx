@@ -112,6 +112,7 @@ export function ClientsTab({
   const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [syncingSiigo, setSyncingSiigo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [modalPrefill, setModalPrefill] = useState<ClientFormPrefill | null>(
     null,
@@ -376,6 +377,54 @@ export function ClientsTab({
     }
   };
 
+  const migrateFromSiigo = async () => {
+    if (syncingSiigo) return;
+
+    setSyncingSiigo(true);
+    try {
+      const response = await fetch("/api/siigo/sync-customers", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const errorMsg =
+          (payload as { error?: string; message?: string } | null)?.error ??
+          (payload as { error?: string; message?: string } | null)?.message ??
+          "No se pudo sincronizar con SIIGO";
+
+        throw new Error(errorMsg);
+      }
+
+      const stats = payload as {
+        total?: number;
+        created?: number;
+        updated?: number;
+        errors?: unknown[];
+      } | null;
+
+      const created = Number(stats?.created ?? 0);
+      const updated = Number(stats?.updated ?? 0);
+      const errors = Number(stats?.errors?.length ?? 0);
+
+      if (errors > 0) {
+        toast.success(
+          `SIIGO: ${created} creados, ${updated} actualizados, ${errors} con error`,
+        );
+      } else {
+        toast.success(`SIIGO: ${created} creados, ${updated} actualizados`);
+      }
+
+      refresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSyncingSiigo(false);
+    }
+  };
+
   const createAsPacker = async (client: Client) => {
     try {
       await apiJson("/api/packers", {
@@ -409,7 +458,7 @@ export function ClientsTab({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 overflow-x-hidden">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-end">
           <FilterSearch
@@ -463,16 +512,26 @@ export function ClientsTab({
             {importing ? "Importando..." : "Importar CSV"}
           </Button>
           {canCreate ? (
-            <Button
-              color="primary"
-              onPress={() => {
-                setEditing(null);
-                setModalPrefill(null);
-                setModalOpen(true);
-              }}
-            >
-              Crear cliente
-            </Button>
+            <>
+              <Button
+                color="secondary"
+                isDisabled={syncingSiigo}
+                variant="flat"
+                onPress={() => void migrateFromSiigo()}
+              >
+                {syncingSiigo ? "Sincronizando SIIGO..." : "Migrar desde SIIGO"}
+              </Button>
+              <Button
+                color="primary"
+                onPress={() => {
+                  setEditing(null);
+                  setModalPrefill(null);
+                  setModalOpen(true);
+                }}
+              >
+                Crear cliente
+              </Button>
+            </>
           ) : null}
           <Button variant="flat" onPress={onSaved}>
             Refrescar
@@ -481,7 +540,7 @@ export function ClientsTab({
       </div>
 
       {loading ? (
-        <div className="overflow-x-auto rounded-medium border border-default-200">
+        <div className="overflow-x-hidden rounded-medium border border-default-200">
           <TableSkeleton
             removeWrapper
             ariaLabel="Clientes"
@@ -498,8 +557,9 @@ export function ClientsTab({
           />
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-medium border border-default-200">
+        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
           <Table
+            className="w-full table-fixed"
             classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
             removeWrapper
             aria-label="Clientes"

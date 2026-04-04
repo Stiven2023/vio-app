@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 
-import { db } from "@/src/db";
-import { employees, roles, users } from "@/src/db/erp/schema";
+import { erpDb, iamDb } from "@/src/db";
+import { employees } from "@/src/db/erp/schema";
+import { roles, users } from "@/src/db/iam/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -27,7 +28,7 @@ export async function GET(
     return new Response("User ID required", { status: 400 });
   }
 
-  const userRows = await db
+  const userRows = await iamDb
     .select({
       id: users.id,
       username: users.username,
@@ -46,7 +47,7 @@ export async function GET(
 
   const user = userRows[0];
 
-  const employeeRows = await db
+  const employeeRows = await erpDb
     .select()
     .from(employees)
     .where(eq(employees.userId, user.id))
@@ -55,7 +56,7 @@ export async function GET(
   const employee = employeeRows[0] ?? null;
 
   const roleRows = employee?.roleId
-    ? await db
+    ? await iamDb
         .select({ id: roles.id, name: roles.name })
         .from(roles)
         .where(eq(roles.id, employee.roleId))

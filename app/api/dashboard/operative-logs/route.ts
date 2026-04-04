@@ -26,6 +26,7 @@ import {
   parsePaginationStrict,
 } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { isOperarioRole } from "@/src/utils/role-status";
 
 const ROLE_AREAS = [
   "OPERARIOS",
@@ -91,7 +92,16 @@ const DASHBOARD_ROLES = new Set([
   "OPERARIO_BODEGA",
   "OPERARIO_INTEGRACION_CALIDAD",
   "OPERARIO_DESPACHO",
+  "MENSAJERO",
 ]);
+
+function canAccessOperativeDashboard(role: string | null) {
+  if (!role) {
+    return false;
+  }
+
+  return DASHBOARD_ROLES.has(role) || isOperarioRole(role);
+}
 
 function normalizeRoleArea(v: unknown) {
   const raw = String(v ?? "")
@@ -348,7 +358,7 @@ export async function GET(request: Request) {
 
   const role = getRoleFromRequest(request);
 
-  if (!role || !DASHBOARD_ROLES.has(role)) {
+  if (!canAccessOperativeDashboard(role)) {
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -473,7 +483,7 @@ export async function POST(request: Request) {
 
   const role = getRoleFromRequest(request);
 
-  if (!role || !DASHBOARD_ROLES.has(role)) {
+  if (!canAccessOperativeDashboard(role)) {
     return new Response("Forbidden", { status: 403 });
   }
 

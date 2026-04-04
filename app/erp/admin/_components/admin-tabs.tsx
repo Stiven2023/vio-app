@@ -55,9 +55,14 @@ export function AdminTabs() {
   };
 
   return (
-    <div>
+    <div className="min-w-0 overflow-x-hidden">
       <Tabs
         aria-label="Administración"
+        className="w-full"
+        classNames={{
+          panel: "overflow-visible p-0 h-auto max-h-none",
+          tabContent: "overflow-visible",
+        }}
         selectedKey={activeTab}
         onSelectionChange={(k) => setActiveTab(k as AdminTabKey)}
       >
@@ -70,7 +75,7 @@ export function AdminTabs() {
         <Tab key="rolePermissions" title="Relaciones" />
       </Tabs>
 
-      <div className="mt-4">
+      <div className="mt-4 min-w-0 overflow-x-hidden">
         {activeTab === "users" ? <UsersTab /> : null}
         {activeTab === "employees" ? (
           <EmployeesTab onRequestCreateClient={openClientFromEmployee} />

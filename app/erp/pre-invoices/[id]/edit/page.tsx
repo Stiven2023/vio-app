@@ -17,7 +17,7 @@ async function fetchPrefactura(
     const origin =
       process.env.NEXT_PUBLIC_APP_URL ??
       process.env.NEXTAUTH_URL ??
-      "http://localhost:3000";
+      "http://localhost:3001";
 
     const res = await fetch(`${origin}/api/prefacturas/${id}`, {
       headers: {

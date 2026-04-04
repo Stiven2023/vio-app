@@ -181,7 +181,9 @@ function asDateTimeIso(value: string) {
 
 function normalizeRoleAreaByRole(role: string): RoleArea {
   if (role === "CONFECCIONISTA") return "CONFECCIONISTAS";
-  if (role === "MENSAJERO") return "MENSAJERIA";
+  if (role === "MENSAJERO" || role === "OPERARIO_DESPACHO") {
+    return "MENSAJERIA";
+  }
   if (role === "EMPAQUE") return "EMPAQUE";
 
   return "OPERARIOS";

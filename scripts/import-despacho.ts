@@ -49,6 +49,9 @@ type RawEnvioItem = {
   notes: string | null;
 };
 
+const UUID_V4_OR_V1_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function parseOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
     dir: "D:/Programación/Vio",
@@ -165,19 +168,41 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
   return JSON.parse(content) as T;
 }
 
-async function resolveOrderItemId(row: RawEnvioItem): Promise<string | null> {
-  if (row.order_item_id_ref) {
-    return row.order_item_id_ref;
+function normalizeOrderCode(value: string | null | undefined): string {
+  const text = String(value ?? "").trim().toUpperCase();
+
+  if (!text) {
+    return "";
   }
 
-  if (!row.order_code_ref) {
+  const match = text.match(/\b(VN|VT|VI|VW|VR|VP)\s*-?\s*(\d+)\b/);
+
+  if (match) {
+    return `${match[1]} - ${match[2]}`;
+  }
+
+  return text.replace(/\s+/g, " ");
+}
+
+function isUuid(value: string | null | undefined): boolean {
+  return UUID_V4_OR_V1_RE.test(String(value ?? "").trim());
+}
+
+async function resolveOrderItemId(row: RawEnvioItem): Promise<string | null> {
+  if (isUuid(row.order_item_id_ref)) {
+    return String(row.order_item_id_ref).trim();
+  }
+
+  const orderCode = normalizeOrderCode(row.order_code_ref);
+
+  if (!orderCode) {
     return null;
   }
 
   const orderRows = await erpDb
     .select({ id: orders.id })
     .from(orders)
-    .where(eq(orders.orderCode, row.order_code_ref))
+    .where(eq(orders.orderCode, orderCode))
     .limit(1);
 
   const orderId = orderRows[0]?.id;
@@ -215,7 +240,13 @@ async function main() {
   const rawEnvios = await readJsonFile<RawEnvio[]>(enviosPath);
   const rawEnvioItems = await readJsonFile<RawEnvioItem[]>(envioItemsPath);
 
-  const orderCodes = [...new Set(rawEnvios.map((row) => row.order_code_ref))];
+  const orderCodes = [
+    ...new Set(
+      rawEnvios
+        .map((row) => normalizeOrderCode(row.order_code_ref))
+        .filter((code) => code.length > 0),
+    ),
+  ];
   const orderRows =
     orderCodes.length === 0
       ? []
@@ -232,7 +263,8 @@ async function main() {
   const envioIdMap = new Map<string, string>();
 
   for (const row of rawEnvios) {
-    const orderId = orderIdByCode.get(row.order_code_ref);
+    const orderCode = normalizeOrderCode(row.order_code_ref);
+    const orderId = orderIdByCode.get(orderCode);
     if (!orderId) {
       skippedEnvios += 1;
       continue;

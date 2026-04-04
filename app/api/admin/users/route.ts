@@ -1,8 +1,9 @@
 import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
-import { db } from "@/src/db";
-import { employees, users } from "@/src/db/erp/schema";
+import { erpDb, iamDb } from "@/src/db";
+import { employees } from "@/src/db/erp/schema";
+import { users } from "@/src/db/iam/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
 import { emailVerificationTokens } from "@/src/db/email_verification_tokens";
 import { passwordResetTokens } from "@/src/db/password_reset_tokens";
@@ -47,13 +48,13 @@ export async function POST(request: Request) {
     return new Response("Email no verificado", { status: 400 });
   }
 
-  const exists = await db
+  const exists = await iamDb
     .select({ id: users.id })
     .from(users)
     .where(eq(users.email, normalizedEmail))
     .limit(1);
 
-  const usernameExists = await db
+  const usernameExists = await iamDb
     .select({ id: users.id })
     .from(users)
     .where(eq(users.username, normalizedUsername))
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
 
-  const created = await db
+  const created = await iamDb
     .insert(users)
     .values({
       username: normalizedUsername,
@@ -105,10 +106,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { page, pageSize, offset } = parsePagination(searchParams);
 
-    const [{ total }] = await db
+    const [{ total }] = await iamDb
       .select({ total: sql<number>`count(*)::int` })
       .from(users);
-    const items = await db
+    const items = await iamDb
       .select({
         id: users.id,
         username: users.username,
@@ -152,7 +153,7 @@ export async function PUT(request: Request) {
     return new Response("User ID required", { status: 400 });
   }
 
-  const updated = await db
+  const updated = await iamDb
     .update(users)
     .set({
       ...(typeof isActive === "boolean" ? { isActive } : {}),
@@ -192,14 +193,14 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    const deleted = await db.transaction(async (tx) => {
+    const deleted = await iamDb.transaction(async (tx) => {
       await tx
         .delete(emailVerificationTokens)
         .where(eq(emailVerificationTokens.userId, id));
       await tx
         .delete(passwordResetTokens)
         .where(eq(passwordResetTokens.userId, id));
-      await tx.delete(employees).where(eq(employees.userId, id));
+      await erpDb.delete(employees).where(eq(employees.userId, id));
 
       const rows = await tx
         .delete(users)

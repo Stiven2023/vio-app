@@ -1,6 +1,6 @@
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
-import { requireOfficialBankForSiigo } from "@/src/utils/siigo-bank-guard";
+import { getOfficialBankForSiigo } from "@/src/utils/siigo-bank-guard";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
 
 type SiigoCustomer = {
@@ -179,7 +179,7 @@ export async function GET(request: Request) {
   if (forbidden) return forbidden;
 
   try {
-    const officialBank = await requireOfficialBankForSiigo(request);
+    const officialBank = await getOfficialBankForSiigo(request);
     const { searchParams } = new URL(request.url);
     const path = buildPath(searchParams);
     const payload = await siigoJson<unknown>(path, { method: "GET" });

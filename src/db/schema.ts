@@ -1346,6 +1346,12 @@ export const confectionists = pgTable("confectionists", {
   department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
   city: varchar("city", { length: 100 }).default("Medellín"),
 
+  // --- INFORMACIÓN BANCARIA ---
+  bankName: varchar("bank_name", { length: 100 }), // "NOMBRE BANCO"
+  bankCode: varchar("bank_code", { length: 10 }), // Código único del banco
+  accountNumber: varchar("account_number", { length: 20 }), // "NUMERO CUENTA"
+  accountType: varchar("account_type", { length: 20 }), // "TIPO CUENTA" (AHORROS, CORRIENTE, etc)
+
   // --- ESTADO ---
   isActive: boolean("is_active").default(false),
   dailyCapacity: integer("daily_capacity"),
@@ -1420,11 +1426,14 @@ export const suppliers = pgTable("suppliers", {
   extension: varchar("extension", { length: 10 }),
   fullLandline: varchar("full_landline", { length: 30 }),
 
-  // --- CRÉDITO Y FINANZAS ---
+  // --- INFORMACIÓN BANCARIA ---
+  bankName: varchar("bank_name", { length: 100 }), // "NOMBRE BANCO"
+  bankCode: varchar("bank_code", { length: 10 }), // Código único del banco (ej: 001 Banco de Bogotá)
+  accountNumber: varchar("account_number", { length: 20 }), // "NUMERO CUENTA"
+  accountType: varchar("account_type", { length: 20 }), // "TIPO CUENTA" (AHORROS, CORRIENTE, etc)
+
+  // --- ESTADO ---
   isActive: boolean("is_active").default(false),
-  hasCredit: boolean("has_credit").default(false), // "CREDITO"
-  promissoryNoteNumber: varchar("promissory_note_number", { length: 50 }), // "NUMERO PAGARE"
-  promissoryNoteDate: date("promissory_note_date"), // "FECHA FIRMA PAGARE"
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
@@ -1474,6 +1483,12 @@ export const packers = pgTable("packers", {
   city: varchar("city", { length: 100 }).default("Medellín"),
   department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
 
+  // --- INFORMACIÓN BANCARIA ---
+  bankName: varchar("bank_name", { length: 100 }), // "NOMBRE BANCO"
+  bankCode: varchar("bank_code", { length: 10 }), // Código único del banco
+  accountNumber: varchar("account_number", { length: 20 }), // "NUMERO CUENTA"
+  accountType: varchar("account_type", { length: 20 }), // "TIPO CUENTA" (AHORROS, CORRIENTE, etc)
+
   // --- ESTADO Y CAPACIDAD ---
   isActive: boolean("is_active").default(false),
   dailyCapacity: integer("daily_capacity"),
@@ -1497,6 +1512,66 @@ export const orderItemPacker = pgTable("order_item_packer", {
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }),
   paymentNotes: text("payment_notes"),
   packerRateId: uuid("packer_rate_id"),
+});
+
+/* =========================
+   MESSENGERS / CONDUCTORS (Mensajeros / Conductores)
+========================= */
+export const messengers = pgTable("messengers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  // --- CÓDIGO AUTOGENERADO ---
+  messengerCode: varchar("messenger_code", { length: 20 }).unique().notNull(), // "MENS1001", "MENS1002", etc.
+
+  // --- DOCUMENTOS ---
+  identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
+  drivingLicenseUrl: varchar("driving_license_url", { length: 500 }),
+  rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
+  commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
+    length: 500,
+  }),
+  passportDocumentUrl: varchar("passport_document_url", { length: 500 }),
+  companyIdDocumentUrl: varchar("company_id_document_url", { length: 500 }),
+  bankCertificateUrl: varchar("bank_certificate_url", { length: 500 }),
+
+  // --- IDENTIFICACIÓN Y NOMBRE ---
+  name: varchar("name", { length: 255 }).notNull(),
+  identificationType: identificationTypeEnum("identification_type").notNull(),
+  identification: varchar("identification", { length: 20 }).unique().notNull(),
+  dv: varchar("dv", { length: 1 }),
+
+  // --- ESPECIFICACIONES DE OPERACIÓN ---
+  messengerType: varchar("messenger_type", { length: 50 }), // Motorizado, A pie, Bicicleta, etc
+  vehicleType: varchar("vehicle_type", { length: 50 }), // Moto, Auto, Bicicleta, etc
+  vehiclePlate: varchar("vehicle_plate", { length: 20 }), // Placa del vehículo
+
+  // --- CONTACTO Y TELÉFONOS ---
+  contactName: varchar("contact_name", { length: 255 }),
+  email: varchar("email", { length: 255 }),
+  intlDialCode: varchar("intl_dial_code", { length: 5 }).default("57"),
+  mobile: varchar("mobile", { length: 20 }),
+  fullMobile: varchar("full_mobile", { length: 25 }),
+  landline: varchar("landline", { length: 20 }),
+  extension: varchar("extension", { length: 10 }),
+
+  // --- UBICACIÓN ---
+  address: varchar("address", { length: 255 }).notNull(),
+  postalCode: varchar("postal_code", { length: 20 }),
+  city: varchar("city", { length: 100 }).default("Medellín"),
+  department: varchar("department", { length: 100 }).default("ANTIOQUIA"),
+  country: varchar("country", { length: 100 }).default("COLOMBIA"),
+
+  // --- INFORMACIÓN BANCARIA ---
+  bankName: varchar("bank_name", { length: 100 }), // "NOMBRE BANCO"
+  bankCode: varchar("bank_code", { length: 10 }), // Código único del banco
+  accountNumber: varchar("account_number", { length: 20 }), // "NUMERO CUENTA"
+  accountType: varchar("account_type", { length: 20 }), // "TIPO CUENTA" (AHORROS, CORRIENTE, etc)
+
+  // --- ESTADO Y CAPACIDAD ---
+  isActive: boolean("is_active").default(false),
+  monthlyDeliveryCapacity: integer("monthly_delivery_capacity"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 /* =========================

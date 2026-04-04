@@ -33,9 +33,13 @@ export function ProductManagementTabs({
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 min-w-0 overflow-x-hidden">
       <Tabs
         aria-label="Tipo de catálogo"
+        className="w-full"
+        classNames={{
+          panel: "overflow-visible p-0",
+        }}
         selectedKey={activeCatalog}
         onSelectionChange={(key) =>
           setActiveCatalog(key as unknown as CatalogType)
@@ -48,6 +52,10 @@ export function ProductManagementTabs({
       {/* Product/Addition Management Tabs */}
       <Tabs
         aria-label="Gestión de productos"
+        className="w-full"
+        classNames={{
+          panel: "overflow-visible p-0",
+        }}
         selectedKey={activeTab}
         onSelectionChange={(key) =>
           setActiveTab(key as unknown as ProductManagementTab)
