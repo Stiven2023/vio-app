@@ -24,6 +24,7 @@ import {
   useQuoteItems,
   useQuoteCalculations,
   useSaveQuotation,
+  useQuotationUiLocale,
 } from "../_hooks";
 
 import { QuotationsForm } from "./QuotationsForm";
@@ -35,7 +36,6 @@ import {
   QUOTATION_COPY,
 } from "../_lib/constants";
 import {
-  getQuotationUiLocale,
   normalizeTaxZone,
   safeRate,
   TAX_ZONE_DEFAULT_RATES,
@@ -101,7 +101,7 @@ export function QuotationEditor({
   quoteId,
   mode = "quotation",
 }: QuotationEditorProps) {
-  const locale = getQuotationUiLocale();
+  const locale = useQuotationUiLocale();
   const copy = QUOTATION_COPY[locale];
   const prefactureOrderTypeOptions = getPrefactureOrderTypeOptions(locale);
   const router = useRouter();

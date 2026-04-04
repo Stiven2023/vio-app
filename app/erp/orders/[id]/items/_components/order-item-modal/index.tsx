@@ -21,6 +21,7 @@ import {
 
 import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
 import { getErrorMessage } from "@/app/erp/orders/_lib/api";
+import { stripPackagingRowIds } from "@/app/erp/orders/_lib/packaging-rows";
 
 export type { OrderItemModalValue } from "./use-order-item-modal-state";
 
@@ -238,10 +239,11 @@ export function OrderItemModal(props: {
         requiresSocks: Boolean(item.requiresSocks),
       };
 
+      const payloadPackaging = stripPackagingRowIds(packaging);
       const payload: any =
         orderKind === "COMPLETACION"
-          ? { orderId, quantity, packaging }
-          : { ...base, packaging, socks, materials };
+          ? { orderId, quantity, packaging: payloadPackaging }
+          : { ...base, packaging: payloadPackaging, socks, materials };
 
       const id = (props.initialValue?.item as any)?.id ?? item.id;
 

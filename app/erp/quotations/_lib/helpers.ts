@@ -5,10 +5,11 @@ import {
   ProductOption,
   QuoteItem,
 } from "./types";
+import { createRuntimeId } from "@/src/utils/runtime-id";
 
 export function makeItem(): QuoteItem {
   return {
-    id: crypto.randomUUID(),
+    id: createRuntimeId("quote-item"),
     productId: "",
     orderType: "NORMAL",
     process: "PRODUCCION",
@@ -24,7 +25,7 @@ export function makeItem(): QuoteItem {
 
 export function makeAddition(): Addition {
   return {
-    id: crypto.randomUUID(),
+    id: createRuntimeId("quote-addition"),
     quantity: 1,
     unitPrice: 0,
   };

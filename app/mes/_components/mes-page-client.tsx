@@ -67,6 +67,7 @@ import {
 import { MesEnvioStatusCard } from "@/app/mes/_components/mes-envio-status-card";
 import { MesItemTagsPanel } from "@/app/mes/_components/mes-item-tags-panel";
 import { MesDesignOverviewPanel } from "@/app/mes/_components/mes-design-overview-panel";
+import { MesVisualPreview } from "@/app/mes/_components/mes-visual-preview";
 
 export default function MesPageClient() {
   const [data, setData] = useState<PedidoGroup[]>([]);
@@ -369,6 +370,8 @@ export default function MesPageClient() {
           Seguimiento en tiempo real de producción para el Sistema de Ejecución de Manufactura.
         </p>
       </header>
+
+      <MesVisualPreview />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[

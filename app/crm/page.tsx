@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { CrmSkeleton } from "./_components/crm-skeleton";
+import { CrmVisualPreview } from "./_components/crm-visual-preview";
 import { ModuleLogo } from "@/components/module-logo";
 
 const CRM_COPY = {
@@ -25,6 +26,8 @@ export default async function CrmModulePage() {
           <p className="text-sm text-default-500">{copy.description}</p>
         </div>
       </div>
+
+      <CrmVisualPreview />
 
       <CrmSkeleton />
     </div>

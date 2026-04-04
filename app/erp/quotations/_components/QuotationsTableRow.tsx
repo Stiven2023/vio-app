@@ -22,7 +22,7 @@ import {
   getProcessOptions,
   QUOTATION_COPY,
 } from "../_lib/constants";
-import { getQuotationUiLocale } from "../_lib/utils";
+import { useQuotationUiLocale } from "../_hooks/useQuotationUiLocale";
 
 type QuotationsTableRowProps = {
   row: QuoteItem;
@@ -49,7 +49,8 @@ export function QuotationsTableRow({
   asMoney,
   locale,
 }: QuotationsTableRowProps) {
-  const uiLocale = locale ?? getQuotationUiLocale();
+  const hydratedLocale = useQuotationUiLocale();
+  const uiLocale = locale ?? hydratedLocale;
   const copy = QUOTATION_COPY[uiLocale];
   const orderTypeOptions = getOrderTypeOptions(uiLocale);
   const processOptions = getProcessOptions(uiLocale);

@@ -7,7 +7,7 @@ import { erpDb, iamDb } from "@/src/db";
 import { employees } from "@/src/db/erp/schema";
 import { roles, users } from "@/src/db/iam/schema";
 
-type RawContractType = "INDEFINIDO" | "FIJO" | "APRENDIZAJE";
+export type RawContractType = "INDEFINIDO" | "FIJO" | "APRENDIZAJE";
 
 type EmployeeContractType =
   | "FIXED_TERM"
@@ -15,7 +15,7 @@ type EmployeeContractType =
   | "WORK_CONTRACT"
   | "SERVICE_CONTRACT";
 
-type ActiveEmployee = {
+export type ActiveEmployee = {
   employeeCode: string;
   name: string;
   identification: string;
@@ -76,7 +76,7 @@ const CARGO_TO_ROLE: Record<string, string> = Object.fromEntries(
   ]),
 );
 
-const activeEmployees: ActiveEmployee[] = [
+export const activeEmployees: ActiveEmployee[] = [
   {
     employeeCode: "EMP0001",
     name: "ANDRES FELIPE ALVAREZ CORDOBA",
@@ -569,7 +569,7 @@ const activeEmployees: ActiveEmployee[] = [
   },
 ];
 
-function normalizeKey(value: string) {
+export function normalizeKey(value: string) {
   return value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -578,7 +578,7 @@ function normalizeKey(value: string) {
     .toUpperCase();
 }
 
-function resolveRoleName(cargo: string) {
+export function resolveRoleName(cargo: string) {
   const normalized = normalizeKey(cargo);
 
   // Regla de negocio pedida: cualquier cargo de operario queda con rol OPERARIO.

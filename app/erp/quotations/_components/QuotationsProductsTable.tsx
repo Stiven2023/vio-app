@@ -25,7 +25,7 @@ import {
   QUOTATION_COPY,
 } from "../_lib/constants";
 import { QuotationsAdditionsPanel } from "./QuotationsAdditionsPanel";
-import { getQuotationUiLocale } from "../_lib/utils";
+import { useQuotationUiLocale } from "../_hooks/useQuotationUiLocale";
 
 type QuotationsProductsTableProps = {
   items: QuoteItem[];
@@ -56,7 +56,7 @@ export function QuotationsProductsTable({
   onAddAddition,
   asMoney,
 }: QuotationsProductsTableProps) {
-  const locale = getQuotationUiLocale();
+  const locale = useQuotationUiLocale();
   const copy = QUOTATION_COPY[locale];
   const orderTypeOptions = getOrderTypeOptions(locale);
   const processOptions = getProcessOptions(locale);

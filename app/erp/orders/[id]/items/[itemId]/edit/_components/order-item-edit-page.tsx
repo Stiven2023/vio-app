@@ -19,9 +19,15 @@ import {
   useOrderItemModalState,
   type OrderItemModalValue,
 } from "../../../_components/order-item-modal/use-order-item-modal-state";
+import type { DesignerOption } from "@/app/erp/orders/_lib/designer-options";
 
 import { uploadToCloudinary } from "@/app/erp/orders/_lib/cloudinary";
 import { getErrorMessage } from "@/app/erp/orders/_lib/api";
+import {
+  DISCIPLINE_OPTIONS,
+  LOWER_GARMENT_OPTIONS,
+} from "@/app/erp/orders/_lib/design-select-options";
+import { stripPackagingRowIds } from "@/app/erp/orders/_lib/packaging-rows";
 import type {
   MoldingTemplateDetail,
   MoldingTemplateRow,
@@ -59,30 +65,6 @@ type ProductPriceRow = {
   endDate: string | null;
   isActive: boolean | null;
 };
-
-type DesignerRow = {
-  id: string;
-  name: string;
-  role?: string | null;
-  roleName?: string | null;
-  isActive?: boolean | null;
-};
-
-function toRoleKey(value: unknown) {
-  return String(value ?? "")
-    .trim()
-    .toUpperCase();
-}
-
-function isDesignRole(value: unknown) {
-  const role = toRoleKey(value)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return role === "DISENADOR" || role === "LIDER_DISENO";
-}
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -341,12 +323,13 @@ function parseFabricListFromText(value: unknown) {
 }
 
 export function OrderItemEditPage(props: {
+  designerOptions: DesignerOption[];
   orderId: string;
   orderKind: "NUEVO" | "COMPLETACION" | "REFERENTE";
   orderCurrency: Currency;
   itemId: string;
 }) {
-  const { orderId, orderKind, orderCurrency, itemId } = props;
+  const { designerOptions, orderId, orderKind, orderCurrency, itemId } = props;
 
   const [isSaving, setIsSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -798,8 +781,6 @@ export function OrderItemEditPage(props: {
 
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [loadingProducts, setLoadingProducts] = React.useState(false);
-  const [designers, setDesigners] = React.useState<DesignerRow[]>([]);
-
   const [prices, setPrices] = React.useState<ProductPriceRow[]>([]);
   const [loadingPrices, setLoadingPrices] = React.useState(false);
 
@@ -825,33 +806,6 @@ export function OrderItemEditPage(props: {
       .finally(() => {
         if (!active) return;
         setLoadingProducts(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    let active = true;
-
-    fetch(`/api/employees?page=1&pageSize=500`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await res.text());
-
-        return (await res.json()) as { items: DesignerRow[] };
-      })
-      .then((payload) => {
-        if (!active) return;
-        setDesigners(
-          (Array.isArray(payload.items) ? payload.items : []).filter((employee) =>
-            isDesignRole(employee?.roleName ?? employee?.role),
-          ),
-        );
-      })
-      .catch(() => {
-        if (!active) return;
-        setDesigners([]);
       });
 
     return () => {
@@ -1412,12 +1366,13 @@ export function OrderItemEditPage(props: {
         orderConfigurationMode: configurationMode,
       };
 
+      const payloadPackaging = stripPackagingRowIds(packaging);
       const payload: any =
         orderKind === "COMPLETACION"
-          ? { orderId, quantity, packaging }
+          ? { orderId, quantity, packaging: payloadPackaging }
           : {
               ...base,
-              packaging,
+              packaging: payloadPackaging,
               socks,
               materials,
               positions: requiresPositionConfiguration ? positions : [],
@@ -1794,32 +1749,50 @@ export function OrderItemEditPage(props: {
               setItem((s) => ({ ...s, designerId: k ? String(k) : null }));
             }}
           >
-            {designers
+            {designerOptions
               .filter((d) => d.isActive !== false)
               .map((designer) => (
                 <SelectItem key={designer.id}>{designer.name}</SelectItem>
               ))}
           </Select>
 
-          <Input
+          <Select
             isDisabled={uiDisabled}
-            description="Ejemplo: Fútbol, Ciclismo, Running"
+            description="Selecciona la disciplina principal del diseño"
             label="Disciplina"
-            value={String(item.discipline ?? "")}
-            onValueChange={(v: string) =>
-              setItem((s) => ({ ...s, discipline: v || null }))
-            }
-          />
+            selectedKeys={item.discipline ? [String(item.discipline)] : []}
+            onSelectionChange={(keys: any) => {
+              const key = Array.from(keys as any)[0];
 
-          <Input
+              setItem((s) => ({
+                ...s,
+                discipline: key ? String(key) : null,
+              }));
+            }}
+          >
+            {DISCIPLINE_OPTIONS.map((option) => (
+              <SelectItem key={option.value}>{option.label}</SelectItem>
+            ))}
+          </Select>
+
+          <Select
             isDisabled={uiDisabled}
-            description="Especifica la prenda inferior. Ejemplo: pantaloneta, pantaloneta larga, licra"
+            description="Selecciona la prenda o base inferior del diseño"
             label="Parte inferior (especificar prenda)"
-            value={String(item.category ?? "")}
-            onValueChange={(v: string) =>
-              setItem((s) => ({ ...s, category: v || null }))
-            }
-          />
+            selectedKeys={item.category ? [String(item.category)] : []}
+            onSelectionChange={(keys: any) => {
+              const key = Array.from(keys as any)[0];
+
+              setItem((s) => ({
+                ...s,
+                category: key ? String(key) : null,
+              }));
+            }}
+          >
+            {LOWER_GARMENT_OPTIONS.map((option) => (
+              <SelectItem key={option.value}>{option.label}</SelectItem>
+            ))}
+          </Select>
 
           <Switch
             className="sm:col-span-2"

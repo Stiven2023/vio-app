@@ -10,14 +10,14 @@ import { useCallback, useState } from "react";
 import { toast } from "react-hot-toast";
 
 import { QUOTATION_COPY } from "../_lib/constants";
-import { getQuotationUiLocale } from "../_lib/utils";
+import { useQuotationUiLocale } from "./useQuotationUiLocale";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 
 export function useSaveQuotation(
   quoteId?: string,
   initialQuoteCode = "Assigned on save",
 ) {
-  const locale = getQuotationUiLocale();
+  const locale = useQuotationUiLocale();
   const copy = QUOTATION_COPY[locale];
   const [quoteCode, setQuoteCode] = useState<string>(initialQuoteCode);
   const [submitting, setSubmitting] = useState(false);

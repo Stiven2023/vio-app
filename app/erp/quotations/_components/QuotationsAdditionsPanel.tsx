@@ -15,7 +15,7 @@ import { Button } from "@heroui/button";
 import { Card, CardBody, CardHeader } from "@heroui/card";
 
 import { QUOTATION_COPY } from "../_lib/constants";
-import { getQuotationUiLocale } from "../_lib/utils";
+import { useQuotationUiLocale } from "../_hooks/useQuotationUiLocale";
 import { apiJson } from "@/app/erp/catalog/_lib/api";
 
 type QuotationsAdditionsPanelProps = {
@@ -39,7 +39,8 @@ export function QuotationsAdditionsPanel({
   onAddAddition,
   asMoney,
 }: QuotationsAdditionsPanelProps) {
-  const copy = QUOTATION_COPY[getQuotationUiLocale()].additions;
+  const locale = useQuotationUiLocale();
+  const copy = QUOTATION_COPY[locale].additions;
   const isAuthorizedManual =
     currency === "COP" && clientPriceType === "AUTORIZADO";
   const isConditional = ["COMPLETACION", "REFERENTE", "REPOSICION"].includes(

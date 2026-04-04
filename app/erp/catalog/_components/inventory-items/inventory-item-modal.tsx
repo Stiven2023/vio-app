@@ -28,6 +28,7 @@ import {
 
 import { apiJson, getErrorMessage } from "../../_lib/api";
 import { createInventoryItemSchema } from "../../_lib/schemas";
+import { createRuntimeId } from "@/src/utils/runtime-id";
 
 type SupplierRow = { id: string; name: string; isActive?: boolean | null };
 
@@ -133,7 +134,7 @@ export function InventoryItemModal({
     setInitialVariants((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: createRuntimeId("variant"),
         sku,
         color,
         size,

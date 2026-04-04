@@ -1,13 +1,10 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { ORDER_ITEM_STATUS } from "@/src/utils/order-status";
 import { erpDb, mesDb } from "@/src/db";
 import {
-  orderItemPackaging,
-  orderItemSocks,
   orderItemStatusHistory,
   orderItems,
-  orders,
 } from "@/src/db/erp/schema";
 import { operativeDashboardLogs } from "@/src/db/mes/schema";
 import {
@@ -16,6 +13,13 @@ import {
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import {
+  buildOperativeLogLinkFields,
+  getEffectiveOperativeLogLookupInput,
+  normalizeOperativeLogReference,
+  resolveOperativeLogLink,
+  shouldRefreshOperativeLogLink,
+} from "@/src/utils/operative-log-links";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 const DASHBOARD_ROLES = new Set([
@@ -128,75 +132,6 @@ function toBoolean(v: unknown) {
     .toLowerCase();
 
   return raw === "true" || raw === "1" || raw === "si" || raw === "sí";
-}
-
-function normalizeMatchText(v: unknown) {
-  return String(v ?? "")
-    .trim()
-    .toLowerCase();
-}
-
-async function resolveOrderItemByDesignAndSize(args: {
-  erpTx: any;
-  orderCode: string;
-  designName: string;
-  size: string | null;
-}) {
-  const orderCode = String(args.orderCode ?? "").trim();
-  const designName = normalizeMatchText(args.designName);
-  const size = normalizeMatchText(args.size);
-
-  if (!orderCode || !designName) return null;
-
-  const candidates = await args.erpTx
-    .select({ id: orderItems.id })
-    .from(orderItems)
-    .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(
-      and(
-        eq(orders.orderCode, orderCode),
-        sql`lower(trim(coalesce(${orderItems.name}, ''))) = ${designName}`,
-      ),
-    )
-    .limit(20);
-
-  if (!candidates.length) return null;
-  if (!size) return candidates[0];
-
-  const ids = candidates.map((candidate: { id: string }) => candidate.id);
-  const packagingMatches = await args.erpTx
-    .select({ orderItemId: orderItemPackaging.orderItemId })
-    .from(orderItemPackaging)
-    .where(
-      and(
-        inArray(orderItemPackaging.orderItemId, ids),
-        sql`lower(trim(coalesce(${orderItemPackaging.size}, ''))) = ${size}`,
-      ),
-    );
-
-  const socksMatches = await args.erpTx
-    .select({ orderItemId: orderItemSocks.orderItemId })
-    .from(orderItemSocks)
-    .where(
-      and(
-        inArray(orderItemSocks.orderItemId, ids),
-        sql`lower(trim(coalesce(${orderItemSocks.size}, ''))) = ${size}`,
-      ),
-    );
-
-  const allowedIds = new Set(
-    [...packagingMatches, ...socksMatches]
-      .map((row) => String(row.orderItemId ?? "").trim())
-      .filter(Boolean),
-  );
-
-  if (!allowedIds.size) return null;
-
-  return (
-    candidates.find((candidate: { id: string }) =>
-      allowedIds.has(String(candidate.id)),
-    ) ?? null
-  );
 }
 
 async function verifyAccess(request: Request, id: string) {
@@ -323,6 +258,14 @@ export async function PUT(
 
   if (size !== undefined) patch.size = size;
 
+  const orderId = normalizeOperativeLogReference(body.orderId);
+
+  if (orderId !== undefined) patch.orderId = orderId;
+
+  const orderItemId = normalizeOperativeLogReference(body.orderItemId);
+
+  if (orderItemId !== undefined) patch.orderItemId = orderItemId;
+
   const observations = toOptionalText(body.observations);
 
   if (observations !== undefined) patch.observations = observations;
@@ -340,6 +283,23 @@ export async function PUT(
   if (repoCheck !== undefined) patch.repoCheck = repoCheck;
 
   patch.updatedAt = new Date();
+
+  if (shouldRefreshOperativeLogLink(access.existing, patch)) {
+    const effectiveLookup = getEffectiveOperativeLogLookupInput(
+      access.existing,
+      patch,
+    );
+    const resolvedLink = await resolveOperativeLogLink({
+      erpTx: erpDb,
+      orderCode: effectiveLookup.orderCode,
+      designName: effectiveLookup.designName,
+      size: effectiveLookup.size,
+      storedOrderId: effectiveLookup.orderId,
+      storedOrderItemId: effectiveLookup.orderItemId,
+    });
+
+    Object.assign(patch, buildOperativeLogLinkFields(resolvedLink));
+  }
 
   if (Object.keys(patch).length === 1 && patch.updatedAt) {
     return new Response("No fields to update", { status: 400 });
@@ -447,6 +407,11 @@ export async function POST(
       .values({
         roleArea: source.roleArea,
         operationType: source.operationType,
+        ...buildOperativeLogLinkFields({
+          orderId: source.orderId,
+          orderItemId: source.orderItemId,
+          sourceLegacyOrderItemId: source.sourceLegacyOrderItemId,
+        }),
         orderCode: source.orderCode,
         designName: source.designName,
         details: source.details,
@@ -469,21 +434,23 @@ export async function POST(
 
     try {
       const result = await erpDb.transaction(async (erpTx) => {
-        const linkedItem = await resolveOrderItemByDesignAndSize({
+        const linkedItem = await resolveOperativeLogLink({
           erpTx,
+          storedOrderId: source.orderId,
+          storedOrderItemId: source.orderItemId,
           orderCode: source.orderCode,
           designName: source.designName,
           size: source.size,
         });
 
-        if (linkedItem?.id) {
+        if (linkedItem.orderItemId) {
           await erpTx
             .update(orderItems)
             .set({ status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION })
-            .where(eq(orderItems.id, linkedItem.id));
+            .where(eq(orderItems.id, linkedItem.orderItemId));
 
           await erpTx.insert(orderItemStatusHistory).values({
-            orderItemId: linkedItem.id,
+            orderItemId: linkedItem.orderItemId,
             status: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
             changedBy: changedByEmployeeId,
           });
@@ -491,7 +458,8 @@ export async function POST(
 
         return {
           ...created,
-          linkedOrderItemId: linkedItem?.id ?? null,
+          linkedOrderId: linkedItem.orderId,
+          linkedOrderItemId: linkedItem.orderItemId,
         };
       });
 

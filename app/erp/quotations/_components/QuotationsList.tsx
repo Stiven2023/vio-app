@@ -37,11 +37,11 @@ import {
 } from "react-icons/bs";
 
 import { useClientOnly } from "../_hooks/useClientOnly";
+import { useQuotationUiLocale } from "../_hooks/useQuotationUiLocale";
 import {
   getPrefactureOrderTypeOptions,
   QUOTATION_COPY,
 } from "../_lib/constants";
-import { getQuotationUiLocale } from "../_lib/utils";
 import type { PrefactureOrderType } from "../_lib/types";
 
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
@@ -149,7 +149,7 @@ function formatMoneyByCurrency(
 }
 
 export function QuotationsList() {
-  const locale = getQuotationUiLocale();
+  const locale = useQuotationUiLocale();
   const copy = QUOTATION_COPY[locale];
   const prefactureOrderTypeOptions = getPrefactureOrderTypeOptions(locale);
   const router = useRouter();

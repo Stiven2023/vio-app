@@ -12,6 +12,7 @@ import { Skeleton } from "@heroui/skeleton";
 import { BsPlusCircle, BsTrash } from "react-icons/bs";
 
 import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
+import { createRuntimeId } from "@/src/utils/runtime-id";
 
 type PaymentMethod = "EFECTIVO" | "TRANSFERENCIA" | "CREDITO";
 
@@ -111,7 +112,7 @@ export function DistributedPaymentsPage({
 
   const [allocations, setAllocations] = useState<AllocationRow[]>([
     {
-      id: crypto.randomUUID(),
+      id: createRuntimeId("allocation"),
       orderId: "",
       clientId: "",
       amount: "",
@@ -198,7 +199,7 @@ export function DistributedPaymentsPage({
           ? rows
           : [
               {
-                id: crypto.randomUUID(),
+                id: createRuntimeId("allocation"),
                 orderId: "",
                 clientId: "",
                 amount: "",

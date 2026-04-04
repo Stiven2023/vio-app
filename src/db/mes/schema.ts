@@ -95,6 +95,12 @@ export const operativeDashboardLogs = pgTable(
       .notNull()
       .default("OPERARIOS"),
     operationType: varchar("operation_type", { length: 40 }),
+    // External references to ERP orders/order_items
+    orderId: uuid("order_id"),
+    orderItemId: uuid("order_item_id"),
+    sourceLegacyOrderItemId: varchar("source_legacy_order_item_id", {
+      length: 80,
+    }),
     orderCode: varchar("order_code", { length: 60 }).notNull(),
     designName: varchar("design_name", { length: 255 }).notNull(),
     details: text("details"),
@@ -114,6 +120,11 @@ export const operativeDashboardLogs = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (t) => [
+    index("idx_operative_dashboard_logs_order_id").on(t.orderId),
+    index("idx_operative_dashboard_logs_order_item_id").on(t.orderItemId),
+    index("idx_operative_dashboard_logs_source_legacy_item_id").on(
+      t.sourceLegacyOrderItemId,
+    ),
     index("idx_operative_dashboard_logs_created_by_user_id").on(
       t.createdByUserId,
     ),

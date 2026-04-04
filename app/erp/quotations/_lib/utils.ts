@@ -30,7 +30,7 @@ export const TAX_ZONE_DEFAULT_RATES: Record<
   },
 };
 
-export function getQuotationUiLocale(): UiLocale {
+export function resolveQuotationUiLocale(): UiLocale {
   const fromStorage =
     typeof window !== "undefined"
       ? window.localStorage.getItem("preferredLanguage")
@@ -50,6 +50,10 @@ export function getQuotationUiLocale(): UiLocale {
     .toLowerCase();
 
   return value.startsWith("es") ? "es" : "en";
+}
+
+export function getQuotationUiLocale(): UiLocale {
+  return "en";
 }
 
 export function normalizeTaxZone(value: unknown): TaxZone {

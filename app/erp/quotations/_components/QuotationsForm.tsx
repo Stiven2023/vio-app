@@ -14,7 +14,7 @@ import {
   QUOTATION_COPY,
 } from "../_lib/constants";
 import { useClientOnly } from "../_hooks/useClientOnly";
-import { getQuotationUiLocale } from "../_lib/utils";
+import { useQuotationUiLocale } from "../_hooks/useQuotationUiLocale";
 
 type QuotationsFormProps = {
   form: QuoteForm;
@@ -29,7 +29,7 @@ export function QuotationsForm({
   loadingClients,
   onFormChange,
 }: QuotationsFormProps) {
-  const locale = getQuotationUiLocale();
+  const locale = useQuotationUiLocale();
   const copy = QUOTATION_COPY[locale];
   const clientPriceTypeOptions = getClientPriceTypeOptions(locale);
   const paymentTermOptions = getPaymentTermOptions(locale);

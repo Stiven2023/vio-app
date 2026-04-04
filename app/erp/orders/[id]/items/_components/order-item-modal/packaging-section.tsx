@@ -13,6 +13,10 @@ import {
   parseIndividualPackagingFromRows,
   readExcelFirstSheetRows,
 } from "@/app/erp/orders/_lib/excel";
+import {
+  createEmptyIndividualPackagingRow,
+  toIndividualPackagingRows,
+} from "@/app/erp/orders/_lib/packaging-rows";
 
 const KIDS_SIZES = ["2", "4", "6", "8", "10", "12", "14", "16"];
 const ADULT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL"];
@@ -114,17 +118,10 @@ export function PackagingSection({
   onError?: (message: string) => void;
 }) {
   const [curveExceeded, setCurveExceeded] = React.useState(false);
-  const individualRows = (packaging ?? [])
-    .filter((p) => String(p.mode ?? "").toUpperCase() !== "AGRUPADO")
-    .flatMap((p) => {
-      const qty = Math.max(1, Math.floor(Number(p.quantity ?? 1)));
-
-      return Array.from({ length: qty }).map(() => ({
-        ...p,
-        mode: "INDIVIDUAL" as const,
-        quantity: 1,
-      }));
-    });
+  const individualRows = React.useMemo(
+    () => toIndividualPackagingRows(packaging ?? []),
+    [packaging],
+  );
   const groupedRows = React.useMemo(
     () => buildGroupedFromIndividuals(individualRows),
     [individualRows],
@@ -221,11 +218,8 @@ export function PackagingSection({
 
       for (let i = 0; i < delta; i += 1) {
         nextIndividuals.push({
-          mode: "INDIVIDUAL",
+          ...createEmptyIndividualPackagingRow(),
           size: normalized,
-          quantity: 1,
-          personName: "",
-          personNumber: "",
         });
       }
     } else if (qty < currentBySize) {
@@ -542,13 +536,7 @@ export function PackagingSection({
 
               syncFromIndividuals([
                 ...individualRows,
-                {
-                  mode: "INDIVIDUAL",
-                  size: "",
-                  quantity: 1,
-                  personName: "",
-                  personNumber: "",
-                },
+                createEmptyIndividualPackagingRow(),
               ]);
             }}
           >
@@ -628,7 +616,7 @@ export function PackagingSection({
 
             {individualRows.map((p, idx) => (
               <div
-                key={`${idx}`}
+                key={p.id ?? `${idx}`}
                 className="grid min-w-[360px] grid-cols-[1fr_120px] gap-2 px-3 py-2 text-sm"
               >
                 <div className="rounded-medium border border-default-200 bg-content1 px-3 py-2 text-default-600">
@@ -661,7 +649,7 @@ export function PackagingSection({
 
             {individualRows.map((p, idx) => (
               <div
-                key={`${p.personNumber ?? ""}-${idx}`}
+                key={p.id ?? `${idx}`}
                 className="grid min-w-[720px] grid-cols-[120px_1.6fr_1fr_120px] gap-2 px-3 py-2 text-sm"
               >
                 <Input

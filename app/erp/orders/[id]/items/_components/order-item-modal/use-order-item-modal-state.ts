@@ -10,6 +10,8 @@ import type {
 
 import React from "react";
 
+import { normalizePackagingRows } from "@/app/erp/orders/_lib/packaging-rows";
+
 export type OrderItemModalValue = {
   item: OrderItemInput;
   packaging: OrderItemPackagingInput[];
@@ -153,7 +155,7 @@ export function useOrderItemModalState(options: {
       const p = initialValue?.packaging;
 
       return Array.isArray(p) && p.length > 0
-        ? p
+        ? normalizePackagingRows(p)
         : defaultPackaging(packagingMode);
     },
   );
@@ -241,7 +243,9 @@ export function useOrderItemModalState(options: {
       const p = initialValue?.packaging;
 
       setPackaging(
-        Array.isArray(p) && p.length > 0 ? p : defaultPackaging(nextMode),
+        Array.isArray(p) && p.length > 0
+          ? normalizePackagingRows(p)
+          : defaultPackaging(nextMode),
       );
     }
     setSocks(initialValue?.socks ?? []);

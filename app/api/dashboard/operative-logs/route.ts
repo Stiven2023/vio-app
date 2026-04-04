@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import {
   ORDER_ITEM_STATUS,
@@ -7,8 +7,6 @@ import {
 } from "@/src/utils/order-status";
 import { erpDb, mesDb } from "@/src/db";
 import {
-  orderItemPackaging,
-  orderItemSocks,
   orderItemStatusHistory,
   orderItems,
   orderStatusHistory,
@@ -21,6 +19,10 @@ import {
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import {
+  buildOperativeLogLinkFields,
+  resolveOperativeLogLink,
+} from "@/src/utils/operative-log-links";
 import {
   ensureDateRange,
   parsePaginationStrict,
@@ -173,12 +175,6 @@ function toBoolean(v: unknown) {
   return raw === "true" || raw === "1" || raw === "si" || raw === "sí";
 }
 
-function normalizeMatchText(v: unknown) {
-  return String(v ?? "")
-    .trim()
-    .toLowerCase();
-}
-
 function shouldMoveForward(current: string | null, next: OrderItemStatusType) {
   if (!current) return true;
 
@@ -197,89 +193,28 @@ function shouldMoveForward(current: string | null, next: OrderItemStatusType) {
 
 async function resolveLinkedStatusByKeys(args: {
   erpTx: any;
+  storedOrderId?: string | null;
+  storedOrderItemId?: string | null;
   orderCode: string;
   designName: string;
   size: string | null;
 }) {
-  const linked = await resolveOrderItemByDesignAndSize({
+  const linked = await resolveOperativeLogLink({
     erpTx: args.erpTx,
+    storedOrderId: args.storedOrderId,
+    storedOrderItemId: args.storedOrderItemId,
     orderCode: args.orderCode,
     designName: args.designName,
     size: args.size,
   });
 
-  return linked?.status ?? null;
-}
 
-async function resolveOrderItemByDesignAndSize(args: {
-  erpTx: any;
-  orderCode: string;
-  designName: string;
-  size: string | null;
-}) {
-  const orderCode = String(args.orderCode ?? "").trim();
-  const designName = normalizeMatchText(args.designName);
-  const size = normalizeMatchText(args.size);
-
-  if (!orderCode || !designName) return null;
-
-  const candidates = await args.erpTx
-    .select({
-      id: orderItems.id,
-      status: orderItems.status,
-    })
-    .from(orderItems)
-    .innerJoin(orders, eq(orderItems.orderId, orders.id))
-    .where(
-      and(
-        eq(orders.orderCode, orderCode),
-        sql`lower(trim(coalesce(${orderItems.name}, ''))) = ${designName}`,
-      ),
-    )
-    .limit(20);
-
-  if (!candidates.length) return null;
-
-  if (!size) {
-    return candidates[0] ?? null;
-  }
-
-  const candidateIds = candidates.map(
-    (candidate: { id: string }) => candidate.id,
-  );
-  const packagingMatches = await args.erpTx
-    .select({ orderItemId: orderItemPackaging.orderItemId })
-    .from(orderItemPackaging)
-    .where(
-      and(
-        inArray(orderItemPackaging.orderItemId, candidateIds),
-        sql`lower(trim(coalesce(${orderItemPackaging.size}, ''))) = ${size}`,
-      ),
-    );
-
-  const socksMatches = await args.erpTx
-    .select({ orderItemId: orderItemSocks.orderItemId })
-    .from(orderItemSocks)
-    .where(
-      and(
-        inArray(orderItemSocks.orderItemId, candidateIds),
-        sql`lower(trim(coalesce(${orderItemSocks.size}, ''))) = ${size}`,
-      ),
-    );
-
-  const allowedIds = new Set(
-    [...packagingMatches, ...socksMatches]
-      .map((row) => String(row.orderItemId ?? "").trim())
-      .filter(Boolean),
-  );
-
-  if (!allowedIds.size) return null;
-
-  return (
-    candidates.find((candidate: { id: string }) =>
-      allowedIds.has(String(candidate.id)),
-    ) ?? null
-  );
+  return {
+    linkedOrderId: linked.orderId,
+    linkedOrderItemId: linked.orderItemId,
+    linkedOrderItemStatus: linked.status,
+    linkStrategy: linked.strategy,
+  };
 }
 
 async function updateOrderItemStatus(args: {
@@ -434,8 +369,10 @@ export async function GET(request: Request) {
 
     const itemsWithLinkedStatus = await Promise.all(
       items.map(async (item) => {
-        const linkedOrderItemStatus = await resolveLinkedStatusByKeys({
+        const linked = await resolveLinkedStatusByKeys({
           erpTx: erpDb,
+          storedOrderId: item.orderId,
+          storedOrderItemId: item.orderItemId,
           orderCode: String(item.orderCode ?? ""),
           designName: String(item.designName ?? ""),
           size: item.size,
@@ -443,7 +380,7 @@ export async function GET(request: Request) {
 
         return {
           ...item,
-          linkedOrderItemStatus,
+          ...linked,
         };
       }),
     );
@@ -527,6 +464,7 @@ export async function POST(request: Request) {
   const isPartial = toBoolean(body.isPartial);
   const authorizeManualCut = toBoolean(body.authorizeManualCut);
   const repoCheck = toBoolean(body.repoCheck);
+  const size = toOptionalText(body.size);
 
   const createdByUserId = getUserIdFromRequest(request);
   const changedByEmployeeId = await getEmployeeIdFromRequest(request);
@@ -549,6 +487,14 @@ export async function POST(request: Request) {
             orderCode,
           })
         : null;
+    const resolvedLink = await resolveOperativeLogLink({
+      erpTx: erpDb,
+      orderCode,
+      designName,
+      size,
+      storedOrderId: activeTakeOrder?.orderId ?? null,
+      storedOrderItemId: activeTakeOrder?.orderItemId ?? null,
+    });
 
     if (operationType === "MONTAJE") {
       if (takeOrder) {
@@ -571,7 +517,10 @@ export async function POST(request: Request) {
           return Response.json(
             {
               ...activeTakeOrder,
-              linkedOrderItemId: null,
+              linkedOrderId: activeTakeOrder.orderId ?? resolvedLink.orderId,
+              linkedOrderItemId:
+                activeTakeOrder.orderItemId ?? resolvedLink.orderItemId,
+              linkedOrderItemStatus: resolvedLink.status,
               appliedStatus: null,
               isTakeOrder: true,
             },
@@ -584,6 +533,10 @@ export async function POST(request: Request) {
           .values({
             roleArea,
             operationType,
+            ...buildOperativeLogLinkFields({
+              orderId: resolvedLink.orderId,
+              orderItemId: resolvedLink.orderItemId,
+            }),
             orderCode,
             designName,
             details: MONTAJE_TAKE_ORDER_MARKER,
@@ -619,7 +572,9 @@ export async function POST(request: Request) {
         return Response.json(
           {
             ...createdTakeOrder,
-            linkedOrderItemId: null,
+            linkedOrderId: resolvedLink.orderId,
+            linkedOrderItemId: resolvedLink.orderItemId,
+            linkedOrderItemStatus: resolvedLink.status,
             appliedStatus: null,
             isTakeOrder: true,
           },
@@ -668,10 +623,14 @@ export async function POST(request: Request) {
       .values({
         roleArea,
         operationType,
+        ...buildOperativeLogLinkFields({
+          orderId: resolvedLink.orderId,
+          orderItemId: resolvedLink.orderItemId,
+        }),
         orderCode,
         designName,
         details: toOptionalText(body.details),
-        size: toOptionalText(body.size),
+        size,
         quantityOp,
         producedQuantity,
         startAt: effectiveStartAt,
@@ -707,17 +666,18 @@ export async function POST(request: Request) {
 
     try {
       const erpResult = await erpDb.transaction(async (erpTx) => {
-        const linkedItem = await resolveOrderItemByDesignAndSize({
+        const linkedItem = await resolveOperativeLogLink({
           erpTx,
+          storedOrderId: resolvedLink.orderId,
+          storedOrderItemId: resolvedLink.orderItemId,
           orderCode,
           designName,
-          size: toOptionalText(body.size),
+          size,
         });
 
-        let linkedOrderItemId: string | null = linkedItem?.id ?? null;
         let appliedStatus: OrderItemStatusType | null = null;
 
-        if (linkedItem?.id) {
+        if (linkedItem.orderItemId) {
           if (isComplete && operationType) {
             const nextStatus =
               operationType === "MONTAJE" &&
@@ -728,7 +688,7 @@ export async function POST(request: Request) {
             if (shouldMoveForward(linkedItem.status, nextStatus)) {
               await updateOrderItemStatus({
                 erpTx,
-                orderItemId: linkedItem.id,
+                orderItemId: linkedItem.orderItemId,
                 nextStatus,
                 changedByEmployeeId,
               });
@@ -739,7 +699,7 @@ export async function POST(request: Request) {
           if (isPartial && repoCheck) {
             await updateOrderItemStatus({
               erpTx,
-              orderItemId: linkedItem.id,
+              orderItemId: linkedItem.orderItemId,
               nextStatus: ORDER_ITEM_STATUS.APROBACION_ACTUALIZACION,
               changedByEmployeeId,
             });
@@ -747,7 +707,12 @@ export async function POST(request: Request) {
           }
         }
 
-        return { linkedOrderItemId, appliedStatus };
+        return {
+          linkedOrderId: linkedItem.orderId,
+          linkedOrderItemId: linkedItem.orderItemId,
+          linkedOrderItemStatus: linkedItem.status,
+          appliedStatus,
+        };
       });
 
       return Response.json(

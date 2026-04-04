@@ -23,6 +23,7 @@ export type Position =
 export type SockLength = "LARGA" | "TRES_CUARTOS" | "TALONERA";
 
 export type OrderItemPackagingInput = {
+  id?: string | null;
   mode: PackagingMode;
   teamId?: string | null;
   position?: Position | null;

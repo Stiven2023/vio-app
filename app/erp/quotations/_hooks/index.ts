@@ -5,4 +5,5 @@ export { useQuoteItems } from "./useQuoteItems";
 export { useQuoteCalculations } from "./useQuoteCalculations";
 export { useSaveQuotation } from "./useSaveQuotation";
 export { useClientOnly } from "./useClientOnly";
+export { useQuotationUiLocale } from "./useQuotationUiLocale";
 export type { QuoteCalculations } from "./useQuoteCalculations";

@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AccountingHubTabs } from "./_components/accounting-hub-tabs";
+import { AccountingVisualPreview } from "./_components/accounting-visual-preview";
 import {
   ACCOUNTING_HUB_COPY,
   buildAccountingHubGroups,
@@ -61,6 +62,8 @@ export default async function AccountingLandingPage() {
           </a>
         </div>
       </header>
+
+      <AccountingVisualPreview />
 
       <Suspense fallback={<div className="text-sm text-default-500">{copy.loading}</div>}>
         <AccountingHubTabs

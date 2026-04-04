@@ -2,13 +2,17 @@ export const dynamic = "force-dynamic";
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import { OrderItemCreatePage } from "./_components/order-item-create-page";
 
 import { db } from "@/src/db";
-import { orders } from "@/src/db/erp/schema";
+import { employees, orders, roles } from "@/src/db/erp/schema";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import {
+  filterDesignerOptions,
+  type DesignerOption,
+} from "@/app/erp/orders/_lib/designer-options";
 
 const MONTAJE_LOCKED_STATUSES = new Set([
   "PRODUCCION",
@@ -63,9 +67,24 @@ export default async function NewOrderItemRoute({
     redirect(`/orders/${orderId}/items`);
   }
 
+  const designerRows = await db
+    .select({
+      id: employees.id,
+      name: employees.name,
+      role: roles.name,
+      roleName: roles.name,
+      isActive: employees.isActive,
+    })
+    .from(employees)
+    .leftJoin(roles, eq(employees.roleId, roles.id))
+    .orderBy(asc(employees.name));
+
+  const designerOptions: DesignerOption[] = filterDesignerOptions(designerRows);
+
   return (
     <div className="container mx-auto max-w-7xl pt-16 px-6">
       <OrderItemCreatePage
+        designerOptions={designerOptions}
         orderCurrency={(order.currency ?? "COP") as any}
         orderId={orderId}
         orderKind={order.kind ?? "NUEVO"}
