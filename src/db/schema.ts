@@ -40,8 +40,12 @@ export {
   AccountingAccountTypeEnum,
   AccountingNormalBalance,
   AccountingNormalBalanceEnum,
+  AccountingAccountLevel,
+  AccountingAccountLevelEnum,
   AccountingPeriodStatus,
   AccountingPeriodStatusEnum,
+  AccountingClosureType,
+  AccountingClosureTypeEnum,
   AccountingEntryStatus,
   AccountingEntryStatusEnum,
   AccountingSourceModule,
@@ -137,7 +141,9 @@ export {
   factoringStatusValues,
   accountingAccountTypeValues,
   accountingNormalBalanceValues,
+  accountingAccountLevelValues,
   accountingPeriodStatusValues,
+  accountingClosureTypeValues,
   accountingEntryStatusValues,
   accountingSourceModuleValues,
   contractTypeValues,
@@ -222,7 +228,9 @@ import {
   factoringStatusValues,
   accountingAccountTypeValues,
   accountingNormalBalanceValues,
+  accountingAccountLevelValues,
   accountingPeriodStatusValues,
+  accountingClosureTypeValues,
   accountingEntryStatusValues,
   accountingSourceModuleValues,
   contractTypeValues,
@@ -333,9 +341,17 @@ export const accountingNormalBalancePgEnum = pgEnum(
   "accounting_normal_balance",
   accountingNormalBalanceValues,
 );
+export const accountingAccountLevelPgEnum = pgEnum(
+  "accounting_account_level",
+  accountingAccountLevelValues,
+);
 export const accountingPeriodStatusPgEnum = pgEnum(
   "accounting_period_status",
   accountingPeriodStatusValues,
+);
+export const accountingClosureTypePgEnum = pgEnum(
+  "accounting_closure_type",
+  accountingClosureTypeValues,
 );
 export const accountingEntryStatusPgEnum = pgEnum(
   "accounting_entry_status",
@@ -494,7 +510,9 @@ export const reconciliationItemTypeEnum = reconciliationItemTypePgEnum;
 export const factoringStatusEnum = factoringStatusPgEnum;
 export const accountingAccountTypeEnum = accountingAccountTypePgEnum;
 export const accountingNormalBalanceEnum = accountingNormalBalancePgEnum;
+export const accountingAccountLevelEnum = accountingAccountLevelPgEnum;
 export const accountingPeriodStatusEnum = accountingPeriodStatusPgEnum;
+export const accountingClosureTypeEnum = accountingClosureTypePgEnum;
 export const accountingEntryStatusEnum = accountingEntryStatusPgEnum;
 export const accountingSourceModuleEnum = accountingSourceModulePgEnum;
 export const contractTypeEnum = contractTypePgEnum;
@@ -2236,6 +2254,9 @@ export const accountingAccounts = pgTable(
     type: accountingAccountTypeEnum("type").notNull(),
     normalBalance: accountingNormalBalanceEnum("normal_balance").notNull(),
     parentAccountId: uuid("parent_account_id"),
+    parentCode: varchar("parent_code", { length: 20 }),
+    accountLevel: accountingAccountLevelEnum("account_level"),
+    niifClassification: varchar("niif_classification", { length: 80 }),
     description: text("description"),
     isPostable: boolean("is_postable").notNull().default(true),
     isActive: boolean("is_active").notNull().default(true),
@@ -2249,6 +2270,28 @@ export const accountingAccounts = pgTable(
     codeUnique: uniqueIndex("accounting_accounts_code_unique").on(table.code),
     nameIdx: index("accounting_accounts_name_idx").on(table.name),
     parentIdx: index("accounting_accounts_parent_idx").on(table.parentAccountId),
+    parentCodeIdx: index("accounting_accounts_parent_code_idx").on(table.parentCode),
+    accountLevelIdx: index("accounting_accounts_level_idx").on(table.accountLevel),
+  }),
+);
+
+export const accountingCostCenters = pgTable(
+  "accounting_cost_centers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: varchar("code", { length: 10 }).notNull(),
+    name: varchar("name", { length: 160 }).notNull(),
+    city: varchar("city", { length: 120 }),
+    isActive: boolean("is_active").notNull().default(true),
+    metadata: jsonb("metadata"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    updatedBy: uuid("updated_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    codeUnique: uniqueIndex("accounting_cost_centers_code_unique").on(table.code),
+    activeIdx: index("accounting_cost_centers_active_idx").on(table.isActive),
   }),
 );
 
@@ -2258,6 +2301,9 @@ export const accountingPeriods = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     period: varchar("period", { length: 7 }).notNull(),
     status: accountingPeriodStatusEnum("status").notNull().default("OPEN"),
+    closureType: accountingClosureTypeEnum("closure_type")
+      .notNull()
+      .default("MENSUAL"),
     openedAt: timestamp("opened_at", { withTimezone: true }).defaultNow(),
     openedBy: uuid("opened_by").references(() => employees.id),
     closedAt: timestamp("closed_at", { withTimezone: true }),
@@ -2272,6 +2318,9 @@ export const accountingPeriods = pgTable(
       table.period,
     ),
     statusIdx: index("accounting_periods_status_idx").on(table.status),
+    closureTypeIdx: index("accounting_periods_closure_type_idx").on(
+      table.closureType,
+    ),
   }),
 );
 
@@ -2280,6 +2329,7 @@ export const accountingEntries = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     entryNumber: varchar("entry_number", { length: 30 }).notNull(),
+    voucherType: varchar("voucher_type", { length: 5 }),
     period: varchar("period", { length: 7 }).notNull(),
     entryDate: date("entry_date").notNull(),
     status: accountingEntryStatusEnum("status").notNull().default("DRAFT"),
@@ -2291,6 +2341,12 @@ export const accountingEntries = pgTable(
     idempotencyKey: varchar("idempotency_key", { length: 160 }),
     description: text("description").notNull(),
     externalReference: varchar("external_reference", { length: 120 }),
+    totalDebit: numeric("total_debit", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
+    totalCredit: numeric("total_credit", { precision: 14, scale: 2 })
+      .notNull()
+      .default("0"),
     postedAt: timestamp("posted_at", { withTimezone: true }),
     postedBy: uuid("posted_by").references(() => employees.id),
     reversalOfId: uuid("reversal_of_id"),
@@ -2309,6 +2365,9 @@ export const accountingEntries = pgTable(
       table.idempotencyKey,
     ),
     periodIdx: index("accounting_entries_period_idx").on(table.period),
+    voucherTypeIdx: index("accounting_entries_voucher_type_idx").on(
+      table.voucherType,
+    ),
     sourceIdx: index("accounting_entries_source_idx").on(
       table.sourceModule,
       table.sourceType,
@@ -2326,6 +2385,7 @@ export const accountingEntryLines = pgTable(
     accountId: uuid("account_id")
       .notNull()
       .references(() => accountingAccounts.id),
+    costCenterId: uuid("cost_center_id").references(() => accountingCostCenters.id),
     thirdPartyType: thirdPartyTypeEnum("third_party_type"),
     thirdPartyId: uuid("third_party_id"),
     description: text("description"),
@@ -2338,9 +2398,46 @@ export const accountingEntryLines = pgTable(
   (table) => ({
     entryIdx: index("accounting_entry_lines_entry_idx").on(table.entryId),
     accountIdx: index("accounting_entry_lines_account_idx").on(table.accountId),
+    costCenterIdx: index("accounting_entry_lines_cost_center_idx").on(
+      table.costCenterId,
+    ),
     entryOrderUnique: uniqueIndex("accounting_entry_lines_entry_order_unique").on(
       table.entryId,
       table.lineOrder,
+    ),
+  }),
+);
+
+export const accountingRuleDefinitions = pgTable(
+  "accounting_rule_definitions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceModule: accountingSourceModuleEnum("source_module")
+      .notNull()
+      .default("GENERAL"),
+    sourceType: varchar("source_type", { length: 80 }).notNull(),
+    event: varchar("event", { length: 60 }).notNull(),
+    descriptionTemplate: varchar("description_template", { length: 200 })
+      .notNull(),
+    debitAccountCode: varchar("debit_account_code", { length: 20 }).notNull(),
+    creditAccountCode: varchar("credit_account_code", { length: 20 }).notNull(),
+    amountField: varchar("amount_field", { length: 80 }).notNull(),
+    sortOrder: integer("sort_order").notNull().default(1),
+    isActive: boolean("is_active").notNull().default(true),
+    notes: text("notes"),
+    createdBy: uuid("created_by").references(() => employees.id),
+    updatedBy: uuid("updated_by").references(() => employees.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    sourceEventOrderUnique: uniqueIndex(
+      "accounting_rule_definitions_source_event_order_unique",
+    ).on(table.sourceType, table.event, table.sortOrder),
+    moduleTypeEventIdx: index("accounting_rule_definitions_module_type_event_idx").on(
+      table.sourceModule,
+      table.sourceType,
+      table.event,
     ),
   }),
 );
@@ -2550,6 +2647,11 @@ export const operativeDashboardLogs = pgTable("operative_dashboard_logs", {
   observations: text("observations"),
   repoCheck: boolean("repo_check").notNull().default(false),
   processCode: varchar("process_code", { length: 1 }).notNull().default("P"),
+  operatorEmployeeId: uuid("operator_employee_id"),
+  operatorName: varchar("operator_name", { length: 150 }),
+  operatorEmail: varchar("operator_email", { length: 255 }),
+  machineId: varchar("machine_id", { length: 100 }),
+  machineName: varchar("machine_name", { length: 100 }),
   createdByUserId: uuid("created_by_user_id").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

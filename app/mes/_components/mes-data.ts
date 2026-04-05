@@ -515,7 +515,13 @@ export async function fetchMontajeAssignments(): Promise<
         assignments.set(orderCode, {
           orderCode,
           userId: row.createdByUserId ?? null,
-          userLabel: rawLabel || row.createdByUserId || "Operario",
+          employeeId: row.operatorEmployeeId ?? null,
+          userLabel:
+            row.operatorName ||
+            rawLabel ||
+            row.operatorEmployeeId ||
+            row.createdByUserId ||
+            "Operario",
           takenAt: row.startAt ?? row.createdAt ?? null,
         });
       }

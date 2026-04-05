@@ -55,6 +55,7 @@ export default function LoginUser() {
 
   const router = useRouter();
   const login = useSessionStore((s) => s.login);
+  const clearSession = useSessionStore((s) => s.clearSession);
 
   const handleStaffChange = (e: ChangeEvent<HTMLInputElement>) => {
     setStaffForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -114,9 +115,19 @@ export default function LoginUser() {
       const ok = await login(thirdPartyForm.username.trim(), thirdPartyForm.password);
 
       if (ok) {
-        setToast({ message: "Login successful.", type: "success" });
-        // Read role from store (set by login()) to determine where to redirect
         const role = useSessionStore.getState().user?.role;
+
+        if (String(role ?? "").trim().toUpperCase() !== Role.CONFECCIONISTA) {
+          await clearSession();
+          setToast({
+            message: "El acceso de terceros está habilitado solo para confeccionistas.",
+            type: "error",
+          });
+
+          return;
+        }
+
+        setToast({ message: "Login successful.", type: "success" });
         const destination = resolvePostLoginPath(role);
 
         setTimeout(() => {

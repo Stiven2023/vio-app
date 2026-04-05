@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  MesAccessSelection,
   MontajeAssignment,
   PedidoGroup,
   ProcessQueueRow,
@@ -20,14 +21,12 @@ import {
   Input,
   Select,
   SelectItem,
-  Tab,
   Table,
   TableBody,
   TableCell,
   TableColumn,
   TableHeader,
   TableRow,
-  Tabs,
 } from "@heroui/react";
 import {
   MdError,
@@ -40,9 +39,11 @@ import {
 
 import { OperarioWorklogTable } from "@/app/erp/dashboard/role/_components/operario-worklog-table";
 import {
+  getMesAccessProcessOption,
   PROCESS_ROLE_CONFIG,
   PROCESO_PREFIX,
 } from "@/app/mes/_components/mes-config";
+import { MesAccessGate } from "@/app/mes/_components/mes-access-gate";
 import {
   PedidoSection,
   MontajeAssignmentHeader,
@@ -55,7 +56,6 @@ import {
 } from "@/app/mes/_components/mes-data";
 import { buildProcessQueue } from "@/app/mes/_components/mes-utils";
 import { useSessionStore } from "@/store/session";
-import { Role } from "@/src/db/enums";
 import { MesProductionQueueTab } from "@/app/mes/_components/mes-production-queue-tab";
 import { MontajeExcelDownload } from "@/app/mes/_components/mes-montaje-excel";
 import { PlotterRepoWizard } from "@/app/mes/_components/mes-plotter-repo-wizard";
@@ -68,6 +68,25 @@ import { MesEnvioStatusCard } from "@/app/mes/_components/mes-envio-status-card"
 import { MesItemTagsPanel } from "@/app/mes/_components/mes-item-tags-panel";
 import { MesDesignOverviewPanel } from "@/app/mes/_components/mes-design-overview-panel";
 import { MesVisualPreview } from "@/app/mes/_components/mes-visual-preview";
+
+const MES_ACCESS_STORAGE_KEY = "mes:access-selection:v1";
+
+function buildMesAccessObservation(selection: MesAccessSelection | null) {
+  if (!selection) {
+    return null;
+  }
+
+  const parts = [
+    `[MES_ACCESS_EMAIL] ${selection.email}`,
+    `[MES_ACCESS_EMPLEADO] ${selection.employeeName}`,
+  ];
+
+  if (selection.machineName) {
+    parts.push(`[MES_ACCESS_MAQUINA] ${selection.machineName}`);
+  }
+
+  return parts.join(" | ");
+}
 
 export default function MesPageClient() {
   const [data, setData] = useState<PedidoGroup[]>([]);
@@ -106,15 +125,16 @@ export default function MesPageClient() {
     origenLabel: string;
     destinoLabel: string;
   } | null>(null);
+  const [accessSelection, setAccessSelection] = useState<MesAccessSelection | null>(null);
+  const [accessReady, setAccessReady] = useState(false);
 
   const sessionUser = useSessionStore((state) => state.user);
+  const verifySession = useSessionStore((state) => state.verifySession);
   const currentUserId = String(sessionUser?.id ?? "").trim();
-  const currentUserRole = String(sessionUser?.role ?? "").trim();
-  const isLider =
-    currentUserRole === Role.LIDER_OPERACIONAL ||
-    currentUserRole === Role.ADMINISTRADOR;
+  const currentEmployeeId = String(sessionUser?.employeeId ?? "").trim();
   const activeProcessConfig =
     PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
+  const currentProcessLabel = accessSelection?.processLabel ?? activeProcessConfig.label;
   const usesTicketFlow = [
     "montaje",
     "plotter",
@@ -123,6 +143,93 @@ export default function MesPageClient() {
     "integracion",
   ].includes(activeProceso);
   const usesTurnGate = usesTicketFlow && activeProceso !== "corte";
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(MES_ACCESS_STORAGE_KEY);
+
+      if (raw) {
+        const parsed = JSON.parse(raw) as MesAccessSelection;
+
+        if (parsed?.processKey && parsed?.mesProcess) {
+          setAccessSelection(parsed);
+          setActiveProceso(parsed.mesProcess);
+        }
+      } else if (
+        sessionUser?.sessionType === "mes" &&
+        sessionUser.mesAccess &&
+        sessionUser.employeeId &&
+        sessionUser.name
+      ) {
+        const processOption = getMesAccessProcessOption(sessionUser.mesAccess.processKey);
+
+        setAccessSelection({
+          email: String(sessionUser.email ?? "").trim().toLowerCase(),
+          processKey: sessionUser.mesAccess.processKey as MesAccessSelection["processKey"],
+          processLabel: processOption?.label ?? sessionUser.mesAccess.processKey,
+          mesProcess: sessionUser.mesAccess.mesProcess as MesAccessSelection["mesProcess"],
+          operationType: sessionUser.mesAccess.operationType as MesAccessSelection["operationType"],
+          machineId: sessionUser.mesAccess.machineId ?? null,
+          machineName: sessionUser.mesAccess.machineName ?? null,
+          employeeId: sessionUser.employeeId,
+          employeeName: sessionUser.name,
+          employeeRole: sessionUser.role ?? null,
+          employeeEmail: sessionUser.email ?? null,
+        });
+        setActiveProceso(sessionUser.mesAccess.mesProcess);
+      } else if (
+        String(sessionUser?.role ?? "").trim().toUpperCase() === "CONFECCIONISTA" &&
+        sessionUser?.employeeId &&
+        sessionUser?.name
+      ) {
+        setAccessSelection({
+          email: String(sessionUser.email ?? "").trim().toLowerCase(),
+          processKey: "confeccion",
+          processLabel: "Confección",
+          mesProcess: "confeccion",
+          operationType: "CONFECCION",
+          machineId: null,
+          machineName: null,
+          employeeId: sessionUser.employeeId,
+          employeeName: sessionUser.name,
+          employeeRole: sessionUser.role ?? null,
+          employeeEmail: sessionUser.email ?? null,
+        });
+        setActiveProceso("confeccion");
+      }
+    } catch {
+      window.localStorage.removeItem(MES_ACCESS_STORAGE_KEY);
+    } finally {
+      setAccessReady(true);
+    }
+  }, [sessionUser]);
+
+  const handleAccessSubmit = useCallback(async (selection: MesAccessSelection) => {
+    await verifySession();
+    setAccessSelection(selection);
+    setActiveProceso(selection.mesProcess);
+    setSelectedMontajeTicket(null);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        MES_ACCESS_STORAGE_KEY,
+        JSON.stringify(selection),
+      );
+    }
+  }, [verifySession]);
+
+  const resetAccessSelection = useCallback(() => {
+    setAccessSelection(null);
+    setSelectedMontajeTicket(null);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(MES_ACCESS_STORAGE_KEY);
+    }
+  }, []);
 
   const mesOrderStatuses = useMemo(() => {
     if (activeProceso === "programacion") return ["PROGRAMACION"];
@@ -187,8 +294,8 @@ export default function MesPageClient() {
 
   const takeMontajeOrder = useCallback(
     async (row: ProcessQueueRow) => {
-      if (!currentUserId) {
-        toast.error("No se pudo identificar el usuario activo para tomar el pedido.");
+      if (!currentUserId && !currentEmployeeId) {
+        toast.error("No se pudo identificar el operario activo para tomar el pedido.");
 
         return;
       }
@@ -203,7 +310,11 @@ export default function MesPageClient() {
             operationType: "MONTAJE",
             orderCode: row.pedido,
             designName: row.detalle,
-            observations: sessionUser?.name || currentUserId,
+            observations:
+              buildMesAccessObservation(accessSelection) ??
+              sessionUser?.name ??
+              currentEmployeeId ??
+              currentUserId,
             processCode: "P",
             quantityOp: 0,
             producedQuantity: 0,
@@ -241,10 +352,18 @@ export default function MesPageClient() {
         toast.error(message);
       }
     },
-    [currentUserId, refreshData, sessionUser?.name],
+    [accessSelection, currentEmployeeId, currentUserId, refreshData, sessionUser?.name],
   );
 
   useEffect(() => {
+    if (!accessReady || !accessSelection) {
+      setLoading(false);
+      setData([]);
+      setMontajeAssignments(new Map());
+
+      return;
+    }
+
     const load = async () => {
       try {
         setLoading(true);
@@ -259,7 +378,7 @@ export default function MesPageClient() {
     };
 
     void load();
-  }, [refreshData]);
+  }, [accessReady, accessSelection, refreshData]);
 
   const filtered = useMemo(() => {
     return data.filter((p) => {
@@ -362,6 +481,36 @@ export default function MesPageClient() {
     }
   }, [activeProceso, selectedMontajeTicket]);
 
+  if (!accessReady) {
+    return (
+      <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+        <header className="space-y-1">
+          <h1 className="text-xl font-semibold">M.E.S.</h1>
+          <p className="text-sm text-default-500">
+            Seguimiento en tiempo real de producción para el Sistema de Ejecución de Manufactura.
+          </p>
+        </header>
+      </div>
+    );
+  }
+
+  if (!accessSelection) {
+    return (
+      <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+        <header className="space-y-1">
+          <h1 className="text-xl font-semibold">M.E.S.</h1>
+          <p className="text-sm text-default-500">
+            Seguimiento en tiempo real de producción para el Sistema de Ejecución de Manufactura.
+          </p>
+        </header>
+
+        <MesVisualPreview />
+
+        <MesAccessGate onSubmit={handleAccessSubmit} />
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
       <header className="space-y-1">
@@ -372,6 +521,23 @@ export default function MesPageClient() {
       </header>
 
       <MesVisualPreview />
+
+      <Card className="border border-primary-200 bg-primary-50" radius="sm" shadow="none">
+        <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <div className="text-sm font-semibold text-primary-900">
+              Acceso operativo activo
+            </div>
+            <div className="text-xs text-primary-800">
+              {accessSelection.email} · {accessSelection.processLabel} · {accessSelection.employeeName}
+              {accessSelection.machineName ? ` · ${accessSelection.machineName}` : ""}
+            </div>
+          </div>
+          <Button color="primary" size="sm" variant="flat" onPress={resetAccessSelection}>
+            Cambiar acceso
+          </Button>
+        </CardBody>
+      </Card>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -406,47 +572,20 @@ export default function MesPageClient() {
         ))}
       </div>
 
-      <section className="rounded-medium border border-default-200 bg-content1 p-2">
-        <Tabs
-          classNames={{
-            tabList: "gap-0 overflow-x-auto",
-            cursor: "bg-primary",
-          }}
-          selectedKey={activeProceso}
-          size="sm"
-          variant="underlined"
-          onSelectionChange={(k) => setActiveProceso(k as string)}
-        >
-          {[
-            ...(isLider ? [{ key: "workflow", label: "Workflow" }] : []),
-            { key: "programacion", label: "Programación" },
-            { key: "montaje", label: "Montaje" },
-            { key: "plotter", label: "Plotter" },
-            { key: "sublimacion", label: "Sublimación" },
-            { key: "corte", label: "Corte" },
-            { key: "integracion", label: "Integración" },
-            { key: "confeccion", label: "Confección" },
-            { key: "empaque", label: "Empaque" },
-            { key: "despacho", label: "Despacho" },
-          ].map((tab) => (
-            <Tab
-              key={tab.key}
-              title={
-                <span className="text-xs px-1">
-                  {tab.key !== "programacion" && tab.key !== "workflow" && (
-                    <span className="mr-1 text-[9px] font-mono text-default-400">
-                      [
-                      {PROCESO_PREFIX[tab.key] ??
-                        tab.key.slice(0, 3).toUpperCase()}
-                      ]
-                    </span>
-                  )}
-                  {tab.label}
-                </span>
-              }
-            />
-          ))}
-        </Tabs>
+      <section className="rounded-medium border border-default-200 bg-content1 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-default-500">
+              Proceso operativo seleccionado
+            </div>
+            <div className="text-sm font-medium text-foreground">
+              {currentProcessLabel}
+            </div>
+          </div>
+          <div className="text-xs text-default-400">
+            [{PROCESO_PREFIX[activeProceso] ?? activeProceso.slice(0, 3).toUpperCase()}]
+          </div>
+        </div>
       </section>
 
       <Divider className="opacity-60" />
@@ -619,16 +758,24 @@ export default function MesPageClient() {
                     const isTakenByOther =
                       isMontaje &&
                       Boolean(
-                        assignment?.userId &&
-                          currentUserId &&
-                          assignment.userId !== currentUserId,
+                        (assignment?.employeeId &&
+                          currentEmployeeId &&
+                          assignment.employeeId !== currentEmployeeId) ||
+                          (!assignment?.employeeId &&
+                            assignment?.userId &&
+                            currentUserId &&
+                            assignment.userId !== currentUserId),
                       );
                     const isTakenByMe =
                       isMontaje &&
                       Boolean(
-                        assignment?.userId &&
-                          currentUserId &&
-                          assignment.userId === currentUserId,
+                        (assignment?.employeeId &&
+                          currentEmployeeId &&
+                          assignment.employeeId === currentEmployeeId) ||
+                          (!assignment?.employeeId &&
+                            assignment?.userId &&
+                            currentUserId &&
+                            assignment.userId === currentUserId),
                       );
                     const canTakePedido =
                       isMontaje &&
@@ -775,7 +922,7 @@ export default function MesPageClient() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <div className="text-lg font-semibold">
-                        Produccion - {activeProcessConfig.label}
+                        Produccion - {currentProcessLabel}
                       </div>
                       <div className="text-sm text-default-500">
                         {usesTicketFlow
@@ -985,6 +1132,7 @@ export default function MesPageClient() {
                 </div>
 
                 <OperarioWorklogTable
+                  mesAccessSelection={accessSelection}
                   prefill={{
                     orderCode: selectedMontajeTicket.pedido,
                     designName:

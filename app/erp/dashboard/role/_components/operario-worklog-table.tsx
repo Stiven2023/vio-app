@@ -1,5 +1,7 @@
 "use client";
 
+import type { MesAccessSelection } from "@/app/mes/_components/mes-types";
+
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@heroui/button";
@@ -203,6 +205,38 @@ function normalizeOperationByRole(role: string): OperationType {
   return "MONTAJE";
 }
 
+function normalizeRoleAreaByOperation(operationType: OperationType): RoleArea {
+  if (operationType === "DESPACHO") {
+    return "MENSAJERIA";
+  }
+
+  return "OPERARIOS";
+}
+
+function buildMesAccessObservations(
+  accessSelection: MesAccessSelection | null | undefined,
+  customNotes: string,
+) {
+  const notes: string[] = [];
+
+  if (accessSelection) {
+    notes.push(`[MES_ACCESS_EMAIL] ${accessSelection.email}`);
+    notes.push(
+      `[MES_ACCESS_EMPLEADO] ${accessSelection.employeeName} (${accessSelection.employeeRole ?? "SIN_ROL"})`,
+    );
+
+    if (accessSelection.machineName) {
+      notes.push(`[MES_ACCESS_MAQUINA] ${accessSelection.machineName}`);
+    }
+  }
+
+  if (customNotes.trim()) {
+    notes.push(customNotes.trim());
+  }
+
+  return notes.length > 0 ? notes.join(" | ") : null;
+}
+
 type WorklogPrefill = {
   orderCode: string;
   designName: string;
@@ -217,10 +251,12 @@ type WorklogPrefill = {
 export function OperarioWorklogTable({
   role,
   prefill,
+  mesAccessSelection,
   onSaved,
 }: {
   role: string;
   prefill?: WorklogPrefill | null;
+  mesAccessSelection?: MesAccessSelection | null;
   onSaved?: () => void;
 }) {
   const [loading, setLoading] = useState(true);
@@ -236,13 +272,25 @@ export function OperarioWorklogTable({
     roleArea: normalizeRoleAreaByRole(role),
   }));
 
-  const roleAreaFilter = useMemo(() => normalizeRoleAreaByRole(role), [role]);
-  const operationFilter = useMemo(() => normalizeOperationByRole(role), [role]);
+  const roleAreaFilter = useMemo(
+    () =>
+      mesAccessSelection
+        ? normalizeRoleAreaByOperation(mesAccessSelection.operationType)
+        : normalizeRoleAreaByRole(role),
+    [mesAccessSelection, role],
+  );
+  const operationFilter = useMemo(
+    () => mesAccessSelection?.operationType ?? normalizeOperationByRole(role),
+    [mesAccessSelection, role],
+  );
   const isAssemblyMode = useMemo(
     () => operationFilter === "MONTAJE",
     [operationFilter],
   );
-  const isOperationFixed = useMemo(() => role.startsWith("OPERARIO_"), [role]);
+  const isOperationFixed = useMemo(
+    () => role.startsWith("OPERARIO_") || Boolean(mesAccessSelection),
+    [mesAccessSelection, role],
+  );
   const isPrefilledMode = Boolean(prefill);
   const sessionUser = useSessionStore((state) => state.user);
   const reporterId = String(sessionUser?.id ?? "SIN_USUARIO");
@@ -393,13 +441,16 @@ export function OperarioWorklogTable({
           `Motivo: ${repoReason.trim() || "N/A"}`,
           `Reporta: ${reporterId}`,
           `Observaciones repo: ${repoNotes.trim() || "N/A"}`,
-          draft.observations.trim()
-            ? `Observaciones operativas: ${draft.observations.trim()}`
-            : null,
+          buildMesAccessObservations(
+            mesAccessSelection,
+            draft.observations.trim()
+              ? `Observaciones operativas: ${draft.observations.trim()}`
+              : "",
+          ),
         ]
           .filter(Boolean)
           .join(" | ")
-      : draft.observations || null;
+      : buildMesAccessObservations(mesAccessSelection, draft.observations || "");
 
     try {
       setSaving(true);
@@ -483,6 +534,14 @@ export function OperarioWorklogTable({
           ? "En Montaje registra producción por cantidad total. La hora de inicio se toma al tomar pedido y la hora de fin al marcar completo. Si autorizas corte manual, marca la casilla correspondiente antes de guardar completo."
           : "Registra producción por rol y operación: pedido, diseño, talla y cantidades; si marcas parcial + repo o creas reposición desde una fila parcial, se vincula con Programación por pedido/diseño/talla."}
       </div>
+
+      {mesAccessSelection ? (
+        <div className="rounded-medium border border-primary-200 bg-primary-50 px-3 py-2 text-xs text-primary-800">
+          Contexto MES: {mesAccessSelection.processLabel} · {mesAccessSelection.employeeName}
+          {mesAccessSelection.machineName ? ` · ${mesAccessSelection.machineName}` : ""}
+          {mesAccessSelection.email ? ` · ${mesAccessSelection.email}` : ""}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <Input

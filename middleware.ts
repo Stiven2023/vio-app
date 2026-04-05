@@ -85,6 +85,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth_token")?.value;
   const externalToken = request.cookies.get("external_access_token")?.value;
+  const mesAccessToken = request.cookies.get("mes_access_token")?.value;
 
   const localePrefix = readLocalePrefix(pathname);
   const localeAgnosticPath = removeLocalePrefix(pathname);
@@ -174,10 +175,10 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  if (normalizedPath === "/login" && token) {
+  if (normalizedPath === "/login" && (token || mesAccessToken)) {
     const selectorUrl = request.nextUrl.clone();
 
-    selectorUrl.pathname = "/";
+    selectorUrl.pathname = mesAccessToken && !token ? "/mes" : "/";
     selectorUrl.search = "";
 
     return NextResponse.redirect(selectorUrl);
@@ -188,6 +189,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (normalizedPath.startsWith("/under-construction")) {
+    return NextResponse.next();
+  }
+
+  if (normalizedPath === "/mes" || normalizedPath.startsWith("/mes/")) {
     return NextResponse.next();
   }
 

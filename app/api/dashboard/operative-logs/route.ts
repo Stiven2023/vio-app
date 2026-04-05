@@ -14,7 +14,9 @@ import {
 } from "@/src/db/erp/schema";
 import { operativeDashboardLogs } from "@/src/db/mes/schema";
 import {
+  getEmailFromRequest,
   getEmployeeIdFromRequest,
+  getMesAccessFromRequest,
   getRoleFromRequest,
   getUserIdFromRequest,
 } from "@/src/utils/auth-middleware";
@@ -465,11 +467,17 @@ export async function POST(request: Request) {
   const authorizeManualCut = toBoolean(body.authorizeManualCut);
   const repoCheck = toBoolean(body.repoCheck);
   const size = toOptionalText(body.size);
+  const mesAccess = getMesAccessFromRequest(request);
 
   const createdByUserId = getUserIdFromRequest(request);
   const changedByEmployeeId = await getEmployeeIdFromRequest(request);
+  const operatorEmployeeId = mesAccess?.employeeId ?? changedByEmployeeId;
+  const operatorName = mesAccess?.employeeName ?? null;
+  const operatorEmail = mesAccess?.employeeEmail ?? getEmailFromRequest(request);
+  const machineId = mesAccess?.machineId ?? null;
+  const machineName = mesAccess?.machineName ?? null;
 
-  if (!createdByUserId && operationType === "MONTAJE") {
+  if (!createdByUserId && !operatorEmployeeId && operationType === "MONTAJE") {
     return new Response("Usuario no autenticado para montaje", { status: 403 });
   }
 
@@ -500,13 +508,17 @@ export async function POST(request: Request) {
       if (takeOrder) {
         if (
           activeTakeOrder &&
-          activeTakeOrder.createdByUserId &&
-          activeTakeOrder.createdByUserId !== createdByUserId
+          ((activeTakeOrder.operatorEmployeeId &&
+            activeTakeOrder.operatorEmployeeId !== operatorEmployeeId) ||
+            (!activeTakeOrder.operatorEmployeeId &&
+              activeTakeOrder.createdByUserId &&
+              activeTakeOrder.createdByUserId !== createdByUserId))
         ) {
           return Response.json(
             {
               conflict: true,
-              claimedByUserId: activeTakeOrder.createdByUserId,
+              claimedByUserId:
+                activeTakeOrder.operatorEmployeeId ?? activeTakeOrder.createdByUserId,
               takenAt: activeTakeOrder.startAt ?? activeTakeOrder.createdAt,
             },
             { status: 409 },
@@ -550,6 +562,11 @@ export async function POST(request: Request) {
             observations: toOptionalText(body.observations),
             repoCheck: false,
             processCode,
+            operatorEmployeeId,
+            operatorName,
+            operatorEmail,
+            machineId,
+            machineName,
             createdByUserId,
           })
           .returning();
@@ -594,14 +611,18 @@ export async function POST(request: Request) {
       }
 
       if (
-        activeTakeOrder.createdByUserId &&
-        activeTakeOrder.createdByUserId !== createdByUserId
+        (activeTakeOrder.operatorEmployeeId &&
+          activeTakeOrder.operatorEmployeeId !== operatorEmployeeId) ||
+        (!activeTakeOrder.operatorEmployeeId &&
+          activeTakeOrder.createdByUserId &&
+          activeTakeOrder.createdByUserId !== createdByUserId)
       ) {
         return Response.json(
           {
             conflict: true,
             message: "Este pedido ya fue tomado por otro operario en montaje.",
-            claimedByUserId: activeTakeOrder.createdByUserId,
+            claimedByUserId:
+              activeTakeOrder.operatorEmployeeId ?? activeTakeOrder.createdByUserId,
             takenAt: activeTakeOrder.startAt ?? activeTakeOrder.createdAt,
           },
           { status: 409 },
@@ -640,6 +661,11 @@ export async function POST(request: Request) {
         observations: toOptionalText(body.observations),
         repoCheck,
         processCode,
+        operatorEmployeeId,
+        operatorName,
+        operatorEmail,
+        machineId,
+        machineName,
         createdByUserId,
       })
       .returning();

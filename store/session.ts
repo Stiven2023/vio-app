@@ -1,9 +1,19 @@
 import { create } from "zustand";
 
 export interface User {
-  id: string;
+  id: string | null;
   name: string | null;
   role: string | null;
+  email?: string | null;
+  employeeId?: string | null;
+  sessionType?: "auth" | "mes";
+  mesAccess?: {
+    processKey: string;
+    mesProcess: string;
+    operationType: string;
+    machineId: string | null;
+    machineName: string | null;
+  } | null;
   avatarUrl?: string | null;
 }
 

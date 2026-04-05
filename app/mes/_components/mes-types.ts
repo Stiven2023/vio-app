@@ -90,11 +90,17 @@ export type OperativeLogRow = {
   operationType: string | null;
   createdAt: string | null;
   createdByUserId: string | null;
+  operatorEmployeeId: string | null;
+  operatorName: string | null;
+  operatorEmail: string | null;
+  machineId: string | null;
+  machineName: string | null;
 };
 
 export type MontajeAssignment = {
   orderCode: string;
   userId: string | null;
+  employeeId: string | null;
   userLabel: string;
   takenAt: string | null;
 };
@@ -113,6 +119,53 @@ export type ProcessRoleConfig = {
     | "EMPAQUE"
     | "INTEGRACION"
     | "DESPACHO";
+};
+
+export type MesAccessEmployee = {
+  id: string;
+  name: string;
+  email: string | null;
+  identification: string | null;
+  role: string | null;
+};
+
+export type MesAccessSelection = {
+  email: string;
+  processKey:
+    | "montaje"
+    | "plotter"
+    | "calandra"
+    | "sublimacion"
+    | "corte_laser"
+    | "corte_manual"
+    | "confeccion"
+    | "integracion"
+    | "despacho";
+  processLabel: string;
+  mesProcess:
+    | "montaje"
+    | "plotter"
+    | "sublimacion"
+    | "corte"
+    | "confeccion"
+    | "integracion"
+    | "despacho";
+  operationType:
+    | "MONTAJE"
+    | "PLOTTER"
+    | "CALANDRA"
+    | "SUBLIMACION"
+    | "CORTE_LASER"
+    | "CORTE_MANUAL"
+    | "CONFECCION"
+    | "INTEGRACION"
+    | "DESPACHO";
+  machineId: string | null;
+  machineName: string | null;
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string | null;
+  employeeEmail: string | null;
 };
 
 export type ProcessQueueRow = {

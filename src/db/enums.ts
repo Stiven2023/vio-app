@@ -377,16 +377,63 @@ Object.defineProperty(AccountingNormalBalanceEnum, "enumValues", {
   value: accountingNormalBalanceValues,
 });
 
+export const AccountingAccountLevel = {
+  CLASE: "CLASE",
+  GRUPO: "GRUPO",
+  CUENTA: "CUENTA",
+  SUBCUENTA: "SUBCUENTA",
+} as const;
+
+export const accountingAccountLevelValues = [
+  "CLASE",
+  "GRUPO",
+  "CUENTA",
+  "SUBCUENTA",
+] as const;
+
+export const AccountingAccountLevelEnum = z.enum(
+  accountingAccountLevelValues,
+);
+Object.defineProperty(AccountingAccountLevelEnum, "enumValues", {
+  value: accountingAccountLevelValues,
+});
+
 export const AccountingPeriodStatus = {
   OPEN: "OPEN",
   CLOSED: "CLOSED",
+  BLOCKED: "BLOCKED",
 } as const;
 
-export const accountingPeriodStatusValues = ["OPEN", "CLOSED"] as const;
+export const accountingPeriodStatusValues = [
+  "OPEN",
+  "CLOSED",
+  "BLOCKED",
+] as const;
 
 export const AccountingPeriodStatusEnum = z.enum(accountingPeriodStatusValues);
 Object.defineProperty(AccountingPeriodStatusEnum, "enumValues", {
   value: accountingPeriodStatusValues,
+});
+
+export const AccountingClosureType = {
+  MENSUAL: "MENSUAL",
+  TRIMESTRAL: "TRIMESTRAL",
+  SEMESTRAL: "SEMESTRAL",
+  ANUAL: "ANUAL",
+} as const;
+
+export const accountingClosureTypeValues = [
+  "MENSUAL",
+  "TRIMESTRAL",
+  "SEMESTRAL",
+  "ANUAL",
+] as const;
+
+export const AccountingClosureTypeEnum = z.enum(
+  accountingClosureTypeValues,
+);
+Object.defineProperty(AccountingClosureTypeEnum, "enumValues", {
+  value: accountingClosureTypeValues,
 });
 
 export const AccountingEntryStatus = {
@@ -409,7 +456,9 @@ Object.defineProperty(AccountingEntryStatusEnum, "enumValues", {
 export const AccountingSourceModule = {
   SALES: "SALES",
   PURCHASES: "PURCHASES",
+  PURCHASING: "PURCHASING",
   INVENTORY: "INVENTORY",
+  PRODUCTION: "PRODUCTION",
   PAYROLL: "PAYROLL",
   TAX: "TAX",
   TREASURY: "TREASURY",
@@ -420,7 +469,9 @@ export const AccountingSourceModule = {
 export const accountingSourceModuleValues = [
   "SALES",
   "PURCHASES",
+  "PURCHASING",
   "INVENTORY",
+  "PRODUCTION",
   "PAYROLL",
   "TAX",
   "TREASURY",

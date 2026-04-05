@@ -114,6 +114,11 @@ export const operativeDashboardLogs = pgTable(
     observations: text("observations"),
     repoCheck: boolean("repo_check").notNull().default(false),
     processCode: varchar("process_code", { length: 1 }).notNull().default("P"),
+    operatorEmployeeId: uuid("operator_employee_id"),
+    operatorName: varchar("operator_name", { length: 150 }),
+    operatorEmail: varchar("operator_email", { length: 255 }),
+    machineId: varchar("machine_id", { length: 100 }),
+    machineName: varchar("machine_name", { length: 100 }),
     // External reference to IAM users.id
     createdByUserId: uuid("created_by_user_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
@@ -127,6 +132,9 @@ export const operativeDashboardLogs = pgTable(
     ),
     index("idx_operative_dashboard_logs_created_by_user_id").on(
       t.createdByUserId,
+    ),
+    index("idx_operative_dashboard_logs_operator_employee_id").on(
+      t.operatorEmployeeId,
     ),
   ],
 );
@@ -234,8 +242,12 @@ export const mesEnvios = pgTable(
     // Tracking despacho matriz
     logisticOperator: varchar("logistic_operator", { length: 100 }),
     destinationAddress: text("destination_address"),
-    paymentStatus: mesPaymentStatusEnum("payment_status").notNull().default("PENDIENTE"),
-    requiresDeclaredValue: boolean("requires_declared_value").notNull().default(false),
+    paymentStatus: mesPaymentStatusEnum("payment_status")
+      .notNull()
+      .default("PENDIENTE"),
+    requiresDeclaredValue: boolean("requires_declared_value")
+      .notNull()
+      .default(false),
     courierBroughtBy: varchar("courier_brought_by", { length: 150 }),
     receptionLocation: varchar("reception_location", { length: 200 }),
     receptionStatus: varchar("reception_status", { length: 50 }),
@@ -311,7 +323,9 @@ export const mesReposiciones = pgTable(
   "mes_reposiciones",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    repositionCode: varchar("reposition_code", { length: 20 }).notNull().unique(),
+    repositionCode: varchar("reposition_code", { length: 20 })
+      .notNull()
+      .unique(),
     // External references to ERP
     orderId: uuid("order_id").notNull(),
     orderItemId: uuid("order_item_id").notNull(),

@@ -159,15 +159,15 @@ export function LoginAccessTabs({
         </div>
       </Tab>
 
-      {/* ── Tab 3: Third-party (confeccionistas, empaque, mensajeros) ── */}
+      {/* ── Tab 3: Third-party (confeccionistas) ── */}
       <Tab key="tercero" title="Third-party">
         <form
           className="space-y-4 pt-2"
           onSubmit={(e) => void onSubmitThirdParty(e)}
         >
           <p className="text-xs text-default-500">
-            For <strong>confectionists</strong>, <strong>packers</strong> and{" "}
-            <strong>couriers</strong>. Use the credentials provided by Viomar.
+            For <strong>confectionists</strong> only. Use the credentials provided by Viomar
+            to enter MES and report reception or completion.
           </p>
           <Input
             required
