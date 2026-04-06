@@ -50,6 +50,63 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
   CAMBIAR_ESTADO_JURIDICO_EMPAQUE: ["EDITAR_EMPAQUE", "MARCAR_EMPAQUE"],
 };
 
+export async function checkPermissionsByRole(
+  roleName: string | null,
+  permissionNames: string[],
+): Promise<Record<string, boolean>> {
+  const result: Record<string, boolean> = {};
+
+  for (const name of permissionNames) result[name] = false;
+
+  if (!roleName) return result;
+
+  if (roleName === "ADMINISTRADOR") {
+    for (const name of permissionNames) result[name] = true;
+
+    return result;
+  }
+
+  const overrides = ROLE_PERMISSION_OVERRIDES[roleName] ?? [];
+  const candidateToOriginal = new Map<string, string>();
+
+  for (const name of permissionNames) {
+    if (overrides.includes(name)) {
+      result[name] = true;
+      continue;
+    }
+
+    const candidates = Array.from(
+      new Set([name, ...(PERMISSION_ALIASES[name] ?? [])]),
+    );
+
+    for (const candidate of candidates) {
+      candidateToOriginal.set(candidate, name);
+    }
+  }
+
+  if (candidateToOriginal.size === 0) return result;
+
+  const rows = await iamDb
+    .select({ permName: permissions.name })
+    .from(rolePermissions)
+    .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
+    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+    .where(
+      and(
+        eq(roles.name, roleName),
+        inArray(permissions.name, Array.from(candidateToOriginal.keys())),
+      ),
+    );
+
+  for (const row of rows) {
+    const original = candidateToOriginal.get(row.permName);
+
+    if (original) result[original] = true;
+  }
+
+  return result;
+}
+
 export async function requirePermission(
   request: Request,
   permissionName: string,
@@ -98,55 +155,7 @@ export async function checkPermissions(
   request: Request,
   permissionNames: string[],
 ): Promise<Record<string, boolean>> {
-  const result: Record<string, boolean> = {};
-
-  for (const name of permissionNames) result[name] = false;
-
   const roleName = getRoleFromRequest(request);
 
-  if (!roleName) return result;
-
-  if (roleName === "ADMINISTRADOR") {
-    for (const name of permissionNames) result[name] = true;
-
-    return result;
-  }
-
-  const overrides = ROLE_PERMISSION_OVERRIDES[roleName] ?? [];
-
-  // Build full candidate → original name map
-  const candidateToOriginal = new Map<string, string>();
-
-  for (const name of permissionNames) {
-    if (overrides.includes(name)) {
-      result[name] = true;
-      continue;
-    }
-    const candidates = Array.from(
-      new Set([name, ...(PERMISSION_ALIASES[name] ?? [])]),
-    );
-
-    for (const c of candidates) candidateToOriginal.set(c, name);
-  }
-
-  if (candidateToOriginal.size === 0) return result;
-
-  const allCandidates = Array.from(candidateToOriginal.keys());
-
-  const rows = await iamDb
-    .select({ permName: permissions.name })
-    .from(rolePermissions)
-    .innerJoin(roles, eq(rolePermissions.roleId, roles.id))
-    .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
-    .where(
-      and(eq(roles.name, roleName), inArray(permissions.name, allCandidates)),
-    );
-
-  for (const row of rows) {
-    const original = candidateToOriginal.get(row.permName);
-
-    if (original) result[original] = true;
-  }
-
-  return result;
+  return checkPermissionsByRole(roleName, permissionNames);
 }

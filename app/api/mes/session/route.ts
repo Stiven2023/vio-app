@@ -2,9 +2,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { getMesAccessProcessOption } from "@/app/mes/_components/mes-config";
-import { erpDb, iamDb } from "@/src/db";
-import { employees } from "@/src/db/erp/schema";
-import { roles } from "@/src/db/iam/schema";
+import { erpDb } from "@/src/db";
+import { employees, roles } from "@/src/db/erp/schema";
 import {
   dbJsonError,
   jsonError,
@@ -94,7 +93,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const roleRows = await iamDb
+    const roleRows = await erpDb
       .select({ id: roles.id, name: roles.name })
       .from(roles);
     const operarioRoles = roleRows.filter(

@@ -1,9 +1,8 @@
 import { inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { erpDb, iamDb } from "@/src/db";
-import { employees } from "@/src/db/erp/schema";
-import { roles } from "@/src/db/iam/schema";
+import { erpDb } from "@/src/db";
+import { employees, roles } from "@/src/db/erp/schema";
 import { dbJsonError, jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -26,7 +25,7 @@ const MES_ALLOWED_ROLES = new Set([
 
 function canAccessMesSelector(role: string | null) {
   if (!role) {
-    return true;
+    return false;
   }
 
   return MES_ALLOWED_ROLES.has(role) || role.startsWith("OPERARIO_");
@@ -61,7 +60,7 @@ export async function GET(request: Request) {
     .toLowerCase();
 
   try {
-    const roleRows = await iamDb.select({ id: roles.id, name: roles.name }).from(roles);
+    const roleRows = await erpDb.select({ id: roles.id, name: roles.name }).from(roles);
 
     const operarioRoles = roleRows.filter(
       (roleRow) => roleRow.name === "OPERARIO" || roleRow.name.startsWith("OPERARIO_"),

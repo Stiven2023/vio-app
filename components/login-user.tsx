@@ -11,6 +11,7 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { ViomarLogo } from "@/components/viomar-logo";
 import { useSessionStore } from "@/store/session";
 import { Role } from "@/src/db/enums";
+import { getEffectiveSessionRole } from "@/src/utils/session-role";
 import {
   RequestPasswordResetModal,
   ResetPasswordModal,
@@ -80,9 +81,12 @@ export default function LoginUser() {
       const ok = await login(staffForm.username, staffForm.password);
 
       if (ok) {
+        const role = getEffectiveSessionRole(useSessionStore.getState().user);
+        const destination = resolvePostLoginPath(role);
+
         setToast({ message: "Login successful.", type: "success" });
         setTimeout(() => {
-          router.push("/");
+          window.location.replace(destination);
         }, 1000);
       } else {
         setToast({
@@ -115,7 +119,7 @@ export default function LoginUser() {
       const ok = await login(thirdPartyForm.username.trim(), thirdPartyForm.password);
 
       if (ok) {
-        const role = useSessionStore.getState().user?.role;
+        const role = getEffectiveSessionRole(useSessionStore.getState().user);
 
         if (String(role ?? "").trim().toUpperCase() !== Role.CONFECCIONISTA) {
           await clearSession();
@@ -131,7 +135,7 @@ export default function LoginUser() {
         const destination = resolvePostLoginPath(role);
 
         setTimeout(() => {
-          router.push(destination);
+          window.location.replace(destination);
         }, 1000);
       } else {
         setToast({ message: "Invalid credentials.", type: "error" });

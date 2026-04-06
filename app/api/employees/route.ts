@@ -7,6 +7,7 @@ import { dbErrorResponse } from "@/src/utils/db-errors";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { jsonError } from "@/src/utils/api-error";
 import {
   isValidUsername,
   normalizeUsername,
@@ -136,11 +137,24 @@ export async function POST(request: Request) {
   const identificationType = String(payload.identificationType ?? "").trim();
   const identification = String(payload.identification ?? "").trim();
   const email = String(payload.email ?? "").trim();
+  const roleId = String(payload.roleId ?? "").trim();
 
-  if (!name || !identificationType || !identification || !email) {
-    return new Response(
-      "name, identificationType, identification y email son requeridos",
-      { status: 400 },
+  if (!name || !identificationType || !identification || !email || !roleId) {
+    return jsonError(
+      400,
+      "VALIDATION_ERROR",
+      "Los datos del empleado son inválidos.",
+      {
+        ...(name ? {} : { name: ["El nombre es obligatorio."] }),
+        ...(identificationType
+          ? {}
+          : { identificationType: ["El tipo de identificación es obligatorio."] }),
+        ...(identification
+          ? {}
+          : { identification: ["La identificación es obligatoria."] }),
+        ...(email ? {} : { email: ["El email es obligatorio."] }),
+        ...(roleId ? {} : { roleId: ["El rol del empleado es obligatorio."] }),
+      },
     );
   }
 
@@ -348,7 +362,7 @@ export async function POST(request: Request) {
         department: payload.department
           ? String(payload.department).trim()
           : "ANTIOQUIA",
-        roleId: payload.roleId ? String(payload.roleId).trim() : null,
+        roleId,
         isActive: false,
         // Documentos del formulario o copiados del cliente
         identityDocumentUrl:
@@ -492,8 +506,22 @@ export async function PUT(request: Request) {
     patch.department = payload.department
       ? String(payload.department).trim()
       : null;
-  if (payload.roleId !== undefined)
-    patch.roleId = payload.roleId ? String(payload.roleId).trim() : null;
+  if (payload.roleId !== undefined) {
+    const nextRoleId = String(payload.roleId ?? "").trim();
+
+    if (!nextRoleId) {
+      return jsonError(
+        400,
+        "VALIDATION_ERROR",
+        "Los datos del empleado son inválidos.",
+        {
+          roleId: ["El rol del empleado es obligatorio."],
+        },
+      );
+    }
+
+    patch.roleId = nextRoleId;
+  }
   if (payload.isActive !== undefined)
     patch.isActive = Boolean(payload.isActive);
 

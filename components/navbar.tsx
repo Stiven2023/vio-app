@@ -32,6 +32,7 @@ import {
 } from "@/components/navbar.data";
 import { useSessionStore } from "@/store/session";
 import { isOperarioRole } from "@/src/utils/role-status";
+import { getEffectiveSessionRole } from "@/src/utils/session-role";
 
 const permissionsStorageKey = "viomar.permissions.v1";
 const localeStorageKey = "preferredLanguage";
@@ -136,8 +137,9 @@ export const Navbar = () => {
   const user = useSessionStore((s) => s.user);
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
   const logout = useSessionStore((s) => s.clearSession);
-  const role = useSessionStore((s) => s.user?.role);
-  const isAdmin = role === "ADMINISTRADOR";
+  const effectiveRole = getEffectiveSessionRole(user);
+  const isAdmin = effectiveRole === "ADMINISTRADOR";
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const moduleQuickItems =
     currentModule === "mes"
@@ -196,8 +198,8 @@ export const Navbar = () => {
     [localeForRender],
   );
 
-  const effectiveRole = role ?? null;
   const operarioOnly = isOperarioRole(effectiveRole);
+  const navigationVariantKey = `${currentModule}:${isAuthenticated ? "auth" : "guest"}:${operarioOnly ? "operario" : "default"}`;
 
   const applyPermissions = (permissions?: Record<string, boolean>) => {
     setCanSeeClients(Boolean(permissions?.VER_CLIENTE));
@@ -458,8 +460,24 @@ export const Navbar = () => {
     }
 
     if (actionKey === "logout") {
-      await logout();
-      router.push("/login");
+      if (isLoggingOut) return;
+
+      setIsLoggingOut(true);
+      setOpenGroup(null);
+
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include",
+        });
+
+        window.location.replace("/login");
+
+        return;
+      } catch {
+        await logout();
+        window.location.replace("/login");
+      }
     }
   };
 
@@ -493,7 +511,11 @@ export const Navbar = () => {
         </NavbarItem>
       </NavbarContent>
 
-      <NavbarContent className="hidden xl:flex basis-2/4" justify="center">
+      <NavbarContent
+        key={`desktop-${navigationVariantKey}`}
+        className="hidden xl:flex basis-2/4"
+        justify="center"
+      >
         {!isAuthenticated ? null : currentModule === "hcm" ? (
           <ul className="flex items-center gap-1">
             {hcmSections.map((section) => (
@@ -571,7 +593,7 @@ export const Navbar = () => {
           </ul>
         ) : operarioOnly ? (
           <ul className="flex gap-2 items-center">
-            <NavbarItem>
+            <NavbarItem key="operario-dashboard-desktop">
               <Button
                 as={NextLink}
                 href="/erp/dashboard"
@@ -581,7 +603,7 @@ export const Navbar = () => {
                 {uiText.dashboard}
               </Button>
             </NavbarItem>
-            <NavbarItem>
+            <NavbarItem key="operario-shipments-desktop">
               <Button
                 as={NextLink}
                 href="/erp/shipments"
@@ -774,7 +796,7 @@ export const Navbar = () => {
                         {user?.name ?? uiText.user}
                       </span>
                       <span className="text-xs text-default-500 leading-tight">
-                        {role ?? uiText.noRole}
+                        {effectiveRole ?? uiText.noRole}
                       </span>
                     </div>
                   </div>
@@ -836,7 +858,10 @@ export const Navbar = () => {
         <NavbarMenuToggle />
       </NavbarContent>
 
-      <NavbarMenu className="overflow-x-hidden max-w-[100vw]">
+      <NavbarMenu
+        key={`mobile-${navigationVariantKey}`}
+        className="overflow-x-hidden max-w-[100vw]"
+      >
         <div className="mt-2 mb-3 px-3 flex w-full max-w-full flex-col gap-2 max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-hidden">
           {!isAuthenticated ? null : currentModule === "hcm" ? (
             <>
@@ -892,17 +917,17 @@ export const Navbar = () => {
             ))
           ) : operarioOnly ? (
             <>
-              <NavbarMenuItem>
+              <NavbarMenuItem key="operario-dashboard-mobile">
                 <Link color="foreground" href="/erp/dashboard" size="lg">
                   {uiText.dashboard}
                 </Link>
               </NavbarMenuItem>
-              <NavbarMenuItem>
+              <NavbarMenuItem key="operario-shipments-mobile">
                 <Link color="foreground" href="/erp/shipments" size="lg">
                   {uiText.shipments}
                 </Link>
               </NavbarMenuItem>
-              <NavbarMenuItem>
+              <NavbarMenuItem key="operario-options-mobile">
                 <Link color="foreground" href="/erp/options" size="lg">
                   {uiText.options}
                 </Link>
@@ -978,10 +1003,27 @@ export const Navbar = () => {
                 <Button
                   className="w-full"
                   color="danger"
+                  isDisabled={isLoggingOut}
                   variant="flat"
                   onPress={async () => {
-                    await logout();
-                    router.push("/login");
+                    if (isLoggingOut) return;
+
+                    setIsLoggingOut(true);
+                    setOpenGroup(null);
+
+                    try {
+                      await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                      });
+
+                      window.location.replace("/login");
+
+                      return;
+                    } catch {
+                      await logout();
+                      window.location.replace("/login");
+                    }
                   }}
                 >
                   {uiText.logOut}

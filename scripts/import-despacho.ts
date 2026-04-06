@@ -1,9 +1,20 @@
 import "dotenv/config";
 
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { eq, inArray } from "drizzle-orm";
+
+import {
+  normalizeOrderCode,
+  normalizeText,
+} from "@/src/imports/historical-excel/helpers";
+import { readJsonFile } from "@/src/imports/historical-excel/json";
+import {
+  rawEnvioItemSchema,
+  rawEnvioSchema,
+  type RawEnvio,
+  type RawEnvioItem,
+} from "@/src/imports/historical-excel/schemas";
 
 import { mesDb } from "../src/db/mes";
 import { mesEnvioItems, mesEnvios } from "../src/db/mes/schema";
@@ -14,39 +25,6 @@ type CliOptions = {
   dir: string;
   base: string;
   dryRun: boolean;
-};
-
-type RawEnvio = {
-  id: string;
-  order_code_ref: string;
-  origen_area: string | null;
-  origen_nombre: string | null;
-  destino_area: string | null;
-  destino_nombre: string | null;
-  transporte_tipo: string | null;
-  status: string | null;
-  payment_status: string | null;
-  salida_at: string | null;
-  llegada_at: string | null;
-  retorno_at: string | null;
-  logistic_operator: string | null;
-  destination_address: string | null;
-  requires_declared_value: boolean | null;
-  courier_brought_by: string | null;
-  reception_location: string | null;
-  reception_status: string | null;
-  observaciones: string | null;
-};
-
-type RawEnvioItem = {
-  id: string;
-  envio_id: string;
-  order_item_id_ref: string | null;
-  order_code_ref: string | null;
-  diseno_ref: number | null;
-  quantity: number | null;
-  packed_quantity: number | null;
-  notes: string | null;
 };
 
 const UUID_V4_OR_V1_RE =
@@ -83,7 +61,7 @@ function parseOptions(argv: string[]): CliOptions {
 }
 
 function mapArea(raw: string | null): "VIOMAR" | "INTEGRACION" | "CONFECCION_EXTERNA" | "DESPACHO" {
-  const normalized = (raw ?? "").trim().toUpperCase();
+  const normalized = normalizeText(raw).toUpperCase();
 
   if (normalized.includes("INTEGRA")) {
     return "INTEGRACION";
@@ -101,7 +79,7 @@ function mapArea(raw: string | null): "VIOMAR" | "INTEGRACION" | "CONFECCION_EXT
 }
 
 function mapTransport(raw: string | null): "MENSAJERO" | "CONDUCTOR_PROPIO" | "LINEA_TERCERO" {
-  const normalized = (raw ?? "").trim().toUpperCase();
+  const normalized = normalizeText(raw).toUpperCase();
 
   if (normalized.includes("TERC") || normalized.includes("COURIER") || normalized.includes("LINEA")) {
     return "LINEA_TERCERO";
@@ -115,7 +93,7 @@ function mapTransport(raw: string | null): "MENSAJERO" | "CONDUCTOR_PROPIO" | "L
 }
 
 function mapStatus(raw: string | null): "CREADO" | "EN_RUTA" | "ENTREGADO" | "RETORNADO" | "INCIDENTE" {
-  const normalized = (raw ?? "").trim().toUpperCase();
+  const normalized = normalizeText(raw).toUpperCase();
 
   if (normalized.includes("RUTA") || normalized.includes("TRASLADO")) {
     return "EN_RUTA";
@@ -137,7 +115,7 @@ function mapStatus(raw: string | null): "CREADO" | "EN_RUTA" | "ENTREGADO" | "RE
 }
 
 function mapPaymentStatus(raw: string | null): "PENDIENTE" | "PARCIAL" | "PAGADO" | "NOTIFICADO_WHATSAPP" {
-  const normalized = (raw ?? "").trim().toUpperCase();
+  const normalized = normalizeText(raw).toUpperCase();
 
   if (normalized.includes("PAGADO") || normalized.includes("PAGO")) {
     return "PAGADO";
@@ -161,27 +139,6 @@ function toDate(value: string | null): Date | null {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-async function readJsonFile<T>(filePath: string): Promise<T> {
-  const content = await readFile(filePath, "utf-8");
-  return JSON.parse(content) as T;
-}
-
-function normalizeOrderCode(value: string | null | undefined): string {
-  const text = String(value ?? "").trim().toUpperCase();
-
-  if (!text) {
-    return "";
-  }
-
-  const match = text.match(/\b(VN|VT|VI|VW|VR|VP)\s*-?\s*(\d+)\b/);
-
-  if (match) {
-    return `${match[1]} - ${match[2]}`;
-  }
-
-  return text.replace(/\s+/g, " ");
 }
 
 function isUuid(value: string | null | undefined): boolean {
@@ -237,8 +194,19 @@ async function main() {
   const enviosPath = path.join(options.dir, `${options.base}.envios.json`);
   const envioItemsPath = path.join(options.dir, `${options.base}.envio_items.json`);
 
-  const rawEnvios = await readJsonFile<RawEnvio[]>(enviosPath);
-  const rawEnvioItems = await readJsonFile<RawEnvioItem[]>(envioItemsPath);
+  const sourceEnvios = await readJsonFile<unknown[]>(enviosPath);
+  const sourceEnvioItems = await readJsonFile<unknown[]>(envioItemsPath);
+  const rawEnvios = sourceEnvios
+    .map((row) => rawEnvioSchema.safeParse(row))
+    .filter((result) => result.success)
+    .map((result) => result.data);
+  const rawEnvioItems = sourceEnvioItems
+    .map((row) => rawEnvioItemSchema.safeParse(row))
+    .filter((result) => result.success)
+    .map((result) => result.data);
+
+  const invalidEnvios = sourceEnvios.length - rawEnvios.length;
+  const invalidEnvioItems = sourceEnvioItems.length - rawEnvioItems.length;
 
   const orderCodes = [
     ...new Set(
@@ -259,6 +227,7 @@ async function main() {
 
   let insertedEnvios = 0;
   let skippedEnvios = 0;
+  let missingOrderMatches = 0;
 
   const envioIdMap = new Map<string, string>();
 
@@ -267,6 +236,7 @@ async function main() {
     const orderId = orderIdByCode.get(orderCode);
     if (!orderId) {
       skippedEnvios += 1;
+      missingOrderMatches += 1;
       continue;
     }
 
@@ -316,6 +286,7 @@ async function main() {
 
   let insertedItems = 0;
   let skippedItems = 0;
+  let missingOrderItemMatches = 0;
 
   for (const row of rawEnvioItems) {
     const envioId = envioIdMap.get(row.envio_id);
@@ -327,6 +298,7 @@ async function main() {
     const itemId = await resolveOrderItemId(row);
     if (!itemId) {
       skippedItems += 1;
+      missingOrderItemMatches += 1;
       continue;
     }
 
@@ -359,8 +331,12 @@ async function main() {
   }
 
   console.log(`mode=${options.dryRun ? "DRY_RUN" : "APPLY"}`);
+  console.log(`invalid envios rows=${invalidEnvios}`);
+  console.log(`invalid envio_items rows=${invalidEnvioItems}`);
   console.log(`mes_envios: inserted=${insertedEnvios}, skipped=${skippedEnvios}`);
   console.log(`mes_envio_items: inserted=${insertedItems}, skipped=${skippedItems}`);
+  console.log(`missing order matches=${missingOrderMatches}`);
+  console.log(`missing order_item matches=${missingOrderItemMatches}`);
 }
 
 void main();

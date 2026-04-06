@@ -13,6 +13,9 @@ import {
   sendPasswordResetEmail,
 } from "@/src/utils/gmail";
 import { signAuthToken } from "@/src/utils/auth";
+import { jsonError } from "@/src/utils/api-error";
+import { resolveEmployeeIdentity } from "@/src/utils/employee-session";
+import { resolveEmployeeRole } from "@/src/utils/employee-session";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { validatePassword } from "@/src/utils/password-validator";
 import {
@@ -195,24 +198,42 @@ export async function PUT(request: Request) {
   }
   // Generar JWT con datos útiles y setear cookie httpOnly
   // Buscar empleado asociado al usuario
-  const employee = await erpDb
-    .select()
-    .from(employees)
-    .where(eq(employees.userId, user[0].id));
+  const normalizedUserEmail = String(user[0].email ?? "")
+    .trim()
+    .toLowerCase();
+  const employee = await resolveEmployeeIdentity({
+    userId: user[0].id,
+    email: normalizedUserEmail,
+  });
   let name = null;
-  let roleId = null;
   let roleName = null;
 
-  if (employee.length > 0) {
-    name = employee[0].name;
-    roleId = employee[0].roleId;
-    if (roleId) {
-      const role = await iamDb.select().from(roles).where(eq(roles.id, roleId));
+  if (employee) {
+    name = employee.name;
+    const roleResolution = resolveEmployeeRole(employee);
 
-      if (role.length > 0) {
-        roleName = role[0].name;
-      }
+    if (roleResolution.code) {
+      return jsonError(
+        409,
+        "AUTH_ROLE_NOT_CONFIGURED",
+        "El usuario no tiene un rol operativo configurado. Actualiza el rol del empleado antes de iniciar sesión.",
+      );
     }
+
+    roleName = roleResolution.role;
+
+    if (employee.userId !== user[0].id) {
+      await erpDb
+        .update(employees)
+        .set({ userId: user[0].id })
+        .where(eq(employees.id, employee.id));
+    }
+  } else {
+    return jsonError(
+      409,
+      "AUTH_EMPLOYEE_NOT_FOUND",
+      "El usuario no tiene un empleado asociado. Vincula el usuario a un empleado antes de iniciar sesión.",
+    );
   }
   // Incluir name y roleName en el JWT y la respuesta
   let token: string;
@@ -221,8 +242,9 @@ export async function PUT(request: Request) {
     token = signAuthToken({
       name,
       role: roleName,
+      email: normalizedUserEmail,
       userId: user[0].id,
-      employeeId: employee.length > 0 ? employee[0].id : null,
+      employeeId: employee?.id ?? null,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error firmando token";
@@ -234,6 +256,8 @@ export async function PUT(request: Request) {
       id: user[0].id,
       name,
       role: roleName,
+      email: normalizedUserEmail,
+      employeeId: employee?.id ?? null,
     },
     token,
   });

@@ -1,5 +1,24 @@
 import { verifyAuthToken, verifyMesAccessToken } from "@/src/utils/auth";
 
+type AuthPayload = ReturnType<typeof verifyAuthToken>;
+type MesAccessPayload = ReturnType<typeof verifyMesAccessToken>;
+
+type SessionPreferenceOptions = {
+  preferMesSession?: boolean;
+};
+
+export type ResolvedSession = {
+  sessionType: "auth" | "mes" | null;
+  auth: AuthPayload;
+  mesAccess: MesAccessPayload;
+  authRole: string | null;
+  mesRole: string | null;
+  role: string | null;
+  userId: string | null;
+  employeeId: string | null;
+  email: string | null;
+};
+
 function readCookieValue(request: Request, name: string) {
   const cookie = request.headers.get("cookie");
 
@@ -16,73 +35,112 @@ function getMesAccessPayload(request: Request) {
   return verifyMesAccessToken(token);
 }
 
+function getStringClaim(
+  payload: Record<string, unknown> | null | undefined,
+  key: string,
+) {
+  const value = payload?.[key];
+
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function shouldPreferMesSession(
+  request: Request,
+  options?: SessionPreferenceOptions,
+) {
+  if (typeof options?.preferMesSession === "boolean") {
+    return options.preferMesSession;
+  }
+
+  try {
+    const pathname = new URL(request.url).pathname;
+
+    return pathname === "/api/auth/me" || pathname.startsWith("/api/mes/");
+  } catch {
+    return false;
+  }
+}
+
 export function getAuthFromRequest(request: Request) {
   const token = readCookieValue(request, "auth_token");
   if (!token) return null;
   return verifyAuthToken(token) || null;
 }
 
-export function getRoleFromRequest(request: Request): string | null {
+export function resolveSessionFromRequest(
+  request: Request,
+  options?: SessionPreferenceOptions,
+): ResolvedSession {
   const auth = getAuthFromRequest(request);
-  const role =
-    auth && typeof auth === "object" ? (auth as { role?: unknown }).role : null;
+  const mesAccess = getMesAccessPayload(request);
+  const authRecord =
+    auth && typeof auth === "object" ? (auth as Record<string, unknown>) : null;
+  const preferMesSession = shouldPreferMesSession(request, options);
+  const authRole = getStringClaim(authRecord, "role");
+  const mesRole = mesAccess?.role ?? null;
+  const sessionType = mesAccess ? "mes" : auth ? "auth" : null;
+  const userId = preferMesSession
+    ? mesAccess?.userId ?? getStringClaim(authRecord, "userId")
+    : getStringClaim(authRecord, "userId") ?? mesAccess?.userId ?? null;
+  const employeeId = preferMesSession
+    ? mesAccess?.employeeId ?? getStringClaim(authRecord, "employeeId")
+    : getStringClaim(authRecord, "employeeId") ?? mesAccess?.employeeId ?? null;
+  const email = preferMesSession
+    ? mesAccess?.email ?? getStringClaim(authRecord, "email")
+    : getStringClaim(authRecord, "email") ?? mesAccess?.email ?? null;
+  const role = preferMesSession
+    ? mesRole ?? authRole ?? null
+    : authRole ?? mesRole ?? null;
 
-  const baseRole =
-    typeof role === "string" && role.trim() !== "" ? role.trim() : null;
+  return {
+    sessionType,
+    auth,
+    mesAccess,
+    authRole,
+    mesRole,
+    role,
+    userId,
+    employeeId,
+    email,
+  };
+}
 
-  if (process.env.NODE_ENV !== "production" && baseRole === "ADMINISTRADOR") {
+export function getRoleFromRequest(
+  request: Request,
+  options?: SessionPreferenceOptions,
+): string | null {
+  const session = resolveSessionFromRequest(request, options);
+
+  if (process.env.NODE_ENV !== "production" && session.authRole === "ADMINISTRADOR") {
     const override = readCookieValue(request, "role_override");
 
     if (override && override.trim() !== "") return override.trim();
   }
 
-  if (baseRole) return baseRole;
-
-  const mesPayload = getMesAccessPayload(request);
-  return mesPayload?.role ?? null;
+  return session.role;
 }
 
-export function getUserIdFromRequest(request: Request): string | null {
-  const auth = getAuthFromRequest(request);
-  const userId =
-    auth && typeof auth === "object"
-      ? (auth as { userId?: unknown }).userId
-      : null;
-
-  if (typeof userId === "string" && userId.trim() !== "") {
-    return userId;
-  }
-
-  const mesPayload = getMesAccessPayload(request);
-  return mesPayload?.userId ?? null;
+export function getUserIdFromRequest(
+  request: Request,
+  options?: SessionPreferenceOptions,
+): string | null {
+  return resolveSessionFromRequest(request, options).userId;
 }
 
-export function getEmployeeIdFromRequest(request: Request): string | null {
-  const auth = getAuthFromRequest(request);
-  const employeeId =
-    auth && typeof auth === "object"
-      ? (auth as { employeeId?: unknown }).employeeId
-      : null;
-
-  if (typeof employeeId === "string" && employeeId.trim() !== "") {
-    return employeeId;
-  }
-
-  const mesPayload = getMesAccessPayload(request);
-  return mesPayload?.employeeId ?? null;
+export function getEmployeeIdFromRequest(
+  request: Request,
+  options?: SessionPreferenceOptions,
+): string | null {
+  return resolveSessionFromRequest(request, options).employeeId;
 }
 
-export function getEmailFromRequest(request: Request): string | null {
-  const auth = getAuthFromRequest(request);
-  const email =
-    auth && typeof auth === "object" ? (auth as { email?: unknown }).email : null;
+export function getEmailFromRequest(
+  request: Request,
+  options?: SessionPreferenceOptions,
+): string | null {
+  const email = resolveSessionFromRequest(request, options).email;
 
-  if (typeof email === "string" && email.trim() !== "") {
-    return email.trim().toLowerCase();
-  }
-
-  const mesPayload = getMesAccessPayload(request);
-  return mesPayload?.email ?? null;
+  return email ? email.toLowerCase() : null;
 }
 
 export function getMesAccessFromRequest(request: Request) {

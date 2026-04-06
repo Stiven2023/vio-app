@@ -1,74 +1,66 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 
-import { erpDb } from "@/src/db";
-import { employees } from "@/src/db/erp/schema";
 import {
   getAuthFromRequest,
-  getEmailFromRequest,
-  getEmployeeIdFromRequest,
-  getMesAccessFromRequest,
-  getRoleFromRequest,
-  getUserIdFromRequest,
+  resolveSessionFromRequest,
 } from "@/src/utils/auth-middleware";
+import { jsonError } from "@/src/utils/api-error";
+import { resolveEmployeeIdentity } from "@/src/utils/employee-session";
+import { resolveEmployeeRole } from "@/src/utils/employee-session";
 
 export async function GET(request: Request) {
   const payload = getAuthFromRequest(request);
-  const mesAccess = getMesAccessFromRequest(request);
+  const session = resolveSessionFromRequest(request, { preferMesSession: true });
+  const mesAccess = session.mesAccess;
 
   if ((!payload || typeof payload !== "object") && !mesAccess) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = getUserIdFromRequest(request);
-  const employeeId = getEmployeeIdFromRequest(request);
-  const email = getEmailFromRequest(request);
-  const role = getRoleFromRequest(request);
+  const userId = session.userId;
+  const employeeId = session.employeeId;
+  const email = session.email;
 
-  let avatarUrl: string | null = null;
-  let employeeName: string | null = null;
+  const employee = await resolveEmployeeIdentity({
+    employeeId,
+    userId,
+    email,
+  });
 
-  if (employeeId) {
-    const [employee] = await erpDb
-      .select({
-        name: employees.name,
-        employeeImageUrl: employees.employeeImageUrl,
-      })
-      .from(employees)
-      .where(eq(employees.id, employeeId))
-      .limit(1);
-
-    avatarUrl = employee?.employeeImageUrl ?? null;
-    employeeName = employee?.name ?? null;
-  } else if (userId) {
-    const [employee] = await erpDb
-      .select({
-        name: employees.name,
-        employeeImageUrl: employees.employeeImageUrl,
-      })
-      .from(employees)
-      .where(eq(employees.userId, userId))
-      .limit(1);
-
-    avatarUrl = employee?.employeeImageUrl ?? null;
-    employeeName = employee?.name ?? null;
-  }
+  const avatarUrl = employee?.employeeImageUrl ?? null;
+  const employeeName = employee?.name ?? null;
 
   const typedPayload = (payload ?? {}) as {
     userId?: string;
     name?: string;
     role?: string;
+    email?: string;
   };
+  const roleResolution = resolveEmployeeRole(employee, session.role);
+  const isMesSession = session.sessionType === "mes";
+
+  if (!isMesSession && roleResolution.code) {
+    return jsonError(
+      409,
+      "AUTH_ROLE_NOT_CONFIGURED",
+      "La sesión no tiene un rol válido porque el empleado asociado no está configurado correctamente.",
+    );
+  }
+
+  const effectiveRole = roleResolution.role;
+  const effectiveEmail = email ?? employee?.email ?? typedPayload.email ?? null;
+  const effectiveEmployeeId = employee?.id ?? employeeId ?? null;
 
   const user = {
     id: typedPayload.userId ?? mesAccess?.userId ?? null,
     name: employeeName ?? mesAccess?.employeeName ?? typedPayload.name ?? null,
-    role: role ?? null,
-    email,
-    employeeId,
-    sessionType: mesAccess ? "mes" : "auth",
+    role: effectiveRole,
+    email: effectiveEmail,
+    employeeId: effectiveEmployeeId,
+    sessionType: session.sessionType ?? "auth",
     mesAccess: mesAccess
       ? {
+          role: mesAccess.role,
           processKey: mesAccess.processKey,
           mesProcess: mesAccess.mesProcess,
           operationType: mesAccess.operationType,

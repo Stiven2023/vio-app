@@ -177,7 +177,7 @@ export default function MesPageClient() {
           machineName: sessionUser.mesAccess.machineName ?? null,
           employeeId: sessionUser.employeeId,
           employeeName: sessionUser.name,
-          employeeRole: sessionUser.role ?? null,
+          employeeRole: sessionUser.mesAccess.role ?? sessionUser.role ?? null,
           employeeEmail: sessionUser.email ?? null,
         });
         setActiveProceso(sessionUser.mesAccess.mesProcess);

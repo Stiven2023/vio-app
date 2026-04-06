@@ -25,6 +25,12 @@ type WithId = {
   id: string;
 };
 
+type PackagingRow = WithId & {
+  order_item_id: string;
+  size: string | null;
+  quantity: number | null;
+};
+
 function parseOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
     dir: "C:/Users/Stiven.Aguirre/Documents",
@@ -80,6 +86,18 @@ async function countExistingIds(
   return total;
 }
 
+function buildPackagingKey(row: {
+  order_item_id: string | null;
+  size: string | null;
+  quantity: number | null;
+}) {
+  return [
+    String(row.order_item_id ?? "").trim(),
+    String(row.size ?? "INDEFINIDA").trim().toUpperCase(),
+    String(Math.max(0, Number(row.quantity ?? 0))),
+  ].join("|");
+}
+
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   const basePath = options.dir;
@@ -91,7 +109,7 @@ async function main() {
 
   const sourceOrders = await readJsonFile<WithId[]>(ordersPath);
   const sourceItems = await readJsonFile<WithId[]>(itemsPath);
-  const sourcePackaging = await readJsonFile<WithId[]>(packagingPath);
+  const sourcePackaging = await readJsonFile<PackagingRow[]>(packagingPath);
   const sourceLogs = await readJsonFile<WithId[]>(logsPath);
 
   const orderIds = sourceOrders.map((row) => row.id);
@@ -120,6 +138,24 @@ async function main() {
       .where(inArray(orderItemPackaging.id, batch)),
   );
 
+  const sourcePackagingItemIds = Array.from(
+    new Set(sourcePackaging.map((row) => String(row.order_item_id ?? "").trim()).filter(Boolean)),
+  );
+  const dbPackagingRows = sourcePackagingItemIds.length
+    ? await erpDb
+        .select({
+          order_item_id: orderItemPackaging.orderItemId,
+          size: orderItemPackaging.size,
+          quantity: orderItemPackaging.quantity,
+        })
+        .from(orderItemPackaging)
+        .where(inArray(orderItemPackaging.orderItemId, sourcePackagingItemIds))
+    : [];
+  const dbPackagingKeys = new Set(dbPackagingRows.map((row) => buildPackagingKey(row)));
+  const packagingFoundByTuple = sourcePackaging.filter((row) =>
+    dbPackagingKeys.has(buildPackagingKey(row)),
+  ).length;
+
   const mesLogsFound = await countExistingIds(logIds, async (batch) =>
     mesDb
       .select({ id: mesOperativeDashboardLogs.id })
@@ -141,6 +177,7 @@ async function main() {
             orders: ordersFound,
             orderItems: itemsFound,
             orderItemPackaging: packagingFound,
+            orderItemPackagingByTuple: packagingFoundByTuple,
           },
           mes: {
             operativeDashboardLogs: mesLogsFound,
@@ -150,6 +187,8 @@ async function main() {
           orders: orderIds.length - ordersFound,
           orderItems: itemIds.length - itemsFound,
           orderItemPackaging: packagingIds.length - packagingFound,
+          orderItemPackagingByTuple:
+            sourcePackaging.length - packagingFoundByTuple,
           mesOperativeDashboardLogs: logIds.length - mesLogsFound,
         },
       },

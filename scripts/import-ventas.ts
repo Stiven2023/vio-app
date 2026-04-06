@@ -1,9 +1,15 @@
 import "dotenv/config";
 
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { eq } from "drizzle-orm";
+
+import {
+  normalizeOrderCode,
+  parseAmount,
+} from "@/src/imports/historical-excel/helpers";
+import { readJsonFile } from "@/src/imports/historical-excel/json";
+import { rawVentaSchema, type RawVenta } from "@/src/imports/historical-excel/schemas";
 
 import { erpDb } from "../src/db/erp";
 import { orders } from "../src/db/schema";
@@ -12,16 +18,6 @@ type CliOptions = {
   dir: string;
   base: string;
   dryRun: boolean;
-};
-
-type RawVenta = {
-  order_code_ref: string;
-  total: string | number | null;
-  subtotal: string | number | null;
-  paid_at: string | null;
-  payment_status: string | null;
-  client_name: string | null;
-  invoice_number: string | null;
 };
 
 function parseOptions(argv: string[]): CliOptions {
@@ -54,55 +50,21 @@ function parseOptions(argv: string[]): CliOptions {
   return options;
 }
 
-async function readJsonFile<T>(filePath: string): Promise<T> {
-  const content = await readFile(filePath, "utf-8");
-  return JSON.parse(content) as T;
-}
-
-function normalizeOrderCode(value: string | null | undefined): string {
-  const text = String(value ?? "").trim().toUpperCase();
-
-  if (!text) {
-    return "";
-  }
-
-  const match = text.match(/\b(VN|VT|VI|VW|VR|VP)\s*-?\s*(\d+)\b/);
-
-  if (match) {
-    return `${match[1]} - ${match[2]}`;
-  }
-
-  return text.replace(/\s+/g, " ");
-}
-
-function parseAmount(value: string | number | null): string | null {
-  if (value == null) {
-    return null;
-  }
-
-  const raw = String(value).trim();
-  if (raw.length === 0) {
-    return null;
-  }
-
-  const normalized = raw.replace(/\./g, "").replace(/,/g, ".").replace(/[^0-9.-]/g, "");
-  const amount = Number(normalized);
-
-  if (!Number.isFinite(amount)) {
-    return null;
-  }
-
-  return amount.toFixed(2);
-}
-
 async function main() {
   const options = parseOptions(process.argv.slice(2));
 
   const ventasPath = path.join(options.dir, `${options.base}.ventas.json`);
-  const rows = await readJsonFile<RawVenta[]>(ventasPath);
+  const sourceRows = await readJsonFile<unknown[]>(ventasPath);
+  const rows = sourceRows
+    .map((row) => rawVentaSchema.safeParse(row))
+    .filter((result) => result.success)
+    .map((result) => result.data);
+
+  const invalidRows = sourceRows.length - rows.length;
 
   let updated = 0;
   let skipped = 0;
+  let missingOrders = 0;
 
   for (const row of rows) {
     const orderCode = normalizeOrderCode(row.order_code_ref);
@@ -125,6 +87,7 @@ async function main() {
 
     if (exists.length === 0) {
       skipped += 1;
+      missingOrders += 1;
       continue;
     }
 
@@ -142,8 +105,10 @@ async function main() {
   }
 
   console.log(`mode=${options.dryRun ? "DRY_RUN" : "APPLY"}`);
+  console.log(`invalid rows=${invalidRows}`);
   console.log(`orders updated from ventas=${updated}`);
   console.log(`rows skipped=${skipped}`);
+  console.log(`missing orders=${missingOrders}`);
 }
 
 void main();

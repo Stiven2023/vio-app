@@ -309,6 +309,7 @@ async function main() {
           .where(inArray(orderItems.orderId, allOrderIds));
 
   const itemIdByKey = new Map<string, string>();
+  const existingItemIds = new Set(existingItems.map((row) => row.id));
   for (const row of existingItems) {
     if (!row.orderId) {
       continue;
@@ -330,6 +331,12 @@ async function main() {
   const legacyItemIdToDbId = new Map<string, string>();
 
   for (const row of rawItems) {
+    if (existingItemIds.has(row.id)) {
+      legacyItemIdToDbId.set(row.id, row.id);
+      skippedItems += 1;
+      continue;
+    }
+
     const orderId =
       (row.order_id_ref ? orderIdByLegacyId.get(String(row.order_id_ref).trim()) : undefined) ??
       orderIdByCode.get(normalizeOrderCode(row.order_code_ref));

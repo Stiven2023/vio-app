@@ -8,6 +8,7 @@ export interface User {
   employeeId?: string | null;
   sessionType?: "auth" | "mes";
   mesAccess?: {
+    role: string | null;
     processKey: string;
     mesProcess: string;
     operationType: string;
@@ -51,6 +52,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       });
 
       if (!res.ok) return false;
+
+      const sessionRes = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (sessionRes.ok) {
+        const sessionData = await sessionRes.json();
+
+        set({ user: sessionData.user, isAuthenticated: true });
+
+        return true;
+      }
+
       const data = await res.json();
 
       set({ user: data.user, isAuthenticated: true });

@@ -1,21 +1,32 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 import { useSessionStore } from "@/store/session";
+import { getEffectiveSessionRole } from "@/src/utils/session-role";
+
+const PUBLIC_PATHS = new Set(["/", "/login", "/erp/login", "/home", "/es", "/en"]);
 
 export function SessionBootstrap() {
+  const pathname = usePathname();
   const verifySession = useSessionStore((s) => s.verifySession);
   const isAuthenticated = useSessionStore((s) => s.isAuthenticated);
-  const role = useSessionStore((s) => s.user?.role);
+  const user = useSessionStore((s) => s.user);
+  const role = getEffectiveSessionRole(user);
   const siigoBootstrappedRef = useRef(false);
+  const isPublicPath = PUBLIC_PATHS.has(pathname);
 
   useEffect(() => {
+    if (isPublicPath) {
+      return;
+    }
+
     void verifySession();
-  }, [verifySession]);
+  }, [isPublicPath, verifySession]);
 
   useEffect(() => {
-    if (!isAuthenticated || role !== "ADMINISTRADOR") {
+    if (isPublicPath || !isAuthenticated || role !== "ADMINISTRADOR") {
       siigoBootstrappedRef.current = false;
 
       return;
@@ -29,7 +40,7 @@ export function SessionBootstrap() {
       method: "POST",
       credentials: "include",
     }).catch(() => null);
-  }, [isAuthenticated, role]);
+  }, [isAuthenticated, isPublicPath, role]);
 
   return null;
 }

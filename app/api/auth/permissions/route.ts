@@ -1,13 +1,33 @@
 import { NextResponse } from "next/server";
 
-import { getAuthFromRequest } from "@/src/utils/auth-middleware";
-import { requirePermission } from "@/src/utils/permission-middleware";
+import { jsonError } from "@/src/utils/api-error";
+import { resolveSessionFromRequest } from "@/src/utils/auth-middleware";
+import {
+  resolveEmployeeIdentity,
+  resolveEmployeeRole,
+} from "@/src/utils/employee-session";
+import { checkPermissionsByRole } from "@/src/utils/permission-middleware";
 
 export async function GET(request: Request) {
-  const payload = getAuthFromRequest(request);
+  const session = resolveSessionFromRequest(request, { preferMesSession: true });
 
-  if (!payload || typeof payload !== "object") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session.auth && !session.mesAccess) {
+    return jsonError(401, "UNAUTHENTICATED", "Debes iniciar sesión para consultar permisos.");
+  }
+
+  const employee = await resolveEmployeeIdentity({
+    employeeId: session.employeeId,
+    userId: session.userId,
+    email: session.email,
+  });
+  const roleResolution = resolveEmployeeRole(employee, session.role);
+
+  if (roleResolution.code) {
+    return jsonError(
+      409,
+      "AUTH_ROLE_NOT_CONFIGURED",
+      "La sesión no tiene un rol válido para resolver permisos.",
+    );
   }
 
   const { searchParams } = new URL(request.url);
@@ -22,13 +42,7 @@ export async function GET(request: Request) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const result: Record<string, boolean> = {};
-
-  for (const name of names) {
-    const forbidden = await requirePermission(request, name);
-
-    result[name] = !forbidden;
-  }
+  const result = await checkPermissionsByRole(roleResolution.role, names);
 
   return NextResponse.json({ permissions: result });
 }

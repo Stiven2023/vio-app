@@ -16,6 +16,7 @@ import { BsBell } from "react-icons/bs";
 
 import { roleValues } from "@/src/db/enums";
 import { useSessionStore } from "@/store/session";
+import { getEffectiveSessionRole } from "@/src/utils/session-role";
 
 type NotificationRow = {
   id: string;
@@ -35,7 +36,8 @@ function formatDate(value: string | null) {
 }
 
 export function NotificationBell({ enabled }: { enabled: boolean }) {
-  const role = useSessionStore((s) => s.user?.role ?? "");
+  const user = useSessionStore((s) => s.user);
+  const role = getEffectiveSessionRole(user) ?? "";
   const isAdmin = role === "ADMINISTRADOR";
 
   const [open, setOpen] = useState(false);
