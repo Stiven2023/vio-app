@@ -7,6 +7,7 @@ import {
   employees,
   inventoryItemVariants,
   inventoryItems,
+  messengers as messengerRegistry,
   packers,
   roles,
   suppliers,
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
       confectionistRows,
       packerRows,
       employeeRows,
+      messengerRows,
     ] = await Promise.all([
       db
         .select({
@@ -127,6 +129,17 @@ export async function GET(request: Request) {
         .from(employees)
         .leftJoin(roles, eq(employees.roleId, roles.id))
         .orderBy(asc(employees.name)),
+      db
+        .select({
+          id: messengerRegistry.id,
+          code: messengerRegistry.messengerCode,
+          name: messengerRegistry.name,
+          messengerType: messengerRegistry.messengerType,
+          isActive: messengerRegistry.isActive,
+        })
+        .from(messengerRegistry)
+        .where(eq(messengerRegistry.isActive, true))
+        .orderBy(asc(messengerRegistry.name)),
     ]);
 
     // Group variants by item
@@ -146,24 +159,10 @@ export async function GET(request: Request) {
     const dispatchers = employeeRows.filter(
       (row) => row.roleName === "OPERARIO_DESPACHO",
     );
-    // Merge messengers + drivers (conductors) into a single "envios" list (deduplicated by id)
-    const enviosMap = new Map<string, (typeof employeeRows)[number]>();
+    const envios = messengerRows;
 
-    for (const row of employeeRows) {
-      if (
-        row.roleName === "MENSAJERO" ||
-        row.roleName === "CONDUCTOR" ||
-        String(row.name ?? "")
-          .toUpperCase()
-          .includes("CONDUCTOR")
-      ) {
-        enviosMap.set(row.id, row);
-      }
-    }
-    const envios = Array.from(enviosMap.values());
-
-    const messengers = employeeRows.filter(
-      (row) => row.roleName === "MENSAJERO",
+    const messengers = messengerRows.filter(
+      (row) => String(row.messengerType ?? "").toUpperCase() === "MENSAJERO",
     );
 
     return Response.json({

@@ -49,9 +49,9 @@ export type MesAccessTokenPayload = {
   employeeName: string;
   employeeEmail: string | null;
   userId: string | null;
-  processKey: string;
-  mesProcess: string;
-  operationType: string;
+  processKey: string | null;
+  mesProcess: string | null;
+  operationType: string | null;
   machineId: string | null;
   machineName: string | null;
 };
@@ -165,12 +165,16 @@ export function signMesAccessToken(payload: MesAccessTokenPayload) {
     !email ||
     !role ||
     !employeeId ||
-    !employeeName ||
-    !processKey ||
-    !mesProcess ||
-    !operationType
+    !employeeName
   ) {
     throw new Error("Datos inválidos para token MES");
+  }
+
+  const hasPartialProcessContext =
+    Boolean(processKey) || Boolean(mesProcess) || Boolean(operationType);
+
+  if (hasPartialProcessContext && (!processKey || !mesProcess || !operationType)) {
+    throw new Error("El contexto de proceso MES debe venir completo o vacío");
   }
 
   return jwt.sign(
@@ -188,9 +192,9 @@ export function signMesAccessToken(payload: MesAccessTokenPayload) {
         payload.userId && String(payload.userId).trim() !== ""
           ? String(payload.userId).trim()
           : null,
-      processKey,
-      mesProcess,
-      operationType,
+      processKey: processKey || null,
+      mesProcess: mesProcess || null,
+      operationType: operationType || null,
       machineId:
         payload.machineId && String(payload.machineId).trim() !== ""
           ? String(payload.machineId).trim()
@@ -227,9 +231,31 @@ export function verifyMesAccessToken(
     if (typeof role !== "string" || role.trim() === "") return null;
     if (typeof employeeId !== "string" || employeeId.trim() === "") return null;
     if (typeof employeeName !== "string" || employeeName.trim() === "") return null;
-    if (typeof processKey !== "string" || processKey.trim() === "") return null;
-    if (typeof mesProcess !== "string" || mesProcess.trim() === "") return null;
-    if (typeof operationType !== "string" || operationType.trim() === "") return null;
+
+    const normalizedProcessKey =
+      typeof processKey === "string" && processKey.trim() !== ""
+        ? processKey.trim()
+        : null;
+    const normalizedMesProcess =
+      typeof mesProcess === "string" && mesProcess.trim() !== ""
+        ? mesProcess.trim()
+        : null;
+    const normalizedOperationType =
+      typeof operationType === "string" && operationType.trim() !== ""
+        ? operationType.trim().toUpperCase()
+        : null;
+
+    const hasPartialProcessContext =
+      Boolean(normalizedProcessKey) ||
+      Boolean(normalizedMesProcess) ||
+      Boolean(normalizedOperationType);
+
+    if (
+      hasPartialProcessContext &&
+      (!normalizedProcessKey || !normalizedMesProcess || !normalizedOperationType)
+    ) {
+      return null;
+    }
 
     return {
       typ,
@@ -247,9 +273,9 @@ export function verifyMesAccessToken(
         (decoded as any).userId.trim() !== ""
           ? (decoded as any).userId.trim()
           : null,
-      processKey: processKey.trim(),
-      mesProcess: mesProcess.trim(),
-      operationType: operationType.trim().toUpperCase(),
+      processKey: normalizedProcessKey,
+      mesProcess: normalizedMesProcess,
+      operationType: normalizedOperationType,
       machineId:
         typeof (decoded as any).machineId === "string" &&
         (decoded as any).machineId.trim() !== ""

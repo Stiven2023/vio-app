@@ -3,6 +3,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db, mesDb } from "@/src/db";
 import {
   clientLegalStatusHistory,
+  messengers,
   orders,
   shipments,
 } from "@/src/db/erp/schema";
@@ -118,7 +119,8 @@ export async function POST(request: Request) {
   const fromArea = str(body.fromArea);
   const toArea = str(body.toArea);
   const recipientId = str(body.recipientId) || null;
-  const sentBy = str(body.sentBy);
+  const sentByRaw = str(body.sentBy);
+  const messengerId = str(body.messengerId) || null;
   const recipientName = str(body.recipientName);
   const orderCode = up(body.orderCode);
   const designName = str(body.designName);
@@ -128,7 +130,7 @@ export async function POST(request: Request) {
   if (
     !fromArea ||
     !toArea ||
-    !sentBy ||
+    !sentByRaw ||
     !recipientName ||
     !orderCode ||
     !designName ||
@@ -138,6 +140,31 @@ export async function POST(request: Request) {
     return new Response("Faltan campos obligatorios del envío", {
       status: 400,
     });
+  }
+
+  let sentBy = sentByRaw;
+
+  if (messengerId) {
+    const [messenger] = await db
+      .select({
+        id: messengers.id,
+        name: messengers.name,
+        messengerCode: messengers.messengerCode,
+        isActive: messengers.isActive,
+      })
+      .from(messengers)
+      .where(eq(messengers.id, messengerId))
+      .limit(1);
+
+    if (!messenger) {
+      return new Response("Mensajero/conductor no encontrado", { status: 404 });
+    }
+
+    if (!messenger.isActive) {
+      return new Response("Mensajero/conductor inactivo", { status: 422 });
+    }
+
+    sentBy = `${messenger.name}${messenger.messengerCode ? ` (${messenger.messengerCode})` : ""}`;
   }
 
   if (toArea.toUpperCase() === "CONFECCIONISTA" && !recipientId) {

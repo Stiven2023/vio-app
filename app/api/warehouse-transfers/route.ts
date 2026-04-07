@@ -8,6 +8,7 @@ import {
   stockMovements,
   warehouses,
 } from "@/src/db/erp/schema";
+import { dbJsonError, jsonError, jsonForbidden, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -19,18 +20,19 @@ import {
 } from "@/src/utils/inventory-sync";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
-
-function toPositiveNumber(v: unknown) {
-  const n = Number(String(v));
-
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
+import {
+  toPositiveNumber,
+  warehouseTransferActionSchema,
+  warehouseTransferCreateSchema,
+  warehouseTransferDeleteSchema,
+  warehouseTransferListQuerySchema,
+} from "@/src/utils/warehouse-transfers-contract";
 
 function ensureWarehouseRole(request: Request) {
   const role = getRoleFromRequest(request);
   const allowed = role === "ADMINISTRADOR" || role === "LIDER_SUMINISTROS";
 
-  return allowed ? null : new Response("Forbidden", { status: 403 });
+  return allowed ? null : jsonForbidden("No tienes permisos para gestionar traslados de bodega.");
 }
 
 export async function POST(request: Request) {
@@ -48,129 +50,141 @@ export async function POST(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para registrar traslados.");
+  }
 
-  const {
-    inventoryItemId,
-    variantId,
-    fromWarehouseId,
-    toWarehouseId,
-    quantity,
-    notes,
-    isRequest,
-    requesterCode,
-  } = await request.json();
+  let body: unknown;
 
-  const itemId = String(inventoryItemId ?? "").trim();
-  const vId = String(variantId ?? "").trim();
-  const fromId = String(fromWarehouseId ?? "").trim();
-  const toId = String(toWarehouseId ?? "").trim();
-  const qty = toPositiveNumber(quantity);
-  const transferNotes = String(notes ?? "").trim();
-  const asRequest = Boolean(isRequest);
-  const requesterCodeValue = String(requesterCode ?? "")
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
+
+  const parsed = warehouseTransferCreateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos del traslado son inválidos.");
+  }
+
+  const itemId = parsed.data.inventoryItemId;
+  const vId = parsed.data.variantId;
+  const fromId = parsed.data.fromWarehouseId;
+  const toId = parsed.data.toWarehouseId;
+  const qty = parsed.data.quantity;
+  const transferNotes = String(parsed.data.notes ?? "").trim();
+  const asRequest = Boolean(parsed.data.isRequest);
+  const requesterCodeValue = String(parsed.data.requesterCode ?? "")
     .trim()
     .toUpperCase();
 
-  if (!itemId) return new Response("inventoryItemId required", { status: 400 });
-  if (!vId) return new Response("variantId required", { status: 400 });
-  if (!fromId) return new Response("fromWarehouseId required", { status: 400 });
-  if (!toId) return new Response("toWarehouseId required", { status: 400 });
-  if (fromId === toId) {
-    return new Response("source and destination must be different", {
-      status: 400,
-    });
-  }
-  if (!qty) return new Response("quantity must be positive", { status: 400 });
+  try {
+    const [fromWarehouse, toWarehouse] = await Promise.all([
+      db
+        .select({ id: warehouses.id })
+        .from(warehouses)
+        .where(eq(warehouses.id, fromId))
+        .limit(1),
+      db
+        .select({ id: warehouses.id })
+        .from(warehouses)
+        .where(eq(warehouses.id, toId))
+        .limit(1),
+    ]);
 
-  const [fromWarehouse, toWarehouse] = await Promise.all([
-    db
-      .select({ id: warehouses.id })
-      .from(warehouses)
-      .where(eq(warehouses.id, fromId))
-      .limit(1),
-    db
-      .select({ id: warehouses.id })
-      .from(warehouses)
-      .where(eq(warehouses.id, toId))
-      .limit(1),
-  ]);
+    if (!fromWarehouse[0] || !toWarehouse[0]) {
+      return jsonError(404, "WAREHOUSE_NOT_FOUND", "warehouse not found", {
+        warehouseId: ["La bodega origen o destino no existe."],
+      });
+    }
 
-  if (!fromWarehouse[0] || !toWarehouse[0]) {
-    return new Response("warehouse not found", { status: 404 });
-  }
-
-  const [variantRow] = await db
-    .select({ id: inventoryItemVariants.id })
-    .from(inventoryItemVariants)
-    .where(
-      and(
-        eq(inventoryItemVariants.id, vId),
-        eq(inventoryItemVariants.inventoryItemId, itemId),
-      ),
-    )
-    .limit(1);
-
-  if (!variantRow) return new Response("variant not found", { status: 404 });
-
-  const available = await computeStockForVariantInWarehouse(db, vId, fromId);
-
-  if (!Number.isFinite(available) || qty > available) {
-    return new Response("Stock insuficiente en bodega origen", { status: 400 });
-  }
-
-  const employeeId = getEmployeeIdFromRequest(request);
-
-  let actorEmployeeId = employeeId;
-
-  if (requesterCodeValue) {
-    const [employeeByCode] = await db
-      .select({ id: employees.id })
-      .from(employees)
-      .where(eq(employees.employeeCode, requesterCodeValue))
+    const [variantRow] = await db
+      .select({ id: inventoryItemVariants.id })
+      .from(inventoryItemVariants)
+      .where(
+        and(
+          eq(inventoryItemVariants.id, vId),
+          eq(inventoryItemVariants.inventoryItemId, itemId),
+        ),
+      )
       .limit(1);
 
-    if (!employeeByCode?.id) {
-      return new Response("requesterCode not found", { status: 400 });
+    if (!variantRow) {
+      return jsonError(404, "VARIANT_NOT_FOUND", "variant not found", {
+        variantId: ["La variante no existe para el inventario seleccionado."],
+      });
     }
 
-    actorEmployeeId = employeeByCode.id;
-  }
+    const available = await computeStockForVariantInWarehouse(db, vId, fromId);
 
-  if (!actorEmployeeId) {
-    return new Response("requester not resolved", { status: 401 });
-  }
-
-  const created = await db.transaction(async (tx) => {
-    const rows = await tx
-      .insert(stockMovements)
-      .values({
-        movementType: "TRASLADO",
-        reason: "TRASLADO_INTERNO",
-        notes: transferNotes || null,
-        inventoryItemId: itemId,
-        variantId: vId,
-        fromWarehouseId: fromId,
-        toWarehouseId: toId,
-        quantity: String(qty),
-        referenceType: "MANUAL",
-        referenceId: null,
-        transferStatus: asRequest ? "PENDIENTE" : null,
-        requestedBy: asRequest ? actorEmployeeId : null,
-        requestedAt: asRequest ? new Date() : null,
-        createdBy: asRequest ? null : actorEmployeeId,
-      })
-      .returning();
-
-    if (!asRequest) {
-      await syncInventoryForItem(tx, itemId);
-      await syncInventoryForVariant(tx, vId);
+    if (!Number.isFinite(available) || qty > available) {
+      return jsonError(422, "INSUFFICIENT_STOCK", "Stock insuficiente en bodega origen", {
+        quantity: ["La cantidad excede el disponible en bodega origen."],
+      });
     }
 
-    return rows;
-  });
+    const employeeId = getEmployeeIdFromRequest(request);
 
-  return Response.json(created, { status: asRequest ? 202 : 201 });
+    let actorEmployeeId = employeeId;
+
+    if (requesterCodeValue) {
+      const [employeeByCode] = await db
+        .select({ id: employees.id })
+        .from(employees)
+        .where(eq(employees.employeeCode, requesterCodeValue))
+        .limit(1);
+
+      if (!employeeByCode?.id) {
+        return jsonError(422, "REQUESTER_CODE_NOT_FOUND", "requesterCode not found", {
+          requesterCode: ["No existe un empleado con ese código."],
+        });
+      }
+
+      actorEmployeeId = employeeByCode.id;
+    }
+
+    if (!actorEmployeeId) {
+      return jsonError(401, "UNAUTHENTICATED", "requester not resolved");
+    }
+
+    const created = await db.transaction(async (tx) => {
+      const rows = await tx
+        .insert(stockMovements)
+        .values({
+          movementType: "TRASLADO",
+          reason: "TRASLADO_INTERNO",
+          notes: transferNotes || null,
+          inventoryItemId: itemId,
+          variantId: vId,
+          fromWarehouseId: fromId,
+          toWarehouseId: toId,
+          quantity: String(qty),
+          referenceType: "MANUAL",
+          referenceId: null,
+          transferStatus: asRequest ? "PENDIENTE" : null,
+          requestedBy: asRequest ? actorEmployeeId : null,
+          requestedAt: asRequest ? new Date() : null,
+          createdBy: asRequest ? null : actorEmployeeId,
+        })
+        .returning();
+
+      if (!asRequest) {
+        await syncInventoryForItem(tx, itemId);
+        await syncInventoryForVariant(tx, vId);
+      }
+
+      return rows;
+    });
+
+    return Response.json(created, { status: asRequest ? 202 : 201 });
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo registrar el traslado de bodega.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo registrar el traslado de bodega.");
+  }
 }
 
 export async function GET(request: Request) {
@@ -188,19 +202,22 @@ export async function GET(request: Request) {
 
   const forbidden = await requirePermission(request, "VER_INVENTARIO");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para consultar traslados.");
+  }
 
   const { searchParams } = new URL(request.url);
-  const warehouseId = String(searchParams.get("warehouseId") ?? "").trim();
-  const scope = String(searchParams.get("scope") ?? "incoming")
-    .trim()
-    .toLowerCase();
-  const status = String(searchParams.get("status") ?? "pending")
-    .trim()
-    .toLowerCase();
+  const parsedQuery = warehouseTransferListQuerySchema.safeParse({
+    warehouseId: String(searchParams.get("warehouseId") ?? "").trim(),
+    scope: String(searchParams.get("scope") ?? "incoming").trim().toLowerCase(),
+    status: String(searchParams.get("status") ?? "pending").trim().toLowerCase(),
+  });
 
-  if (!warehouseId)
-    return new Response("warehouseId required", { status: 400 });
+  if (!parsedQuery.success) {
+    return zodFirstErrorEnvelope(parsedQuery.error, "Los filtros de traslados son inválidos.");
+  }
+
+  const { warehouseId, scope, status } = parsedQuery.data;
 
   const scopeWhere =
     scope === "outgoing"
@@ -219,8 +236,9 @@ export async function GET(request: Request) {
 
   const where = status === "resolved" ? resolvedWhere : pendingWhere;
 
-  const items = await db
-    .select({
+  try {
+    const items = await db
+      .select({
       id: stockMovements.id,
       inventoryItemId: stockMovements.inventoryItemId,
       variantId: stockMovements.variantId,
@@ -257,20 +275,25 @@ export async function GET(request: Request) {
         where e.id = ${stockMovements.createdBy}
         limit 1
       )`,
-    })
-    .from(stockMovements)
-    .leftJoin(
-      inventoryItems,
-      eq(stockMovements.inventoryItemId, inventoryItems.id),
-    )
-    .leftJoin(
-      inventoryItemVariants,
-      eq(stockMovements.variantId, inventoryItemVariants.id),
-    )
-    .where(where)
-    .orderBy(desc(stockMovements.requestedAt));
+      })
+      .from(stockMovements)
+      .leftJoin(
+        inventoryItems,
+        eq(stockMovements.inventoryItemId, inventoryItems.id),
+      )
+      .leftJoin(
+        inventoryItemVariants,
+        eq(stockMovements.variantId, inventoryItemVariants.id),
+      )
+      .where(where)
+      .orderBy(desc(stockMovements.requestedAt));
 
-  return Response.json({ items });
+    return Response.json({ items });
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudieron consultar los traslados de bodega.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudieron consultar los traslados de bodega.");
+  }
 }
 
 export async function PUT(request: Request) {
@@ -288,13 +311,27 @@ export async function PUT(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para aprobar traslados.");
+  }
 
-  const { id, notes } = await request.json();
-  const requestId = String(id ?? "").trim();
-  const approvalNotes = String(notes ?? "").trim();
+  let body: unknown;
 
-  if (!requestId) return new Response("id required", { status: 400 });
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
+
+  const parsed = warehouseTransferActionSchema.safeParse(body);
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos para aprobar traslado son inválidos.");
+  }
+
+  const requestId = parsed.data.id;
+  const approvalNotes = String(parsed.data.notes ?? "").trim();
 
   const [pending] = await db
     .select({
@@ -313,10 +350,11 @@ export async function PUT(request: Request) {
     )
     .limit(1);
 
-  if (!pending)
-    return new Response("transfer request not found", { status: 404 });
+  if (!pending) {
+    return jsonError(404, "TRANSFER_REQUEST_NOT_FOUND", "transfer request not found");
+  }
   if (!pending.inventoryItemId || !pending.fromWarehouseId) {
-    return new Response("invalid transfer request", { status: 400 });
+    return jsonError(422, "INVALID_TRANSFER_REQUEST", "invalid transfer request");
   }
 
   const pendingItemId = pending.inventoryItemId;
@@ -324,12 +362,10 @@ export async function PUT(request: Request) {
 
   const qty = toPositiveNumber(pending.quantity);
 
-  if (!qty) return new Response("invalid quantity", { status: 400 });
+  if (!qty) return jsonError(422, "INVALID_TRANSFER_QUANTITY", "invalid quantity");
 
   if (!pending.variantId) {
-    return new Response("invalid transfer request without variant", {
-      status: 400,
-    });
+    return jsonError(422, "INVALID_TRANSFER_REQUEST", "invalid transfer request without variant");
   }
 
   const pendingVariantId = pending.variantId;
@@ -341,38 +377,45 @@ export async function PUT(request: Request) {
   );
 
   if (!Number.isFinite(available) || qty > available) {
-    return new Response("Stock insuficiente en bodega origen", { status: 400 });
+    return jsonError(422, "INSUFFICIENT_STOCK", "Stock insuficiente en bodega origen", {
+      quantity: ["La cantidad excede el disponible en bodega origen."],
+    });
   }
 
   const employeeId = getEmployeeIdFromRequest(request);
 
-  if (!employeeId)
-    return new Response("requester not resolved", { status: 401 });
+  if (!employeeId) return jsonError(401, "UNAUTHENTICATED", "requester not resolved");
 
-  const updated = await db.transaction(async (tx) => {
-    const rows = await tx
-      .update(stockMovements)
-      .set({
-        requestedAt: null,
-        createdBy: employeeId,
-        transferStatus: "APROBADA",
-        notes: approvalNotes || null,
-      })
-      .where(
-        and(
-          eq(stockMovements.id, requestId),
-          eq(stockMovements.transferStatus, "PENDIENTE"),
-        ),
-      )
-      .returning();
+  try {
+    const updated = await db.transaction(async (tx) => {
+      const rows = await tx
+        .update(stockMovements)
+        .set({
+          requestedAt: null,
+          createdBy: employeeId,
+          transferStatus: "APROBADA",
+          notes: approvalNotes || null,
+        })
+        .where(
+          and(
+            eq(stockMovements.id, requestId),
+            eq(stockMovements.transferStatus, "PENDIENTE"),
+          ),
+        )
+        .returning();
 
-    await syncInventoryForItem(tx, pendingItemId);
-    await syncInventoryForVariant(tx, pendingVariantId);
+      await syncInventoryForItem(tx, pendingItemId);
+      await syncInventoryForVariant(tx, pendingVariantId);
 
-    return rows;
-  });
+      return rows;
+    });
 
-  return Response.json(updated);
+    return Response.json(updated);
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo aprobar el traslado.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo aprobar el traslado.");
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -390,39 +433,58 @@ export async function PATCH(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para rechazar traslados.");
+  }
 
-  const { id, notes } = await request.json();
-  const requestId = String(id ?? "").trim();
-  const rejectionNotes = String(notes ?? "").trim();
+  let body: unknown;
 
-  if (!requestId) return new Response("id required", { status: 400 });
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
+
+  const parsed = warehouseTransferActionSchema.safeParse(body);
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos para rechazar traslado son inválidos.");
+  }
+
+  const requestId = parsed.data.id;
+  const rejectionNotes = String(parsed.data.notes ?? "").trim();
 
   const employeeId = getEmployeeIdFromRequest(request);
 
-  if (!employeeId)
-    return new Response("requester not resolved", { status: 401 });
+  if (!employeeId) return jsonError(401, "UNAUTHENTICATED", "requester not resolved");
 
-  const rejected = await db
-    .update(stockMovements)
-    .set({
-      createdBy: employeeId,
-      transferStatus: "RECHAZADA",
-      notes: rejectionNotes || null,
-    })
-    .where(
-      and(
-        eq(stockMovements.id, requestId),
-        eq(stockMovements.transferStatus, "PENDIENTE"),
-      ),
-    )
-    .returning();
+  try {
+    const rejected = await db
+      .update(stockMovements)
+      .set({
+        createdBy: employeeId,
+        transferStatus: "RECHAZADA",
+        notes: rejectionNotes || null,
+      })
+      .where(
+        and(
+          eq(stockMovements.id, requestId),
+          eq(stockMovements.transferStatus, "PENDIENTE"),
+        ),
+      )
+      .returning();
 
-  if (!rejected.length) {
-    return new Response("transfer request not found", { status: 404 });
+    if (!rejected.length) {
+      return jsonError(404, "TRANSFER_REQUEST_NOT_FOUND", "transfer request not found");
+    }
+
+    return Response.json(rejected);
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo rechazar el traslado.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo rechazar el traslado.");
   }
-
-  return Response.json(rejected);
 }
 
 export async function DELETE(request: Request) {
@@ -440,25 +502,46 @@ export async function DELETE(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_SALIDA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para eliminar solicitudes de traslado.");
+  }
 
-  const { id } = await request.json();
-  const requestId = String(id ?? "").trim();
+  let body: unknown;
 
-  if (!requestId) return new Response("id required", { status: 400 });
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
 
-  const deleted = await db
-    .delete(stockMovements)
-    .where(
-      and(
-        eq(stockMovements.id, requestId),
-        eq(stockMovements.transferStatus, "PENDIENTE"),
-      ),
-    )
-    .returning();
+  const parsed = warehouseTransferDeleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos para eliminar traslado son inválidos.");
+  }
 
-  if (!deleted.length)
-    return new Response("transfer request not found", { status: 404 });
+  const requestId = parsed.data.id;
 
-  return Response.json(deleted);
+  try {
+    const deleted = await db
+      .delete(stockMovements)
+      .where(
+        and(
+          eq(stockMovements.id, requestId),
+          eq(stockMovements.transferStatus, "PENDIENTE"),
+        ),
+      )
+      .returning();
+
+    if (!deleted.length) {
+      return jsonError(404, "TRANSFER_REQUEST_NOT_FOUND", "transfer request not found");
+    }
+
+    return Response.json(deleted);
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo eliminar la solicitud de traslado.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo eliminar la solicitud de traslado.");
+  }
 }

@@ -360,186 +360,196 @@ export function OrdersTab({
       </div>
 
       {loading ? (
-        <TableSkeleton
-          ariaLabel={copy.tableAriaLabel}
-          headers={copy.tableHeaders}
-        />
+        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
+          <TableSkeleton
+            removeWrapper
+            ariaLabel={copy.tableAriaLabel}
+            headers={copy.tableHeaders}
+          />
+        </div>
       ) : (
-        <Table aria-label={copy.tableAriaLabel}>
-          <TableHeader>
-            {copy.tableHeaders.map((header) => (
-              <TableColumn key={header}>{header}</TableColumn>
-            ))}
-          </TableHeader>
-          <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
-            {(o) => (
-              <TableRow key={o.id}>
-                <TableCell className="font-medium">{o.orderCode}</TableCell>
-                <TableCell>{o.clientName ?? "-"}</TableCell>
-                <TableCell>{o.type}</TableCell>
-                <TableCell>{formatOrderDate(o.deliveryDate)}</TableCell>
-                <TableCell>{o.status}</TableCell>
-                <TableCell className="text-default-600">
-                  {(() => {
-                    if (!o.lastStatusAt) return "-";
-                    const label = formatOrderLastUpdate({
-                      id: o.id,
-                      status: o.status,
-                      changedByName: o.lastStatusBy ?? null,
-                      reasonCode: null,
-                      meta: null,
-                      createdAt: o.lastStatusAt,
-                    });
+        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
+          <Table
+            className="w-full table-fixed"
+            classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
+            removeWrapper
+            aria-label={copy.tableAriaLabel}
+          >
+            <TableHeader>
+              {copy.tableHeaders.map((header) => (
+                <TableColumn key={header}>{header}</TableColumn>
+              ))}
+            </TableHeader>
+            <TableBody emptyContent={emptyContent} items={data?.items ?? []}>
+              {(o) => (
+                <TableRow key={o.id}>
+                  <TableCell className="font-medium">{o.orderCode}</TableCell>
+                  <TableCell>{o.clientName ?? "-"}</TableCell>
+                  <TableCell>{o.type}</TableCell>
+                  <TableCell>{formatOrderDate(o.deliveryDate)}</TableCell>
+                  <TableCell>{o.status}</TableCell>
+                  <TableCell className="text-default-600">
+                    {(() => {
+                      if (!o.lastStatusAt) return "-";
+                      const label = formatOrderLastUpdate({
+                        id: o.id,
+                        status: o.status,
+                        changedByName: o.lastStatusBy ?? null,
+                        reasonCode: null,
+                        meta: null,
+                        createdAt: o.lastStatusAt,
+                      });
 
-                    return o.lastStatusBy
-                      ? `${label} · ${o.lastStatusBy}`
-                      : label;
-                  })()}
-                  {canSeeHistory ? (
-                    <div>
-                      <Button
-                        size="sm"
-                        variant="light"
-                        onPress={() => openHistory(o)}
-                      >
-                            {copy.history.viewHistory}
-                      </Button>
-                    </div>
-                  ) : null}
-                </TableCell>
-                <TableCell>{formatOrderCurrency(o.total, o.currency)}</TableCell>
-                <TableCell>
-                  {(() => {
-                    const pct = calculatePaidPercent(o);
+                      return o.lastStatusBy
+                        ? `${label} · ${o.lastStatusBy}`
+                        : label;
+                    })()}
+                    {canSeeHistory ? (
+                      <div>
+                        <Button
+                          size="sm"
+                          variant="light"
+                          onPress={() => openHistory(o)}
+                        >
+                              {copy.history.viewHistory}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{formatOrderCurrency(o.total, o.currency)}</TableCell>
+                  <TableCell>
+                    {(() => {
+                      const pct = calculatePaidPercent(o);
 
-                    const toneClass =
-                      pct >= 50
-                        ? "text-success"
-                        : pct >= 30
-                          ? "text-warning"
-                          : "text-danger";
+                      const toneClass =
+                        pct >= 50
+                          ? "text-success"
+                          : pct >= 30
+                            ? "text-warning"
+                            : "text-danger";
 
-                    return (
-                      <span className={`font-semibold ${toneClass}`}>
-                        {pct.toFixed(0)}%
-                      </span>
-                    );
-                  })()}
-                </TableCell>
-                <TableCell>
-                  <Dropdown>
-                    <DropdownTrigger>
-                      <Button
-                        isDisabled={Boolean(deletingId)}
-                        size="sm"
-                        variant="flat"
-                      >
-                        <BsThreeDotsVertical />
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu aria-label={copy.actionsAriaLabel}>
-                      <DropdownItem
-                        key="items"
-                        as={NextLink}
-                        href={`/orders/${o.id}/items`}
-                        startContent={<BsWindowStack />}
-                      >
-                        {copy.actions.designs}
-                      </DropdownItem>
-
-                      {canAccessOrder(o) ? (
+                      return (
+                        <span className={`font-semibold ${toneClass}`}>
+                          {pct.toFixed(0)}%
+                        </span>
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    <Dropdown>
+                      <DropdownTrigger>
+                        <Button
+                          isDisabled={Boolean(deletingId)}
+                          size="sm"
+                          variant="flat"
+                        >
+                          <BsThreeDotsVertical />
+                        </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label={copy.actionsAriaLabel}>
                         <DropdownItem
-                          key="detail"
+                          key="items"
                           as={NextLink}
-                          href={`/orders/${o.id}/detail`}
-                          startContent={<BsEye />}
+                          href={`/orders/${o.id}/items`}
+                          startContent={<BsWindowStack />}
                         >
-                          {copy.actions.viewDetails}
+                          {copy.actions.designs}
                         </DropdownItem>
-                      ) : null}
 
-                      {canAccessOrder(o) ? (
-                        <DropdownItem
-                          key="prefactura"
-                          as={NextLink}
-                          href={`/orders/${o.id}/prefactura`}
-                          startContent={<BsReceipt />}
-                        >
-                          {copy.actions.preInvoice}
-                        </DropdownItem>
-                      ) : null}
+                        {canAccessOrder(o) ? (
+                          <DropdownItem
+                            key="detail"
+                            as={NextLink}
+                            href={`/orders/${o.id}/detail`}
+                            startContent={<BsEye />}
+                          >
+                            {copy.actions.viewDetails}
+                          </DropdownItem>
+                        ) : null}
 
-                      {canAccessOrder(o) ? (
-                        <DropdownItem
-                          key="history"
-                          as={NextLink}
-                          href={`/status-history?tab=orders&orderId=${encodeURIComponent(
-                            o.id,
-                          )}`}
-                          startContent={<BsClockHistory />}
-                        >
-                          {copy.actions.history}
-                        </DropdownItem>
-                      ) : null}
+                        {canAccessOrder(o) ? (
+                          <DropdownItem
+                            key="prefactura"
+                            as={NextLink}
+                            href={`/orders/${o.id}/prefactura`}
+                            startContent={<BsReceipt />}
+                          >
+                            {copy.actions.preInvoice}
+                          </DropdownItem>
+                        ) : null}
 
-                      {canChangeStatus &&
-                      canAccessOrder(o) &&
-                      canRequestReadyDispatch(o.status) ? (
-                        <DropdownItem
-                          key="ready-dispatch"
-                          startContent={<BsCheck2Circle />}
-                          onPress={() => openReadyModal(o)}
-                        >
-                          {copy.actions.ready}
-                        </DropdownItem>
-                      ) : null}
+                        {canAccessOrder(o) ? (
+                          <DropdownItem
+                            key="history"
+                            as={NextLink}
+                            href={`/status-history?tab=orders&orderId=${encodeURIComponent(
+                              o.id,
+                            )}`}
+                            startContent={<BsClockHistory />}
+                          >
+                            {copy.actions.history}
+                          </DropdownItem>
+                        ) : null}
 
-                      {canCommercialDecision &&
-                      canAccessOrder(o) &&
-                      canTakeCommercialDecision(o.status) ? (
-                        <DropdownItem
-                          key="commercial-approve"
-                          startContent={<BsHandThumbsUp />}
-                          onPress={() => openCommercialModal(o, "APPROVE")}
-                        >
-                          {copy.actions.commercialApprove}
-                        </DropdownItem>
-                      ) : null}
+                        {canChangeStatus &&
+                        canAccessOrder(o) &&
+                        canRequestReadyDispatch(o.status) ? (
+                          <DropdownItem
+                            key="ready-dispatch"
+                            startContent={<BsCheck2Circle />}
+                            onPress={() => openReadyModal(o)}
+                          >
+                            {copy.actions.ready}
+                          </DropdownItem>
+                        ) : null}
 
-                      {canCommercialDecision &&
-                      canAccessOrder(o) &&
-                      canTakeCommercialDecision(o.status) ? (
-                        <DropdownItem
-                          key="commercial-wait"
-                          startContent={<BsPauseCircle />}
-                          onPress={() =>
-                            openCommercialModal(o, "WAIT_FOR_PAYMENT")
-                          }
-                        >
-                          {copy.actions.waitForPayment}
-                        </DropdownItem>
-                      ) : null}
+                        {canCommercialDecision &&
+                        canAccessOrder(o) &&
+                        canTakeCommercialDecision(o.status) ? (
+                          <DropdownItem
+                            key="commercial-approve"
+                            startContent={<BsHandThumbsUp />}
+                            onPress={() => openCommercialModal(o, "APPROVE")}
+                          >
+                            {copy.actions.commercialApprove}
+                          </DropdownItem>
+                        ) : null}
 
-                      {canDelete && canAccessOrder(o) ? (
-                        <DropdownItem
-                          key="delete"
-                          className="text-danger"
-                          startContent={<BsTrash />}
-                          onPress={() => {
-                            setPendingDelete(o);
-                            setConfirmOpen(true);
-                          }}
-                        >
-                          {copy.actions.delete}
-                        </DropdownItem>
-                      ) : null}
-                    </DropdownMenu>
-                  </Dropdown>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                        {canCommercialDecision &&
+                        canAccessOrder(o) &&
+                        canTakeCommercialDecision(o.status) ? (
+                          <DropdownItem
+                            key="commercial-wait"
+                            startContent={<BsPauseCircle />}
+                            onPress={() =>
+                              openCommercialModal(o, "WAIT_FOR_PAYMENT")
+                            }
+                          >
+                            {copy.actions.waitForPayment}
+                          </DropdownItem>
+                        ) : null}
+
+                        {canDelete && canAccessOrder(o) ? (
+                          <DropdownItem
+                            key="delete"
+                            className="text-danger"
+                            startContent={<BsTrash />}
+                            onPress={() => {
+                              setPendingDelete(o);
+                              setConfirmOpen(true);
+                            }}
+                          >
+                            {copy.actions.delete}
+                          </DropdownItem>
+                        ) : null}
+                      </DropdownMenu>
+                    </Dropdown>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {data ? <Pager data={data} page={page} onChange={setPage} /> : null}

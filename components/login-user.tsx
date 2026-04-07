@@ -1,11 +1,13 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card } from "@heroui/card";
+import { Button } from "@heroui/button";
+import { useTranslations } from "next-intl";
 
 import { validateLogin } from "@/utils/validation";
-import { AlertToast } from "@/components/alert-toast";
 import { ModuleLogo } from "@/components/module-logo";
 import { ThemeSwitch } from "@/components/theme-switch";
 import { ViomarLogo } from "@/components/viomar-logo";
@@ -24,6 +26,8 @@ type ToastState = {
   type: "success" | "error" | "info";
 };
 
+type SupportedLocale = "en" | "es";
+
 // Roles that belong to the production floor — redirect to MES after login
 const MES_ROLES = new Set<string>([
   Role.CONFECCIONISTA,
@@ -33,19 +37,23 @@ const MES_ROLES = new Set<string>([
   Role.OPERARIO_INTEGRACION_CALIDAD,
   Role.OPERARIO_DESPACHO,
   Role.PROGRAMACION,
-  "MENSAJERO", // Not in Role enum yet — kept as string
 ]);
 
 function resolvePostLoginPath(role: string | null | undefined): string {
   if (!role) return "/";
   if (MES_ROLES.has(role.toUpperCase())) return "/mes";
+
   return "/";
 }
 
 export default function LoginUser() {
+  const t = useTranslations("Auth");
   const [selected, setSelected] = useState("viomar");
   const [staffForm, setStaffForm] = useState({ username: "", password: "" });
-  const [thirdPartyForm, setThirdPartyForm] = useState({ username: "", password: "" });
+  const [thirdPartyForm, setThirdPartyForm] = useState({
+    username: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
   const [showStaffPassword, setShowStaffPassword] = useState(false);
   const [showThirdPartyPassword, setShowThirdPartyPassword] = useState(false);
@@ -53,10 +61,31 @@ export default function LoginUser() {
   const [resetOpen, setResetOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState<string>("");
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [currentLocale, setCurrentLocale] = useState<SupportedLocale>("en");
 
   const router = useRouter();
   const login = useSessionStore((s) => s.login);
   const clearSession = useSessionStore((s) => s.clearSession);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("preferredLanguage");
+    const cookie = document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("NEXT_LOCALE="))
+      ?.split("=")[1];
+    const locale = stored === "es" || cookie === "es" ? "es" : "en";
+
+    setCurrentLocale(locale);
+  }, []);
+
+  const handleLocaleToggle = () => {
+    const next: SupportedLocale = currentLocale === "en" ? "es" : "en";
+
+    document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000; samesite=lax`;
+    window.localStorage.setItem("preferredLanguage", next);
+    window.sessionStorage.setItem("preferredLanguage", next);
+    window.location.reload();
+  };
 
   const handleStaffChange = (e: ChangeEvent<HTMLInputElement>) => {
     setStaffForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -84,21 +113,13 @@ export default function LoginUser() {
         const role = getEffectiveSessionRole(useSessionStore.getState().user);
         const destination = resolvePostLoginPath(role);
 
-        setToast({ message: "Login successful.", type: "success" });
-        setTimeout(() => {
-          window.location.replace(destination);
-        }, 1000);
+        router.replace(destination);
+        router.refresh();
       } else {
-        setToast({
-          message: "Invalid credentials or user not found.",
-          type: "error",
-        });
+        setToast({ message: t("invalidCredentials"), type: "error" });
       }
     } catch {
-      setToast({
-        message: "Could not sign in. Please check your credentials and try again.",
-        type: "error",
-      });
+      setToast({ message: t("signInError"), type: "error" });
     } finally {
       setLoading(false);
     }
@@ -116,32 +137,34 @@ export default function LoginUser() {
 
     setLoading(true);
     try {
-      const ok = await login(thirdPartyForm.username.trim(), thirdPartyForm.password);
+      const ok = await login(
+        thirdPartyForm.username.trim(),
+        thirdPartyForm.password,
+      );
 
       if (ok) {
         const role = getEffectiveSessionRole(useSessionStore.getState().user);
 
-        if (String(role ?? "").trim().toUpperCase() !== Role.CONFECCIONISTA) {
+        if (
+          String(role ?? "")
+            .trim()
+            .toUpperCase() !== Role.CONFECCIONISTA
+        ) {
           await clearSession();
-          setToast({
-            message: "El acceso de terceros está habilitado solo para confeccionistas.",
-            type: "error",
-          });
+          setToast({ message: t("thirdPartyRestricted"), type: "error" });
 
           return;
         }
 
-        setToast({ message: "Login successful.", type: "success" });
         const destination = resolvePostLoginPath(role);
 
-        setTimeout(() => {
-          window.location.replace(destination);
-        }, 1000);
+        router.replace(destination);
+        router.refresh();
       } else {
-        setToast({ message: "Invalid credentials.", type: "error" });
+        setToast({ message: t("invalidCredentials"), type: "error" });
       }
     } catch {
-      setToast({ message: "Could not sign in.", type: "error" });
+      setToast({ message: t("signInError"), type: "error" });
     } finally {
       setLoading(false);
     }
@@ -149,16 +172,20 @@ export default function LoginUser() {
 
   return (
     <div className="min-h-screen bg-[var(--viomar-bg)] text-[var(--viomar-fg)]">
-      {toast ? <AlertToast message={toast.message} type={toast.type} /> : null}
-
-      <div className="fixed right-3 top-3 z-50 rounded-medium border border-white/10 bg-content1/70 p-1 backdrop-blur sm:right-5 sm:top-5">
+      <div className="fixed right-3 top-3 z-50 flex items-center gap-1 rounded-medium border border-white/10 bg-content1/70 p-1 backdrop-blur sm:right-5 sm:top-5">
+        <Button
+          className="min-w-12 text-xs font-semibold"
+          size="sm"
+          variant="light"
+          onPress={handleLocaleToggle}
+        >
+          {currentLocale === "en" ? "ESP" : "ENG"}
+        </Button>
         <ThemeSwitch />
       </div>
 
       <div className="grid min-h-screen lg:grid-cols-[42%_58%]">
-        <aside
-          className="relative hidden overflow-hidden border-r border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_92%,black_8%)] p-10 lg:flex lg:flex-col lg:justify-between"
-        >
+        <aside className="relative hidden overflow-hidden border-r border-default-200/30 bg-[color-mix(in_srgb,var(--viomar-bg)_92%,black_8%)] p-10 lg:flex lg:flex-col lg:justify-between">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_30%_60%,color-mix(in_srgb,var(--viomar-primary)_12%,transparent)_0%,transparent_70%)]" />
           <div className="pointer-events-none absolute inset-y-0 right-0 flex w-8 gap-1 px-1 opacity-10">
             <div className="flex-1 -skew-x-[8deg] bg-[var(--viomar-primary)]" />
@@ -169,7 +196,7 @@ export default function LoginUser() {
           <div className="relative z-10 inline-flex flex-col items-center text-center">
             <ViomarLogo height={34} />
             <p className="mt-3 text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[var(--viomar-primary)]">
-              Enterprise platform
+              {t("enterprisePlatform")}
             </p>
           </div>
 
@@ -177,15 +204,14 @@ export default function LoginUser() {
             <JerseyIllustration />
             <div className="flex flex-col items-center">
               <h2 className="text-4xl font-black leading-[1.02] tracking-tight text-[var(--viomar-fg)]">
-                Your business.
+                {t("taglineMain")}
                 <br />
                 <span className="text-[var(--viomar-primary)]">
-                  All in one place.
+                  {t("taglineAccent")}
                 </span>
               </h2>
               <p className="mt-3 max-w-sm text-sm leading-relaxed text-default-500">
-                Integrated ERP, MES and CRM for ops, production and commercial
-                management.
+                {t("taglineDesc")}
               </p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
                 <div className="flex flex-col items-center gap-2">
@@ -221,12 +247,28 @@ export default function LoginUser() {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <h2 className="text-3xl font-black tracking-tight text-[var(--viomar-fg)]">
-                    Sign in
+                    {t("signIn")}
                   </h2>
                   <p className="text-sm text-default-500">
-                    Select your access type.
+                    {t("accessTypeSubtitle")}
                   </p>
                 </div>
+
+                {toast ? (
+                  <div
+                    aria-live="polite"
+                    className={
+                      toast.type === "error"
+                        ? "rounded-medium border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
+                        : toast.type === "success"
+                          ? "rounded-medium border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
+                          : "rounded-medium border border-default-200/50 bg-content1/40 px-3 py-2 text-sm text-default-600"
+                    }
+                    role="status"
+                  >
+                    {toast.message}
+                  </div>
+                ) : null}
 
                 <LoginAccessTabs
                   loading={loading}
@@ -238,35 +280,60 @@ export default function LoginUser() {
                   showThirdPartyPassword={showThirdPartyPassword}
                   staffForm={staffForm}
                   thirdPartyForm={thirdPartyForm}
-                  toggleShowStaffPassword={() => setShowStaffPassword((v) => !v)}
-                  toggleShowThirdPartyPassword={() => setShowThirdPartyPassword((v) => !v)}
+                  toggleShowStaffPassword={() =>
+                    setShowStaffPassword((v) => !v)
+                  }
+                  toggleShowThirdPartyPassword={() =>
+                    setShowThirdPartyPassword((v) => !v)
+                  }
                   onOpenResetRequest={() => setResetRequestOpen(true)}
                   onStaffFormChange={handleStaffChange}
                   onSubmitThirdParty={handleThirdPartySubmit}
                   onSubmitViomar={handleSubmit}
                   onThirdPartyFormChange={handleThirdPartyChange}
                 />
+
+                <div className="rounded-medium border border-default-200/40 bg-content1/30 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-default-500">
+                    {t("mesLoginTitle")}
+                  </p>
+                  <p className="mt-1 text-sm text-default-500">
+                    {t("mesLoginDesc")}
+                  </p>
+                  <Button
+                    as={Link}
+                    className="mt-3"
+                    href="/mes/login"
+                    variant="flat"
+                  >
+                    {t("mesLoginButton")}
+                  </Button>
+                </div>
               </div>
             </Card>
           </div>
         </div>
       </div>
 
-      <RequestPasswordResetModal
-        isOpen={resetRequestOpen}
-        onOpenChange={setResetRequestOpen}
-        onSent={(email) => {
-          setResetEmail(email);
-          setResetRequestOpen(false);
-          setResetOpen(true);
-        }}
-      />
+      {resetRequestOpen ? (
+        <RequestPasswordResetModal
+          isOpen={resetRequestOpen}
+          onOpenChange={setResetRequestOpen}
+          onSent={(email) => {
+            setResetEmail(email);
+            setResetRequestOpen(false);
+            setResetOpen(true);
+          }}
+        />
+      ) : null}
 
-      <ResetPasswordModal
-        initialEmail={resetEmail}
-        isOpen={resetOpen}
-        onOpenChange={setResetOpen}
-      />
+      {resetOpen ? (
+        <ResetPasswordModal
+          initialEmail={resetEmail}
+          isOpen={resetOpen}
+          onOpenChange={setResetOpen}
+        />
+      ) : null}
     </div>
   );
 }

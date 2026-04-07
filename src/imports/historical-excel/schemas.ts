@@ -45,8 +45,12 @@ export const rawVentaSchema = z.object({
   subtotal: z.union([z.string(), z.number()]).nullable(),
   paid_at: z.string().trim().nullable(),
   payment_status: z.string().trim().nullable(),
+  payment_method: z.string().trim().nullable().optional(),
   client_name: z.string().trim().nullable(),
   invoice_number: z.string().trim().nullable(),
+  seller_name: z.string().trim().nullable().optional(),
+  advance_amount: z.union([z.string(), z.number()]).nullable().optional(),
+  payment_amount: z.union([z.string(), z.number()]).nullable().optional(),
 });
 
 export const rawSeguimientoOrderSchema = z.object({

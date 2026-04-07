@@ -81,7 +81,11 @@ async function readApiErrorMessage(response: Response, fallback: string) {
   return fallback;
 }
 
-export function MesProductionQueueTab() {
+export function MesProductionQueueTab({
+  readOnly = false,
+}: {
+  readOnly?: boolean;
+}) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
@@ -371,16 +375,18 @@ export function MesProductionQueueTab() {
           >
             Actualizar
           </Button>
-          <Button
-            color={isConfirmed ? "success" : "primary"}
-            isDisabled={confirming}
-            radius="sm"
-            size="sm"
-            startContent={isConfirmed ? <MdCheckCircle /> : <MdListAlt />}
-            onPress={() => void confirmQueue()}
-          >
-            {isConfirmed ? "Cola confirmada ✓" : confirming ? "Confirmando..." : "Confirmar cola"}
-          </Button>
+          {!readOnly ? (
+            <Button
+              color={isConfirmed ? "success" : "primary"}
+              isDisabled={confirming}
+              radius="sm"
+              size="sm"
+              startContent={isConfirmed ? <MdCheckCircle /> : <MdListAlt />}
+              onPress={() => void confirmQueue()}
+            >
+              {isConfirmed ? "Cola confirmada ✓" : confirming ? "Confirmando..." : "Confirmar cola"}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -395,6 +401,19 @@ export function MesProductionQueueTab() {
             <p className="text-xs text-success-700">
               La cola fue confirmada. Montaje inicial/final ya puede operar por
               pedido y descargar la lista de empaque para macro.
+            </p>
+          </CardBody>
+        </Card>
+      ) : readOnly ? (
+        <Card
+          className="border border-primary-200 bg-primary-50"
+          radius="sm"
+          shadow="none"
+        >
+          <CardBody className="flex flex-row items-center gap-2 py-2 px-3">
+            <MdListAlt className="text-primary shrink-0" size={16} />
+            <p className="text-xs text-primary-700">
+              Estás en modo solo lectura. Puedes revisar la cola, prioridades y validaciones, pero no confirmar cambios.
             </p>
           </CardBody>
         </Card>
@@ -540,7 +559,7 @@ export function MesProductionQueueTab() {
                     </Chip>
                   </TableCell>
                   <TableCell>
-                    {!item.isHighPriority ? (
+                    {!item.isHighPriority && !readOnly ? (
                       <Button
                         color="danger"
                         isDisabled={Boolean(settingUrgent)}
@@ -552,9 +571,13 @@ export function MesProductionQueueTab() {
                           ? "..."
                           : "Marcar ALTA"}
                       </Button>
-                    ) : (
+                    ) : item.isHighPriority ? (
                       <Chip color="danger" size="sm" variant="flat">
                         ALTA ↑
+                      </Chip>
+                    ) : (
+                      <Chip color="default" size="sm" variant="flat">
+                        Solo lectura
                       </Chip>
                     )}
                   </TableCell>

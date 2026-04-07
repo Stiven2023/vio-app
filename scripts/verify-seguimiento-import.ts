@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -33,7 +34,7 @@ type PackagingRow = WithId & {
 
 function parseOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
-    dir: "C:/Users/Stiven.Aguirre/Documents",
+    dir: "D:/Programación/Vio",
     base: "datos_seguimiento_normalizada",
   };
 
@@ -53,6 +54,30 @@ function parseOptions(argv: string[]): CliOptions {
   }
 
   return options;
+}
+
+function hasSeguimientoSourceFiles(dirPath: string, options: CliOptions) {
+  const requiredFiles = [
+    `${options.base}.orders.json`,
+    `${options.base}.order_items.json`,
+    `${options.base}.packaging.json`,
+    `${options.base}.logs.json`,
+  ];
+
+  return requiredFiles.every((fileName) => existsSync(path.join(dirPath, fileName)));
+}
+
+function resolveInputDir(options: CliOptions) {
+  if (hasSeguimientoSourceFiles(options.dir, options)) {
+    return options.dir;
+  }
+
+  const fallbackDir = "D:/Programación/Vio";
+  if (fallbackDir !== options.dir && hasSeguimientoSourceFiles(fallbackDir, options)) {
+    return fallbackDir;
+  }
+
+  return options.dir;
 }
 
 async function readJsonFile<T>(filePath: string): Promise<T> {
@@ -100,7 +125,7 @@ function buildPackagingKey(row: {
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
-  const basePath = options.dir;
+  const basePath = resolveInputDir(options);
 
   const ordersPath = path.join(basePath, `${options.base}.orders.json`);
   const itemsPath = path.join(basePath, `${options.base}.order_items.json`);

@@ -1,7 +1,10 @@
+"use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
+import { useTranslations } from "next-intl";
 
 import { OtpInput } from "@/components/otp-input";
 
@@ -23,6 +26,7 @@ export function ExternalAccessTab({
   setLoading: (next: boolean) => void;
   setToast: (toast: ToastState | null) => void;
 }) {
+  const t = useTranslations("Auth");
   const router = useRouter();
   const [clientCode, setClientCode] = useState("");
   const [otp, setOtp] = useState("");
@@ -46,7 +50,7 @@ export function ExternalAccessTab({
 
   const requestToken = async () => {
     if (!clientCode.trim()) {
-      setToast({ message: "Client ID is required.", type: "error" });
+      setToast({ message: t("clientIdRequired"), type: "error" });
 
       return;
     }
@@ -66,9 +70,7 @@ export function ExternalAccessTab({
 
       if (!res.ok) {
         const msg =
-          typeof body?.message === "string"
-            ? body.message
-            : "Could not send the token.";
+          typeof body?.message === "string" ? body.message : t("tokenSendError");
 
         if (body?.retryAt) setRetryAt(String(body.retryAt));
         setToast({ message: msg, type: "error" });
@@ -80,12 +82,9 @@ export function ExternalAccessTab({
       setTokenSent(true);
       setVerified(false);
       setOtp("");
-      setToast({
-        message: "Token sent to the client's email.",
-        type: "success",
-      });
+      setToast({ message: t("tokenSent"), type: "success" });
     } catch {
-      setToast({ message: "Could not send the token.", type: "error" });
+      setToast({ message: t("tokenSendError"), type: "error" });
     } finally {
       setLoading(false);
     }
@@ -93,10 +92,7 @@ export function ExternalAccessTab({
 
   const verifyToken = async () => {
     if (!clientCode.trim() || otp.length !== 6) {
-      setToast({
-        message: "Enter client ID and a 6-digit token.",
-        type: "error",
-      });
+      setToast({ message: t("otpAndClientRequired"), type: "error" });
 
       return;
     }
@@ -116,18 +112,18 @@ export function ExternalAccessTab({
       if (!res.ok) {
         const text = await res.text();
 
-        setToast({ message: text || "Invalid token.", type: "error" });
+        setToast({ message: text || t("invalidToken"), type: "error" });
 
         return;
       }
 
       setVerified(true);
-      setToast({ message: "Access verified. Redirecting...", type: "success" });
+      setToast({ message: t("accessVerified"), type: "success" });
       setTimeout(() => {
         router.push("/portal/pedidos");
       }, 1000);
     } catch {
-      setToast({ message: "Could not verify the token.", type: "error" });
+      setToast({ message: t("tokenVerifyError"), type: "error" });
     } finally {
       setLoading(false);
     }
@@ -135,9 +131,7 @@ export function ExternalAccessTab({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-default-500">
-        Enter your client ID and we will send a one-time code to your registered email.
-      </p>
+      <p className="text-xs text-default-500">{t("clientDesc")}</p>
 
       <Input
         isRequired
@@ -145,8 +139,8 @@ export function ExternalAccessTab({
           inputWrapper: "bg-content1/70 border border-default-200/30",
         }}
         isDisabled={tokenSent && !verified}
-        label="Client ID"
-        placeholder="e.g. CN10001"
+        label={t("clientId")}
+        placeholder={t("clientIdPlaceholder")}
         value={clientCode}
         onChange={(e) => setClientCode(e.target.value)}
       />
@@ -160,16 +154,14 @@ export function ExternalAccessTab({
           onPress={requestToken}
         >
           {remainingSeconds > 0
-            ? `Resend code in ${remainingSeconds}s`
-            : "Send access code"}
+            ? t("resendCodeIn", { seconds: remainingSeconds })
+            : t("sendCode")}
         </Button>
       ) : null}
 
       {tokenSent && !verified ? (
         <div className="space-y-3">
-          <p className="text-sm text-default-600">
-            Enter the 6-digit code sent to your email.
-          </p>
+          <p className="text-sm text-default-600">{t("enterOtpCode")}</p>
           <OtpInput
             focusOnMount
             length={6}
@@ -183,7 +175,7 @@ export function ExternalAccessTab({
             isLoading={loading}
             onPress={verifyToken}
           >
-            Verify code
+            {t("verifyCode")}
           </Button>
           <Button
             className="w-full"
@@ -196,8 +188,8 @@ export function ExternalAccessTab({
             }}
           >
             {remainingSeconds > 0
-              ? `Resend in ${remainingSeconds}s`
-              : "Send new code"}
+              ? t("resendIn", { seconds: remainingSeconds })
+              : t("sendNewCode")}
           </Button>
         </div>
       ) : null}

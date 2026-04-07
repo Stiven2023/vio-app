@@ -4,7 +4,7 @@ import type { PgTransaction } from "drizzle-orm/pg-core";
 
 import { eq, sql } from "drizzle-orm";
 
-import { db } from "@/src/db";
+import { erpDb } from "@/src/db";
 import * as schema from "@/src/db/erp/schema";
 import { clients } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
@@ -302,7 +302,7 @@ export async function POST(request: Request) {
             ? clientTypeRaw
             : "NACIONAL";
 
-          const [duplicate] = await db
+          const [duplicate] = await erpDb
             .select({ id: clients.id })
             .from(clients)
             .where(eq(clients.identification, identification))
@@ -314,7 +314,7 @@ export async function POST(request: Request) {
             );
           }
 
-          await db.transaction(async (tx) => {
+          await erpDb.transaction(async (tx) => {
             const clientCode = await generateClientCode(tx, clientType);
 
             await tx.insert(clients).values({
@@ -342,7 +342,7 @@ export async function POST(request: Request) {
           continue;
         }
 
-        const [existing] = await db
+        const [existing] = await erpDb
           .select()
           .from(clients)
           .where(eq(clients.clientCode, clientCodeRaw))
@@ -380,7 +380,7 @@ export async function POST(request: Request) {
           throw new Error(`Fila sin cambios para edición (${clientCodeRaw})`);
         }
 
-        await db.update(clients).set(patch).where(eq(clients.id, existing.id));
+        await erpDb.update(clients).set(patch).where(eq(clients.id, existing.id));
 
         updatedCount += 1;
       } catch (error) {

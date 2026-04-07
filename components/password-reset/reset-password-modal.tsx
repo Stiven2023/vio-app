@@ -12,8 +12,6 @@ import {
 } from "@heroui/modal";
 import { BsEnvelopeFill } from "react-icons/bs";
 
-import { AlertToast } from "@/components/alert-toast";
-
 function validateNewPassword(newPassword: string): string {
   if (!newPassword) return "Password is required.";
   if (newPassword.length < 7) return "Must be at least 7 characters.";
@@ -106,7 +104,19 @@ export function ResetPasswordModal({
         <ModalHeader>Enter token</ModalHeader>
         <ModalBody>
           {toast ? (
-            <AlertToast message={toast.message} type={toast.type} />
+            <div
+              aria-live="polite"
+              className={
+                toast.type === "error"
+                  ? "rounded-medium border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
+                  : toast.type === "success"
+                    ? "rounded-medium border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
+                    : "rounded-medium border border-default-200/50 bg-content1/40 px-3 py-2 text-sm text-default-600"
+              }
+              role="status"
+            >
+              {toast.message}
+            </div>
           ) : null}
 
           <Input

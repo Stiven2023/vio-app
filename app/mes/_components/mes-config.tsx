@@ -1,4 +1,11 @@
-import type { EstadoProceso, ProcessRoleConfig } from "./mes-types";
+import type {
+  EstadoProceso,
+  MesAccessIdentity,
+  MesAccessSelection,
+  MesProcessKey,
+  MesProcessView,
+  ProcessRoleConfig,
+} from "./mes-types";
 
 import React from "react";
 import { Role } from "@/src/db/enums";
@@ -21,17 +28,9 @@ export type MesAccessMachineOption = {
 };
 
 export type MesAccessProcessOption = {
-  key:
-    | "montaje"
-    | "plotter"
-    | "calandra"
-    | "sublimacion"
-    | "corte_laser"
-    | "corte_manual"
-    | "integracion"
-    | "despacho";
+  key: MesProcessKey;
   label: string;
-  mesProcess: "montaje" | "plotter" | "sublimacion" | "corte" | "integracion" | "despacho";
+  mesProcess: Exclude<MesProcessView, "workflow" | "programacion">;
   operationType:
     | "MONTAJE"
     | "PLOTTER"
@@ -39,6 +38,8 @@ export type MesAccessProcessOption = {
     | "SUBLIMACION"
     | "CORTE_LASER"
     | "CORTE_MANUAL"
+    | "CONFECCION"
+    | "EMPAQUE"
     | "INTEGRACION"
     | "DESPACHO";
   requiresMachine: boolean;
@@ -107,6 +108,22 @@ export const MES_ACCESS_PROCESS_OPTIONS: MesAccessProcessOption[] = [
     machines: [{ id: "corte-manual-1", name: "Corte manual 1" }],
   },
   {
+    key: "confeccion",
+    label: "Confección",
+    mesProcess: "confeccion",
+    operationType: "CONFECCION",
+    requiresMachine: false,
+    machines: [],
+  },
+  {
+    key: "empaque",
+    label: "Empaque",
+    mesProcess: "empaque",
+    operationType: "EMPAQUE",
+    requiresMachine: false,
+    machines: [],
+  },
+  {
     key: "integracion",
     label: "Integración",
     mesProcess: "integracion",
@@ -129,6 +146,119 @@ export function getMesAccessProcessOption(processKey: string | null | undefined)
     MES_ACCESS_PROCESS_OPTIONS.find((option) => option.key === processKey) ??
     null
   );
+}
+
+export const MES_VIEWER_PROCESS_OPTIONS: Array<{
+  key: MesProcessView;
+  label: string;
+}> = [
+  { key: "workflow", label: "Workflow general" },
+  { key: "programacion", label: "Programación" },
+  { key: "montaje", label: "Montaje" },
+  { key: "plotter", label: "Plotter" },
+  { key: "sublimacion", label: "Sublimación" },
+  { key: "corte", label: "Corte" },
+  { key: "confeccion", label: "Confección" },
+  { key: "empaque", label: "Empaque" },
+  { key: "integracion", label: "Integración" },
+  { key: "despacho", label: "Despacho" },
+];
+
+export function getMesAccessProcessOptionsForRole(
+  role: string | null | undefined,
+) {
+  const normalizedRole = String(role ?? "")
+    .trim()
+    .toUpperCase();
+
+  switch (normalizedRole) {
+    case "OPERARIO_MONTAJE":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "montaje");
+    case "OPERARIO_FLOTER":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "plotter");
+    case "OPERARIO_SUBLIMACION":
+      return MES_ACCESS_PROCESS_OPTIONS.filter(
+        (option) => option.key === "calandra" || option.key === "sublimacion",
+      );
+    case "OPERARIO_CORTE_LASER":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "corte_laser");
+    case "OPERARIO_CORTE_MANUAL":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "corte_manual");
+    case "OPERARIO_INTEGRACION_CALIDAD":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "integracion");
+    case "OPERARIO_DESPACHO":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "despacho");
+    case "CONFECCIONISTA":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "confeccion");
+    case "EMPAQUE":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) => option.key === "empaque");
+    case "OPERARIO":
+      return MES_ACCESS_PROCESS_OPTIONS.filter((option) =>
+        [
+          "montaje",
+          "plotter",
+          "calandra",
+          "sublimacion",
+          "corte_laser",
+          "corte_manual",
+        ].includes(option.key),
+      );
+    default:
+      return MES_ACCESS_PROCESS_OPTIONS.filter(
+        (option) => option.key !== "confeccion" && option.key !== "empaque",
+      );
+  }
+}
+
+export function resolveMesSelectionFromRole(
+  identity: MesAccessIdentity,
+): MesAccessSelection | null {
+  const role = String(identity.employeeRole ?? "")
+    .trim()
+    .toUpperCase();
+
+  const buildSelection = (processKey: MesProcessKey) => {
+    const processOption = getMesAccessProcessOption(processKey);
+
+    if (!processOption) return null;
+
+    return {
+      email: identity.email,
+      processKey: processOption.key,
+      processLabel: processOption.label,
+      mesProcess: processOption.mesProcess,
+      operationType: processOption.operationType,
+      machineId: null,
+      machineName: null,
+      employeeId: identity.employeeId,
+      employeeName: identity.employeeName,
+      employeeRole: identity.employeeRole,
+      employeeEmail: identity.employeeEmail,
+    } satisfies MesAccessSelection;
+  };
+
+  switch (role) {
+    case "OPERARIO_MONTAJE":
+      return buildSelection("montaje");
+    case "OPERARIO_FLOTER":
+      return buildSelection("plotter");
+    case "OPERARIO_SUBLIMACION":
+      return buildSelection("sublimacion");
+    case "OPERARIO_CORTE_LASER":
+      return buildSelection("corte_laser");
+    case "OPERARIO_CORTE_MANUAL":
+      return buildSelection("corte_manual");
+    case "OPERARIO_INTEGRACION_CALIDAD":
+      return buildSelection("integracion");
+    case "OPERARIO_DESPACHO":
+      return buildSelection("despacho");
+    case "CONFECCIONISTA":
+      return buildSelection("confeccion");
+    case "EMPAQUE":
+      return buildSelection("empaque");
+    default:
+      return null;
+  }
 }
 
 export const PROCESS_ROLE_CONFIG: Record<string, ProcessRoleConfig> = {

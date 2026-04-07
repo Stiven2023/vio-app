@@ -6,22 +6,23 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 
 import { erpDb, mesDb } from "@/src/db";
 import {
-  clientLegalStatus,
   orderItems,
   orders,
-  preInvoices,
 } from "@/src/db/erp/schema";
-import { mesItemTags, mesShipmentItems, mesShipments } from "@/src/db/mes/schema";
+import { mesShipmentItems, mesShipments } from "@/src/db/mes/schema";
 import { jsonError, jsonForbidden, jsonNotFound, zodFirstErrorEnvelope, dbJsonError } from "@/src/utils/api-error";
 import { requirePermission } from "@/src/utils/permission-middleware";
-import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import { getEmployeeIdFromRequest, getRoleFromRequest } from "@/src/utils/auth-middleware";
 import {
-  getDispatchBlockingRule,
-  hasAccountingApproval,
   isDispatchShipment,
   mesEnvioCreateSchema,
   normalizeDispatchApprovals,
 } from "@/src/utils/mes-workflow";
+import {
+  canApproveDispatchShipment,
+  canCreateDispatchShipment,
+  hasFinalDispatchApprovalInput,
+} from "@/src/utils/mes-dispatch-permissions";
 import { parsePaginationStrict } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -156,6 +157,7 @@ export async function POST(request: Request) {
   const origenArea = payload.origenArea;
   const destinoArea = payload.destinoArea;
   const transporteTipo = payload.transporteTipo;
+  const role = getRoleFromRequest(request);
 
   const empleadoId = getEmployeeIdFromRequest(request);
   const itemsRaw = payload.items.map((item) => ({
@@ -201,67 +203,30 @@ export async function POST(request: Request) {
     }
 
     if (isDispatchShipment({ origenArea, destinoArea })) {
-      const [prefacturaRow] = await erpDb
-        .select({
-          accountingStatus: preInvoices.status,
-          advanceReceived: preInvoices.advanceReceived,
-          advanceStatus: preInvoices.advanceStatus,
-        })
-        .from(preInvoices)
-        .where(eq(preInvoices.orderId, orderId))
-        .limit(1);
-
-      const [legalStatusRow] = orderRow.clientId
-        ? await erpDb
-            .select({ isLegallyEnabled: clientLegalStatus.isLegallyEnabled })
-            .from(clientLegalStatus)
-            .where(eq(clientLegalStatus.clientId, orderRow.clientId))
-            .limit(1)
-        : [];
-
-      const [{ totalItems }] = await erpDb
-        .select({ totalItems: sql<number>`count(*)::int` })
-        .from(orderItems)
-        .where(eq(orderItems.orderId, orderId));
-
-      const isPartialDispatch = Number(totalItems ?? 0) > itemIds.length;
-      const partialApprovalRows = isPartialDispatch
-        ? await mesDb
-            .select({ id: mesItemTags.id })
-            .from(mesItemTags)
-            .where(
-              sql`${mesItemTags.orderId} = ${orderId} and ${mesItemTags.tag} = 'DESPACHO_PARCIAL' and ${mesItemTags.orderItemId} in ${itemIds}`,
-            )
-            .limit(1)
-        : [];
-
-      const dispatchApprovals = normalizeDispatchApprovals(
-        payload.dispatchApprovals,
-      );
-
-      const blockingRule = getDispatchBlockingRule({
-        legalEnabled: legalStatusRow?.isLegallyEnabled ?? true,
-        sellerApproved: Boolean(dispatchApprovals?.seller.approved),
-        carteraApproved: Boolean(dispatchApprovals?.cartera.approved),
-        accountingApproved:
-          hasAccountingApproval({
-            accountingStatus: prefacturaRow?.accountingStatus ?? null,
-            advanceReceived: prefacturaRow?.advanceReceived ?? null,
-            advanceStatus: prefacturaRow?.advanceStatus ?? null,
-          }) && Boolean(dispatchApprovals?.accounting.approved),
-        isPartialDispatch,
-        partialDispatchApproved:
-          partialApprovalRows.length > 0 ||
-          !isPartialDispatch ||
-          Boolean(dispatchApprovals?.partial?.approved),
-      });
-
-      if (blockingRule) {
+      if (!canCreateDispatchShipment(role)) {
         return jsonError(
-          blockingRule.status,
-          blockingRule.code,
-          blockingRule.message,
-          blockingRule.fieldErrors,
+          403,
+          "DISPATCH_CREATE_FORBIDDEN",
+          "Tu rol no tiene permisos para crear envíos de despacho.",
+          {
+            role: ["No tienes permiso para crear registros de despacho."],
+          },
+        );
+      }
+
+      if (
+        hasFinalDispatchApprovalInput(payload.dispatchApprovals as any) &&
+        !canApproveDispatchShipment(role)
+      ) {
+        return jsonError(
+          403,
+          "DISPATCH_APPROVAL_FORBIDDEN",
+          "Solo administradores y líderes pueden registrar aprobaciones finales de despacho.",
+          {
+            dispatchApprovals: [
+              "No tienes permiso para aprobar despacho en esta operación.",
+            ],
+          },
         );
       }
     }

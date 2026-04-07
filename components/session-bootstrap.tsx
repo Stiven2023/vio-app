@@ -6,7 +6,15 @@ import { usePathname } from "next/navigation";
 import { useSessionStore } from "@/store/session";
 import { getEffectiveSessionRole } from "@/src/utils/session-role";
 
-const PUBLIC_PATHS = new Set(["/", "/login", "/erp/login", "/home", "/es", "/en"]);
+const PUBLIC_PATHS = new Set([
+  "/",
+  "/login",
+  "/mes/login",
+  "/erp/login",
+  "/home",
+  "/es",
+  "/en",
+]);
 
 export function SessionBootstrap() {
   const pathname = usePathname();

@@ -153,28 +153,11 @@ export const mesEnvioCreateSchema = z
       });
     }
 
-    if (isDispatchShipment(payload)) {
-      if (!payload.dispatchApprovals) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["dispatchApprovals"],
-          message: "Debes registrar las aprobaciones de despacho.",
-        });
-        return;
-      }
-
-      for (const key of ["seller", "cartera", "accounting"] as const) {
+    if (isDispatchShipment(payload) && payload.dispatchApprovals) {
+      for (const key of ["seller", "cartera", "accounting", "partial"] as const) {
         const step = payload.dispatchApprovals[key];
 
-        if (!step.approved) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["dispatchApprovals", key, "approved"],
-            message: "Esta aprobación es obligatoria para despacho.",
-          });
-        }
-
-        if (step.approved && !String(step.approverName ?? "").trim()) {
+        if (step?.approved && !String(step.approverName ?? "").trim()) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["dispatchApprovals", key, "approverName"],

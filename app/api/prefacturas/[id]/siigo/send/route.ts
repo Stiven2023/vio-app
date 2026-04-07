@@ -10,6 +10,18 @@ import {
   quotationItems,
   quotations,
 } from "@/src/db/erp/schema";
+import {
+  normalizeProtectedRouteError,
+  prefacturaIdRequiredError,
+  prefacturaNotFoundError,
+  siigoAlreadySentError,
+  siigoDryRunError,
+  siigoInternalError,
+  siigoMissingClientIdentificationError,
+  siigoMissingConfigurationError,
+  siigoNotApplicableError,
+  siigoUpstreamError,
+} from "@/src/utils/prefactura-siigo-contract";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { SiigoApiError, siigoJson } from "@/src/utils/siigo";
@@ -202,14 +214,17 @@ export async function POST(
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "EDITAR_PEDIDO");
+  const forbidden = normalizeProtectedRouteError(
+    await requirePermission(request, "EDITAR_PEDIDO"),
+    "No tienes permisos para enviar prefacturas a SIIGO.",
+  );
 
   if (forbidden) return forbidden;
 
   const { id } = await params;
 
   if (!id) {
-    return new Response("Missing prefactura id", { status: 400 });
+    return prefacturaIdRequiredError();
   }
 
   try {
@@ -253,7 +268,7 @@ export async function POST(
       .limit(1);
 
     if (!row) {
-      return new Response("Prefactura not found", { status: 404 });
+      return prefacturaNotFoundError();
     }
 
     // Only documentType = "F" can be sent to SIIGO
@@ -267,27 +282,12 @@ export async function POST(
         })
         .where(eq(prefacturas.id, id));
 
-      return Response.json(
-        {
-          ok: false,
-          reason: "NOT_APPLICABLE",
-          message:
-            "Esta prefactura es de tipo R (sin IVA) y no aplica para envío a SIIGO.",
-        },
-        { status: 400 },
-      );
+      return siigoNotApplicableError();
     }
 
     // Block if already SENT or INVOICED
     if (row.siigoStatus && BLOCKING_SIIGO_STATUSES.has(row.siigoStatus)) {
-      return Response.json(
-        {
-          ok: false,
-          reason: "ALREADY_SENT",
-          message: `La prefactura ya fue enviada a SIIGO (estado: ${row.siigoStatus}). Para modificarla, primero anula el envío.`,
-        },
-        { status: 409 },
-      );
+      return siigoAlreadySentError(row.siigoStatus);
     }
 
     const clientIdentification = String(
@@ -295,15 +295,7 @@ export async function POST(
     ).trim();
 
     if (!clientIdentification) {
-      return Response.json(
-        {
-          ok: false,
-          reason: "MISSING_CLIENT_IDENTIFICATION",
-          message:
-            "El cliente de esta prefactura no tiene número de identificación registrado. Completa los datos del cliente antes de enviar a SIIGO.",
-        },
-        { status: 422 },
-      );
+      return siigoMissingClientIdentificationError();
     }
 
     const subtotal = Number(row.subtotal ?? 0);
@@ -332,21 +324,10 @@ export async function POST(
       .map(([key]) => key);
 
     if (missingConfig.length > 0 || invalidConfig.length > 0) {
-      return Response.json(
-        {
-          ok: false,
-          reason: "MISSING_SIIGO_CONFIGURATION",
-          message:
-            "Faltan configuraciones obligatorias de SIIGO para enviar la factura.",
-          missingConfig,
-          invalidConfig,
-          help: {
-            SIIGO_INVOICE_DOCUMENT_ID:
-              "ID numerico del tipo de documento de factura en SIIGO. Se configura en SIIGO -> Catalogos/Comprobantes.",
-          },
-        },
-        { status: 422 },
-      );
+      return siigoMissingConfigurationError({
+        missingConfig,
+        invalidConfig,
+      });
     }
 
     const siigoInvoiceDocumentId = valueFromPositiveEnvState(
@@ -501,25 +482,18 @@ export async function POST(
         })
         .where(eq(prefacturas.id, id));
 
-      return Response.json(
-        {
-          ok: false,
-          reason: "SIIGO_DRY_RUN",
-          message:
-            "Modo prueba activo. No se envió la factura a SIIGO para evitar envío real a DIAN. Para envío real se requiere SIIGO_ALLOW_LIVE_SUBMISSION=true y NODE_ENV=production.",
-          liveSubmissionEnabled,
-          productionEnvironment,
-          preview: {
-            prefacturaId: row.id,
-            prefacturaCode: row.prefacturaCode,
-            documentType: row.documentType,
-            items: itemPayload.length,
-            total,
-            currency,
-          },
+      return siigoDryRunError({
+        liveSubmissionEnabled,
+        productionEnvironment,
+        preview: {
+          prefacturaId: row.id,
+          prefacturaCode: row.prefacturaCode,
+          documentType: row.documentType,
+          items: itemPayload.length,
+          total,
+          currency,
         },
-        { status: 409 },
-      );
+      });
     }
 
     // Call SIIGO to create the invoice
@@ -549,10 +523,7 @@ export async function POST(
         })
         .where(eq(prefacturas.id, id));
 
-      return Response.json(
-        { ok: false, reason: "SIIGO_ERROR", message: errMsg },
-        { status: 502 },
-      );
+      return siigoUpstreamError("No fue posible enviar la prefactura a SIIGO.");
     }
 
     const siigoInvoiceId = String(siigoResponse?.id ?? "").trim() || null;
@@ -584,13 +555,6 @@ export async function POST(
       message: (error as any)?.message,
     });
 
-    return Response.json(
-      {
-        ok: false,
-        error:
-          error instanceof Error ? error.message : "Error interno del servidor",
-      },
-      { status: 500 },
-    );
+    return siigoInternalError("No se pudo enviar la prefactura a SIIGO.");
   }
 }

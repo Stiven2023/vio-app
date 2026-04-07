@@ -9,9 +9,9 @@ export interface User {
   sessionType?: "auth" | "mes";
   mesAccess?: {
     role: string | null;
-    processKey: string;
-    mesProcess: string;
-    operationType: string;
+    processKey: string | null;
+    mesProcess: string | null;
+    operationType: string | null;
     machineId: string | null;
     machineName: string | null;
   } | null;

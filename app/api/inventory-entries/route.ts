@@ -8,7 +8,13 @@ import {
   suppliers,
   warehouses,
 } from "@/src/db/erp/schema";
-import { dbErrorResponse } from "@/src/utils/db-errors";
+import { dbJsonError, jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
+import {
+  inventoryEntryCreateSchema,
+  inventoryEntryDeleteSchema,
+  inventoryEntryUpdateSchema,
+  inventoryLocationSchema,
+} from "@/src/utils/inventory-entries-contract";
 import {
   resolveWarehouseIdByLocation,
   syncInventoryForItem,
@@ -19,22 +25,6 @@ import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { createNotificationsForPermission } from "@/src/utils/notifications";
 
-function toPositiveNumber(v: unknown) {
-  const n = Number(String(v));
-
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-function toLocation(v: unknown): "BODEGA_PRINCIPAL" | "TIENDA" | null {
-  const location = String(v ?? "BODEGA_PRINCIPAL")
-    .trim()
-    .toUpperCase();
-
-  return location === "BODEGA_PRINCIPAL" || location === "TIENDA"
-    ? (location as "BODEGA_PRINCIPAL" | "TIENDA")
-    : null;
-}
-
 async function resolveTargetWarehouseId(payload: {
   warehouseId?: unknown;
   location?: unknown;
@@ -43,7 +33,10 @@ async function resolveTargetWarehouseId(payload: {
 
   if (wId) return wId;
 
-  const loc = toLocation(payload.location);
+  const locParsed = inventoryLocationSchema.safeParse(
+    String(payload.location ?? "BODEGA_PRINCIPAL").trim().toUpperCase(),
+  );
+  const loc = locParsed.success ? locParsed.data : null;
 
   if (!loc) return null;
 
@@ -126,11 +119,11 @@ export async function GET(request: Request) {
 
     return Response.json({ items, page, pageSize, total, hasNextPage });
   } catch (error) {
-    const response = dbErrorResponse(error);
+    const response = dbJsonError(error, "No se pudo consultar entradas.");
 
     if (response) return response;
 
-    return new Response("No se pudo consultar entradas", { status: 500 });
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo consultar entradas.");
   }
 }
 
@@ -145,60 +138,53 @@ export async function POST(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_ENTRADA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para registrar entradas.");
+  }
 
-  const {
-    inventoryItemId,
-    variantId,
-    warehouseId,
-    location,
-    quantity,
-    reason,
-    supplierId,
-  } = await request.json();
+  let body: unknown;
 
-  const itemId = String(inventoryItemId ?? "").trim();
-  const vId = String(variantId ?? "").trim();
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
+
+  const parsed = inventoryEntryCreateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos de entrada de inventario son inválidos.");
+  }
+
+  const itemId = parsed.data.inventoryItemId;
+  const vId = parsed.data.variantId;
   const targetWarehouseId = await resolveTargetWarehouseId({
-    warehouseId,
-    location,
+    warehouseId: parsed.data.warehouseId,
+    location: parsed.data.location,
   });
-  const qty = toPositiveNumber(quantity);
+  const qty = parsed.data.quantity;
+  const entryReason = parsed.data.reason;
+  const supplierId = parsed.data.supplierId;
 
-  const ALLOWED_ENTRY_REASONS = [
-    "COMPRA_PROVEEDOR",
-    "DEVOLUCION_CLIENTE",
-    "AJUSTE_INVENTARIO",
-    "DEVOLUCION_PROVEEDOR",
-    "OTRO",
-  ] as const;
+  if (!targetWarehouseId) {
+    return jsonError(400, "VALIDATION_ERROR", "warehouse invalid", {
+      warehouseId: ["Debes indicar una bodega o ubicación válida."],
+    });
+  }
 
-  type AllowedEntryReason = (typeof ALLOWED_ENTRY_REASONS)[number];
-  const rawReason = String(reason ?? "COMPRA_PROVEEDOR")
-    .trim()
-    .toUpperCase();
-  const entryReason: AllowedEntryReason = (
-    ALLOWED_ENTRY_REASONS as readonly string[]
-  ).includes(rawReason)
-    ? (rawReason as AllowedEntryReason)
-    : "COMPRA_PROVEEDOR";
+  try {
+    const [warehouseRow] = await db
+      .select({ id: warehouses.id })
+      .from(warehouses)
+      .where(eq(warehouses.id, targetWarehouseId))
+      .limit(1);
 
-  if (!itemId) return new Response("inventoryItemId required", { status: 400 });
-  if (!vId) return new Response("variantId required", { status: 400 });
-  if (!targetWarehouseId)
-    return new Response("warehouse invalid", { status: 400 });
-  if (!qty) return new Response("quantity must be positive", { status: 400 });
+    if (!warehouseRow) {
+      return jsonError(404, "WAREHOUSE_NOT_FOUND", "warehouse not found");
+    }
 
-  const [warehouseRow] = await db
-    .select({ id: warehouses.id })
-    .from(warehouses)
-    .where(eq(warehouses.id, targetWarehouseId))
-    .limit(1);
-
-  if (!warehouseRow)
-    return new Response("warehouse not found", { status: 404 });
-
-  if (vId) {
     const [variantRow] = await db
       .select({ id: inventoryItemVariants.id })
       .from(inventoryItemVariants)
@@ -210,60 +196,67 @@ export async function POST(request: Request) {
       )
       .limit(1);
 
-    if (!variantRow) return new Response("variant not found", { status: 404 });
-  }
-
-  const [itemRow] = await db
-    .select({
-      name: inventoryItems.name,
-      price: inventoryItems.price,
-    })
-    .from(inventoryItems)
-    .where(eq(inventoryItems.id, itemId))
-    .limit(1);
-
-  if (!itemRow) {
-    return new Response("inventory item not found", { status: 404 });
-  }
-
-  const created = await db.transaction(async (tx) => {
-    // Update variant supplierId if provided
-    if (vId && supplierId) {
-      await tx
-        .update(inventoryItemVariants)
-        .set({ supplierId: String(supplierId).trim() || null })
-        .where(eq(inventoryItemVariants.id, vId));
+    if (!variantRow) {
+      return jsonError(404, "VARIANT_NOT_FOUND", "variant not found");
     }
 
-    const rows = await tx
-      .insert(stockMovements)
-      .values({
-        movementType: "ENTRADA",
-        reason: entryReason,
-        inventoryItemId: itemId,
-        variantId: vId || null,
-        fromWarehouseId: null,
-        toWarehouseId: targetWarehouseId,
-        quantity: String(qty),
-        unitCost: itemRow.price ?? null,
-        referenceType: "MANUAL",
-        referenceId: null,
+    const [itemRow] = await db
+      .select({
+        name: inventoryItems.name,
+        price: inventoryItems.price,
       })
-      .returning();
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, itemId))
+      .limit(1);
 
-    await syncInventoryForItem(tx, itemId);
-    if (vId) await syncInventoryForVariant(tx, vId);
+    if (!itemRow) {
+      return jsonError(404, "INVENTORY_ITEM_NOT_FOUND", "inventory item not found");
+    }
 
-    return rows;
-  });
+    const created = await db.transaction(async (tx) => {
+      if (vId && supplierId) {
+        await tx
+          .update(inventoryItemVariants)
+          .set({ supplierId: String(supplierId).trim() || null })
+          .where(eq(inventoryItemVariants.id, vId));
+      }
 
-  await createNotificationsForPermission("VER_INVENTARIO", {
-    title: "Entrada de inventario",
-    message: `Entrada registrada: ${itemRow.name ?? "Item"} +${qty}.`,
-    href: "/erp/inventory",
-  });
+      const rows = await tx
+        .insert(stockMovements)
+        .values({
+          movementType: "ENTRADA",
+          reason: entryReason,
+          inventoryItemId: itemId,
+          variantId: vId || null,
+          fromWarehouseId: null,
+          toWarehouseId: targetWarehouseId,
+          quantity: String(qty),
+          unitCost: itemRow.price ?? null,
+          referenceType: "MANUAL",
+          referenceId: null,
+        })
+        .returning();
 
-  return Response.json(created, { status: 201 });
+      await syncInventoryForItem(tx, itemId);
+      if (vId) await syncInventoryForVariant(tx, vId);
+
+      return rows;
+    });
+
+    await createNotificationsForPermission("VER_INVENTARIO", {
+      title: "Entrada de inventario",
+      message: `Entrada registrada: ${itemRow.name ?? "Item"} +${qty}.`,
+      href: "/erp/inventory",
+    });
+
+    return Response.json(created, { status: 201 });
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo registrar la entrada.");
+
+    if (response) return response;
+
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo registrar la entrada.");
+  }
 }
 
 export async function PUT(request: Request) {
@@ -277,37 +270,52 @@ export async function PUT(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_ENTRADA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para editar entradas.");
+  }
 
-  const { id, inventoryItemId, variantId, warehouseId, location, quantity } =
-    await request.json();
+  let body: unknown;
 
-  if (!id) return new Response("Inventory entry ID required", { status: 400 });
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
 
-  const itemId = String(inventoryItemId ?? "").trim();
-  const vId = String(variantId ?? "").trim();
+  const parsed = inventoryEntryUpdateSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos para editar entrada son inválidos.");
+  }
+
+  const id = parsed.data.id;
+  const itemId = parsed.data.inventoryItemId;
+  const vId = parsed.data.variantId;
   const targetWarehouseId = await resolveTargetWarehouseId({
-    warehouseId,
-    location,
+    warehouseId: parsed.data.warehouseId,
+    location: parsed.data.location,
   });
-  const qty = toPositiveNumber(quantity);
+  const qty = parsed.data.quantity;
 
-  if (!itemId) return new Response("inventoryItemId required", { status: 400 });
-  if (!vId) return new Response("variantId required", { status: 400 });
-  if (!targetWarehouseId)
-    return new Response("warehouse invalid", { status: 400 });
-  if (!qty) return new Response("quantity must be positive", { status: 400 });
+  if (!targetWarehouseId) {
+    return jsonError(400, "VALIDATION_ERROR", "warehouse invalid", {
+      warehouseId: ["Debes indicar una bodega o ubicación válida."],
+    });
+  }
 
-  const [warehouseRow] = await db
-    .select({ id: warehouses.id })
-    .from(warehouses)
-    .where(eq(warehouses.id, targetWarehouseId))
-    .limit(1);
+  try {
+    const [warehouseRow] = await db
+      .select({ id: warehouses.id })
+      .from(warehouses)
+      .where(eq(warehouses.id, targetWarehouseId))
+      .limit(1);
 
-  if (!warehouseRow)
-    return new Response("warehouse not found", { status: 404 });
+    if (!warehouseRow) {
+      return jsonError(404, "WAREHOUSE_NOT_FOUND", "warehouse not found");
+    }
 
-  if (vId) {
     const [variantRow] = await db
       .select({ id: inventoryItemVariants.id })
       .from(inventoryItemVariants)
@@ -319,71 +327,77 @@ export async function PUT(request: Request) {
       )
       .limit(1);
 
-    if (!variantRow) return new Response("variant not found", { status: 404 });
+    if (!variantRow) {
+      return jsonError(404, "VARIANT_NOT_FOUND", "variant not found");
+    }
+
+    const updated = await db
+      .transaction(async (tx) => {
+        const [itemRow] = await tx
+          .select({ id: inventoryItems.id })
+          .from(inventoryItems)
+          .where(eq(inventoryItems.id, itemId))
+          .limit(1);
+
+        if (!itemRow) {
+          throw new Error("inventory item not found");
+        }
+
+        const [existing] = await tx
+          .select({
+            inventoryItemId: stockMovements.inventoryItemId,
+            variantId: stockMovements.variantId,
+            movementType: stockMovements.movementType,
+          })
+          .from(stockMovements)
+          .where(eq(stockMovements.id, String(id)))
+          .limit(1);
+
+        if (!existing || existing.movementType !== "ENTRADA") return [];
+
+        const rows = await tx
+          .update(stockMovements)
+          .set({
+            inventoryItemId: itemId,
+            variantId: vId || null,
+            fromWarehouseId: null,
+            toWarehouseId: targetWarehouseId,
+            quantity: String(qty),
+            reason: "COMPRA_PROVEEDOR",
+          })
+          .where(eq(stockMovements.id, String(id)))
+          .returning();
+
+        await syncInventoryForItem(tx, existing.inventoryItemId ?? itemId);
+        if (existing.variantId) await syncInventoryForVariant(tx, existing.variantId);
+        if (vId && existing.variantId !== vId) await syncInventoryForVariant(tx, vId);
+        if (existing.inventoryItemId && existing.inventoryItemId !== itemId) {
+          await syncInventoryForItem(tx, itemId);
+        }
+
+        return rows;
+      })
+      .catch((e) => {
+        const msg = String((e as { message?: string })?.message ?? "");
+
+        if (msg === "inventory item not found") return "__item" as const;
+        throw e;
+      });
+
+    if (updated === "__item") {
+      return jsonError(404, "INVENTORY_ITEM_NOT_FOUND", "inventory item not found");
+    }
+
+    if (updated.length === 0) {
+      return jsonError(404, "ENTRY_NOT_FOUND", "Not found");
+    }
+
+    return Response.json(updated);
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo editar la entrada.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo editar la entrada.");
   }
-
-  const updated = await db
-    .transaction(async (tx) => {
-      const [itemRow] = await tx
-        .select({ id: inventoryItems.id })
-        .from(inventoryItems)
-        .where(eq(inventoryItems.id, itemId))
-        .limit(1);
-
-      if (!itemRow) {
-        throw new Error("inventory item not found");
-      }
-
-      const [existing] = await tx
-        .select({
-          inventoryItemId: stockMovements.inventoryItemId,
-          variantId: stockMovements.variantId,
-          movementType: stockMovements.movementType,
-        })
-        .from(stockMovements)
-        .where(eq(stockMovements.id, String(id)))
-        .limit(1);
-
-      if (!existing || existing.movementType !== "ENTRADA") return [];
-
-      const rows = await tx
-        .update(stockMovements)
-        .set({
-          inventoryItemId: itemId,
-          variantId: vId || null,
-          fromWarehouseId: null,
-          toWarehouseId: targetWarehouseId,
-          quantity: String(qty),
-          reason: "COMPRA_PROVEEDOR",
-        })
-        .where(eq(stockMovements.id, String(id)))
-        .returning();
-
-      await syncInventoryForItem(tx, existing.inventoryItemId ?? itemId);
-      if (existing.variantId)
-        await syncInventoryForVariant(tx, existing.variantId);
-      if (vId && existing.variantId !== vId)
-        await syncInventoryForVariant(tx, vId);
-      if (existing.inventoryItemId && existing.inventoryItemId !== itemId) {
-        await syncInventoryForItem(tx, itemId);
-      }
-
-      return rows;
-    })
-    .catch((e) => {
-      const msg = String((e as { message?: string })?.message ?? "");
-
-      if (msg === "inventory item not found") return "__item" as const;
-      throw e;
-    });
-
-  if (updated === "__item") {
-    return new Response("inventory item not found", { status: 404 });
-  }
-
-  if (updated.length === 0) return new Response("Not found", { status: 404 });
-
-  return Response.json(updated);
 }
 
 export async function DELETE(request: Request) {
@@ -397,41 +411,65 @@ export async function DELETE(request: Request) {
 
   const forbidden = await requirePermission(request, "REGISTRAR_ENTRADA");
 
-  if (forbidden) return forbidden;
+  if (forbidden) {
+    return jsonError(403, "FORBIDDEN", "No tienes permisos para eliminar entradas.");
+  }
 
-  const { id } = await request.json();
+  let body: unknown;
 
-  if (!id) return new Response("Inventory entry ID required", { status: 400 });
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError(400, "VALIDATION_ERROR", "El cuerpo de la solicitud no es JSON válido.", {
+      body: ["Envía un JSON válido."],
+    });
+  }
 
-  const deleted = await db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select({
-        inventoryItemId: stockMovements.inventoryItemId,
-        variantId: stockMovements.variantId,
-        movementType: stockMovements.movementType,
-      })
-      .from(stockMovements)
-      .where(eq(stockMovements.id, String(id)))
-      .limit(1);
+  const parsed = inventoryEntryDeleteSchema.safeParse(body);
 
-    if (!existing || existing.movementType !== "ENTRADA") return [];
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos para eliminar entrada son inválidos.");
+  }
 
-    const rows = await tx
-      .delete(stockMovements)
-      .where(eq(stockMovements.id, String(id)))
-      .returning();
+  const id = parsed.data.id;
 
-    if (existing.inventoryItemId) {
-      await syncInventoryForItem(tx, existing.inventoryItemId);
+  try {
+    const deleted = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({
+          inventoryItemId: stockMovements.inventoryItemId,
+          variantId: stockMovements.variantId,
+          movementType: stockMovements.movementType,
+        })
+        .from(stockMovements)
+        .where(eq(stockMovements.id, String(id)))
+        .limit(1);
+
+      if (!existing || existing.movementType !== "ENTRADA") return [];
+
+      const rows = await tx
+        .delete(stockMovements)
+        .where(eq(stockMovements.id, String(id)))
+        .returning();
+
+      if (existing.inventoryItemId) {
+        await syncInventoryForItem(tx, existing.inventoryItemId);
+      }
+      if (existing.variantId) {
+        await syncInventoryForVariant(tx, existing.variantId);
+      }
+
+      return rows;
+    });
+
+    if (deleted.length === 0) {
+      return jsonError(404, "ENTRY_NOT_FOUND", "Not found");
     }
-    if (existing.variantId) {
-      await syncInventoryForVariant(tx, existing.variantId);
-    }
 
-    return rows;
-  });
-
-  if (deleted.length === 0) return new Response("Not found", { status: 404 });
-
-  return Response.json(deleted);
+    return Response.json(deleted);
+  } catch (error) {
+    const response = dbJsonError(error, "No se pudo eliminar la entrada.");
+    if (response) return response;
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo eliminar la entrada.");
+  }
 }

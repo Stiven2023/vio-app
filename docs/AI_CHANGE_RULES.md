@@ -10,3 +10,4 @@ Read this before changing backend list, export, sync, MES, scheduling, payments,
 6. Avoid N+1 queries in list endpoints.
 7. Massive export or sync flows must be jobs or require filters.
 8. Do not remove existing response fields without confirming the UI contract.
+9. Every UI request must include responsive validation (mobile/tablet/desktop) and avoid internal scrollbars whenever possible; prefer layout/content adjustments so page scroll handles overflow.

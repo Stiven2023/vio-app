@@ -103,3 +103,36 @@ test("mes workflow: valida transiciones de estado de envío", () => {
   assert.equal(isValidEnvioStatusTransition("CREADO", "ENTREGADO"), false);
   assert.equal(isValidEnvioStatusTransition("EN_RUTA", "RETORNADO"), true);
 });
+
+test("mes workflow: permite crear despacho sin aprobaciones finales", () => {
+  const parsed = mesEnvioCreateSchema.safeParse({
+    orderId: "order-despacho-1",
+    origenArea: "DESPACHO",
+    destinoArea: "DESPACHO",
+    transporteTipo: "MENSAJERO",
+    items: [{ orderItemId: "item-1", quantity: 2 }],
+  });
+
+  assert.equal(parsed.success, true);
+});
+
+test("mes workflow: requiere aprobador si una aprobación de despacho está en true", () => {
+  const parsed = mesEnvioCreateSchema.safeParse({
+    orderId: "order-despacho-2",
+    origenArea: "DESPACHO",
+    destinoArea: "DESPACHO",
+    transporteTipo: "MENSAJERO",
+    items: [{ orderItemId: "item-1", quantity: 2 }],
+    dispatchApprovals: {
+      seller: { approved: true, approverName: "" },
+      cartera: { approved: false },
+      accounting: { approved: false },
+    },
+  });
+
+  assert.equal(parsed.success, false);
+  if (parsed.success) return;
+
+  const paths = parsed.error.issues.map((issue) => issue.path.join("."));
+  assert.equal(paths.includes("dispatchApprovals.seller.approverName"), true);
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Autocomplete, AutocompleteItem } from "@heroui/autocomplete";
 import { Button } from "@heroui/button";
@@ -25,6 +25,7 @@ import { Chip } from "@heroui/chip";
 
 import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
+import type { Paginated } from "@/app/erp/catalog/_lib/types";
 import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 
 type Shipment = {
@@ -49,6 +50,15 @@ type Shipment = {
   createdAt: string | null;
 };
 
+type MessengerOption = {
+  id: string;
+  code: string;
+  name: string;
+  messengerType: string | null;
+  vehiclePlate: string | null;
+  isActive: boolean | null;
+};
+
 const AREA_OPTIONS = [
   { key: "VIOMAR", label: "Viomar" },
   { key: "CONFECCIONISTA", label: "Confeccionista" },
@@ -69,6 +79,7 @@ export function EnviosPage() {
       contactName: string | null;
     }>
   >([]);
+  const [messengerOptions, setMessengerOptions] = useState<MessengerOption[]>([]);
 
   const [form, setForm] = useState({
     mode: "INTERNAL",
@@ -76,6 +87,7 @@ export function EnviosPage() {
     toArea: "CONFECCIONISTA",
     recipientId: "",
     recipientName: "",
+    messengerId: "",
     sentBy: "",
     orderCode: "",
     designName: "",
@@ -125,6 +137,18 @@ export function EnviosPage() {
     }
   };
 
+  const loadMessengers = async () => {
+    try {
+      const res = await apiJson<Paginated<MessengerOption>>(
+        "/api/messengers?active=true&pageSize=100",
+      );
+
+      setMessengerOptions(Array.isArray(res.items) ? res.items : []);
+    } catch {
+      setMessengerOptions([]);
+    }
+  };
+
   const createShipment = async () => {
     if (saving) return;
 
@@ -133,6 +157,12 @@ export function EnviosPage() {
       !String(form.recipientId ?? "").trim()
     ) {
       toast.error("Selecciona un confeccionista destinatario");
+
+      return;
+    }
+
+    if (!String(form.messengerId ?? "").trim()) {
+      toast.error("Selecciona un mensajero o conductor.");
 
       return;
     }
@@ -149,6 +179,7 @@ export function EnviosPage() {
         ...prev,
         recipientId: "",
         recipientName: "",
+        messengerId: "",
         sentBy: "",
         orderCode: "",
         designName: "",
@@ -163,6 +194,10 @@ export function EnviosPage() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    void loadMessengers();
+  }, []);
 
   const markReceived = async (shipment: Shipment) => {
     try {
@@ -323,11 +358,36 @@ export function EnviosPage() {
               </Select>
             </div>
 
-            <Input
-              label="Sent by"
-              value={form.sentBy}
-              onValueChange={(v) => setForm((p) => ({ ...p, sentBy: v }))}
-            />
+            <Autocomplete
+              defaultItems={messengerOptions}
+              label="Mensajero / Conductor"
+              placeholder="Selecciona transportista"
+              selectedKey={form.messengerId || null}
+              onSelectionChange={(key) => {
+                const id = String(key ?? "");
+                const selected = messengerOptions.find((item) => item.id === id);
+
+                setForm((prev) => ({
+                  ...prev,
+                  messengerId: id,
+                  sentBy: selected ? `${selected.name}${selected.code ? ` (${selected.code})` : ""}` : "",
+                }));
+              }}
+            >
+              {(item) => (
+                <AutocompleteItem
+                  key={item.id}
+                  textValue={`${item.code} ${item.name} ${item.messengerType ?? ""}`}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{item.code} · {item.name}</span>
+                    <span className="text-xs text-default-500">
+                      {item.messengerType ?? "-"}{item.vehiclePlate ? ` · ${item.vehiclePlate}` : ""}
+                    </span>
+                  </div>
+                </AutocompleteItem>
+              )}
+            </Autocomplete>
             {form.toArea === "CONFECCIONISTA" ? (
               <Autocomplete
                 defaultItems={recipientOptions}

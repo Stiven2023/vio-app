@@ -1,8 +1,11 @@
 import { and, eq, inArray } from "drizzle-orm";
 
 import { iamDb } from "@/src/db";
-import { permissions, rolePermissions, roles } from "@/src/db/iam/schema";
-import { getRoleFromRequest } from "@/src/utils/auth-middleware";
+import { permissions, rolePermissions, roles, users } from "@/src/db/iam/schema";
+import {
+  getRoleFromRequest,
+  getUserIdFromRequest,
+} from "@/src/utils/auth-middleware";
 
 const ROLE_PERMISSION_OVERRIDES: Record<string, string[]> = {
   LIDER_SUMINISTROS: ["VER_PEDIDO", "CAMBIAR_ESTADO_DISEÑO"],
@@ -49,6 +52,18 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
   VER_ESTADO_JURIDICO_EMPAQUE: ["VER_EMPAQUE", "MARCAR_EMPAQUE"],
   CAMBIAR_ESTADO_JURIDICO_EMPAQUE: ["EDITAR_EMPAQUE", "MARCAR_EMPAQUE"],
 };
+
+async function isUserActive(userId: string | null): Promise<boolean> {
+  if (!userId) return false;
+
+  const rows = await iamDb
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.isActive, true)))
+    .limit(1);
+
+  return rows.length > 0;
+}
 
 export async function checkPermissionsByRole(
   roleName: string | null,
@@ -112,9 +127,20 @@ export async function requirePermission(
   permissionName: string,
 ) {
   const roleName = getRoleFromRequest(request);
+  const userId = getUserIdFromRequest(request);
 
   if (!roleName) {
     return new Response("Access denied", { status: 403 });
+  }
+
+  // Verify the user still exists and is active in IAM DB
+  const userActive = await isUserActive(userId);
+
+  if (!userActive) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", code: "USER_NOT_FOUND" }),
+      { status: 401, headers: { "Content-Type": "application/json" } },
+    );
   }
 
   // Bypass para administrador: acceso total al panel

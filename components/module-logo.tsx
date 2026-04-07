@@ -1,6 +1,13 @@
+import Image from "next/image";
 import clsx from "clsx";
 
 type ModuleId = "erp" | "mes" | "crm" | "hr" | "hcm";
+
+const MODULE_IMAGE_SOURCES: Partial<Record<ModuleId, string>> = {
+  erp: "/images-app/145856990_253e19db-a524-4977-b586-9feea6ac76ea.png",
+  mes: "/images-app/PORTADA INDUMENTARIA.png",
+  crm: "/images-app/PORTADA NUESTROS CLUBES.png",
+};
 
 export function ModuleLogo({
   module,
@@ -13,6 +20,21 @@ export function ModuleLogo({
   active?: boolean;
   size?: number;
 }) {
+  const imageSrc = MODULE_IMAGE_SOURCES[module];
+
+  if (imageSrc) {
+    return (
+      <Image
+        alt={`${module.toUpperCase()} logo`}
+        className={clsx("w-auto h-auto", className)}
+        height={size}
+        src={imageSrc}
+        style={{ width: size, height: size, objectFit: "contain" }}
+        width={size}
+      />
+    );
+  }
+
   const stroke = active ? "var(--viomar-primary)" : "#A6A39B";
   const accent = "var(--viomar-primary)";
 

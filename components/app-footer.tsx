@@ -51,12 +51,12 @@ export function AppFooter() {
     moduleKey === "hcm"
       ? [
           { href: "/hcm", label: "HCM" },
-          { href: "/erp", label: "ERP" },
+          { href: "/erp/dashboard", label: "ERP" },
           { href: "/mes", label: "MES" },
           { href: "/crm", label: "CRM" },
         ]
       : [
-          { href: "/erp", label: "ERP" },
+          { href: "/erp/dashboard", label: "ERP" },
           { href: "/mes", label: "MES" },
           { href: "/crm", label: "CRM" },
           { href: "/hcm", label: "HCM" },

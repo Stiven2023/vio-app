@@ -115,17 +115,26 @@ export type MesEnvioStatusCardProps = {
   orderId: string;
   /** Only show envíos where destino or origen matches this area filter */
   areaFilter?: string;
+  readOnly?: boolean;
+  dispatchCapabilities?: {
+    canUpdate: boolean;
+    canCancel: boolean;
+  };
   onEnvioUpdated?: () => void;
 };
 
 export function MesEnvioStatusCard({
   orderId,
   areaFilter,
+  readOnly = false,
+  dispatchCapabilities,
   onEnvioUpdated,
 }: MesEnvioStatusCardProps) {
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [loading, setLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const canUpdate = dispatchCapabilities?.canUpdate ?? true;
+  const canCancel = dispatchCapabilities?.canCancel ?? true;
 
   const refresh = () => {
     if (!orderId) return;
@@ -273,30 +282,66 @@ export function MesEnvioStatusCard({
               </>
             )}
 
-            {/* Acciones de estado */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              {envio.status === "CREADO" && (
-                <Button
-                  color="primary"
-                  isLoading={updatingId === envio.id}
-                  size="sm"
-                  variant="flat"
-                  onPress={() => updateStatus(envio.id, "EN_RUTA")}
-                >
-                  Marcar en ruta
-                </Button>
-              )}
-              {envio.status === "EN_RUTA" && (
-                <>
-                  <Button
-                    color="success"
-                    isLoading={updatingId === envio.id}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => updateStatus(envio.id, "ENTREGADO")}
-                  >
-                    Confirmar entrega
-                  </Button>
+            {!readOnly && canUpdate ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {envio.status === "CREADO" && (
+                  <>
+                    <Button
+                      color="primary"
+                      isLoading={updatingId === envio.id}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => updateStatus(envio.id, "EN_RUTA")}
+                    >
+                      Marcar en ruta
+                    </Button>
+                    {canCancel ? (
+                      <Button
+                        color="danger"
+                        isLoading={updatingId === envio.id}
+                        size="sm"
+                        variant="flat"
+                        onPress={() => updateStatus(envio.id, "INCIDENTE")}
+                      >
+                        Anular despacho
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+                {envio.status === "EN_RUTA" && (
+                  <>
+                    <Button
+                      color="success"
+                      isLoading={updatingId === envio.id}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => updateStatus(envio.id, "ENTREGADO")}
+                    >
+                      Confirmar entrega
+                    </Button>
+                    <Button
+                      color="warning"
+                      isLoading={updatingId === envio.id}
+                      size="sm"
+                      variant="flat"
+                      onPress={() => updateStatus(envio.id, "RETORNADO")}
+                    >
+                      Registrar retorno a Viomar
+                    </Button>
+                    {canCancel ? (
+                      <Button
+                        color="danger"
+                        isLoading={updatingId === envio.id}
+                        size="sm"
+                        variant="flat"
+                        onPress={() => updateStatus(envio.id, "INCIDENTE")}
+                      >
+                        Anular despacho
+                      </Button>
+                    ) : null}
+                  </>
+                )}
+                {envio.status === "ENTREGADO" && (
                   <Button
                     color="warning"
                     isLoading={updatingId === envio.id}
@@ -306,29 +351,9 @@ export function MesEnvioStatusCard({
                   >
                     Registrar retorno a Viomar
                   </Button>
-                  <Button
-                    color="danger"
-                    isLoading={updatingId === envio.id}
-                    size="sm"
-                    variant="flat"
-                    onPress={() => updateStatus(envio.id, "INCIDENTE")}
-                  >
-                    Incidente
-                  </Button>
-                </>
-              )}
-              {envio.status === "ENTREGADO" && (
-                <Button
-                  color="warning"
-                  isLoading={updatingId === envio.id}
-                  size="sm"
-                  variant="flat"
-                  onPress={() => updateStatus(envio.id, "RETORNADO")}
-                >
-                  Registrar retorno a Viomar
-                </Button>
-              )}
-            </div>
+                )}
+              </div>
+            ) : null}
           </CardBody>
         </Card>
       ))}

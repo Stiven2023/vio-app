@@ -1000,6 +1000,40 @@ export const orders = pgTable("orders", {
   operationalApprovedBy: uuid("operational_approved_by").references(
     () => employees.id,
   ),
+  prioritySurchargeApplied: boolean("priority_surcharge_applied").default(false),
+  prioritySurchargeAmount: numeric("priority_surcharge_amount", {
+    precision: 12,
+    scale: 2,
+  }).default("0"),
+  prioritySurchargeReason: text("priority_surcharge_reason"),
+  prioritySurchargeAppliedBy: uuid("priority_surcharge_applied_by").references(
+    () => employees.id,
+  ),
+  prioritySurchargeAppliedAt: timestamp("priority_surcharge_applied_at", {
+    withTimezone: true,
+  }),
+  prioritySurchargeEntryId: uuid("priority_surcharge_entry_id"),
+});
+
+export const prioritySurchargeConfig = pgTable("priority_surcharge_config", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  chargeType: varchar("charge_type", { length: 20 })
+    .notNull()
+    .default("PORCENTAJE"),
+  chargeValue: numeric("charge_value", { precision: 8, scale: 4 }).notNull(),
+  minOrderValue: numeric("min_order_value", { precision: 14, scale: 2 }).default(
+    "0",
+  ),
+  maxOrderValue: numeric("max_order_value", { precision: 14, scale: 2 }),
+  revenueAccount: varchar("revenue_account", { length: 20 })
+    .notNull()
+    .default("4135"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: uuid("created_by").references(() => employees.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
 export const prefacturas = pgTable("prefacturas", {
@@ -1153,6 +1187,8 @@ export const orderItems = pgTable("order_items", {
   requiresRevision: boolean("requires_revision").default(false),
   ticketMontaje: varchar("ticket_montaje", { length: 80 }),
   ticketPlotter: varchar("ticket_plotter", { length: 80 }),
+  trmSnapshot: numeric("trm_snapshot", { precision: 14, scale: 4 }),
+  itemCurrency: varchar("item_currency", { length: 5 }).default("COP"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   // Design deadline: calculated from operationalApprovedAt + estimatedLeadDays
   designDeadline: date("design_deadline"),
@@ -1455,6 +1491,40 @@ export const suppliers = pgTable("suppliers", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
+
+export const supplierWithholdingRates = pgTable(
+  "supplier_withholding_rates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taxRegime: taxRegimeEnum("tax_regime").notNull(),
+    serviceType: varchar("service_type", { length: 80 }).notNull(),
+    rteFuenteRate: numeric("rte_fuente_rate", { precision: 6, scale: 4 })
+      .notNull()
+      .default("0"),
+    rteIvaRate: numeric("rte_iva_rate", { precision: 6, scale: 4 })
+      .notNull()
+      .default("0"),
+    rteIcaRate: numeric("rte_ica_rate", { precision: 6, scale: 4 })
+      .notNull()
+      .default("0"),
+    minBaseRteFuente: numeric("min_base_rte_fuente", {
+      precision: 14,
+      scale: 2,
+    }).default("0"),
+    validFrom: date("valid_from").notNull(),
+    validTo: date("valid_to"),
+    isActive: boolean("is_active").notNull().default(true),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    regimeTypeActiveIdx: index("idx_swr_regime_type").on(
+      table.taxRegime,
+      table.serviceType,
+      table.isActive,
+    ),
+  }),
+);
 
 /* =========================
    PACKERS (Empaque / Empacadores)
@@ -2700,7 +2770,11 @@ export const exchangeRates = pgTable("exchange_rates", {
 
 export const advisorCommissionRates = pgTable("advisor_commission_rates", {
   id: uuid("id").defaultRandom().primaryKey(),
+  employeeId: uuid("employee_id").references(() => employees.id, {
+    onDelete: "set null",
+  }),
   advisorName: varchar("advisor_name", { length: 150 }).notNull().unique(),
+  advisorCode: varchar("advisor_code", { length: 20 }),
   rate: numeric("rate", { precision: 8, scale: 6 }).notNull().default("0.05"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

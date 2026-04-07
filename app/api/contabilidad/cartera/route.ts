@@ -2,7 +2,11 @@ import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { clients, preInvoices } from "@/src/db/erp/schema";
-import { dbErrorResponse } from "@/src/utils/db-errors";
+import {
+  accountsReceivableQuerySchema,
+  type AccountsReceivableQuery,
+} from "@/src/utils/accounts-receivable-contract";
+import { dbJsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -13,20 +17,6 @@ type CreditBackingType =
   | "PROMISSORY_NOTE"
   | "PURCHASE_ORDER"
   | "VERBAL_AGREEMENT";
-
-const VALID_AGING_BUCKETS = new Set<AgingBucket>([
-  "CURRENT",
-  "1_30",
-  "31_60",
-  "61_90",
-  "90_PLUS",
-]);
-
-const VALID_CREDIT_BACKING = new Set<CreditBackingType>([
-  "PROMISSORY_NOTE",
-  "PURCHASE_ORDER",
-  "VERBAL_AGREEMENT",
-]);
 
 function prefacturaAmountExpr() {
   return sql<string>`case when coalesce(${preInvoices.totalAfterWithholdings}, 0) > 0 then coalesce(${preInvoices.totalAfterWithholdings}, 0) else coalesce(${preInvoices.total}, 0) end`;
@@ -77,36 +67,28 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
+    const rawQuery = Object.fromEntries(searchParams.entries());
+    const parsedQuery = accountsReceivableQuerySchema.safeParse(rawQuery);
+
+    if (!parsedQuery.success) {
+      return zodFirstErrorEnvelope(
+        parsedQuery.error,
+        "Los filtros de cartera son invalidos.",
+      );
+    }
+
+    const query: AccountsReceivableQuery = parsedQuery.data;
     const { page, pageSize, offset } = parsePagination(searchParams);
 
-    const rawPaymentType = String(searchParams.get("paymentType") ?? "CASH")
-      .trim()
-      .toUpperCase();
-
     const paymentType: PaymentType =
-      rawPaymentType === "CREDIT" ? "CREDIT" : "CASH";
+      query.paymentType === "CREDIT" ? "CREDIT" : "CASH";
 
-    const clientId = String(searchParams.get("clientId") ?? "").trim();
-    const dateFrom = String(searchParams.get("dateFrom") ?? "").trim();
-    const dateTo = String(searchParams.get("dateTo") ?? "").trim();
-
-    const rawAgingBucket = String(searchParams.get("agingBucket") ?? "")
-      .trim()
-      .toUpperCase();
-
-    const agingBucket = VALID_AGING_BUCKETS.has(rawAgingBucket as AgingBucket)
-      ? (rawAgingBucket as AgingBucket)
-      : null;
-
-    const rawCreditBacking = String(searchParams.get("creditBackingType") ?? "")
-      .trim()
-      .toUpperCase();
-
-    const creditBackingType = VALID_CREDIT_BACKING.has(
-      rawCreditBacking as CreditBackingType,
-    )
-      ? (rawCreditBacking as CreditBackingType)
-      : null;
+    const clientId = query.clientId ?? "";
+    const dateFrom = query.dateFrom ?? "";
+    const dateTo = query.dateTo ?? "";
+    const agingBucket: AgingBucket | null = query.agingBucket ?? null;
+    const creditBackingType: CreditBackingType | null =
+      query.creditBackingType ?? null;
 
     const clauses: ReturnType<typeof sql>[] = [
       sql`${preInvoices.paymentType} = ${paymentType}`,
@@ -114,7 +96,7 @@ export async function GET(request: Request) {
     ];
 
     if (clientId) {
-      clauses.push(sql`${preInvoices.clientId} = ${clientId}::uuid`);
+      clauses.push(eq(preInvoices.clientId, clientId));
     }
 
     if (dateFrom) {
@@ -241,10 +223,14 @@ export async function GET(request: Request) {
       hasNextPage: offset + pageSize < total,
     });
   } catch (error) {
-    const response = dbErrorResponse(error);
-
+    const response = dbJsonError(error, "No se pudo consultar cartera.");
     if (response) return response;
-
-    return new Response("No se pudo consultar cartera", { status: 500 });
+    return Response.json(
+      {
+        code: "INTERNAL_ERROR",
+        message: "No se pudo consultar cartera.",
+      },
+      { status: 500 },
+    );
   }
 }

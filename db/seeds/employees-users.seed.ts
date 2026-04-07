@@ -4,8 +4,8 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 
 import { erpDb, iamDb } from "@/src/db";
-import { employees } from "@/src/db/erp/schema";
 import { roles, users } from "@/src/db/iam/schema";
+import { employees, roles as erpRoles } from "@/src/db/schema";
 
 export type RawContractType = "INDEFINIDO" | "FIJO" | "APRENDIZAJE";
 
@@ -654,18 +654,31 @@ export async function seedEmployeesUsers() {
       .where(eq(roles.name, roleName))
       .limit(1);
 
+    let roleId: string;
+
     if (existing.length > 0) {
-      roleIdByName[roleName] = existing[0].id;
-      continue;
+      roleId = existing[0].id;
+      console.log(`ℹ Role "${roleName}" already exists in IAM: ${existing[0].id}`);
+    } else {
+      const inserted = await iamDb
+        .insert(roles)
+        .values({ name: roleName })
+        .returning({ id: roles.id });
+
+      roleId = inserted[0].id;
+      console.log(`✓ Created role "${roleName}" in IAM: ${roleId}`);
     }
 
-    const inserted = await iamDb
-      .insert(roles)
-      .values({ name: roleName })
-      .returning({ id: roles.id });
+    // Also create the same role in ERP database for employees FK
+    await erpDb
+      .insert(erpRoles)
+      .values({ id: roleId, name: roleName })
+      .onConflictDoNothing();
 
-    roleIdByName[roleName] = inserted[0].id;
+    roleIdByName[roleName] = roleId;
   }
+
+  console.log(`\n== ${roleNames.length} roles loaded ==\n`);
 
   let usersInserted = 0;
   let usersReused = 0;

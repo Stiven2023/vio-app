@@ -54,6 +54,8 @@ export type MesEnvioModalProps = {
   destinoLabel?: string;
   /** Diseños disponibles para incluir en el envío */
   availableItems: EnvioItem[];
+  /** Si false, oculta y bloquea captura de aprobaciones finales */
+  canApproveDispatch?: boolean;
   onCreated?: () => void;
 };
 
@@ -94,6 +96,7 @@ export function MesEnvioModal({
   origenLabel,
   destinoLabel,
   availableItems,
+  canApproveDispatch = true,
   onCreated,
 }: MesEnvioModalProps) {
   const [transporteTipo, setTransporteTipo] =
@@ -190,7 +193,7 @@ export function MesEnvioModal({
       [partialDispatchApproval.approved, partialDispatchApproval.approverName, "despacho parcial"],
     ] as const;
 
-    if (isDispatchFlow) {
+    if (isDispatchFlow && canApproveDispatch) {
       if (
         !sellerApproval.approved ||
         !carteraApproval.approved ||
@@ -239,7 +242,7 @@ export function MesEnvioModal({
           segundaParadaTipo: segundaParadaTipo.trim() || null,
           segundaParadaDestino: segundaParadaDestino.trim() || null,
           observaciones: observaciones.trim() || null,
-          dispatchApprovals: isDispatchFlow
+          dispatchApprovals: isDispatchFlow && canApproveDispatch
             ? {
                 seller: {
                   approved: sellerApproval.approved,
@@ -410,86 +413,95 @@ export function MesEnvioModal({
           {origenArea === "DESPACHO" && destinoArea === "DESPACHO" ? (
             <div className="space-y-4 rounded-medium border border-default-200 p-3">
               <p className="text-sm font-semibold">Aprobaciones de despacho</p>
-              <div className="grid gap-3 md:grid-cols-3">
-                {[
-                  {
-                    label: "Vendedor",
-                    state: sellerApproval,
-                    setState: setSellerApproval,
-                  },
-                  {
-                    label: "Cartera",
-                    state: carteraApproval,
-                    setState: setCarteraApproval,
-                  },
-                  {
-                    label: "Contabilidad",
-                    state: accountingApproval,
-                    setState: setAccountingApproval,
-                  },
-                ].map(({ label, state, setState }) => (
-                  <div
-                    key={label}
-                    className="space-y-2 rounded-medium border border-default-100 p-3"
-                  >
-                    <Switch
-                      isSelected={state.approved}
-                      onValueChange={(approved) =>
-                        setState((prev) => ({ ...prev, approved }))
-                      }
-                    >
-                      OK {label}
-                    </Switch>
-                    <Input
-                      label={`Aprobado por ${label}`}
-                      placeholder="Nombre de quien aprueba"
-                      value={state.approverName}
-                      onValueChange={(approverName) =>
-                        setState((prev) => ({ ...prev, approverName }))
-                      }
-                    />
-                    <Textarea
-                      label={`Notas ${label}`}
-                      minRows={1}
-                      placeholder="Opcional"
-                      value={state.notes}
-                      onValueChange={(notes) =>
-                        setState((prev) => ({ ...prev, notes }))
-                      }
-                    />
-                  </div>
-                ))}
-              </div>
 
-              {selectedItemIds.size < availableItems.length ? (
-                <div className="space-y-2 rounded-medium border border-warning-200 bg-warning-50 p-3">
-                  <Switch
-                    isSelected={partialDispatchApproval.approved}
-                    onValueChange={(approved) =>
-                      setPartialDispatchApproval((prev) => ({ ...prev, approved }))
-                    }
-                  >
-                    OK despacho parcial
-                  </Switch>
-                  <Input
-                    label="Aprobado por despacho parcial"
-                    placeholder="Nombre de quien autoriza el parcial"
-                    value={partialDispatchApproval.approverName}
-                    onValueChange={(approverName) =>
-                      setPartialDispatchApproval((prev) => ({ ...prev, approverName }))
-                    }
-                  />
-                  <Textarea
-                    label="Notas despacho parcial"
-                    minRows={1}
-                    placeholder="Motivo o alcance del parcial"
-                    value={partialDispatchApproval.notes}
-                    onValueChange={(notes) =>
-                      setPartialDispatchApproval((prev) => ({ ...prev, notes }))
-                    }
-                  />
-                </div>
-              ) : null}
+              {canApproveDispatch ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {[
+                      {
+                        label: "Vendedor",
+                        state: sellerApproval,
+                        setState: setSellerApproval,
+                      },
+                      {
+                        label: "Cartera",
+                        state: carteraApproval,
+                        setState: setCarteraApproval,
+                      },
+                      {
+                        label: "Contabilidad",
+                        state: accountingApproval,
+                        setState: setAccountingApproval,
+                      },
+                    ].map(({ label, state, setState }) => (
+                      <div
+                        key={label}
+                        className="space-y-2 rounded-medium border border-default-100 p-3"
+                      >
+                        <Switch
+                          isSelected={state.approved}
+                          onValueChange={(approved) =>
+                            setState((prev) => ({ ...prev, approved }))
+                          }
+                        >
+                          OK {label}
+                        </Switch>
+                        <Input
+                          label={`Aprobado por ${label}`}
+                          placeholder="Nombre de quien aprueba"
+                          value={state.approverName}
+                          onValueChange={(approverName) =>
+                            setState((prev) => ({ ...prev, approverName }))
+                          }
+                        />
+                        <Textarea
+                          label={`Notas ${label}`}
+                          minRows={1}
+                          placeholder="Opcional"
+                          value={state.notes}
+                          onValueChange={(notes) =>
+                            setState((prev) => ({ ...prev, notes }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {selectedItemIds.size < availableItems.length ? (
+                    <div className="space-y-2 rounded-medium border border-warning-200 bg-warning-50 p-3">
+                      <Switch
+                        isSelected={partialDispatchApproval.approved}
+                        onValueChange={(approved) =>
+                          setPartialDispatchApproval((prev) => ({ ...prev, approved }))
+                        }
+                      >
+                        OK despacho parcial
+                      </Switch>
+                      <Input
+                        label="Aprobado por despacho parcial"
+                        placeholder="Nombre de quien autoriza el parcial"
+                        value={partialDispatchApproval.approverName}
+                        onValueChange={(approverName) =>
+                          setPartialDispatchApproval((prev) => ({ ...prev, approverName }))
+                        }
+                      />
+                      <Textarea
+                        label="Notas despacho parcial"
+                        minRows={1}
+                        placeholder="Motivo o alcance del parcial"
+                        value={partialDispatchApproval.notes}
+                        onValueChange={(notes) =>
+                          setPartialDispatchApproval((prev) => ({ ...prev, notes }))
+                        }
+                      />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-xs text-default-500">
+                  Tu rol puede registrar y actualizar el envío, pero la aprobación final debe ser realizada por un líder o administrador.
+                </p>
+              )}
             </div>
           ) : null}
         </ModalBody>

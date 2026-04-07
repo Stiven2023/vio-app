@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -65,10 +66,25 @@ const ITEM_ALIASES = {
   explicitId: ["id", "envio_item_id", "item_id"],
 } as const;
 
+function resolveDefaultFile() {
+  const candidates = [
+    "data/imports/MATRIZ DE DESPACHO.xlsx",
+    "D:/Programación/Vio/MATRIZ DE DESPACHO.xlsx",
+  ];
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+}
+
+function resolveDefaultOutDir(defaultFile: string) {
+  const externalRoot = "D:/Programación/Vio";
+  return defaultFile.startsWith(externalRoot) ? externalRoot : "data/imports/normalized";
+}
+
 function parseOptions(argv: string[]): CliOptions {
+  const defaultFile = resolveDefaultFile();
   const options: CliOptions = {
-    file: "data/imports/MATRIZ DE DESPACHO.xlsx",
-    outDir: "data/imports/normalized",
+    file: defaultFile,
+    outDir: resolveDefaultOutDir(defaultFile),
     base: "datos_despacho_normalizada",
     dryRun: false,
   };

@@ -7,6 +7,10 @@ import {
   type EmployeeRoleResolution,
   type EmployeeRoleResolutionCode,
 } from "@/src/utils/employee-role-resolution";
+import {
+  getEmployeeIdFromRequest,
+  getUserIdFromRequest,
+} from "@/src/utils/auth-middleware";
 
 type EmployeeIdentityInput = {
   employeeId?: string | null;
@@ -133,4 +137,24 @@ export async function resolveEmployeeIdentity(
     ...employee,
     roleName: await resolveRoleName(employee.roleId ?? null),
   };
+}
+
+export async function resolveEmployeeIdFromRequest(
+  request: Request,
+): Promise<string | null> {
+  const direct = getEmployeeIdFromRequest(request);
+
+  if (direct) return direct;
+
+  const userId = getUserIdFromRequest(request);
+
+  if (!userId) return null;
+
+  const [row] = await erpDb
+    .select({ id: employees.id })
+    .from(employees)
+    .where(eq(employees.userId, userId))
+    .limit(1);
+
+  return row?.id ?? null;
 }

@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { eq, inArray } from "drizzle-orm";
@@ -53,6 +54,29 @@ function parseOptions(argv: string[]): CliOptions {
   return options;
 }
 
+function hasVerifyLinkedSourceFiles(dirPath: string, options: CliOptions) {
+  const requiredFiles = [
+    `${options.despachoBase}.envios.json`,
+    `${options.despachoBase}.envio_items.json`,
+    `${options.ventasBase}.ventas.json`,
+  ];
+
+  return requiredFiles.every((fileName) => existsSync(path.join(dirPath, fileName)));
+}
+
+function resolveInputDir(options: CliOptions) {
+  if (hasVerifyLinkedSourceFiles(options.dir, options)) {
+    return options.dir;
+  }
+
+  const fallbackDir = "D:/Programación/Vio";
+  if (fallbackDir !== options.dir && hasVerifyLinkedSourceFiles(fallbackDir, options)) {
+    return fallbackDir;
+  }
+
+  return options.dir;
+}
+
 function chunk<T>(items: T[], size: number) {
   const output: T[][] = [];
 
@@ -79,13 +103,14 @@ async function countExistingIds(
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
+  const sourceDir = resolveInputDir(options);
 
-  const enviosPath = path.join(options.dir, `${options.despachoBase}.envios.json`);
+  const enviosPath = path.join(sourceDir, `${options.despachoBase}.envios.json`);
   const envioItemsPath = path.join(
-    options.dir,
+    sourceDir,
     `${options.despachoBase}.envio_items.json`,
   );
-  const ventasPath = path.join(options.dir, `${options.ventasBase}.ventas.json`);
+  const ventasPath = path.join(sourceDir, `${options.ventasBase}.ventas.json`);
 
   const envios = await readJsonFile<RawEnvio[]>(enviosPath);
   const envioItems = await readJsonFile<RawEnvioItem[]>(envioItemsPath);

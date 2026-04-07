@@ -253,9 +253,8 @@ export const buildNavbarSections = ({
         { name: labels.banks, href: "/maestros/bancos" },
         { name: labels.confectionists, href: "/confectionists" },
         { name: labels.packers, href: "/packers" },
-        { name: labels.patternBoard, href: "/patterns/tablero" },
-        { name: labels.patternsAndMolds, href: "/patterns/trazos-moldes" },
-        { name: labels.moldingTemplates, href: "/molding" },
+        { name: labels.couriers, href: "/erp/compras/mensajeros" },
+        { name: labels.drivers, href: "/erp/compras/conductor" },
       ],
     },
     {

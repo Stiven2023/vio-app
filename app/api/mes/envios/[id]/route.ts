@@ -8,6 +8,7 @@ import { clientLegalStatus, orderItems, preInvoices } from "@/src/db/erp/schema"
 import { mesItemTags, mesShipmentItems, mesShipments } from "@/src/db/mes/schema";
 import { dbJsonError, jsonError, jsonForbidden, jsonNotFound, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { requirePermission } from "@/src/utils/permission-middleware";
+import { getRoleFromRequest } from "@/src/utils/auth-middleware";
 import {
   getDispatchBlockingRule,
   hasAccountingApproval,
@@ -17,6 +18,12 @@ import {
   normalizeDispatchApprovals,
   toValidDate,
 } from "@/src/utils/mes-workflow";
+import {
+  canApproveDispatchShipment,
+  canCancelDispatchShipment,
+  canUpdateDispatchShipment,
+  hasFinalDispatchApprovalInput,
+} from "@/src/utils/mes-dispatch-permissions";
 import { rateLimit } from "@/src/utils/rate-limit";
 
 export async function PATCH(
@@ -55,6 +62,7 @@ export async function PATCH(
 
   const payload = parsed.data;
   const status = payload.status;
+  const role = getRoleFromRequest(request);
 
   try {
     const [envio] = await mesDb
@@ -87,11 +95,54 @@ export async function PATCH(
       );
     }
 
+    const isDispatch = isDispatchShipment({
+      origenArea: String(envio.origenArea ?? ""),
+      destinoArea: String(envio.destinoArea ?? ""),
+    });
+
+    if (isDispatch) {
+      if (!canUpdateDispatchShipment(role)) {
+        return jsonError(
+          403,
+          "DISPATCH_UPDATE_FORBIDDEN",
+          "Tu rol no tiene permisos para actualizar envíos de despacho.",
+          {
+            role: ["No tienes permiso para actualizar este despacho."],
+          },
+        );
+      }
+
+      if (status === "INCIDENTE" && !canCancelDispatchShipment(role)) {
+        return jsonError(
+          403,
+          "DISPATCH_CANCEL_FORBIDDEN",
+          "Solo administradores pueden anular despachos.",
+          {
+            status: ["No tienes permiso para anular este despacho."],
+          },
+        );
+      }
+
+      if (
+        payload.dispatchApprovals !== undefined &&
+        hasFinalDispatchApprovalInput(payload.dispatchApprovals as any) &&
+        !canApproveDispatchShipment(role)
+      ) {
+        return jsonError(
+          403,
+          "DISPATCH_APPROVAL_FORBIDDEN",
+          "Solo administradores y líderes pueden registrar aprobaciones finales de despacho.",
+          {
+            dispatchApprovals: [
+              "No tienes permiso para aprobar despacho en esta operación.",
+            ],
+          },
+        );
+      }
+    }
+
     if (
-      isDispatchShipment({
-        origenArea: String(envio.origenArea ?? ""),
-        destinoArea: String(envio.destinoArea ?? ""),
-      }) &&
+      isDispatch &&
       (status === "EN_RUTA" || status === "ENTREGADO")
     ) {
       const [prefacturaRow] = await erpDb

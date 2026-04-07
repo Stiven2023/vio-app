@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -45,6 +46,15 @@ type CliOptions = {
   dryRun: boolean;
 };
 
+type ProgramacionProcessConfig = {
+  operationType: "MONTAJE" | "PLOTTER" | "SUBLIMACION" | "CORTE_MANUAL";
+  roleAlias: readonly string[];
+  startAlias: readonly string[];
+  endAlias: readonly string[];
+  quantityAlias?: readonly string[];
+  partialAlias?: readonly string[];
+};
+
 const ORDER_ALIASES = {
   explicitId: ["id", "order_id", "pedido_id"],
   orderCode: ["order_code", "pedido", "codigo_pedido", "order_code_ref"],
@@ -69,6 +79,46 @@ const ITEM_ALIASES = {
   estimatedLeadDays: ["estimated_lead_days", "dias_estimados", "lead_days"],
   status: ["status", "estado"],
 } as const;
+
+const PROGRAMACION_ALIASES = {
+  sellerName: ["seller_name", "vendedor", "asesor", "asesor_principal"],
+  size: ["size", "talla"],
+  quantity: ["quantity", "cantidad"],
+  observations: ["observations", "observacion"],
+} as const;
+
+const PROGRAMACION_PROCESS_CONFIGS: ProgramacionProcessConfig[] = [
+  {
+    operationType: "MONTAJE",
+    roleAlias: ["responsable"],
+    startAlias: ["fecha_inicio_montaje"],
+    endAlias: ["fecha_final_montaje"],
+  },
+  {
+    operationType: "PLOTTER",
+    roleAlias: ["responsable_1"],
+    startAlias: ["fecha_inicio_plotter"],
+    endAlias: ["fecha_final_plotter"],
+    quantityAlias: ["cantidad_1"],
+    partialAlias: ["completo_parcial"],
+  },
+  {
+    operationType: "SUBLIMACION",
+    roleAlias: ["responsable_2"],
+    startAlias: ["fecha_inicio_sublimacion"],
+    endAlias: ["fecha_final_sublimacion"],
+    quantityAlias: ["cantidades"],
+    partialAlias: ["completo_parcial_1"],
+  },
+  {
+    operationType: "CORTE_MANUAL",
+    roleAlias: ["responsable_3"],
+    startAlias: ["fecha_inicio_corte"],
+    endAlias: ["fecha_final_corte"],
+    quantityAlias: ["cantidad_2"],
+    partialAlias: ["completo_parcial_2"],
+  },
+];
 
 const PACKAGING_ALIASES = {
   explicitId: ["id", "packaging_id", "empaque_id"],
@@ -99,10 +149,25 @@ const LOG_ALIASES = {
   repoCheck: ["repo_check", "reposicion", "repo", "requiere_repo"],
 } as const;
 
+function resolveDefaultFile() {
+  const candidates = [
+    "data/imports/SEGUIMIENTO PRODUCCION.xlsx",
+    "D:/Programación/Vio/SEGUIMIENTO PRODUCCION.xlsx",
+  ];
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+}
+
+function resolveDefaultOutDir(defaultFile: string) {
+  const externalRoot = "D:/Programación/Vio";
+  return defaultFile.startsWith(externalRoot) ? externalRoot : "data/imports/normalized";
+}
+
 function parseOptions(argv: string[]): CliOptions {
+  const defaultFile = resolveDefaultFile();
   const options: CliOptions = {
-    file: "data/imports/SEGUIMIENTO PRODUCCION.xlsx",
-    outDir: "data/imports/normalized",
+    file: defaultFile,
+    outDir: resolveDefaultOutDir(defaultFile),
     base: "datos_seguimiento_normalizada",
     dryRun: false,
   };
@@ -165,16 +230,25 @@ function parseOptions(argv: string[]): CliOptions {
 
 function inferSheetSelection(filePath: string, options: CliOptions) {
   const sheetNames = listWorkbookSheetNames(filePath);
+  const baseProgramacionSheets = sheetNames.filter((sheet) =>
+    /^(programacion|programacion_actualizacion|copia produ|bodega)$/i.test(
+      normalizeText(sheet),
+    ),
+  );
+  const programacionSheets = baseProgramacionSheets.length > 0
+    ? baseProgramacionSheets
+    : sheetNames.filter((sheet) => /(programacion|produ)/i.test(sheet));
   const ordersSheet =
     options.ordersSheet ??
-    sheetNames.find((sheet) => /^bodega$/i.test(sheet)) ??
+    programacionSheets.find((sheet) => /^programacion$/i.test(normalizeText(sheet))) ??
+    programacionSheets[0] ??
     sheetNames.find((sheet) => /(pedido|order(?!_items)|orden)/i.test(sheet)) ??
     sheetNames[0] ??
     null;
   const itemsSheet =
     options.itemsSheet ??
-    sheetNames.find((sheet) => /^bodega$/i.test(sheet)) ??
-    sheetNames.find((sheet) => /(item|detalle|diseno|diseño|referencia)/i.test(sheet)) ??
+    ordersSheet ??
+    programacionSheets[0] ??
     null;
   const packagingSheet =
     options.packagingSheet ??
@@ -213,9 +287,14 @@ function inferSheetSelection(filePath: string, options: CliOptions) {
     sheetNames,
     ordersSheet,
     itemsSheet,
+    programacionSheets,
     packagingSheet,
     logsSheets,
   };
+}
+
+function dedupeById<T extends { id: string }>(rows: T[]) {
+  return Array.from(new Map(rows.map((row) => [row.id, row])).values());
 }
 
 function pickSeguimientoPositionalValue(
@@ -524,20 +603,159 @@ function normalizeLogRow(
   });
 }
 
+function buildProgramacionProcessLogId(
+  row: WorksheetRow,
+  orderItemId: string,
+  operationType: ProgramacionProcessConfig["operationType"],
+  startAt: string | null,
+) {
+  return makeDeterministicUuid(
+    "seguimiento-programacion-log",
+    [
+      orderItemId,
+      operationType,
+      normalizeText(pickFirstValue(row, ITEM_ALIASES.orderCode)),
+      normalizeText(pickFirstValue(row, ITEM_ALIASES.designNumber)),
+      startAt ?? "",
+      normalizeText(pickFirstValue(row, ITEM_ALIASES.name)),
+    ].join("|"),
+  );
+}
+
+function parseProgramacionProcessState(rawValue: unknown) {
+  const normalized = normalizeText(rawValue).toUpperCase();
+  if (!normalized) {
+    return { isComplete: null, isPartial: null };
+  }
+
+  if (normalized.includes("PARCIAL")) {
+    return { isComplete: false, isPartial: true };
+  }
+
+  if (normalized.includes("COMPLETO") || normalized.includes("FINAL")) {
+    return { isComplete: true, isPartial: false };
+  }
+
+  return { isComplete: null, isPartial: null };
+}
+
+function normalizeProgramacionSize(rawValue: unknown) {
+  const text = normalizeText(rawValue) || null;
+  if (!text) {
+    return { size: null as string | null, displacedDate: null as string | null };
+  }
+
+  const looksLikeDate = /GMT|\b\d{4}-\d{2}-\d{2}\b|\b[A-Z][a-z]{2} [A-Z][a-z]{2} \d{2} \d{4}\b/.test(text);
+  if (looksLikeDate) {
+    return {
+      size: null,
+      displacedDate: parseExcelDate(rawValue),
+    };
+  }
+
+  return {
+    size: text.slice(0, 40),
+    displacedDate: null,
+  };
+}
+
+function normalizeProgramacionLogs(
+  rows: WorksheetRow[],
+  itemIdsByNaturalKey: Map<string, string>,
+): RawSeguimientoLog[] {
+  const logs: RawSeguimientoLog[] = [];
+
+  for (const row of rows) {
+    const orderCode = normalizeOrderCode(
+      String(pickFirstValue(row, ITEM_ALIASES.orderCode) ?? ""),
+    );
+    const designNumber = parseInteger(pickFirstValue(row, ITEM_ALIASES.designNumber));
+    const designName = normalizeText(pickFirstValue(row, ITEM_ALIASES.name));
+    if (!orderCode || designNumber === null || !designName) {
+      continue;
+    }
+
+    const orderItemId = itemIdsByNaturalKey.get(`${orderCode}|${designNumber}`) ?? null;
+    if (!orderItemId) {
+      continue;
+    }
+
+    const baseQuantity = parseInteger(pickFirstValue(row, PROGRAMACION_ALIASES.quantity));
+    const normalizedSize = normalizeProgramacionSize(
+      pickFirstValue(row, PROGRAMACION_ALIASES.size),
+    );
+    const observations = normalizeText(pickFirstValue(row, PROGRAMACION_ALIASES.observations)) || null;
+
+    for (const config of PROGRAMACION_PROCESS_CONFIGS) {
+      const startAt =
+        parseExcelDate(pickFirstValue(row, config.startAlias)) ?? normalizedSize.displacedDate;
+      const endAt = parseExcelDate(pickFirstValue(row, config.endAlias));
+      const responsible = normalizeText(pickFirstValue(row, config.roleAlias)) || null;
+      const quantityOp = parseInteger(
+        config.quantityAlias
+          ? pickFirstValue(row, config.quantityAlias)
+          : pickFirstValue(row, PROGRAMACION_ALIASES.quantity),
+      );
+      const state = parseProgramacionProcessState(
+        config.partialAlias ? pickFirstValue(row, config.partialAlias) : endAt ? "COMPLETO" : null,
+      );
+
+      if (!startAt && !endAt && !responsible && quantityOp === null) {
+        continue;
+      }
+
+      logs.push(
+        rawSeguimientoLogSchema.parse({
+          id: buildProgramacionProcessLogId(row, orderItemId, config.operationType, startAt),
+          order_item_id: orderItemId,
+          order_code: orderCode,
+          design_name: designName,
+          role_area: resolveSeguimientoRoleArea(responsible, config.operationType),
+          operation_type: config.operationType,
+          process_code:
+            config.operationType === "SUBLIMACION"
+              ? "S"
+              : config.operationType === "CORTE_MANUAL"
+                ? "C"
+                : "P",
+          size: normalizedSize.size,
+          quantity_op: quantityOp ?? baseQuantity,
+          produced_quantity: quantityOp ?? baseQuantity,
+          start_at: startAt,
+          end_at: endAt,
+          is_complete: state.isComplete ?? Boolean(endAt),
+          is_partial: state.isPartial,
+          observations,
+          repo_check: false,
+        }),
+      );
+    }
+  }
+
+  return dedupeById(logs);
+}
+
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   const selection = inferSheetSelection(options.file, options);
 
-  const orderRows = readWorksheetRows(options.file, selection.ordersSheet);
-  const orders = orderRows
+  const programacionRows = selection.programacionSheets.flatMap((sheetName) =>
+    readWorksheetRows(options.file, sheetName),
+  );
+  const orderRows = programacionRows.length > 0
+    ? programacionRows
+    : readWorksheetRows(options.file, selection.ordersSheet);
+  const orders = dedupeById(orderRows
     .map((row) => normalizeOrderRow(row))
-    .filter((row): row is RawSeguimientoOrder => row !== null);
+    .filter((row): row is RawSeguimientoOrder => row !== null));
   const orderIdsByCode = new Map(orders.map((row) => [row.order_code, row.id]));
 
-  const itemRows = readWorksheetRows(options.file, selection.itemsSheet);
-  const orderItems = itemRows
+  const itemRows = programacionRows.length > 0
+    ? programacionRows
+    : readWorksheetRows(options.file, selection.itemsSheet);
+  const orderItems = dedupeById(itemRows
     .map((row) => normalizeOrderItemRow(row, orderIdsByCode))
-    .filter((row): row is RawSeguimientoOrderItem => row !== null);
+    .filter((row): row is RawSeguimientoOrderItem => row !== null));
   const itemIdsByNaturalKey = new Map(
     orderItems.map((row) => [`${row.order_code_ref}|${row.diseno_numero}`, row.id]),
   );
@@ -562,7 +780,11 @@ async function main() {
     };
   });
 
-  const logs = logsBySheet.flatMap((sheet) => sheet.normalized);
+  const programacionLogs = normalizeProgramacionLogs(orderRows, itemIdsByNaturalKey);
+  const logs = dedupeById([
+    ...programacionLogs,
+    ...logsBySheet.flatMap((sheet) => sheet.normalized),
+  ]);
 
   const summary = {
     mode: options.dryRun ? "DRY_RUN" : "APPLY",
@@ -571,6 +793,7 @@ async function main() {
     selected: {
       ordersSheet: selection.ordersSheet,
       itemsSheet: selection.itemsSheet,
+      programacionSheets: selection.programacionSheets,
       packagingSheet: selection.packagingSheet,
       logsSheets: selection.logsSheets,
     },

@@ -1,6 +1,7 @@
 import "dotenv/config";
 
-import { writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { eq, inArray } from "drizzle-orm";
@@ -32,7 +33,7 @@ import {
 import { erpDb } from "../src/db/erp";
 import { mesDb } from "../src/db/mes";
 import { mesEnvioItems, mesEnvios } from "../src/db/mes/schema";
-import { orderItems, orders } from "../src/db/schema";
+import { employees, orderItems, orderPayments, orders, roles } from "../src/db/schema";
 
 type CliOptions = {
   dir: string;
@@ -63,7 +64,7 @@ const UUID_V4_OR_V1_RE =
 
 function parseOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
-    dir: "C:/Users/Stiven.Aguirre/Documents",
+    dir: "D:/Programación/Vio",
     despachoBase: "datos_despacho_normalizada",
     ventasBase: "datos_ventas_normalizada",
     seguimientoBase: "datos_seguimiento_normalizada",
@@ -105,6 +106,29 @@ function parseOptions(argv: string[]): CliOptions {
   return options;
 }
 
+function hasLinkedSourceFiles(dirPath: string, options: CliOptions) {
+  const requiredFiles = [
+    `${options.despachoBase}.envios.json`,
+    `${options.despachoBase}.envio_items.json`,
+    `${options.ventasBase}.ventas.json`,
+  ];
+
+  return requiredFiles.every((fileName) => existsSync(path.join(dirPath, fileName)));
+}
+
+function resolveInputDir(options: CliOptions) {
+  if (hasLinkedSourceFiles(options.dir, options)) {
+    return options.dir;
+  }
+
+  const fallbackDir = "D:/Programación/Vio";
+  if (fallbackDir !== options.dir && hasLinkedSourceFiles(fallbackDir, options)) {
+    return fallbackDir;
+  }
+
+  return options.dir;
+}
+
 function toDate(value: string | null) {
   if (!value) {
     return null;
@@ -116,6 +140,58 @@ function toDate(value: string | null) {
 
 function isUuid(value: string | null | undefined) {
   return UUID_V4_OR_V1_RE.test(String(value ?? "").trim());
+}
+
+function normalizePersonKey(value: string | null | undefined) {
+  return normalizeText(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildPersonCandidateKeys(value: string | null | undefined) {
+  const normalized = normalizePersonKey(value);
+  if (!normalized) {
+    return [] as string[];
+  }
+
+  const tokens = normalized.split(" ").filter(Boolean);
+  return Array.from(new Set([normalized, tokens[0] ?? ""]).values()).filter(Boolean);
+}
+
+function isEligibleSellerRole(roleName: string | null | undefined) {
+  const normalized = String(roleName ?? "").trim().toUpperCase();
+  return normalized === "ASESOR" || normalized === "ADMINISTRADOR" || normalized.startsWith("LIDER_");
+}
+
+function rolePriority(roleName: string | null | undefined) {
+  const normalized = String(roleName ?? "").trim().toUpperCase();
+  if (normalized === "ASESOR") return 1;
+  if (normalized.startsWith("LIDER_")) return 2;
+  if (normalized === "ADMINISTRADOR") return 3;
+  return 999;
+}
+
+function mapOrderPaymentStatus(raw: string | null): "PENDIENTE" | "PARCIAL" | "PAGADO" | "ANULADO" | "CONFIRMADO_CAJA" {
+  const normalized = normalizeText(raw).toUpperCase();
+
+  if (normalized.includes("ANUL")) return "ANULADO";
+  if (normalized.includes("PEND")) return "PENDIENTE";
+  if (normalized.includes("PARCIAL")) return "PARCIAL";
+  if (normalized.includes("CONFIRM")) return "CONFIRMADO_CAJA";
+  return "PAGADO";
+}
+
+function mapOrderPaymentMethod(raw: string | null): "EFECTIVO" | "TRANSFERENCIA" | "CREDITO" {
+  const normalized = normalizeText(raw).toUpperCase();
+
+  if (normalized.includes("CRED")) return "CREDITO";
+  if (normalized.includes("TRANS") || normalized.includes("BANCO") || normalized.includes("CONSIGN")) {
+    return "TRANSFERENCIA";
+  }
+
+  return "EFECTIVO";
 }
 
 function mapDispatchArea(raw: string | null): "VIOMAR" | "INTEGRACION" | "CONFECCION_EXTERNA" | "DESPACHO" {
@@ -162,12 +238,13 @@ function mapDispatchPaymentStatus(raw: string | null): "PENDIENTE" | "PARCIAL" |
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
+  const sourceDir = resolveInputDir(options);
 
-  const enviosPath = path.join(options.dir, `${options.despachoBase}.envios.json`);
-  const envioItemsPath = path.join(options.dir, `${options.despachoBase}.envio_items.json`);
-  const ventasPath = path.join(options.dir, `${options.ventasBase}.ventas.json`);
-  const seguimientoOrdersPath = path.join(options.dir, `${options.seguimientoBase}.orders.json`);
-  const seguimientoItemsPath = path.join(options.dir, `${options.seguimientoBase}.order_items.json`);
+  const enviosPath = path.join(sourceDir, `${options.despachoBase}.envios.json`);
+  const envioItemsPath = path.join(sourceDir, `${options.despachoBase}.envio_items.json`);
+  const ventasPath = path.join(sourceDir, `${options.ventasBase}.ventas.json`);
+  const seguimientoOrdersPath = path.join(sourceDir, `${options.seguimientoBase}.orders.json`);
+  const seguimientoItemsPath = path.join(sourceDir, `${options.seguimientoBase}.order_items.json`);
 
   const sourceEnvios = await readJsonFile<unknown[]>(enviosPath);
   const sourceEnvioItems = await readJsonFile<unknown[]>(envioItemsPath);
@@ -246,9 +323,34 @@ async function main() {
           status: orders.status,
           clientId: orders.clientId,
           orderName: orders.orderName,
+          createdBy: orders.createdBy,
         })
         .from(orders)
         .where(inArray(orders.orderCode, targetCodes));
+
+  const sellerRows = await erpDb
+    .select({
+      id: employees.id,
+      name: employees.name,
+      roleName: roles.name,
+    })
+    .from(employees)
+    .leftJoin(roles, eq(employees.roleId, roles.id));
+
+  const sellerByName = new Map<string, { id: string; roleName: string | null }>();
+  for (const row of sellerRows) {
+    if (!isEligibleSellerRole(row.roleName)) {
+      continue;
+    }
+
+    const candidateKeys = buildPersonCandidateKeys(row.name);
+    for (const key of candidateKeys) {
+      const existing = sellerByName.get(key);
+      if (!existing || rolePriority(row.roleName) < rolePriority(existing.roleName)) {
+        sellerByName.set(key, { id: row.id, roleName: row.roleName });
+      }
+    }
+  }
 
   const orderIdByCode = new Map(existingOrders.map((row) => [String(row.orderCode), row.id]));
   const existingOrderByCode = new Map(existingOrders.map((row) => [String(row.orderCode), row]));
@@ -258,6 +360,9 @@ async function main() {
   let skippedExistingOrders = 0;
   let skippedInvalidCodes = 0;
   let updatedOrderStatuses = 0;
+  let updatedOrderSellers = 0;
+  let matchedSellers = 0;
+  let missingSellerMatches = 0;
 
   for (const orderCode of targetCodes) {
     const trackingOrder = seguimientoOrderByCode.get(orderCode) ?? null;
@@ -289,30 +394,60 @@ async function main() {
     }
 
     const existingOrder = existingOrderByCode.get(orderCode) ?? null;
+    const sellerName = normalizeText(sale?.seller_name ?? null) || null;
+    const sellerEmployeeId = sellerName
+      ? (buildPersonCandidateKeys(sellerName)
+          .map((key) => sellerByName.get(key)?.id ?? null)
+          .find(Boolean) ?? null)
+      : null;
+
+    if (sellerName) {
+      if (sellerEmployeeId) {
+        matchedSellers += 1;
+      } else {
+        missingSellerMatches += 1;
+      }
+    }
 
     if (existingOrder) {
+      const shouldUpdateStatus = shouldUpgradeImportedOrderToProduction({
+        currentStatus: existingOrder.status,
+        clientId: existingOrder.clientId,
+        orderName: existingOrder.orderName,
+        hasImportSignals: sources.length > 0,
+      });
+      const shouldUpdateSeller = Boolean(sellerEmployeeId && existingOrder.createdBy !== sellerEmployeeId);
+
       if (
-        shouldUpgradeImportedOrderToProduction({
-          currentStatus: existingOrder.status,
-          clientId: existingOrder.clientId,
-          orderName: existingOrder.orderName,
-          hasImportSignals: sources.length > 0,
-        })
+        shouldUpdateStatus || shouldUpdateSeller
       ) {
         if (!options.dryRun) {
+          const updatePayload: { status?: typeof orders.$inferInsert.status; createdBy?: string } = {};
+          if (shouldUpdateStatus) {
+            updatePayload.status = desiredStatus;
+          }
+          if (shouldUpdateSeller && sellerEmployeeId) {
+            updatePayload.createdBy = sellerEmployeeId;
+          }
+
           await erpDb
             .update(orders)
-            .set({ status: desiredStatus })
+            .set(updatePayload)
             .where(eq(orders.id, existingOrder.id));
         }
 
-        updatedOrderStatuses += 1;
+        if (shouldUpdateStatus) {
+          updatedOrderStatuses += 1;
+        }
+        if (shouldUpdateSeller) {
+          updatedOrderSellers += 1;
+        }
         reportRows.push({
           orderCode,
           action: "updated-status",
           orderId: existingOrder.id,
           previousStatus: String(existingOrder.status ?? ""),
-          nextStatus: desiredStatus,
+          nextStatus: shouldUpdateStatus ? desiredStatus : String(existingOrder.status ?? ""),
           sources,
         });
       } else {
@@ -342,6 +477,7 @@ async function main() {
       deliveryDate: trackingOrder?.delivery_date ?? undefined,
       total: trackingOrder?.total ?? parseAmount(sale?.total) ?? "0",
       currency: trackingOrder?.currency ?? "COP",
+      createdBy: sellerEmployeeId ?? undefined,
       createdAt: toDate(trackingOrder?.created_at ?? null) ?? undefined,
     } as const;
 
@@ -605,8 +741,115 @@ async function main() {
     updatedVentas += 1;
   }
 
+  const existingPayments = ensuredOrderIds.length === 0
+    ? []
+    : await erpDb
+        .select({
+          id: orderPayments.id,
+          orderId: orderPayments.orderId,
+          amount: orderPayments.amount,
+          referenceCode: orderPayments.referenceCode,
+        })
+        .from(orderPayments)
+        .where(inArray(orderPayments.orderId, ensuredOrderIds));
+
+  const paymentKeySet = new Set(
+    existingPayments.map((row) => {
+      const amount = String(row.amount ?? "0.00");
+      return `${row.orderId ?? ""}|${amount}|${String(row.referenceCode ?? "")}`;
+    }),
+  );
+  const paymentByOrderAndReference = new Map(
+    existingPayments.map((row) => [
+      `${row.orderId ?? ""}|${String(row.referenceCode ?? "")}`,
+      row,
+    ]),
+  );
+
+  let insertedPayments = 0;
+  let skippedExistingPayments = 0;
+  let updatedExistingPayments = 0;
+  let skippedZeroPayments = 0;
+  let missingPaymentOrders = 0;
+
+  for (const row of ventas) {
+    const orderCode = normalizeOrderCode(row.order_code_ref);
+    const orderId = orderIdByCode.get(orderCode);
+    if (!orderId) {
+      missingPaymentOrders += 1;
+      continue;
+    }
+
+    const paymentCandidates = [
+      {
+        kind: "ANTICIPO",
+        amount: row.advance_amount,
+      },
+      {
+        kind: "ABONO",
+        amount: row.payment_amount,
+      },
+    ];
+
+    for (const candidate of paymentCandidates) {
+      const amount = parseAmount(candidate.amount);
+      if (!amount || Number(amount) <= 0) {
+        skippedZeroPayments += 1;
+        continue;
+      }
+
+      const referenceCode = `${candidate.kind}-HIST-${orderCode}`;
+      const paymentRefKey = `${orderId}|${referenceCode}`;
+      const existingByReference = paymentByOrderAndReference.get(paymentRefKey) ?? null;
+      if (existingByReference) {
+        if (String(existingByReference.amount ?? "0.00") !== amount) {
+          if (!options.dryRun) {
+            await erpDb
+              .update(orderPayments)
+              .set({
+                amount,
+                depositAmount: amount,
+                method: mapOrderPaymentMethod(row.payment_method ?? null),
+                transferCurrency: "COP",
+                status: mapOrderPaymentStatus(row.payment_status),
+                createdAt: toDate(row.paid_at) ?? undefined,
+              })
+              .where(eq(orderPayments.id, existingByReference.id));
+          }
+          updatedExistingPayments += 1;
+        } else {
+          skippedExistingPayments += 1;
+        }
+        continue;
+      }
+
+      const key = `${orderId}|${amount}|${referenceCode}`;
+      if (paymentKeySet.has(key)) {
+        skippedExistingPayments += 1;
+        continue;
+      }
+
+      if (!options.dryRun) {
+        await erpDb.insert(orderPayments).values({
+          orderId,
+          amount,
+          depositAmount: amount,
+          referenceCode,
+          method: mapOrderPaymentMethod(row.payment_method ?? null),
+          transferCurrency: "COP",
+          status: mapOrderPaymentStatus(row.payment_status),
+          createdAt: toDate(row.paid_at) ?? undefined,
+        });
+      }
+
+      paymentKeySet.add(key);
+      insertedPayments += 1;
+    }
+  }
+
   if (!options.dryRun) {
-    const reportPath = path.join(options.dir, "reporte_import_historico_vinculado.json");
+    await mkdir(sourceDir, { recursive: true });
+    const reportPath = path.join(sourceDir, "reporte_import_historico_vinculado.json");
     await writeFile(
       reportPath,
       JSON.stringify(
@@ -617,6 +860,9 @@ async function main() {
             skippedExistingOrders,
             skippedInvalidCodes,
             updatedOrderStatuses,
+            updatedOrderSellers,
+            matchedSellers,
+            missingSellerMatches,
             createdItems,
             skippedExistingItems,
             insertedEnvios,
@@ -625,6 +871,11 @@ async function main() {
             skippedEnvioItems,
             updatedVentas,
             skippedVentas,
+            insertedPayments,
+            skippedExistingPayments,
+            skippedZeroPayments,
+            updatedExistingPayments,
+            missingPaymentOrders,
           },
           items: reportRows,
         },
@@ -640,11 +891,14 @@ async function main() {
   console.log(`skipped existing orders=${skippedExistingOrders}`);
   console.log(`skipped invalid codes=${skippedInvalidCodes}`);
   console.log(`updated order statuses=${updatedOrderStatuses}`);
+  console.log(`updated order sellers=${updatedOrderSellers}`);
+  console.log(`seller names matched=${matchedSellers}, missingMatches=${missingSellerMatches}`);
   console.log(`created order_items=${createdItems}`);
   console.log(`skipped existing order_items=${skippedExistingItems}`);
   console.log(`mes_envios inserted=${insertedEnvios}, skipped=${skippedEnvios}, missingOrders=${missingOrderMatches}`);
   console.log(`mes_envio_items inserted=${insertedEnvioItems}, skipped=${skippedEnvioItems}, missingOrderItems=${missingOrderItemMatches}`);
   console.log(`ventas updated=${updatedVentas}, skipped=${skippedVentas}, missingOrders=${missingVentaOrders}`);
+  console.log(`order_payments inserted=${insertedPayments}, updatedExisting=${updatedExistingPayments}, skippedExisting=${skippedExistingPayments}, skippedZero=${skippedZeroPayments}, missingOrders=${missingPaymentOrders}`);
 }
 
 void main();

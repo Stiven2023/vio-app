@@ -159,22 +159,18 @@ test("mes contrato: rechaza LÍNEA_TERCERO sin empresa", () => {
 
 // ─── 2. Reglas de despacho (DESPACHO→DESPACHO) ──────────────────────────────
 
-test("mes contrato: despacho requiere aprobaciones", () => {
+test("mes contrato: despacho permite creación sin aprobaciones", () => {
   const result = mesEnvioCreateSchema.safeParse({
     orderId: "order-dispatch-1",
     origenArea: "DESPACHO",
     destinoArea: "DESPACHO",
     transporteTipo: "MENSAJERO",
     items: [{ orderItemId: "item-D", quantity: 2 }],
-    // sin dispatchApprovals
   });
-  assert.equal(result.success, false);
-  if (result.success) return;
-  const paths = result.error.issues.map((i) => i.path.join("."));
-  assert.ok(paths.includes("dispatchApprovals"), "Debe requerir dispatchApprovals en despacho");
+  assert.equal(result.success, true);
 });
 
-test("mes contrato: despacho rechaza aprobación de vendedor no marcada", () => {
+test("mes contrato: despacho no exige seller aprobado en creación", () => {
   const result = mesEnvioCreateSchema.safeParse({
     ...baseDispatchCreate(),
     dispatchApprovals: {
@@ -183,13 +179,7 @@ test("mes contrato: despacho rechaza aprobación de vendedor no marcada", () => 
       accounting: { approved: true, approverName: "Contabilidad" },
     },
   });
-  assert.equal(result.success, false);
-  if (result.success) return;
-  const paths = result.error.issues.map((i) => i.path.join("."));
-  assert.ok(
-    paths.some((p) => p.includes("seller")),
-    "Debe rechazar seller no aprobado",
-  );
+  assert.equal(result.success, true);
 });
 
 test("mes contrato: despacho rechaza aprobación sin nombre de quien aprueba", () => {

@@ -16,6 +16,7 @@ import {
   orderPayments,
   orderStatusHistory,
   prefacturas,
+  exchangeRates,
   clientLegalStatusHistory,
   quotations,
 } from "@/src/db/erp/schema";
@@ -69,6 +70,57 @@ function toDiscountPercent(v: unknown) {
   if (!Number.isFinite(n)) return 0;
 
   return Math.min(100, Math.max(0, n));
+}
+
+async function getLatestUsdCopRate(tx: any): Promise<number> {
+  const [row] = await tx
+    .select({ rate: exchangeRates.effectiveRate })
+    .from(exchangeRates)
+    .where(
+      and(
+        eq(exchangeRates.baseCurrency, "USD"),
+        eq(exchangeRates.targetCurrency, "COP"),
+      ),
+    )
+    .orderBy(desc(exchangeRates.createdAt))
+    .limit(1);
+
+  const value = Number(row?.rate ?? 0);
+
+  if (Number.isFinite(value) && value > 0) return value;
+
+  return 4200;
+}
+
+function normalizeOrderItemPricing(params: {
+  qty: number;
+  unitPriceRaw: string | null;
+  orderCurrency: string;
+  trmRate: number | null;
+}) {
+  const { qty, unitPriceRaw, orderCurrency, trmRate } = params;
+  const unitBase = Number(unitPriceRaw ?? 0);
+  const safeUnit = Number.isFinite(unitBase) ? unitBase : 0;
+  const normalizedCurrency = orderCurrency.toUpperCase();
+
+  if (normalizedCurrency === "USD") {
+    const rate = trmRate && Number.isFinite(trmRate) ? trmRate : 4200;
+    const unitCop = safeUnit * rate;
+
+    return {
+      unitPrice: unitCop.toFixed(2),
+      totalPrice: (unitCop * qty).toFixed(2),
+      trmSnapshot: rate.toFixed(4),
+      itemCurrency: "USD",
+    };
+  }
+
+  return {
+    unitPrice: unitPriceRaw,
+    totalPrice: (safeUnit * qty).toFixed(2),
+    trmSnapshot: null,
+    itemCurrency: normalizedCurrency || "COP",
+  };
 }
 
 function toPositiveInt(v: unknown) {
@@ -468,6 +520,8 @@ export async function POST(request: Request) {
             manufacturingId: (src as any).manufacturingId ?? null,
             status: (src as any).status ?? ("PENDIENTE" as any),
             requiresRevision: Boolean((src as any).requiresRevision ?? false),
+            trmSnapshot: (src as any).trmSnapshot ?? null,
+            itemCurrency: (src as any).itemCurrency ?? String(currency ?? "COP"),
           } as any)
           .returning();
 
@@ -563,6 +617,12 @@ export async function POST(request: Request) {
     let subtotal = 0;
 
     if (itemInputs.length > 0) {
+      const normalizedOrderCurrency = String(currency ?? "COP").toUpperCase();
+      const trmRate =
+        normalizedOrderCurrency === "USD"
+          ? await getLatestUsdCopRate(tx)
+          : null;
+
       const normalizedItems = itemInputs.map((it) => {
         const qty = toPositiveInt(it.quantity);
 
@@ -571,8 +631,13 @@ export async function POST(request: Request) {
         }
 
         const unit = toNullableNumericString(it.unitPrice);
-        const unitNumber = unit ? Number(unit) : 0;
-        const totalNumber = unitNumber * qty;
+        const pricing = normalizeOrderItemPricing({
+          qty,
+          unitPriceRaw: unit,
+          orderCurrency: normalizedOrderCurrency,
+          trmRate,
+        });
+        const totalNumber = Number(pricing.totalPrice);
 
         subtotal += totalNumber;
 
@@ -581,8 +646,10 @@ export async function POST(request: Request) {
           productId: toNullableString(it.productId),
           name: toNullableString(it.name),
           quantity: qty,
-          unitPrice: unit,
-          totalPrice: String(totalNumber),
+          unitPrice: pricing.unitPrice,
+          totalPrice: pricing.totalPrice,
+          trmSnapshot: pricing.trmSnapshot,
+          itemCurrency: pricing.itemCurrency,
           status: "PENDIENTE" as any,
           requiresRevision: false,
         };
@@ -755,6 +822,7 @@ export async function PUT(request: Request) {
       status: orders.status,
       total: orders.total,
       shippingFee: (orders as any).shippingFee,
+      currency: orders.currency,
       clientId: orders.clientId,
     })
     .from(orders)
@@ -891,6 +959,10 @@ export async function PUT(request: Request) {
       let subtotal = 0;
 
       if (itemInputs.length > 0) {
+        const effectiveCurrency = String(currency ?? orderRow.currency ?? "COP").toUpperCase();
+        const trmRate =
+          effectiveCurrency === "USD" ? await getLatestUsdCopRate(tx) : null;
+
         const normalizedItems = itemInputs.map((it) => {
           const qty = toPositiveInt(it.quantity);
 
@@ -899,8 +971,13 @@ export async function PUT(request: Request) {
           }
 
           const unit = toNullableNumericString(it.unitPrice);
-          const unitNumber = unit ? Number(unit) : 0;
-          const totalNumber = unitNumber * qty;
+          const pricing = normalizeOrderItemPricing({
+            qty,
+            unitPriceRaw: unit,
+            orderCurrency: effectiveCurrency,
+            trmRate,
+          });
+          const totalNumber = Number(pricing.totalPrice);
 
           subtotal += totalNumber;
 
@@ -909,8 +986,10 @@ export async function PUT(request: Request) {
             productId: toNullableString(it.productId),
             name: toNullableString(it.name),
             quantity: qty,
-            unitPrice: unit,
-            totalPrice: String(totalNumber),
+            unitPrice: pricing.unitPrice,
+            totalPrice: pricing.totalPrice,
+            trmSnapshot: pricing.trmSnapshot,
+            itemCurrency: pricing.itemCurrency,
             status: "PENDIENTE" as any,
             requiresRevision: false,
           };

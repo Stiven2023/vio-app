@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 import createIntlMiddleware from "next-intl/middleware";
 
@@ -81,7 +82,7 @@ function isLegacyHcmRetired() {
   return Date.now() >= retireAtMs;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth_token")?.value;
   const externalToken = request.cookies.get("external_access_token")?.value;
@@ -203,6 +204,27 @@ export function middleware(request: NextRequest) {
     loginUrl.search = "";
 
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Verify JWT signature using jose (Edge Runtime compatible)
+  const jwtSecret = process.env.JWT_SECRET;
+
+  if (jwtSecret) {
+    try {
+      await jwtVerify(token, new TextEncoder().encode(jwtSecret));
+    } catch {
+      // Invalid or expired token — clear cookie and redirect to login
+      const loginUrl = request.nextUrl.clone();
+
+      loginUrl.pathname = "/login";
+      loginUrl.search = "";
+
+      const response = NextResponse.redirect(loginUrl);
+
+      response.cookies.delete("auth_token");
+
+      return response;
+    }
   }
 
   if (

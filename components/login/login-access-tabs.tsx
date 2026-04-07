@@ -1,12 +1,14 @@
+"use client";
+
 import { ChangeEvent, FormEvent } from "react";
 import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
-import { Tab, Tabs } from "@heroui/tabs";
 import {
   BsEyeFill,
   BsEyeSlashFill,
   BsPersonFill,
 } from "react-icons/bs";
+import { useTranslations } from "next-intl";
 
 import { ExternalAccessTab } from "@/components/login/external-access-tab";
 
@@ -55,30 +57,58 @@ export function LoginAccessTabs({
   setLoading: (next: boolean) => void;
   setToast: (toast: ToastState | null) => void;
 }) {
+  const t = useTranslations("Auth");
+
+  const tabButtonClass = (key: string) =>
+    [
+      "rounded-none border-b-2 px-2 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] sm:px-3 sm:text-xs sm:tracking-[0.15em]",
+      selected === key
+        ? "border-[var(--viomar-primary)] text-[var(--viomar-primary)]"
+        : "border-transparent text-[#8A93A3]",
+    ].join(" ");
+
   return (
-    <Tabs
-      aria-label="Access types"
-      classNames={{
-        tabList:
-          "rounded-none border-b border-default-200/30 bg-transparent p-0 gap-0 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [scrollbar-width:none]",
-        tab: "rounded-none px-2 sm:px-3 min-w-max data-[selected=true]:text-[var(--viomar-primary)] data-[selected=true]:border-b-2 data-[selected=true]:border-[var(--viomar-primary)] text-[#8A93A3]",
-        tabContent:
-          "text-[10px] sm:text-xs uppercase tracking-[0.12em] sm:tracking-[0.15em] font-semibold",
-        cursor: "hidden",
-      }}
-      selectedKey={selected}
-      variant="underlined"
-      onSelectionChange={(key) => setSelected(String(key))}
-    >
-      {/* ── Tab 1: Viomar Staff ── */}
-      <Tab key="viomar" title="Viomar staff">
+    <div className="space-y-4">
+      <div
+        aria-label="Access types"
+        className="flex overflow-x-auto whitespace-nowrap border-b border-default-200/30"
+        role="tablist"
+      >
+        <button
+          aria-selected={selected === "viomar"}
+          className={tabButtonClass("viomar")}
+          role="tab"
+          type="button"
+          onClick={() => setSelected("viomar")}
+        >
+          {t("tabStaff")}
+        </button>
+        <button
+          aria-selected={selected === "cliente"}
+          className={tabButtonClass("cliente")}
+          role="tab"
+          type="button"
+          onClick={() => setSelected("cliente")}
+        >
+          {t("tabClient")}
+        </button>
+        <button
+          aria-selected={selected === "tercero"}
+          className={tabButtonClass("tercero")}
+          role="tab"
+          type="button"
+          onClick={() => setSelected("tercero")}
+        >
+          {t("tabThirdParty")}
+        </button>
+      </div>
+
+      {selected === "viomar" ? (
         <form
           className="space-y-4 pt-2"
           onSubmit={(e) => void onSubmitViomar(e)}
         >
-          <p className="text-xs text-default-500">
-            Internal Viomar employees. Use your assigned username and password.
-          </p>
+          <p className="text-xs text-default-500">{t("staffDesc")}</p>
           <div className="space-y-3">
             <Input
               required
@@ -86,7 +116,7 @@ export function LoginAccessTabs({
               classNames={{
                 inputWrapper: "bg-content1/70 border border-default-200/30",
               }}
-              label="Username"
+              label={t("username")}
               name="username"
               startContent={
                 <BsPersonFill className="text-xl text-default-500" />
@@ -102,7 +132,7 @@ export function LoginAccessTabs({
               }}
               endContent={
                 <Button
-                  aria-label={showStaffPassword ? "Hide password" : "Show password"}
+                  aria-label={showStaffPassword ? t("hidePassword") : t("showPassword")}
                   className="min-w-10 px-0"
                   size="sm"
                   type="button"
@@ -116,7 +146,7 @@ export function LoginAccessTabs({
                   )}
                 </Button>
               }
-              label="Password"
+              label={t("password")}
               name="password"
               type={showStaffPassword ? "text" : "password"}
               value={staffForm.password}
@@ -132,7 +162,7 @@ export function LoginAccessTabs({
               isLoading={loading}
               type="submit"
             >
-              Sign in
+              {t("signIn")}
             </Button>
 
             <Button
@@ -141,14 +171,13 @@ export function LoginAccessTabs({
               variant="light"
               onPress={onOpenResetRequest}
             >
-              Forgot your password?
+              {t("forgotPassword")}
             </Button>
           </div>
         </form>
-      </Tab>
+      ) : null}
 
-      {/* ── Tab 2: Client (OTP) ── */}
-      <Tab key="cliente" title="I'm a client">
+      {selected === "cliente" ? (
         <div className="pt-2">
           <ExternalAccessTab
             audience="CLIENTE"
@@ -157,27 +186,23 @@ export function LoginAccessTabs({
             setToast={setToast}
           />
         </div>
-      </Tab>
+      ) : null}
 
-      {/* ── Tab 3: Third-party (confeccionistas) ── */}
-      <Tab key="tercero" title="Third-party">
+      {selected === "tercero" ? (
         <form
           className="space-y-4 pt-2"
           onSubmit={(e) => void onSubmitThirdParty(e)}
         >
-          <p className="text-xs text-default-500">
-            For <strong>confectionists</strong> only. Use the credentials provided by Viomar
-            to enter MES and report reception or completion.
-          </p>
+          <p className="text-xs text-default-500">{t("thirdPartyNote")}</p>
           <Input
             required
             autoComplete="username"
             classNames={{
               inputWrapper: "bg-content1/70 border border-default-200/30",
             }}
-            label="Username"
+            label={t("username")}
             name="username"
-            placeholder="e.g. confeccionista1"
+            placeholder={t("thirdPartyUsernamePlaceholder")}
             startContent={
               <BsPersonFill className="text-xl text-default-500" />
             }
@@ -192,7 +217,7 @@ export function LoginAccessTabs({
             }}
             endContent={
               <Button
-                aria-label={showThirdPartyPassword ? "Hide password" : "Show password"}
+                aria-label={showThirdPartyPassword ? t("hidePassword") : t("showPassword")}
                 className="min-w-10 px-0"
                 size="sm"
                 type="button"
@@ -206,7 +231,7 @@ export function LoginAccessTabs({
                 )}
               </Button>
             }
-            label="Password"
+            label={t("password")}
             name="password"
             type={showThirdPartyPassword ? "text" : "password"}
             value={thirdPartyForm.password}
@@ -219,10 +244,10 @@ export function LoginAccessTabs({
             isLoading={loading}
             type="submit"
           >
-            Sign in
+            {t("signIn")}
           </Button>
         </form>
-      </Tab>
-    </Tabs>
+      ) : null}
+    </div>
   );
 }

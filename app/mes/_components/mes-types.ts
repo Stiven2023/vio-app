@@ -121,6 +121,38 @@ export type ProcessRoleConfig = {
     | "DESPACHO";
 };
 
+export type MesProcessKey =
+  | "montaje"
+  | "plotter"
+  | "calandra"
+  | "sublimacion"
+  | "corte_laser"
+  | "corte_manual"
+  | "confeccion"
+  | "empaque"
+  | "integracion"
+  | "despacho";
+
+export type MesProcessView =
+  | "workflow"
+  | "programacion"
+  | "montaje"
+  | "plotter"
+  | "sublimacion"
+  | "corte"
+  | "confeccion"
+  | "empaque"
+  | "integracion"
+  | "despacho";
+
+export type MesAccessIdentity = {
+  email: string;
+  employeeId: string;
+  employeeName: string;
+  employeeRole: string | null;
+  employeeEmail: string | null;
+};
+
 export type MesAccessEmployee = {
   id: string;
   name: string;
@@ -131,25 +163,9 @@ export type MesAccessEmployee = {
 
 export type MesAccessSelection = {
   email: string;
-  processKey:
-    | "montaje"
-    | "plotter"
-    | "calandra"
-    | "sublimacion"
-    | "corte_laser"
-    | "corte_manual"
-    | "confeccion"
-    | "integracion"
-    | "despacho";
+  processKey: MesProcessKey;
   processLabel: string;
-  mesProcess:
-    | "montaje"
-    | "plotter"
-    | "sublimacion"
-    | "corte"
-    | "confeccion"
-    | "integracion"
-    | "despacho";
+  mesProcess: Exclude<MesProcessView, "workflow" | "programacion">;
   operationType:
     | "MONTAJE"
     | "PLOTTER"
@@ -158,6 +174,7 @@ export type MesAccessSelection = {
     | "CORTE_LASER"
     | "CORTE_MANUAL"
     | "CONFECCION"
+    | "EMPAQUE"
     | "INTEGRACION"
     | "DESPACHO";
   machineId: string | null;

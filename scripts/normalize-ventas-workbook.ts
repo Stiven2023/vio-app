@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -29,15 +30,34 @@ const VENTA_ALIASES = {
   total: ["total", "valor_total", "monto_total", "venta_total", "valor_pedido", "debe"],
   subtotal: ["subtotal", "base", "valor_base"],
   paidAt: ["paid_at", "fecha_pago", "fecha_pagado", "paidat", "fecha_entrega"],
-  paymentStatus: ["payment_status", "estado_pago", "pago_estado", "paymentstatus", "cancelado", "pago"],
+  paymentStatus: ["payment_status", "estado_pago", "pago_estado", "paymentstatus", "cancelado"],
+  paymentMethod: ["payment_method", "metodo_pago", "metodo", "pago"],
   clientName: ["client_name", "cliente", "nombre_cliente", "razon_social"],
   invoiceNumber: ["invoice_number", "factura", "numero_factura", "nro_factura"],
+  sellerName: ["seller_name", "asesor_principal", "asesor", "vendedor"],
+  advanceAmount: ["anticipo", "advance_amount"],
+  paymentAmount: ["abono", "payment_amount", "valor_abono"],
 } as const;
 
+function resolveDefaultFile() {
+  const candidates = [
+    "data/imports/VENTAS.xlsx",
+    "D:/Programación/Vio/VENTAS.xlsx",
+  ];
+
+  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[0];
+}
+
+function resolveDefaultOutDir(defaultFile: string) {
+  const externalRoot = "D:/Programación/Vio";
+  return defaultFile.startsWith(externalRoot) ? externalRoot : "data/imports/normalized";
+}
+
 function parseOptions(argv: string[]): CliOptions {
+  const defaultFile = resolveDefaultFile();
   const options: CliOptions = {
-    file: "data/imports/VENTAS.xlsx",
-    outDir: "data/imports/normalized",
+    file: defaultFile,
+    outDir: resolveDefaultOutDir(defaultFile),
     base: "datos_ventas_normalizada",
     dryRun: false,
   };
@@ -107,8 +127,12 @@ function normalizeVentaRow(row: WorksheetRow): RawVenta | null {
     subtotal: parseAmount(pickFirstValue(row, VENTA_ALIASES.subtotal)),
     paid_at: parseExcelDate(pickFirstValue(row, VENTA_ALIASES.paidAt)),
     payment_status: normalizeText(pickFirstValue(row, VENTA_ALIASES.paymentStatus)) || null,
+    payment_method: normalizeText(pickFirstValue(row, VENTA_ALIASES.paymentMethod)) || null,
     client_name: normalizeText(pickFirstValue(row, VENTA_ALIASES.clientName)) || null,
     invoice_number: normalizeText(pickFirstValue(row, VENTA_ALIASES.invoiceNumber)) || null,
+    seller_name: normalizeText(pickFirstValue(row, VENTA_ALIASES.sellerName)) || null,
+    advance_amount: parseAmount(pickFirstValue(row, VENTA_ALIASES.advanceAmount)),
+    payment_amount: parseAmount(pickFirstValue(row, VENTA_ALIASES.paymentAmount)),
   };
 
   return rawVentaSchema.parse(payload);

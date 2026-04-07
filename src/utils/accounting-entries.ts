@@ -1233,3 +1233,123 @@ export async function postPackerPaymentEntry(
 ) {
   return postLaborPaymentEntry(tx, { ...input, laborType: "EMPAQUE" }, employeeId, "PACKER_PAYMENT");
 }
+
+export type HcmPreAsientoPostingInput = {
+  preAsientoId: string;
+  period: string;
+  entryDate: string;
+  employeeId: string;
+  accountDebitCode: string;
+  accountCreditCode: string;
+  amount: string | number;
+  concept: string;
+};
+
+export async function postHcmPreAsientoEntry(
+  tx: any,
+  input: HcmPreAsientoPostingInput,
+  employeeId: string | null,
+) {
+  const period = parseAccountingPeriod(input.period);
+
+  if (!period) {
+    throw new AccountingConfigurationError(
+      "El período del pre-asiento no es válido para contabilidad.",
+      {
+        period: ["El período debe usar formato YYYY-MM."],
+      },
+    );
+  }
+
+  await ensureAccountingPeriodExists(tx, period, employeeId);
+
+  const idempotencyKey = `hcm-pre-asiento:post:${input.preAsientoId}`;
+  const [existingEntry] = await tx
+    .select({ id: accountingEntries.id, entryNumber: accountingEntries.entryNumber })
+    .from(accountingEntries)
+    .where(eq(accountingEntries.idempotencyKey, idempotencyKey))
+    .limit(1);
+
+  if (existingEntry?.id) return existingEntry;
+
+  const amount = toMoneyNumber(input.amount);
+
+  if (amount <= 0) {
+    throw new AccountingConfigurationError(
+      "El valor del pre-asiento debe ser mayor a cero.",
+      {
+        amount: ["El valor debe ser mayor a cero."],
+      },
+    );
+  }
+
+  const lines: AccountingLineDraft[] = [
+    {
+      accountCode: input.accountDebitCode,
+      debit: toMoneyString(amount),
+      credit: "0.00",
+      description: input.concept,
+      thirdPartyType: "EMPLEADO",
+      thirdPartyId: input.employeeId,
+      metadata: { preAsientoId: input.preAsientoId },
+    },
+    {
+      accountCode: input.accountCreditCode,
+      debit: "0.00",
+      credit: toMoneyString(amount),
+      description: input.concept,
+      thirdPartyType: "EMPLEADO",
+      thirdPartyId: input.employeeId,
+      metadata: { preAsientoId: input.preAsientoId },
+    },
+  ];
+
+  const accountCodes = Array.from(new Set(lines.map((line) => line.accountCode)));
+  const accountsByCode = await resolveAccountsByCode(tx, accountCodes);
+  const entryNumber = await generateAccountingEntryNumber(tx, period);
+
+  const [entry] = await tx
+    .insert(accountingEntries)
+    .values({
+      entryNumber,
+      period,
+      entryDate: input.entryDate,
+      status: "POSTED",
+      sourceModule: "PAYROLL",
+      sourceType: "HCM_PRE_ASIENTO",
+      sourceId: input.preAsientoId,
+      idempotencyKey,
+      description: input.concept,
+      totalDebit: toMoneyString(amount),
+      totalCredit: toMoneyString(amount),
+      postedAt: new Date(),
+      postedBy: employeeId,
+      metadata: { preAsientoId: input.preAsientoId },
+      createdBy: employeeId,
+    })
+    .returning({ id: accountingEntries.id, entryNumber: accountingEntries.entryNumber });
+
+  await tx.insert(accountingEntryLines).values(
+    lines.map((line, index) => ({
+      entryId: entry.id,
+      accountId: accountsByCode.get(line.accountCode)?.id,
+      thirdPartyType: line.thirdPartyType ?? null,
+      thirdPartyId: line.thirdPartyId ?? null,
+      description: line.description,
+      debit: line.debit,
+      credit: line.credit,
+      lineOrder: index + 1,
+      metadata: line.metadata ?? null,
+    })),
+  );
+
+  await tx.insert(accountingEntryHistory).values({
+    entryId: entry.id,
+    action: "POSTED_FROM_HCM_PRE_ASIENTO",
+    notes: `Asiento generado para pre-asiento HCM ${input.preAsientoId}.`,
+    payload: { preAsientoId: input.preAsientoId },
+    performedBy: employeeId,
+  });
+
+  return entry;
+}

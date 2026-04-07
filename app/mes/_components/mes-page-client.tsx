@@ -1,7 +1,9 @@
 "use client";
 
 import type {
+  MesAccessIdentity,
   MesAccessSelection,
+  MesProcessView,
   MontajeAssignment,
   PedidoGroup,
   ProcessQueueRow,
@@ -40,8 +42,10 @@ import {
 import { OperarioWorklogTable } from "@/app/erp/dashboard/role/_components/operario-worklog-table";
 import {
   getMesAccessProcessOption,
+  MES_VIEWER_PROCESS_OPTIONS,
   PROCESS_ROLE_CONFIG,
   PROCESO_PREFIX,
+  resolveMesSelectionFromRole,
 } from "@/app/mes/_components/mes-config";
 import { MesAccessGate } from "@/app/mes/_components/mes-access-gate";
 import {
@@ -67,7 +71,9 @@ import {
 import { MesEnvioStatusCard } from "@/app/mes/_components/mes-envio-status-card";
 import { MesItemTagsPanel } from "@/app/mes/_components/mes-item-tags-panel";
 import { MesDesignOverviewPanel } from "@/app/mes/_components/mes-design-overview-panel";
-import { MesVisualPreview } from "@/app/mes/_components/mes-visual-preview";
+import { getEffectiveSessionRole } from "@/src/utils/session-role";
+import { isOperarioRole } from "@/src/utils/role-status";
+import { getMesDispatchCapabilities } from "@/src/utils/mes-dispatch-permissions";
 
 const MES_ACCESS_STORAGE_KEY = "mes:access-selection:v1";
 
@@ -93,7 +99,7 @@ export default function MesPageClient() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterEstado, setFilterEstado] = useState<string>("all");
-  const [activeProceso, setActiveProceso] = useState("programacion");
+  const [activeProceso, setActiveProceso] = useState<MesProcessView>("workflow");
   const [selectedMontajeTicket, setSelectedMontajeTicket] = useState<{
     pedido: string;
     detalle: string;
@@ -132,9 +138,34 @@ export default function MesPageClient() {
   const verifySession = useSessionStore((state) => state.verifySession);
   const currentUserId = String(sessionUser?.id ?? "").trim();
   const currentEmployeeId = String(sessionUser?.employeeId ?? "").trim();
+  const effectiveRole = getEffectiveSessionRole(sessionUser);
+  const dispatchCapabilities = getMesDispatchCapabilities(effectiveRole);
+  const canEditMes =
+    isOperarioRole(effectiveRole) ||
+    dispatchCapabilities.canCreate ||
+    dispatchCapabilities.canUpdate;
+  const isReadOnlyMes = Boolean(sessionUser) && !canEditMes;
+  const dataProcessKey = activeProceso === "workflow" ? "programacion" : activeProceso;
   const activeProcessConfig =
-    PROCESS_ROLE_CONFIG[activeProceso] ?? PROCESS_ROLE_CONFIG.montaje;
-  const currentProcessLabel = accessSelection?.processLabel ?? activeProcessConfig.label;
+    PROCESS_ROLE_CONFIG[dataProcessKey === "programacion" ? "montaje" : dataProcessKey] ??
+    PROCESS_ROLE_CONFIG.montaje;
+  const currentProcessLabel =
+    accessSelection?.processLabel ??
+    MES_VIEWER_PROCESS_OPTIONS.find((option) => option.key === activeProceso)?.label ??
+    activeProcessConfig.label;
+  const lockedMesIdentity = useMemo<MesAccessIdentity | null>(() => {
+    if (!canEditMes || !sessionUser?.employeeId || !sessionUser.name) {
+      return null;
+    }
+
+    return {
+      email: String(sessionUser.email ?? "").trim().toLowerCase(),
+      employeeId: sessionUser.employeeId,
+      employeeName: sessionUser.name,
+      employeeRole: effectiveRole,
+      employeeEmail: sessionUser.email ?? null,
+    };
+  }, [canEditMes, effectiveRole, sessionUser?.email, sessionUser?.employeeId, sessionUser?.name]);
   const usesTicketFlow = [
     "montaje",
     "plotter",
@@ -150,6 +181,14 @@ export default function MesPageClient() {
     }
 
     try {
+      if (!canEditMes) {
+        window.localStorage.removeItem(MES_ACCESS_STORAGE_KEY);
+        setAccessSelection(null);
+        setActiveProceso("workflow");
+
+        return;
+      }
+
       const raw = window.localStorage.getItem(MES_ACCESS_STORAGE_KEY);
 
       if (raw) {
@@ -158,55 +197,62 @@ export default function MesPageClient() {
         if (parsed?.processKey && parsed?.mesProcess) {
           setAccessSelection(parsed);
           setActiveProceso(parsed.mesProcess);
+          return;
         }
-      } else if (
+      }
+
+      if (
         sessionUser?.sessionType === "mes" &&
         sessionUser.mesAccess &&
-        sessionUser.employeeId &&
-        sessionUser.name
+        lockedMesIdentity
       ) {
-        const processOption = getMesAccessProcessOption(sessionUser.mesAccess.processKey);
+        const mesAccess = sessionUser.mesAccess;
 
-        setAccessSelection({
-          email: String(sessionUser.email ?? "").trim().toLowerCase(),
-          processKey: sessionUser.mesAccess.processKey as MesAccessSelection["processKey"],
-          processLabel: processOption?.label ?? sessionUser.mesAccess.processKey,
-          mesProcess: sessionUser.mesAccess.mesProcess as MesAccessSelection["mesProcess"],
-          operationType: sessionUser.mesAccess.operationType as MesAccessSelection["operationType"],
-          machineId: sessionUser.mesAccess.machineId ?? null,
-          machineName: sessionUser.mesAccess.machineName ?? null,
-          employeeId: sessionUser.employeeId,
-          employeeName: sessionUser.name,
-          employeeRole: sessionUser.mesAccess.role ?? sessionUser.role ?? null,
-          employeeEmail: sessionUser.email ?? null,
-        });
-        setActiveProceso(sessionUser.mesAccess.mesProcess);
-      } else if (
-        String(sessionUser?.role ?? "").trim().toUpperCase() === "CONFECCIONISTA" &&
-        sessionUser?.employeeId &&
-        sessionUser?.name
-      ) {
-        setAccessSelection({
-          email: String(sessionUser.email ?? "").trim().toLowerCase(),
-          processKey: "confeccion",
-          processLabel: "Confección",
-          mesProcess: "confeccion",
-          operationType: "CONFECCION",
-          machineId: null,
-          machineName: null,
-          employeeId: sessionUser.employeeId,
-          employeeName: sessionUser.name,
-          employeeRole: sessionUser.role ?? null,
-          employeeEmail: sessionUser.email ?? null,
-        });
-        setActiveProceso("confeccion");
+        if (
+          mesAccess.processKey &&
+          mesAccess.mesProcess &&
+          mesAccess.operationType
+        ) {
+          const processOption = getMesAccessProcessOption(mesAccess.processKey);
+
+          setAccessSelection({
+            email: lockedMesIdentity.email,
+            processKey: mesAccess.processKey as MesAccessSelection["processKey"],
+            processLabel: processOption?.label ?? mesAccess.processKey,
+            mesProcess: mesAccess.mesProcess as MesAccessSelection["mesProcess"],
+            operationType: mesAccess.operationType as MesAccessSelection["operationType"],
+            machineId: mesAccess.machineId ?? null,
+            machineName: mesAccess.machineName ?? null,
+            employeeId: lockedMesIdentity.employeeId,
+            employeeName: lockedMesIdentity.employeeName,
+            employeeRole: mesAccess.role ?? effectiveRole,
+            employeeEmail: lockedMesIdentity.employeeEmail,
+          });
+          setActiveProceso(mesAccess.mesProcess as MesProcessView);
+
+          return;
+        }
       }
+
+      if (lockedMesIdentity) {
+        const defaultSelection = resolveMesSelectionFromRole(lockedMesIdentity);
+
+        if (defaultSelection) {
+          setAccessSelection(defaultSelection);
+          setActiveProceso(defaultSelection.mesProcess);
+
+          return;
+        }
+      }
+
+      setAccessSelection(null);
+      setActiveProceso("workflow");
     } catch {
       window.localStorage.removeItem(MES_ACCESS_STORAGE_KEY);
     } finally {
       setAccessReady(true);
     }
-  }, [sessionUser]);
+  }, [canEditMes, effectiveRole, lockedMesIdentity, sessionUser]);
 
   const handleAccessSubmit = useCallback(async (selection: MesAccessSelection) => {
     await verifySession();
@@ -356,7 +402,7 @@ export default function MesPageClient() {
   );
 
   useEffect(() => {
-    if (!accessReady || !accessSelection) {
+    if (!accessReady || (!accessSelection && !isReadOnlyMes)) {
       setLoading(false);
       setData([]);
       setMontajeAssignments(new Map());
@@ -378,7 +424,7 @@ export default function MesPageClient() {
     };
 
     void load();
-  }, [accessReady, accessSelection, refreshData]);
+  }, [accessReady, accessSelection, isReadOnlyMes, refreshData]);
 
   const filtered = useMemo(() => {
     return data.filter((p) => {
@@ -494,7 +540,7 @@ export default function MesPageClient() {
     );
   }
 
-  if (!accessSelection) {
+  if (!accessSelection && !isReadOnlyMes) {
     return (
       <div className="mx-auto w-full max-w-7xl space-y-4 px-4 pb-6 pt-4 sm:px-6 lg:px-8">
         <header className="space-y-1">
@@ -503,10 +549,31 @@ export default function MesPageClient() {
             Seguimiento en tiempo real de producción para el Sistema de Ejecución de Manufactura.
           </p>
         </header>
-
-        <MesVisualPreview />
-
-        <MesAccessGate onSubmit={handleAccessSubmit} />
+        {lockedMesIdentity ? (
+          <MesAccessGate
+            initialIdentity={lockedMesIdentity}
+            onSubmit={handleAccessSubmit}
+          />
+        ) : (
+          <Card className="border border-default-200" radius="sm" shadow="none">
+            <CardBody className="space-y-4 p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Selecciona tu tipo de acceso</h2>
+                <p className="text-sm text-default-500">
+                  Los operarios ingresan por correo desde el login MES. Los usuarios internos no operativos entran por el login normal y consultan MES en solo lectura.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button as={NextLink} color="primary" href="/mes/login">
+                  Ingreso MES por correo
+                </Button>
+                <Button as={NextLink} href="/login" variant="flat">
+                  Login normal
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        )}
       </div>
     );
   }
@@ -519,25 +586,64 @@ export default function MesPageClient() {
           Seguimiento en tiempo real de producción para el Sistema de Ejecución de Manufactura.
         </p>
       </header>
-
-      <MesVisualPreview />
-
-      <Card className="border border-primary-200 bg-primary-50" radius="sm" shadow="none">
+      <Card
+        className={
+          isReadOnlyMes
+            ? "border border-warning-200 bg-warning-50"
+            : "border border-primary-200 bg-primary-50"
+        }
+        radius="sm"
+        shadow="none"
+      >
         <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <div className="text-sm font-semibold text-primary-900">
-              Acceso operativo activo
+            <div className={`text-sm font-semibold ${isReadOnlyMes ? "text-warning-900" : "text-primary-900"}`}>
+              {isReadOnlyMes ? "Modo consulta MES" : "Acceso operativo activo"}
             </div>
-            <div className="text-xs text-primary-800">
-              {accessSelection.email} · {accessSelection.processLabel} · {accessSelection.employeeName}
-              {accessSelection.machineName ? ` · ${accessSelection.machineName}` : ""}
+            <div className={`text-xs ${isReadOnlyMes ? "text-warning-800" : "text-primary-800"}`}>
+              {isReadOnlyMes
+                ? `${sessionUser?.name ?? "Usuario interno"} · Solo lectura para workflow, prioridades y consulta de rendimiento`
+                : `${accessSelection?.email ?? ""} · ${accessSelection?.processLabel ?? currentProcessLabel} · ${accessSelection?.employeeName ?? ""}${accessSelection?.machineName ? ` · ${accessSelection.machineName}` : ""}`}
             </div>
           </div>
-          <Button color="primary" size="sm" variant="flat" onPress={resetAccessSelection}>
-            Cambiar acceso
-          </Button>
+          {isReadOnlyMes ? null : (
+            <Button color="primary" size="sm" variant="flat" onPress={resetAccessSelection}>
+              Cambiar acceso
+            </Button>
+          )}
         </CardBody>
       </Card>
+
+      {isReadOnlyMes ? (
+        <section className="rounded-medium border border-default-200 bg-content1 p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-default-500">
+                Navegación de consulta MES
+              </div>
+              <div className="text-sm text-default-500">
+                Puedes revisar workflow, prioridades y avance por proceso, pero no crear ni editar registros.
+              </div>
+            </div>
+            <Select
+              aria-label="Vista de consulta MES"
+              className="w-full sm:max-w-xs"
+              disallowEmptySelection
+              selectedKeys={[activeProceso]}
+              size="sm"
+              variant="bordered"
+              onSelectionChange={(keys) => {
+                setSelectedMontajeTicket(null);
+                setActiveProceso(String(Array.from(keys)[0] ?? "workflow") as MesProcessView);
+              }}
+            >
+              {MES_VIEWER_PROCESS_OPTIONS.map((option) => (
+                <SelectItem key={option.key}>{option.label}</SelectItem>
+              ))}
+            </Select>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -583,7 +689,7 @@ export default function MesPageClient() {
             </div>
           </div>
           <div className="text-xs text-default-400">
-            [{PROCESO_PREFIX[activeProceso] ?? activeProceso.slice(0, 3).toUpperCase()}]
+            [{PROCESO_PREFIX[dataProcessKey] ?? activeProceso.slice(0, 3).toUpperCase()}]
           </div>
         </div>
       </section>
@@ -591,7 +697,7 @@ export default function MesPageClient() {
       <Divider className="opacity-60" />
 
       {activeProceso === "workflow" ? (
-        <MesProductionQueueTab />
+        <MesProductionQueueTab readOnly={isReadOnlyMes} />
       ) : activeProceso === "programacion" ? (
         <section className="rounded-medium border border-default-200 bg-content1 p-4">
           <div className="flex flex-col sm:flex-row gap-2 mb-4">
@@ -820,7 +926,31 @@ export default function MesPageClient() {
                           </Chip>
                         </TableCell>
                         <TableCell>
-                          {isMontaje ? (
+                          {isReadOnlyMes ? (
+                            <Button
+                              color="default"
+                              size="sm"
+                              variant={
+                                selectedMontajeTicket?.ticketMontaje === row.ticket
+                                  ? "solid"
+                                  : "flat"
+                              }
+                              onPress={() =>
+                                setSelectedMontajeTicket({
+                                  pedido: row.pedido,
+                                  detalle: row.detalle,
+                                  defaultDesignName: row.defaultDesignName,
+                                  totalUnidades: row.totalUnidades,
+                                  ticketMontaje: row.ticket,
+                                  orderItemId: row.orderItemId,
+                                  tallas: row.tallas,
+                                  designDetails: row.designDetails,
+                                })
+                              }
+                            >
+                              Ver detalle
+                            </Button>
+                          ) : isMontaje ? (
                             <div className="flex flex-wrap items-center gap-2">
                               <Button
                                 color={isTakenByMe ? "success" : "primary"}
@@ -1055,7 +1185,7 @@ export default function MesPageClient() {
                   </div>
                 )}
 
-                {[
+                {!isReadOnlyMes && [
                   "integracion",
                   "confeccion",
                   "despacho",
@@ -1063,7 +1193,10 @@ export default function MesPageClient() {
                   <div className="flex flex-wrap items-center gap-2 rounded-medium border border-default-200 bg-content2 px-3 py-2">
                     <Button
                       color="primary"
-                      isDisabled={selectedEnvioItems.length === 0}
+                      isDisabled={
+                        selectedEnvioItems.length === 0 ||
+                        (activeProceso === "despacho" && !dispatchCapabilities.canCreate)
+                      }
                       size="sm"
                       variant="flat"
                       onPress={openEnvioByProcess}
@@ -1077,6 +1210,11 @@ export default function MesPageClient() {
                     <span className="text-xs text-default-500">
                       {selectedEnvioItems.length} disenos seleccionables para envio
                     </span>
+                    {activeProceso === "despacho" && !dispatchCapabilities.canCreate ? (
+                      <span className="text-xs text-warning-600">
+                        Tu rol no puede registrar nuevos envíos de despacho.
+                      </span>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -1091,6 +1229,15 @@ export default function MesPageClient() {
                           : undefined
                   }
                   orderId={selectedMontajeTicket.pedido}
+                  readOnly={isReadOnlyMes}
+                  dispatchCapabilities={
+                    activeProceso === "despacho"
+                      ? {
+                          canUpdate: dispatchCapabilities.canUpdate,
+                          canCancel: dispatchCapabilities.canCancel,
+                        }
+                      : undefined
+                  }
                 />
 
                 <MesDesignOverviewPanel items={selectedEnvioItems} />
@@ -1120,6 +1267,7 @@ export default function MesPageClient() {
                             designName={design.name}
                             orderId={selectedMontajeTicket.pedido}
                             orderItemId={design.orderItemId}
+                            readOnly={isReadOnlyMes}
                           />
                         </div>
                       ))
@@ -1131,48 +1279,61 @@ export default function MesPageClient() {
                   </div>
                 </div>
 
-                <OperarioWorklogTable
-                  mesAccessSelection={accessSelection}
-                  prefill={{
-                    orderCode: selectedMontajeTicket.pedido,
-                    designName:
-                      selectedMontajeTicket.defaultDesignName ||
-                      selectedMontajeTicket.detalle,
-                    quantityOp: selectedMontajeTicket.totalUnidades,
-                    tallas: (selectedMontajeTicket.tallas ?? [])
-                      .filter((item) => item.estado !== "completado")
-                      .map((item) => ({
-                        talla: item.talla,
-                        cantidad: item.cantidad,
-                      })),
-                  }}
-                  role={activeProcessConfig.role}
-                  onSaved={handleMontajeSaved}
-                />
+                {!isReadOnlyMes ? (
+                  <OperarioWorklogTable
+                    mesAccessSelection={accessSelection}
+                    prefill={{
+                      orderCode: selectedMontajeTicket.pedido,
+                      designName:
+                        selectedMontajeTicket.defaultDesignName ||
+                        selectedMontajeTicket.detalle,
+                      quantityOp: selectedMontajeTicket.totalUnidades,
+                      tallas: (selectedMontajeTicket.tallas ?? [])
+                        .filter((item) => item.estado !== "completado")
+                        .map((item) => ({
+                          talla: item.talla,
+                          cantidad: item.cantidad,
+                        })),
+                    }}
+                    role={activeProcessConfig.role}
+                    onSaved={handleMontajeSaved}
+                  />
+                ) : (
+                  <Card className="border border-default-200 bg-default-50" radius="sm" shadow="none">
+                    <CardBody className="py-2 px-3 text-xs text-default-600">
+                      El seguimiento operativo y las mutaciones de proceso están deshabilitados en modo solo lectura.
+                    </CardBody>
+                  </Card>
+                )}
               </CardBody>
             </Card>
           ) : null}
 
           {/* Plotter reposition wizard - opens when quantity mismatch detected */}
-          <PlotterRepoWizard
-            designName={selectedMontajeTicket?.detalle ?? ""}
-            expectedQty={plotterRepoQty.expected}
-            isOpen={plotterRepoOpen}
-            orderCode={selectedMontajeTicket?.pedido ?? ""}
-            producedQty={plotterRepoQty.produced}
-            size={null}
-            onClose={() => setPlotterRepoOpen(false)}
-            onRepoGenerated={(ticketRef) => {
-              setPlotterRepoOpen(false);
-              toast.success(
-                `Ticket de reposición ${ticketRef} generado para Plotter`,
-              );
-            }}
-          />
+          {!isReadOnlyMes ? (
+            <PlotterRepoWizard
+              designName={selectedMontajeTicket?.detalle ?? ""}
+              expectedQty={plotterRepoQty.expected}
+              isOpen={plotterRepoOpen}
+              orderCode={selectedMontajeTicket?.pedido ?? ""}
+              producedQty={plotterRepoQty.produced}
+              size={null}
+              onClose={() => setPlotterRepoOpen(false)}
+              onRepoGenerated={(ticketRef) => {
+                setPlotterRepoOpen(false);
+                toast.success(
+                  `Ticket de reposición ${ticketRef} generado para Plotter`,
+                );
+              }}
+            />
+          ) : null}
 
-          {selectedMontajeTicket && envioConfig ? (
+          {selectedMontajeTicket && envioConfig && !isReadOnlyMes ? (
             <MesEnvioModal
               availableItems={selectedEnvioItems}
+              canApproveDispatch={
+                activeProceso !== "despacho" || dispatchCapabilities.canApprove
+              }
               destinoArea={envioConfig.destinoArea}
               destinoLabel={envioConfig.destinoLabel}
               isOpen={envioModalOpen}

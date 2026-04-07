@@ -1,6 +1,7 @@
 import "dotenv/config";
 
-import { readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { and, eq, inArray } from "drizzle-orm";
@@ -145,6 +146,30 @@ function parseOptions(argv: string[]): CliOptions {
   return options;
 }
 
+function hasSeguimientoSourceFiles(dirPath: string, options: CliOptions) {
+  const requiredFiles = [
+    `${options.base}.orders.json`,
+    `${options.base}.order_items.json`,
+    `${options.base}.packaging.json`,
+    `${options.base}.logs.json`,
+  ];
+
+  return requiredFiles.every((fileName) => existsSync(path.join(dirPath, fileName)));
+}
+
+function resolveInputDir(options: CliOptions) {
+  if (hasSeguimientoSourceFiles(options.dir, options)) {
+    return options.dir;
+  }
+
+  const fallbackDir = "D:/Programación/Vio";
+  if (fallbackDir !== options.dir && hasSeguimientoSourceFiles(fallbackDir, options)) {
+    return fallbackDir;
+  }
+
+  return options.dir;
+}
+
 function normalizeOrderCode(value: string | null | undefined): string {
   const text = String(value ?? "").trim().toUpperCase();
 
@@ -188,7 +213,16 @@ function toDate(value: string | null): Date | null {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const year = parsed.getUTCFullYear();
+  if (year < 2000 || year > 2100) {
+    return null;
+  }
+
+  return parsed;
 }
 
 function safeName(value: string | null): string {
@@ -223,11 +257,12 @@ async function readJsonFile<T>(filePath: string): Promise<T> {
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
+  const sourceDir = resolveInputDir(options);
 
-  const ordersPath = path.join(options.dir, `${options.base}.orders.json`);
-  const orderItemsPath = path.join(options.dir, `${options.base}.order_items.json`);
-  const packagingPath = path.join(options.dir, `${options.base}.packaging.json`);
-  const logsPath = path.join(options.dir, `${options.base}.logs.json`);
+  const ordersPath = path.join(sourceDir, `${options.base}.orders.json`);
+  const orderItemsPath = path.join(sourceDir, `${options.base}.order_items.json`);
+  const packagingPath = path.join(sourceDir, `${options.base}.packaging.json`);
+  const logsPath = path.join(sourceDir, `${options.base}.logs.json`);
 
   const rawOrders = await readJsonFile<RawOrder[]>(ordersPath);
   const rawItems = await readJsonFile<RawOrderItem[]>(orderItemsPath);
@@ -495,7 +530,7 @@ async function main() {
       sourceLegacyOrderItemId: String(row.order_item_id ?? "").trim() || null,
       orderCode: normalizedLogOrderCode || row.order_code,
       designName: row.design_name,
-      size: row.size ?? undefined,
+      size: clampText(row.size, 40),
       quantityOp: Math.max(0, Number(row.quantity_op ?? 0)),
       producedQuantity: Math.max(0, Number(row.produced_quantity ?? 0)),
       startAt: toDate(row.start_at) ?? undefined,
@@ -540,10 +575,11 @@ async function main() {
   };
 
   const reportPath = path.join(
-    options.dir,
+    sourceDir,
     `${options.base}.seguimiento.conciliacion.json`,
   );
 
+  await mkdir(sourceDir, { recursive: true });
   await writeFile(reportPath, JSON.stringify(report, null, 2), "utf-8");
 
   console.log(`mode=${options.dryRun ? "DRY_RUN" : "APPLY"}`);

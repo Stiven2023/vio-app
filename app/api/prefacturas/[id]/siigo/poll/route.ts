@@ -2,6 +2,13 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import { preInvoices as prefacturas } from "@/src/db/erp/schema";
+import {
+  normalizeProtectedRouteError,
+  prefacturaIdRequiredError,
+  prefacturaNotFoundError,
+  siigoInvoiceIdRequiredError,
+  siigoUpstreamError,
+} from "@/src/utils/prefactura-siigo-contract";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 import {
@@ -53,14 +60,17 @@ export async function POST(
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "EDITAR_PEDIDO");
+  const forbidden = normalizeProtectedRouteError(
+    await requirePermission(request, "EDITAR_PEDIDO"),
+    "No tienes permisos para consultar estados SIIGO.",
+  );
 
   if (forbidden) return forbidden;
 
   const prefacturaId = String(params.id ?? "").trim();
 
   if (!prefacturaId) {
-    return Response.json({ error: "ID de prefactura requerido." }, { status: 400 });
+    return prefacturaIdRequiredError();
   }
 
   const [pf] = await db
@@ -75,21 +85,11 @@ export async function POST(
     .limit(1);
 
   if (!pf) {
-    return Response.json(
-      { error: "Prefactura no encontrada." },
-      { status: 404 },
-    );
+    return prefacturaNotFoundError();
   }
 
   if (!pf.siigoInvoiceId) {
-    return Response.json(
-      {
-        error:
-          "Esta prefactura no tiene un ID de factura SIIGO. Envíala primero a SIIGO.",
-        siigoStatus: pf.siigoStatus,
-      },
-      { status: 422 },
-    );
+    return siigoInvoiceIdRequiredError(pf.siigoStatus);
   }
 
   if (pf.siigoStatus === "ACCEPTED" || pf.siigoStatus === "REJECTED") {
@@ -210,6 +210,6 @@ export async function POST(
       })
       .where(eq(prefacturas.id, prefacturaId));
 
-    return Response.json({ error: message }, { status: 502 });
+    return siigoUpstreamError("No fue posible consultar el estado en SIIGO.");
   }
 }
