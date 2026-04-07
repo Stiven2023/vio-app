@@ -2,11 +2,12 @@ import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  accountingEntries,
   orderPayments,
   orders,
   orderStatusHistory,
   prefacturas,
-} from "@/src/db/erp/schema";
+} from "@/src/db/schema";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -148,6 +149,20 @@ export async function POST(
     return acc + toNumber(row.amount);
   }, 0);
 
+  // Fase 3: verificar que exista al menos un asiento POSTED vinculado al pedido
+  const [postedEntry] = await db
+    .select({ id: accountingEntries.id })
+    .from(accountingEntries)
+    .where(
+      and(
+        eq(accountingEntries.status, "POSTED"),
+        sql`${accountingEntries.metadata}->>'orderId' = ${orderId}`,
+      ),
+    )
+    .limit(1);
+
+  const hasPostedEntry = Boolean(postedEntry?.id);
+
   const prefacturaTotal = prefacturaRow
     ? toNumber(prefacturaRow.totalAfterWithholdings ?? prefacturaRow.total)
     : 0;
@@ -175,12 +190,16 @@ export async function POST(
     targetStatus = "APROBACION";
     reason =
       "This prefactura does not require advance payment; order remains in Approval before Scheduling.";
+  } else if (!hasPostedEntry) {
+    targetStatus = "APROBACION";
+    reason =
+      "No posted accounting entry found for this order. Accounting must post an entry before the order can be scheduled.";
   } else if (paidPercent >= 50) {
     targetStatus = "PROGRAMACION";
     reason =
       currentStatus === "APROBACION"
-        ? "Accounting approved the advance and payment is at least 50%; order auto-advances from Approval to Scheduling (Option B)."
-        : "Accounting approved the advance and payment is at least 50%; order is sent to Scheduling.";
+        ? "Accounting approved the advance, a posted entry exists, and payment is at least 50%; order auto-advances from Approval to Scheduling (Option B)."
+        : "Accounting approved the advance, a posted entry exists, and payment is at least 50%; order is sent to Scheduling.";
   } else {
     targetStatus = "APROBACION";
     reason =
@@ -197,6 +216,7 @@ export async function POST(
       paidPercent,
       accountingStatus,
       requiresAdvance,
+      hasPostedEntry,
       prefacturaId: prefacturaRow?.id ?? null,
     });
   }
@@ -211,6 +231,7 @@ export async function POST(
       paidPercent,
       accountingStatus,
       requiresAdvance,
+      hasPostedEntry,
       prefacturaId: prefacturaRow?.id ?? null,
     });
   }
@@ -243,6 +264,7 @@ export async function POST(
         paidPercent,
         accountingStatus,
         requiresAdvance,
+        hasPostedEntry,
         prefacturaId: prefacturaRow?.id ?? null,
       },
     });
@@ -270,6 +292,7 @@ export async function POST(
     paidPercent,
     accountingStatus,
     requiresAdvance,
+    hasPostedEntry,
     prefacturaId: prefacturaRow?.id ?? null,
   });
 }

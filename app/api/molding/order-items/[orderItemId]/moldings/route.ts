@@ -6,8 +6,10 @@ import {
   orderItemMoldings,
   orderItems,
 } from "@/src/db/erp/schema";
+import { jsonError } from "@/src/utils/api-error";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { isMoldingFabricCompatible } from "@/src/utils/molding-fabric-compat";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -129,7 +131,10 @@ export async function POST(
 
   // Verify the order item exists
   const [item] = await db
-    .select({ id: orderItems.id })
+    .select({
+      id: orderItems.id,
+      fabric: orderItems.fabric,
+    })
     .from(orderItems)
     .where(eq(orderItems.id, orderItemId))
     .limit(1);
@@ -192,6 +197,29 @@ export async function POST(
   let templateSnapshot: Record<string, unknown> = {};
 
   if (moldingTemplateId) {
+    const orderItemFabric = String(item.fabric ?? "").trim();
+
+    if (orderItemFabric) {
+      const isCompatible = await isMoldingFabricCompatible({
+        dbOrTx: db,
+        moldingTemplateId,
+        fabricName: orderItemFabric,
+      });
+
+      if (!isCompatible) {
+        return jsonError(
+          422,
+          "MOLDING_FABRIC_NOT_COMPATIBLE",
+          "La tela del diseño no es compatible con la moldería seleccionada.",
+          {
+            fabric: [
+              `La tela '${orderItemFabric}' no es compatible con la moldería seleccionada.`,
+            ],
+          },
+        );
+      }
+    }
+
     const [tmpl] = await db
       .select()
       .from(moldingTemplates)

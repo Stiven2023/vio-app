@@ -33,7 +33,7 @@ export function ProductManagementTabs({
   }, []);
 
   return (
-    <div className="space-y-3 min-w-0 overflow-x-hidden">
+    <div className="space-y-3 min-w-0 overflow-hidden">
       <Tabs
         aria-label="Tipo de catálogo"
         className="w-full"

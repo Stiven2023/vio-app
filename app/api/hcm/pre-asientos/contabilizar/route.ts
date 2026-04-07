@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
   const forbidden = await requirePermission(
     request,
-    "CREAR_PROVISIONES_NOMINA",
+    "CONTABILIZAR_PRE_ASIENTOS_HCM",
   );
 
   if (forbidden) return jsonForbidden();

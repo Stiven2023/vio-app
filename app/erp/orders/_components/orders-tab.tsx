@@ -360,7 +360,7 @@ export function OrdersTab({
       </div>
 
       {loading ? (
-        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
+        <div className="w-full overflow-hidden rounded-medium border border-default-200">
           <TableSkeleton
             removeWrapper
             ariaLabel={copy.tableAriaLabel}
@@ -368,13 +368,14 @@ export function OrdersTab({
           />
         </div>
       ) : (
-        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
-          <Table
-            className="w-full table-fixed"
-            classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
-            removeWrapper
-            aria-label={copy.tableAriaLabel}
-          >
+        <div className="w-full overflow-hidden rounded-medium border border-default-200">
+          <div className="overflow-hidden w-full">
+            <Table
+              className="w-full"
+              classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none", base: "overflow-visible", table: "overflow-visible w-full" }}
+              removeWrapper
+              aria-label={copy.tableAriaLabel}
+            >
             <TableHeader>
               {copy.tableHeaders.map((header) => (
                 <TableColumn key={header}>{header}</TableColumn>
@@ -549,6 +550,7 @@ export function OrdersTab({
               )}
             </TableBody>
           </Table>
+            </div>
         </div>
       )}
 

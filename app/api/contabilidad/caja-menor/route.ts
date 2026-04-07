@@ -7,9 +7,16 @@ import {
   pettyCashTransactions,
 } from "@/src/db/erp/schema";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import {
+  isAccountingConfigurationError,
+  postPettyCashTransactionEntry,
+} from "@/src/utils/accounting-entries";
+import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import { jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
+import { z } from "zod";
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, {
@@ -164,50 +171,51 @@ export async function POST(request: Request) {
 
   if (forbidden) return forbidden;
 
+  const pettyCashPostSchema = z.object({
+    fundId: z.string().uuid("fundId debe ser un UUID válido."),
+    transactionDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe tener formato YYYY-MM-DD."),
+    transactionType: z.enum(["EXPENSE", "REPLENISHMENT", "OPENING", "ADJUSTMENT"], {
+      error: "Tipo de transacción inválido. Use EXPENSE, REPLENISHMENT, OPENING o ADJUSTMENT.",
+    }),
+    category: z.string().max(100).optional().nullable(),
+    description: z.string().min(1, "La descripción es obligatoria."),
+    amount: z
+      .number({ error: "El monto debe ser un número." })
+      .positive("El monto debe ser mayor a cero."),
+    referenceCode: z.string().max(120).optional().nullable(),
+    notes: z.string().optional().nullable(),
+  });
+
+  let body: unknown;
+
   try {
-    const body = await request.json();
-    const {
-      fundId,
-      transactionDate,
-      transactionType,
-      category,
-      description,
-      amount,
-      referenceCode,
-      notes,
-    } = body;
+    body = await request.json();
+  } catch {
+    return jsonError(400, "INVALID_JSON", "El cuerpo de la solicitud no es JSON válido.");
+  }
 
-    if (
-      !fundId ||
-      !transactionDate ||
-      !transactionType ||
-      !description ||
-      !amount
-    ) {
-      return Response.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
-    }
+  const parsed = pettyCashPostSchema.safeParse(body);
 
-    const validTypes = ["EXPENSE", "REPLENISHMENT", "OPENING", "ADJUSTMENT"];
+  if (!parsed.success) {
+    return zodFirstErrorEnvelope(parsed.error, "Los datos de la transacción son inválidos.");
+  }
 
-    if (!validTypes.includes(transactionType)) {
-      return Response.json(
-        { error: "Invalid transaction type" },
-        { status: 400 },
-      );
-    }
+  const {
+    fundId,
+    transactionDate,
+    transactionType,
+    category,
+    description,
+    amount,
+    referenceCode,
+    notes,
+  } = parsed.data;
 
-    const numAmount = parseFloat(amount);
+  const employeeId = getEmployeeIdFromRequest(request);
 
-    if (isNaN(numAmount) || numAmount <= 0) {
-      return Response.json(
-        { error: "Amount must be positive" },
-        { status: 400 },
-      );
-    }
-
+  try {
     const [fund] = await db
       .select()
       .from(pettyCashFunds)
@@ -217,25 +225,23 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (!fund) {
-      return Response.json(
-        { error: "Fund not found or inactive" },
-        { status: 404 },
-      );
+      return jsonError(404, "NOT_FOUND", "Caja menor no encontrada o inactiva.", {
+        fundId: ["El fondo de caja menor no existe o está inactivo."],
+      });
     }
 
     const currentBalance = parseFloat(fund.currentBalance ?? "0");
 
-    if (transactionType === "EXPENSE" && numAmount > currentBalance) {
-      return Response.json(
-        { error: "Insufficient balance in petty cash fund" },
-        { status: 400 },
-      );
+    if (transactionType === "EXPENSE" && amount > currentBalance) {
+      return jsonError(409, "INSUFFICIENT_PETTY_CASH_BALANCE", "Saldo insuficiente en la caja menor.", {
+        amount: [`El saldo disponible es ${currentBalance}; la transacción requiere ${amount}.`],
+      });
     }
 
     const newBalance =
       transactionType === "EXPENSE"
-        ? currentBalance - numAmount
-        : currentBalance + numAmount;
+        ? currentBalance - amount
+        : currentBalance + amount;
 
     const lastTx = await db
       .select({ transactionCode: pettyCashTransactions.transactionCode })
@@ -250,11 +256,10 @@ export async function POST(request: Request) {
 
       if (match) nextNum = parseInt(match[1], 10) + 1;
     }
-    // Append a timestamp suffix to reduce (but not eliminate) race-condition collisions;
-    // the unique constraint on transactionCode provides the definitive guard.
+
     const transactionCode = `CM-${String(nextNum).padStart(6, "0")}-${Date.now().toString(36).toUpperCase()}`;
 
-    const [newTx] = await db.transaction(async (tx) => {
+    const newTx = await db.transaction(async (tx) => {
       const [transaction] = await tx
         .insert(pettyCashTransactions)
         .values({
@@ -262,13 +267,14 @@ export async function POST(request: Request) {
           fundId,
           transactionDate,
           transactionType,
-          category: category || null,
+          category: category ?? null,
           description,
-          amount: String(numAmount),
+          amount: String(amount),
           balanceBefore: String(currentBalance),
           balanceAfter: String(newBalance),
-          referenceCode: referenceCode || null,
-          notes: notes || null,
+          referenceCode: referenceCode ?? null,
+          notes: notes ?? null,
+          createdBy: employeeId,
         })
         .returning();
 
@@ -277,15 +283,41 @@ export async function POST(request: Request) {
         .set({ currentBalance: String(newBalance), updatedAt: new Date() })
         .where(eq(pettyCashFunds.id, fundId));
 
-      return [transaction];
+      // Solo se generan asientos para EXPENSE, REPLENISHMENT y ADJUSTMENT
+      if (transactionType !== "OPENING") {
+        await postPettyCashTransactionEntry(
+          tx,
+          {
+            transactionId: transaction.id,
+            transactionCode,
+            fundId,
+            transactionDate,
+            transactionType,
+            amount,
+            description,
+          },
+          employeeId,
+        );
+      }
+
+      return transaction;
     });
 
     return Response.json(newTx, { status: 201 });
   } catch (error) {
+    if (isAccountingConfigurationError(error)) {
+      return jsonError(
+        409,
+        "ACCOUNTING_CONFIGURATION_MISSING",
+        "Falta configuración contable para registrar la transacción de caja menor.",
+        { accounting: ["Configura las cuentas contables antes de registrar movimientos de caja menor."] },
+      );
+    }
+
     const dbError = dbErrorResponse(error);
 
     if (dbError) return dbError;
 
-    return Response.json({ error: "Internal server error" }, { status: 500 });
+    return jsonError(500, "INTERNAL_ERROR", "No se pudo registrar la transacción de caja menor.");
   }
 }

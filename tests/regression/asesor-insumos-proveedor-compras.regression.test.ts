@@ -138,6 +138,7 @@ test("asesor — múltiples pedidos del mismo cliente sin anticipo solo aparecen
 
 test("asesor — envío de insumos VIOMAR→INTEGRACION con mensajero es válido", () => {
   const payload = {
+    orderId: "order-vn-014229",
     origenArea: "VIOMAR",
     destinoArea: "INTEGRACION",
     transporteTipo: "MENSAJERO",
@@ -152,6 +153,7 @@ test("asesor — envío de insumos VIOMAR→INTEGRACION con mensajero es válido
 
 test("asesor — envío con LINEA_TERCERO requiere campo empresaTercero (proveedor de transporte)", () => {
   const payload = {
+    orderId: "order-vn-014229",
     origenArea: "VIOMAR",
     destinoArea: "INTEGRACION",
     transporteTipo: "LINEA_TERCERO",
@@ -169,6 +171,7 @@ test("asesor — envío con LINEA_TERCERO requiere campo empresaTercero (proveed
 
 test("asesor — envío con LINEA_TERCERO y empresaTercero presente es válido", () => {
   const payload = {
+    orderId: "order-vn-014229",
     origenArea: "VIOMAR",
     destinoArea: "INTEGRACION",
     transporteTipo: "LINEA_TERCERO",
@@ -181,6 +184,7 @@ test("asesor — envío con LINEA_TERCERO y empresaTercero presente es válido",
 
 test("asesor — envío con segunda parada requiere tipo y destino de la segunda parada", () => {
   const payload = {
+    orderId: "order-vn-014229",
     origenArea: "VIOMAR",
     destinoArea: "CONFECCION_EXTERNA",
     transporteTipo: "CONDUCTOR_PROPIO",
@@ -194,6 +198,7 @@ test("asesor — envío con segunda parada requiere tipo y destino de la segunda
 
 test("asesor — no se puede enviar el mismo ítem dos veces en el mismo envío (IDs duplicados)", () => {
   const payload = {
+    orderId: "order-vn-014229",
     origenArea: "VIOMAR",
     destinoArea: "CONFECCION_EXTERNA",
     transporteTipo: "MENSAJERO",

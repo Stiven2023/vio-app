@@ -31,12 +31,12 @@ export default async function ClientsPage() {
   const canChangeLegalStatus = perms.CAMBIAR_ESTADO_JURIDICO_CLIENTE;
 
   return (
-    <div className="py-6">
+    <div className="py-6 overflow-hidden">
       <h1 className="text-2xl font-bold">Clients</h1>
       <p className="text-default-600 mt-1">
         View and manage client information.
       </p>
-      <div className="mt-6">
+      <div className="mt-6 overflow-hidden">
         <ClientsTab
           canChangeLegalStatus={canChangeLegalStatus}
           canCreate={canCreate}

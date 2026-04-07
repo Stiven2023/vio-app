@@ -49,6 +49,7 @@
     "db:seed:core": "tsx src/db/seed.ts",
     "db:seed:test": "tsx src/db/seed-test.ts",
     "db:seed:molding": "tsx src/db/seed-molding-templates.ts",
+    "db:seed:fabrics": "tsx src/db/seed-fabrics.ts",
 
     "db:historical:profile:xlsx": "tsx scripts/profile-historical-workbook.ts",
     "db:historical:normalize:despacho:dry": "tsx scripts/normalize-despacho-workbook.ts --dry-run",

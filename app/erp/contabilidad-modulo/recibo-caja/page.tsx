@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ReciboCajaTab } from "./_components/recibo-caja-tab";
+import { BackToAccountingButton } from "../_components/back-to-accounting-button";
 
 import { checkPermissions } from "@/src/utils/permission-middleware";
 
@@ -26,6 +27,9 @@ export default async function ReciboCajaPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
+      <div className="mb-4">
+        <BackToAccountingButton />
+      </div>
       <h1 className="text-2xl font-bold">Cash Receipts</h1>
       <p className="mt-1 text-default-600">
         Register, confirm and void cash receipts applied to open pre-invoices.

@@ -29,12 +29,12 @@ export default async function CatalogPage() {
   const canDeleteItem = perms.ELIMINAR_ITEM_INVENTARIO;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 overflow-hidden">
       <h1 className="text-2xl font-bold">Catalog</h1>
       <p className="text-default-600 mt-1">
         Manage products, additions and categories.
       </p>
-      <div className="mt-6">
+      <div className="mt-6 overflow-hidden">
         <CatalogTabs
           canCreateItem={canCreateItem}
           canDeleteItem={canDeleteItem}

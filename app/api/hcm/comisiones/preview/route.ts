@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "VER_PROVISIONES_NOMINA");
+  const forbidden = await requirePermission(request, "VER_COMISIONES_HCM");
 
   if (forbidden) return forbidden;
 

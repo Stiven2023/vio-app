@@ -1,7 +1,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 
 import { iamDb } from "@/src/db";
-import { permissions, rolePermissions, roles, users } from "@/src/db/iam/schema";
+import {
+  permissions,
+  rolePermissions,
+  roles,
+  users,
+} from "@/src/db/iam/schema";
 import {
   getRoleFromRequest,
   getUserIdFromRequest,
@@ -51,6 +56,12 @@ const PERMISSION_ALIASES: Record<string, string[]> = {
 
   VER_ESTADO_JURIDICO_EMPAQUE: ["VER_EMPAQUE", "MARCAR_EMPAQUE"],
   CAMBIAR_ESTADO_JURIDICO_EMPAQUE: ["EDITAR_EMPAQUE", "MARCAR_EMPAQUE"],
+
+  // HCM dedicated permissions with compatibility fallback
+  VER_PORTAL_HCM_EMPLEADO: ["VER_EMPLEADO"],
+  VER_COMISIONES_HCM: ["VER_PROVISIONES_NOMINA"],
+  APROBAR_HORAS_EXTRAS_HCM: ["APROBAR_PERMISO_EMPLEADO"],
+  CONTABILIZAR_PRE_ASIENTOS_HCM: ["CREAR_PROVISIONES_NOMINA"],
 };
 
 async function isUserActive(userId: string | null): Promise<boolean> {

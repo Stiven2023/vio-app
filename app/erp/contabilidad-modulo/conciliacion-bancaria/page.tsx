@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { BankReconciliationTab } from "./_components/bank-reconciliation-tab";
+import { BackToAccountingButton } from "../_components/back-to-accounting-button";
 
 import { checkPermissions } from "@/src/utils/permission-middleware";
 import {
@@ -34,6 +35,9 @@ export default async function BankReconciliationPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
+      <div className="mb-4">
+        <BackToAccountingButton />
+      </div>
       <h1 className="text-2xl font-bold">
         {isEs ? "Conciliación bancaria" : "Bank Reconciliation"}
       </h1>

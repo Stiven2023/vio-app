@@ -1,9 +1,17 @@
-import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
-import { employees, moldingTemplates } from "@/src/db/erp/schema";
+import {
+  employees,
+  fabrics,
+  moldingTemplateFabrics,
+  moldingTemplates,
+} from "@/src/db/erp/schema";
+import { jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { listTemplateCompatibleFabrics } from "@/src/utils/molding-fabric-compat";
+import { moldingTemplateFabricUpsertSchema } from "@/src/utils/molding-fabrics-contract";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
@@ -77,9 +85,11 @@ export async function GET(request: Request) {
 
     if (response) return response;
 
-    return new Response("Could not retrieve molding templates", {
-      status: 500,
-    });
+    return jsonError(
+      500,
+      "MOLDING_TEMPLATES_FETCH_FAILED",
+      "No se pudieron consultar las molderias.",
+    );
   }
 }
 
@@ -137,6 +147,8 @@ type CreateMoldingTemplateBody = {
   invisibleZipperColor?: unknown;
   observations?: unknown;
   compatibleFabrics?: unknown;
+  fabricIds?: unknown;
+  fabricLinks?: unknown;
 };
 
 function parseStr(v: unknown, maxLen = 255): string | null {
@@ -222,7 +234,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as CreateMoldingTemplateBody;
   } catch {
-    return new Response("Invalid JSON body", { status: 400 });
+    return jsonError(400, "INVALID_JSON", "JSON invalido.");
   }
 
   const version = parseIntField(body.version) ?? 1;
@@ -245,80 +257,192 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (existing.length > 0) {
-    return new Response(
-      `Molding code '${moldingCode}' version ${version} already exists`,
-      { status: 409 },
+    return jsonError(
+      409,
+      "MOLDING_TEMPLATE_CODE_CONFLICT",
+      `La molderia '${moldingCode}' version ${version} ya existe.`,
+      {
+        moldingCode: ["El codigo de molderia ya existe para esa version."],
+      },
     );
   }
 
   try {
-    const [created] = await db
-      .insert(moldingTemplates)
-      .values({
-        moldingCode,
-        version,
-        garmentType: parseStr(body.garmentType, 80),
-        garmentSubtype: parseStr(body.garmentSubtype, 80),
-        designDetail: parseStr(body.designDetail),
-        fabric: parseStr(body.fabric, 100),
-        color: parseStr(body.color, 100),
-        gender: parseStr(body.gender, 50),
-        imageUrl: parseStr(body.imageUrl, 2000),
-        clothingImageOneUrl: parseStr(body.clothingImageOneUrl, 2000),
-        clothingImageTwoUrl: parseStr(body.clothingImageTwoUrl, 2000),
-        logoImageUrl: parseStr(body.logoImageUrl, 2000),
-        process: parseStr(body.process, 100),
-        estimatedLeadDays: parseIntField(body.estimatedLeadDays),
-        manufacturingId: parseStr(body.manufacturingId, 100),
-        screenPrint: parseBool(body.screenPrint),
-        embroidery: parseBool(body.embroidery),
-        buttonhole: parseBool(body.buttonhole),
-        snap: parseBool(body.snap),
-        tag: parseBool(body.tag),
-        flag: parseBool(body.flag),
-        neckType: parseStr(body.neckType, 100),
-        sesgoType: parseStr(body.sesgoType, 80),
-        sesgoColor: parseStr(body.sesgoColor, 80),
-        hiladillaColor: parseStr(body.hiladillaColor, 80),
-        sleeveType: parseStr(body.sleeveType, 80),
-        cuffType: parseStr(body.cuffType, 80),
-        cuffMaterial: parseStr(body.cuffMaterial, 80),
-        zipperLocation: parseStr(body.zipperLocation, 80),
-        zipperColor: parseStr(body.zipperColor, 80),
-        zipperSizeCm: parseDecimalField(body.zipperSizeCm),
-        cordColor: parseStr(body.cordColor, 80),
-        hasElastic: parseBool(body.hasElastic),
-        liningType: parseStr(body.liningType, 80),
-        liningColor: parseStr(body.liningColor, 80),
-        hoodType: parseStr(body.hoodType, 80),
-        hasInnerLining: parseBool(body.hasInnerLining),
-        hasPocket: parseBool(body.hasPocket),
-        pocketZipperColor: parseStr(body.pocketZipperColor, 80),
-        hasLateralMesh: parseBool(body.hasLateralMesh),
-        lateralMeshColor: parseStr(body.lateralMeshColor, 80),
-        hasFajon: parseBool(body.hasFajon),
-        hasTanca: parseBool(body.hasTanca),
-        hasProtection: parseBool(body.hasProtection),
-        buttonType: parseStr(body.buttonType, 80),
-        buttonholeType: parseStr(body.buttonholeType, 80),
-        perillaColor: parseStr(body.perillaColor, 80),
-        collarType: parseStr(body.collarType, 80),
-        fusioningNotes: parseStr(body.fusioningNotes, 2000),
-        hasEntretela: parseBool(body.hasEntretela),
-        invisibleZipperColor: parseStr(body.invisibleZipperColor, 80),
-        observations: parseStr(body.observations, 2000),
-        compatibleFabrics: parseStr(body.compatibleFabrics, 2000),
-        createdBy: employeeId ?? undefined,
-        isActive: true,
-      })
-      .returning();
+    const upsertInput =
+      body.fabricIds !== undefined || body.fabricLinks !== undefined
+        ? {
+            fabricIds: Array.isArray(body.fabricIds) ? body.fabricIds : undefined,
+            fabricLinks: Array.isArray(body.fabricLinks) ? body.fabricLinks : undefined,
+          }
+        : null;
+
+    const parsedLinks = upsertInput
+      ? moldingTemplateFabricUpsertSchema.safeParse(upsertInput)
+      : null;
+
+    if (parsedLinks && !parsedLinks.success) {
+      return zodFirstErrorEnvelope(
+        parsedLinks.error,
+        "Compatibilidades de telas invalidas.",
+      );
+    }
+
+    const created = await db.transaction(async (tx) => {
+      const templateValues: typeof moldingTemplates.$inferInsert = {
+          moldingCode,
+          version,
+          garmentType: parseStr(body.garmentType, 80),
+          garmentSubtype: parseStr(body.garmentSubtype, 80),
+          designDetail: parseStr(body.designDetail),
+          fabric: parseStr(body.fabric, 100),
+          color: parseStr(body.color, 100),
+          gender: parseStr(body.gender, 50),
+          imageUrl: parseStr(body.imageUrl, 2000),
+          clothingImageOneUrl: parseStr(body.clothingImageOneUrl, 2000),
+          clothingImageTwoUrl: parseStr(body.clothingImageTwoUrl, 2000),
+          logoImageUrl: parseStr(body.logoImageUrl, 2000),
+          process: parseStr(body.process, 100),
+          estimatedLeadDays: parseIntField(body.estimatedLeadDays),
+          manufacturingId: parseStr(body.manufacturingId, 100),
+          screenPrint: parseBool(body.screenPrint),
+          embroidery: parseBool(body.embroidery),
+          buttonhole: parseBool(body.buttonhole),
+          snap: parseBool(body.snap),
+          tag: parseBool(body.tag),
+          flag: parseBool(body.flag),
+          neckType: parseStr(body.neckType, 100),
+          sesgoType: parseStr(body.sesgoType, 80),
+          sesgoColor: parseStr(body.sesgoColor, 80),
+          hiladillaColor: parseStr(body.hiladillaColor, 80),
+          sleeveType: parseStr(body.sleeveType, 80),
+          cuffType: parseStr(body.cuffType, 80),
+          cuffMaterial: parseStr(body.cuffMaterial, 80),
+          zipperLocation: parseStr(body.zipperLocation, 80),
+          zipperColor: parseStr(body.zipperColor, 80),
+          zipperSizeCm: parseDecimalField(body.zipperSizeCm),
+          cordColor: parseStr(body.cordColor, 80),
+          hasElastic: parseBool(body.hasElastic),
+          liningType: parseStr(body.liningType, 80),
+          liningColor: parseStr(body.liningColor, 80),
+          hoodType: parseStr(body.hoodType, 80),
+          hasInnerLining: parseBool(body.hasInnerLining),
+          hasPocket: parseBool(body.hasPocket),
+          pocketZipperColor: parseStr(body.pocketZipperColor, 80),
+          hasLateralMesh: parseBool(body.hasLateralMesh),
+          lateralMeshColor: parseStr(body.lateralMeshColor, 80),
+          hasFajon: parseBool(body.hasFajon),
+          hasTanca: parseBool(body.hasTanca),
+          hasProtection: parseBool(body.hasProtection),
+          buttonType: parseStr(body.buttonType, 80),
+          buttonholeType: parseStr(body.buttonholeType, 80),
+          perillaColor: parseStr(body.perillaColor, 80),
+          collarType: parseStr(body.collarType, 80),
+          fusioningNotes: parseStr(body.fusioningNotes, 2000),
+          hasEntretela: parseBool(body.hasEntretela),
+          invisibleZipperColor: parseStr(body.invisibleZipperColor, 80),
+          observations: parseStr(body.observations, 2000),
+          compatibleFabrics: parseStr(body.compatibleFabrics, 2000),
+          createdBy: employeeId ?? undefined,
+          isActive: true,
+      };
+
+      let normalizedLinkRows: Array<{
+        fabricId: string;
+        sortOrder: number;
+        note: string | null;
+      }> = [];
+
+      if (parsedLinks?.success) {
+        normalizedLinkRows = parsedLinks.data.fabricLinks
+          ? parsedLinks.data.fabricLinks.map((row, index) => ({
+              fabricId: row.fabricId,
+              sortOrder: row.sortOrder ?? index + 1,
+              note: row.note ?? null,
+            }))
+          : (parsedLinks.data.fabricIds ?? []).map((fabricId, index) => ({
+              fabricId,
+              sortOrder: index + 1,
+              note: null,
+            }));
+
+        const fabricIds = Array.from(
+          new Set(normalizedLinkRows.map((row) => row.fabricId)),
+        );
+
+        if (fabricIds.length > 0) {
+          const availableFabrics = await tx
+            .select({ id: fabrics.id, name: fabrics.name })
+            .from(fabrics)
+            .where(inArray(fabrics.id, fabricIds));
+
+          const availableSet = new Set(availableFabrics.map((row) => row.id));
+          const invalidIds = fabricIds.filter(
+            (fabricId) => !availableSet.has(fabricId),
+          );
+
+          if (invalidIds.length > 0) {
+            throw new Error(`INVALID_FABRIC_IDS:${invalidIds.join(",")}`);
+          }
+
+          const nameById = new Map(
+            availableFabrics.map((row) => [row.id, String(row.name)]),
+          );
+          const snapshot = normalizedLinkRows
+            .map((row) => nameById.get(row.fabricId) ?? "")
+            .filter(Boolean)
+            .join(", ");
+
+          if (snapshot) {
+            templateValues.compatibleFabrics = snapshot;
+          }
+        }
+      }
+
+      const [createdTemplate] = await tx
+        .insert(moldingTemplates)
+        .values(templateValues)
+        .returning();
+
+      if (normalizedLinkRows.length > 0) {
+        await tx.insert(moldingTemplateFabrics).values(
+          normalizedLinkRows.map((row) => ({
+            moldingTemplateId: createdTemplate.id,
+            fabricId: row.fabricId,
+            sortOrder: row.sortOrder,
+            note: row.note,
+          })),
+        );
+      }
+
+      const links = await listTemplateCompatibleFabrics({
+        dbOrTx: tx,
+        moldingTemplateId: createdTemplate.id,
+      });
+
+      return { ...createdTemplate, fabrics: links };
+    });
 
     return Response.json(created, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("INVALID_FABRIC_IDS:")) {
+      return jsonError(
+        422,
+        "FABRIC_NOT_FOUND",
+        "Una o mas telas no existen en el catalogo.",
+        {
+          fabricIds: [error.message.replace("INVALID_FABRIC_IDS:", "")],
+        },
+      );
+    }
+
     const response = dbErrorResponse(error);
 
     if (response) return response;
 
-    return new Response("Could not create molding template", { status: 500 });
+    return jsonError(
+      500,
+      "MOLDING_TEMPLATE_CREATE_FAILED",
+      "No se pudo crear la molderia.",
+    );
   }
 }

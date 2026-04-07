@@ -110,6 +110,15 @@ export async function GET(request: Request) {
         messengerType: messengers.messengerType,
         vehicleType: messengers.vehicleType,
         vehiclePlate: messengers.vehiclePlate,
+        drivingLicenseUrl: messengers.drivingLicenseUrl,
+        drivingLicenseExpiresAt: messengers.drivingLicenseExpiresAt,
+        soatDocumentUrl: messengers.soatDocumentUrl,
+        soatDocumentExpiresAt: messengers.soatDocumentExpiresAt,
+        tecnomecanicaDocumentUrl: messengers.tecnomecanicaDocumentUrl,
+        tecnomecanicaDocumentExpiresAt: messengers.tecnomecanicaDocumentExpiresAt,
+        vehicleLicenseDocumentUrl: messengers.vehicleLicenseDocumentUrl,
+        vehicleLicenseDocumentExpiresAt:
+          messengers.vehicleLicenseDocumentExpiresAt,
         email: messengers.email,
         mobile: messengers.mobile,
         isActive: messengers.isActive,
@@ -193,6 +202,16 @@ export async function POST(request: Request) {
         messengerType: payload.messengerType,
         vehicleType: payload.vehicleType ?? null,
         vehiclePlate: (payload.vehiclePlate ?? "").toUpperCase() || null,
+        drivingLicenseUrl: payload.drivingLicenseUrl ?? null,
+        drivingLicenseExpiresAt: payload.drivingLicenseExpiresAt ?? null,
+        soatDocumentUrl: payload.soatDocumentUrl ?? null,
+        soatDocumentExpiresAt: payload.soatDocumentExpiresAt ?? null,
+        tecnomecanicaDocumentUrl: payload.tecnomecanicaDocumentUrl ?? null,
+        tecnomecanicaDocumentExpiresAt:
+          payload.tecnomecanicaDocumentExpiresAt ?? null,
+        vehicleLicenseDocumentUrl: payload.vehicleLicenseDocumentUrl ?? null,
+        vehicleLicenseDocumentExpiresAt:
+          payload.vehicleLicenseDocumentExpiresAt ?? null,
         email: payload.email ?? null,
         mobile: payload.mobile ?? null,
         isActive: payload.isActive,
@@ -268,6 +287,24 @@ export async function PUT(request: Request) {
       patch.vehicleType = payload.vehicleType ?? null;
     if (payload.vehiclePlate !== undefined)
       patch.vehiclePlate = (payload.vehiclePlate ?? "").toUpperCase() || null;
+    if (payload.drivingLicenseUrl !== undefined)
+      patch.drivingLicenseUrl = payload.drivingLicenseUrl ?? null;
+    if (payload.drivingLicenseExpiresAt !== undefined)
+      patch.drivingLicenseExpiresAt = payload.drivingLicenseExpiresAt ?? null;
+    if (payload.soatDocumentUrl !== undefined)
+      patch.soatDocumentUrl = payload.soatDocumentUrl ?? null;
+    if (payload.soatDocumentExpiresAt !== undefined)
+      patch.soatDocumentExpiresAt = payload.soatDocumentExpiresAt ?? null;
+    if (payload.tecnomecanicaDocumentUrl !== undefined)
+      patch.tecnomecanicaDocumentUrl = payload.tecnomecanicaDocumentUrl ?? null;
+    if (payload.tecnomecanicaDocumentExpiresAt !== undefined)
+      patch.tecnomecanicaDocumentExpiresAt =
+        payload.tecnomecanicaDocumentExpiresAt ?? null;
+    if (payload.vehicleLicenseDocumentUrl !== undefined)
+      patch.vehicleLicenseDocumentUrl = payload.vehicleLicenseDocumentUrl ?? null;
+    if (payload.vehicleLicenseDocumentExpiresAt !== undefined)
+      patch.vehicleLicenseDocumentExpiresAt =
+        payload.vehicleLicenseDocumentExpiresAt ?? null;
     if (payload.email !== undefined) patch.email = payload.email ?? null;
     if (payload.mobile !== undefined) patch.mobile = payload.mobile ?? null;
     if (payload.isActive !== undefined) patch.isActive = payload.isActive;

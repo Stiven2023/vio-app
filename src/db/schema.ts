@@ -188,6 +188,8 @@ export {
   mesTransportTypeValues,
   mesEnvioStatusValues,
   mesPaymentStatusValues,
+  FabricCategoryEnum,
+  fabricCategoryValues,
 } from "./enums";
 
 import {
@@ -273,6 +275,7 @@ import {
   mesTransportTypeValues,
   mesEnvioStatusValues,
   mesPaymentStatusValues,
+  fabricCategoryValues,
 } from "./enums";
 
 /* ========================= */
@@ -488,6 +491,10 @@ export const mesPaymentStatusPgEnum = pgEnum(
   "mes_payment_status",
   mesPaymentStatusValues,
 );
+export const fabricCategoryPgEnum = pgEnum(
+  "fabric_category",
+  fabricCategoryValues,
+);
 
 /* Backward compatibility aliases for schema column definitions */
 export const purchaseOrderStatusEnum = purchaseOrderStatusPgEnum;
@@ -555,6 +562,7 @@ export const mesShipmentAreaEnum = mesShipmentAreaPgEnum;
 export const mesTransportTypeEnum = mesTransportTypePgEnum;
 export const mesEnvioStatusEnum = mesEnvioStatusPgEnum;
 export const mesPaymentStatusEnum = mesPaymentStatusPgEnum;
+export const fabricCategoryEnum = fabricCategoryPgEnum;
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -1614,6 +1622,17 @@ export const messengers = pgTable("messengers", {
   // --- DOCUMENTOS ---
   identityDocumentUrl: varchar("identity_document_url", { length: 500 }),
   drivingLicenseUrl: varchar("driving_license_url", { length: 500 }),
+  drivingLicenseExpiresAt: date("driving_license_expires_at"),
+  soatDocumentUrl: varchar("soat_document_url", { length: 500 }),
+  soatDocumentExpiresAt: date("soat_document_expires_at"),
+  tecnomecanicaDocumentUrl: varchar("tecnomecanica_document_url", {
+    length: 500,
+  }),
+  tecnomecanicaDocumentExpiresAt: date("tecnomecanica_document_expires_at"),
+  vehicleLicenseDocumentUrl: varchar("vehicle_license_document_url", {
+    length: 500,
+  }),
+  vehicleLicenseDocumentExpiresAt: date("vehicle_license_document_expires_at"),
   rutDocumentUrl: varchar("rut_document_url", { length: 500 }),
   commerceChamberDocumentUrl: varchar("commerce_chamber_document_url", {
     length: 500,
@@ -2797,6 +2816,26 @@ export const legalStatusRecords = pgTable("legal_status_records", {
 });
 
 /* =========================
+   FABRIC CATALOG
+========================= */
+export const fabrics = pgTable(
+  "fabrics",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 120 }).notNull(),
+    category: fabricCategoryEnum("category").notNull().default("OTRA"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_fabrics_name").on(t.name),
+    index("fabrics_is_active_idx").on(t.isActive),
+    index("fabrics_category_idx").on(t.category),
+  ],
+);
+
+/* =========================
    MOLDING TEMPLATES
    Versioned base catalog for molding patterns
 ========================= */
@@ -2864,6 +2903,33 @@ export const moldingTemplates = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
   (t) => [uniqueIndex("uq_molding_code_version").on(t.moldingCode, t.version)],
+);
+
+/* =========================
+   MOLDING TEMPLATE FABRICS
+   Compatible fabrics per molding template
+========================= */
+export const moldingTemplateFabrics = pgTable(
+  "molding_template_fabrics",
+  {
+    moldingTemplateId: uuid("molding_template_id")
+      .notNull()
+      .references(() => moldingTemplates.id, { onDelete: "cascade" }),
+    fabricId: uuid("fabric_id")
+      .notNull()
+      .references(() => fabrics.id, { onDelete: "cascade" }),
+    sortOrder: integer("sort_order").notNull().default(1),
+    note: varchar("note", { length: 255 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    primaryKey({
+      name: "molding_template_fabrics_pk",
+      columns: [t.moldingTemplateId, t.fabricId],
+    }),
+    index("molding_template_fabrics_template_idx").on(t.moldingTemplateId),
+    index("molding_template_fabrics_fabric_idx").on(t.fabricId),
+  ],
 );
 
 /* =========================

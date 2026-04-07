@@ -13,6 +13,7 @@ import {
   TableCell,
 } from "@heroui/table";
 import { Button } from "@heroui/button";
+import { Pagination } from "@heroui/pagination";
 import { Spinner } from "@heroui/spinner";
 import { Chip } from "@heroui/chip";
 import { BsPlusLg, BsPencilFill, BsTrashFill } from "react-icons/bs";
@@ -68,6 +69,7 @@ export function AdditionsTab({
   const [status, setStatus] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const loadingRef = useRef(false);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const categoryNameById = useMemo(
     () => new Map(categories.map((c) => [c.id, c.name])),
     [categories],
@@ -230,26 +232,13 @@ export function AdditionsTab({
           aria-label="Adiciones"
           bottomContent={
             total > pageSize ? (
-              <div className="flex w-full justify-center gap-2">
-                <Button
-                  isDisabled={page === 1}
-                  size="sm"
-                  variant="flat"
-                  onPress={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Anterior
-                </Button>
-                <span className="flex items-center text-sm">
-                  Página {page} de {Math.ceil(total / pageSize)}
-                </span>
-                <Button
-                  isDisabled={page >= Math.ceil(total / pageSize)}
-                  size="sm"
-                  variant="flat"
-                  onPress={() => setPage((p) => p + 1)}
-                >
-                  Siguiente
-                </Button>
+              <div className="flex w-full justify-center">
+                <Pagination
+                  color="primary"
+                  page={page}
+                  total={totalPages}
+                  onChange={setPage}
+                />
               </div>
             ) : null
           }

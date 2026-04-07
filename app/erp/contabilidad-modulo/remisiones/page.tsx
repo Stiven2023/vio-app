@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { PrefacturasTab } from "@/app/erp/prefacturas/_components/prefacturas-tab";
+import { BackToAccountingButton } from "../_components/back-to-accounting-button";
 import { checkPermissions } from "@/src/utils/permission-middleware";
 
 export default async function RemisionesPage() {
@@ -27,6 +28,9 @@ export default async function RemisionesPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
+      <div className="mb-4">
+        <BackToAccountingButton />
+      </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Remisiones</h1>

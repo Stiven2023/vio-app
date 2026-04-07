@@ -29,8 +29,35 @@ import { Pager } from "@/app/erp/catalog/_components/ui/pager";
 import { usePaginatedApi } from "@/app/erp/catalog/_hooks/use-paginated-api";
 import { apiJson, getErrorMessage } from "@/app/erp/catalog/_lib/api";
 import { ConfirmActionModal } from "@/components/confirm-action-modal";
+import { FileUpload } from "@/components/file-upload";
 
 type MessengerType = "MENSAJERO" | "CONDUCTOR";
+
+const VEHICLE_TYPE_OPTIONS = [
+  "MOTO",
+  "AUTOMOVIL",
+  "CAMIONETA",
+  "FURGON",
+  "CAMION",
+  "BICICLETA",
+  "OTRO",
+] as const;
+
+type VehicleTypeOption = (typeof VEHICLE_TYPE_OPTIONS)[number];
+
+function normalizeVehicleType(value: string | null | undefined): VehicleTypeOption | "" {
+  const normalized = String(value ?? "").trim().toUpperCase();
+
+  if (VEHICLE_TYPE_OPTIONS.includes(normalized as VehicleTypeOption)) {
+    return normalized as VehicleTypeOption;
+  }
+
+  return "";
+}
+
+function normalizeVehiclePlate(value: string): string {
+  return value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+}
 
 type MessengerRow = {
   id: string;
@@ -42,6 +69,14 @@ type MessengerRow = {
   messengerType: string | null;
   vehicleType: string | null;
   vehiclePlate: string | null;
+  drivingLicenseUrl: string | null;
+  drivingLicenseExpiresAt: string | null;
+  soatDocumentUrl: string | null;
+  soatDocumentExpiresAt: string | null;
+  tecnomecanicaDocumentUrl: string | null;
+  tecnomecanicaDocumentExpiresAt: string | null;
+  vehicleLicenseDocumentUrl: string | null;
+  vehicleLicenseDocumentExpiresAt: string | null;
   email: string | null;
   mobile: string | null;
   isActive: boolean | null;
@@ -53,8 +88,16 @@ type FormState = {
   identification: string;
   address: string;
   messengerType: MessengerType;
-  vehicleType: string;
+  vehicleType: VehicleTypeOption | "";
   vehiclePlate: string;
+  drivingLicenseUrl: string;
+  drivingLicenseExpiresAt: string;
+  soatDocumentUrl: string;
+  soatDocumentExpiresAt: string;
+  tecnomecanicaDocumentUrl: string;
+  tecnomecanicaDocumentExpiresAt: string;
+  vehicleLicenseDocumentUrl: string;
+  vehicleLicenseDocumentExpiresAt: string;
   email: string;
   mobile: string;
   isActive: boolean;
@@ -68,6 +111,14 @@ const INITIAL_FORM: FormState = {
   messengerType: "MENSAJERO",
   vehicleType: "",
   vehiclePlate: "",
+  drivingLicenseUrl: "",
+  drivingLicenseExpiresAt: "",
+  soatDocumentUrl: "",
+  soatDocumentExpiresAt: "",
+  tecnomecanicaDocumentUrl: "",
+  tecnomecanicaDocumentExpiresAt: "",
+  vehicleLicenseDocumentUrl: "",
+  vehicleLicenseDocumentExpiresAt: "",
   email: "",
   mobile: "",
   isActive: true,
@@ -136,8 +187,17 @@ export function MessengersCrudTab({
         String(row.messengerType ?? "").toUpperCase() === "CONDUCTOR"
           ? "CONDUCTOR"
           : "MENSAJERO",
-      vehicleType: row.vehicleType ?? "",
+      vehicleType: normalizeVehicleType(row.vehicleType),
       vehiclePlate: row.vehiclePlate ?? "",
+      drivingLicenseUrl: row.drivingLicenseUrl ?? "",
+      drivingLicenseExpiresAt: row.drivingLicenseExpiresAt ?? "",
+      soatDocumentUrl: row.soatDocumentUrl ?? "",
+      soatDocumentExpiresAt: row.soatDocumentExpiresAt ?? "",
+      tecnomecanicaDocumentUrl: row.tecnomecanicaDocumentUrl ?? "",
+      tecnomecanicaDocumentExpiresAt: row.tecnomecanicaDocumentExpiresAt ?? "",
+      vehicleLicenseDocumentUrl: row.vehicleLicenseDocumentUrl ?? "",
+      vehicleLicenseDocumentExpiresAt:
+        row.vehicleLicenseDocumentExpiresAt ?? "",
       email: row.email ?? "",
       mobile: row.mobile ?? "",
       isActive: Boolean(row.isActive),
@@ -158,12 +218,39 @@ export function MessengersCrudTab({
       return;
     }
 
+    const normalizedPlate = normalizeVehiclePlate(form.vehiclePlate);
+
+    if (
+      normalizedPlate &&
+      !/^(?:[A-Z]{3}\d{3}|[A-Z]{3}\d{2}[A-Z])$/.test(normalizedPlate)
+    ) {
+      toast.error("La placa debe tener formato ABC123 o ABC12D.");
+
+      return;
+    }
+
+    if (normalizedPlate && !form.vehicleType) {
+      toast.error("Selecciona tipo de vehículo para la placa registrada.");
+
+      return;
+    }
+
     try {
       setSaving(true);
       const payload = {
         ...form,
-        vehicleType: form.vehicleType.trim() || null,
-        vehiclePlate: form.vehiclePlate.trim() || null,
+        vehicleType: form.vehicleType || null,
+        vehiclePlate: normalizedPlate || null,
+        drivingLicenseUrl: form.drivingLicenseUrl.trim() || null,
+        drivingLicenseExpiresAt: form.drivingLicenseExpiresAt.trim() || null,
+        soatDocumentUrl: form.soatDocumentUrl.trim() || null,
+        soatDocumentExpiresAt: form.soatDocumentExpiresAt.trim() || null,
+        tecnomecanicaDocumentUrl: form.tecnomecanicaDocumentUrl.trim() || null,
+        tecnomecanicaDocumentExpiresAt:
+          form.tecnomecanicaDocumentExpiresAt.trim() || null,
+        vehicleLicenseDocumentUrl: form.vehicleLicenseDocumentUrl.trim() || null,
+        vehicleLicenseDocumentExpiresAt:
+          form.vehicleLicenseDocumentExpiresAt.trim() || null,
         email: form.email.trim() || null,
         mobile: form.mobile.trim() || null,
       };
@@ -315,14 +402,25 @@ export function MessengersCrudTab({
         />
       ) : null}
 
-      <Modal disableAnimation isOpen={modalOpen} onOpenChange={setModalOpen}>
+      <Modal
+        disableAnimation
+        isOpen={modalOpen}
+        scrollBehavior="inside"
+        size="3xl"
+        onOpenChange={setModalOpen}
+      >
         <ModalContent>
           <ModalHeader>
             {editing
               ? `Editar ${title.slice(0, -1)}`
               : `Nuevo ${title.slice(0, -1)}`}
           </ModalHeader>
-          <ModalBody>
+          <ModalBody className="space-y-4 pb-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-default-500">
+                Datos básicos
+              </p>
+            </div>
             <Input
               label="Nombre"
               value={form.name}
@@ -330,7 +428,7 @@ export function MessengersCrudTab({
                 setForm((prev) => ({ ...prev, name: value }))
               }
             />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Select
                 label="Tipo de identificación"
                 selectedKeys={[form.identificationType]}
@@ -364,27 +462,41 @@ export function MessengersCrudTab({
                 setForm((prev) => ({ ...prev, address: value }))
               }
             />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Input
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-default-500">
+                Datos de transporte
+              </p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Select
                 label="Tipo de vehículo"
-                placeholder="Moto, Auto, Camión..."
-                value={form.vehicleType}
-                onValueChange={(value) =>
-                  setForm((prev) => ({ ...prev, vehicleType: value }))
+                placeholder="Selecciona tipo"
+                selectedKeys={form.vehicleType ? [form.vehicleType] : []}
+                onSelectionChange={(keys) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    vehicleType: normalizeVehicleType(String(Array.from(keys)[0] ?? "")),
+                  }))
                 }
-              />
+              >
+                {VEHICLE_TYPE_OPTIONS.map((vehicleType) => (
+                  <SelectItem key={vehicleType}>{vehicleType}</SelectItem>
+                ))}
+              </Select>
               <Input
                 label="Placa"
+                description="Formato: ABC123 o ABC12D"
+                maxLength={6}
                 value={form.vehiclePlate}
                 onValueChange={(value) =>
                   setForm((prev) => ({
                     ...prev,
-                    vehiclePlate: value.toUpperCase(),
+                    vehiclePlate: normalizeVehiclePlate(value),
                   }))
                 }
               />
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Input
                 label="Email"
                 type="email"
@@ -400,6 +512,131 @@ export function MessengersCrudTab({
                   setForm((prev) => ({ ...prev, mobile: value }))
                 }
               />
+            </div>
+            <div className="rounded-medium border border-default-200 p-3">
+              <p className="mb-3 text-sm font-semibold text-default-700">
+                Documentos del transportista y vehículo
+              </p>
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <div className="space-y-2 rounded-medium border border-default-200 p-3">
+                  <FileUpload
+                    acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
+                    label="Licencia de conducción (persona)"
+                    maxSizeMB={10}
+                    uploadFolder="messengers"
+                    value={form.drivingLicenseUrl}
+                    onChange={(url) =>
+                      setForm((prev) => ({ ...prev, drivingLicenseUrl: url }))
+                    }
+                    onClear={() =>
+                      setForm((prev) => ({ ...prev, drivingLicenseUrl: "" }))
+                    }
+                  />
+                  <Input
+                    label="Fecha de vencimiento"
+                    type="date"
+                    value={form.drivingLicenseExpiresAt}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        drivingLicenseExpiresAt: value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 rounded-medium border border-default-200 p-3">
+                  <FileUpload
+                    acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
+                    label="Licencia del vehículo"
+                    maxSizeMB={10}
+                    uploadFolder="messengers"
+                    value={form.vehicleLicenseDocumentUrl}
+                    onChange={(url) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        vehicleLicenseDocumentUrl: url,
+                      }))
+                    }
+                    onClear={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        vehicleLicenseDocumentUrl: "",
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Fecha de vencimiento"
+                    type="date"
+                    value={form.vehicleLicenseDocumentExpiresAt}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        vehicleLicenseDocumentExpiresAt: value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 rounded-medium border border-default-200 p-3">
+                  <FileUpload
+                    acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
+                    label="Certificado SOAT"
+                    maxSizeMB={10}
+                    uploadFolder="messengers"
+                    value={form.soatDocumentUrl}
+                    onChange={(url) =>
+                      setForm((prev) => ({ ...prev, soatDocumentUrl: url }))
+                    }
+                    onClear={() =>
+                      setForm((prev) => ({ ...prev, soatDocumentUrl: "" }))
+                    }
+                  />
+                  <Input
+                    label="Fecha de vencimiento"
+                    type="date"
+                    value={form.soatDocumentExpiresAt}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({ ...prev, soatDocumentExpiresAt: value }))
+                    }
+                  />
+                </div>
+                <div className="space-y-2 rounded-medium border border-default-200 p-3">
+                  <FileUpload
+                    acceptedFileTypes=".pdf,.jpg,.jpeg,.png"
+                    label="Certificado tecnomecánica"
+                    maxSizeMB={10}
+                    uploadFolder="messengers"
+                    value={form.tecnomecanicaDocumentUrl}
+                    onChange={(url) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        tecnomecanicaDocumentUrl: url,
+                      }))
+                    }
+                    onClear={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        tecnomecanicaDocumentUrl: "",
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Fecha de vencimiento"
+                    type="date"
+                    value={form.tecnomecanicaDocumentExpiresAt}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        tecnomecanicaDocumentExpiresAt: value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-default-500">
+                Estado
+              </p>
             </div>
             <Select
               label="Estado"

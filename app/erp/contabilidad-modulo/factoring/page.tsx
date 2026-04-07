@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { FactoringTab } from "./_components/factoring-tab";
+import { BackToAccountingButton } from "../_components/back-to-accounting-button";
 
 import { checkPermissions } from "@/src/utils/permission-middleware";
 
@@ -25,6 +26,9 @@ export default async function FactoringPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
+      <div className="mb-4">
+        <BackToAccountingButton />
+      </div>
       <h1 className="text-2xl font-bold">Factoring</h1>
       <p className="mt-1 text-default-600">
         Manage pre-invoice factoring assignments and final collection status.

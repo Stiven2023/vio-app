@@ -11,6 +11,7 @@ import {
   additions,
   employees,
   inventoryItems,
+  orderItemMoldings,
   orderItemAdditions,
   orderItemPositions,
   orderItemSpecialRequirements,
@@ -27,6 +28,7 @@ import {
   products,
   quotations,
 } from "@/src/db/erp/schema";
+import { jsonError } from "@/src/utils/api-error";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -41,6 +43,7 @@ import { shouldRouteDesignUpdateToApproval } from "@/src/utils/design-workflow";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
 import { getItemLeadDays } from "@/src/utils/quotation-delivery";
 import { ensurePurchaseRequirementsForOrder } from "@/src/utils/purchase-requirements";
+import { isMoldingFabricCompatible } from "@/src/utils/molding-fabric-compat";
 
 const orderItemStatuses = new Set<string>(ORDER_ITEM_STATUS_VALUES);
 
@@ -659,6 +662,7 @@ export async function PUT(
       unitPrice: orderItems.unitPrice,
       hasAdditions: orderItems.hasAdditions,
       additionEvidence: orderItems.additionEvidence,
+      fabric: orderItems.fabric,
       designType: orderItems.designType,
       productionTechnique: orderItems.productionTechnique,
       screenPrintType: orderItems.screenPrintType,
@@ -1073,6 +1077,50 @@ export async function PUT(
       body.productionTechnique,
     ) as any;
   }
+
+  const effectiveFabric =
+    patch.fabric !== undefined
+      ? toNullableString(patch.fabric)
+      : toNullableString(existing.fabric);
+
+  if (effectiveFabric) {
+    const assignedTemplates = await db
+      .select({
+        moldingTemplateId: orderItemMoldings.moldingTemplateId,
+      })
+      .from(orderItemMoldings)
+      .where(eq(orderItemMoldings.orderItemId, orderItemId));
+
+    const templateIds = Array.from(
+      new Set(
+        assignedTemplates
+          .map((row) => String(row.moldingTemplateId ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    for (const templateId of templateIds) {
+      const isCompatible = await isMoldingFabricCompatible({
+        dbOrTx: db,
+        moldingTemplateId: templateId,
+        fabricName: effectiveFabric,
+      });
+
+      if (!isCompatible) {
+        return jsonError(
+          422,
+          "MOLDING_FABRIC_NOT_COMPATIBLE",
+          "La tela del diseño no es compatible con las molderías asignadas.",
+          {
+            fabric: [
+              `La tela '${effectiveFabric}' no es compatible con al menos una moldería asignada.`,
+            ],
+          },
+        );
+      }
+    }
+  }
+
   const effectiveHasAdditions =
     patch.hasAdditions !== undefined
       ? Boolean(patch.hasAdditions)

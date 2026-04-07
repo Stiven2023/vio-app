@@ -54,7 +54,10 @@ export async function GET(
   const { employeeId } = parsedParams.data;
 
   if (employeeId !== sessionEmployeeId) {
-    const forbidden = await requirePermission(request, "VER_EMPLEADO");
+    const forbidden = await requirePermission(
+      request,
+      "VER_PORTAL_HCM_EMPLEADO",
+    );
 
     if (forbidden) return jsonForbidden();
   }

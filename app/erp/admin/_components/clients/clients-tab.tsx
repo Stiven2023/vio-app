@@ -458,7 +458,7 @@ export function ClientsTab({
   };
 
   return (
-    <div className="space-y-3 min-w-0 overflow-x-hidden">
+    <div className="space-y-3 min-w-0 overflow-hidden">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-end">
           <FilterSearch
@@ -540,7 +540,7 @@ export function ClientsTab({
       </div>
 
       {loading ? (
-        <div className="overflow-x-hidden rounded-medium border border-default-200">
+        <div className="w-full min-w-0 overflow-hidden rounded-medium border border-default-200">
           <TableSkeleton
             removeWrapper
             ariaLabel="Clientes"
@@ -557,13 +557,18 @@ export function ClientsTab({
           />
         </div>
       ) : (
-        <div className="w-full min-w-0 overflow-x-hidden rounded-medium border border-default-200">
-          <Table
-            className="w-full table-fixed"
-            classNames={{ wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none" }}
-            removeWrapper
-            aria-label="Clientes"
-          >
+        <div className="w-full min-w-0 overflow-hidden rounded-medium border border-default-200">
+          <div className="w-full overflow-hidden">
+            <Table
+              className="w-full"
+              classNames={{
+                wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none",
+                base: "overflow-visible",
+                table: "overflow-visible w-full",
+              }}
+              removeWrapper
+              aria-label="Clientes"
+            >
             <TableHeader>
               <TableColumn>CÓDIGO</TableColumn>
               <TableColumn>NOMBRE</TableColumn>
@@ -574,7 +579,7 @@ export function ClientsTab({
               <TableColumn>ESTADO JURÍDICO</TableColumn>
               <TableColumn>ACCIONES</TableColumn>
             </TableHeader>
-            <TableBody emptyContent={emptyContent} items={filtered}>
+              <TableBody emptyContent={emptyContent} items={filtered}>
               {(c) => (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -824,8 +829,9 @@ export function ClientsTab({
                   </TableCell>
                 </TableRow>
               )}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </div>
         </div>
       )}
 

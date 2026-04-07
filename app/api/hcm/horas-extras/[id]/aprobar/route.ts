@@ -30,7 +30,7 @@ export async function PATCH(
 
   const forbidden = await requirePermission(
     request,
-    "APROBAR_PERMISO_EMPLEADO",
+    "APROBAR_HORAS_EXTRAS_HCM",
   );
 
   if (forbidden) return jsonForbidden();

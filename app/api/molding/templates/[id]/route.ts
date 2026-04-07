@@ -1,12 +1,17 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
   employees,
+  fabrics,
+  moldingTemplateFabrics,
   moldingTemplateInsumos,
   moldingTemplates,
 } from "@/src/db/erp/schema";
+import { jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { listTemplateCompatibleFabrics } from "@/src/utils/molding-fabric-compat";
+import { moldingTemplateFabricUpsertSchema } from "@/src/utils/molding-fabrics-contract";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
@@ -110,7 +115,7 @@ export async function GET(
       .limit(1);
 
     if (!template) {
-      return new Response("Molding template not found", { status: 404 });
+      return jsonError(404, "MOLDING_TEMPLATE_NOT_FOUND", "Molderia no encontrada.");
     }
 
     const insumos = await db
@@ -118,13 +123,22 @@ export async function GET(
       .from(moldingTemplateInsumos)
       .where(eq(moldingTemplateInsumos.moldingTemplateId, id));
 
-    return Response.json({ ...template, insumos });
+    const fabrics = await listTemplateCompatibleFabrics({
+      dbOrTx: db,
+      moldingTemplateId: id,
+    });
+
+    return Response.json({ ...template, insumos, fabrics });
   } catch (error) {
     const response = dbErrorResponse(error);
 
     if (response) return response;
 
-    return new Response("Could not retrieve molding template", { status: 500 });
+    return jsonError(
+      500,
+      "MOLDING_TEMPLATE_FETCH_FAILED",
+      "No se pudo consultar la molderia.",
+    );
   }
 }
 
@@ -151,7 +165,7 @@ export async function PATCH(
   try {
     body = (await request.json()) as Record<string, unknown>;
   } catch {
-    return new Response("Invalid JSON body", { status: 400 });
+    return jsonError(400, "INVALID_JSON", "JSON invalido.");
   }
 
   const existing = await db
@@ -173,7 +187,26 @@ export async function PATCH(
     .limit(1);
 
   if (existing.length === 0) {
-    return new Response("Molding template not found", { status: 404 });
+    return jsonError(404, "MOLDING_TEMPLATE_NOT_FOUND", "Molderia no encontrada.");
+  }
+
+  const upsertInput =
+    body.fabricIds !== undefined || body.fabricLinks !== undefined
+      ? {
+          fabricIds: Array.isArray(body.fabricIds) ? body.fabricIds : undefined,
+          fabricLinks: Array.isArray(body.fabricLinks) ? body.fabricLinks : undefined,
+        }
+      : null;
+
+  const parsedLinks = upsertInput
+    ? moldingTemplateFabricUpsertSchema.safeParse(upsertInput)
+    : null;
+
+  if (parsedLinks && !parsedLinks.success) {
+    return zodFirstErrorEnvelope(
+      parsedLinks.error,
+      "Compatibilidades de telas invalidas.",
+    );
   }
 
   function parseStr(v: unknown, maxLen = 255): string | null | undefined {
@@ -322,22 +355,38 @@ export async function PATCH(
         (option) => normalizeUpper(option) === normalizedSubtype,
       )
     ) {
-      return new Response(
-        "Para PANTALONETA debes seleccionar un subtipo valido",
-        { status: 400 },
+      return jsonError(
+        400,
+        "VALIDATION_ERROR",
+        "Para PANTALONETA debes seleccionar un subtipo valido.",
+        {
+          garmentSubtype: [
+            "Para PANTALONETA debes seleccionar un subtipo valido.",
+          ],
+        },
       );
     }
 
     if (finalHasTanca && !finalCordColor) {
-      return new Response("Debes indicar el color de la cuerda", {
-        status: 400,
-      });
+      return jsonError(
+        400,
+        "VALIDATION_ERROR",
+        "Debes indicar el color de la cuerda.",
+        {
+          cordColor: ["Debes indicar el color de la cuerda."],
+        },
+      );
     }
 
     if (finalHasLateralMesh && !finalLateralMeshColor) {
-      return new Response("Debes indicar el color de la malla lateral", {
-        status: 400,
-      });
+      return jsonError(
+        400,
+        "VALIDATION_ERROR",
+        "Debes indicar el color de la malla lateral.",
+        {
+          lateralMeshColor: ["Debes indicar el color de la malla lateral."],
+        },
+      );
     }
 
     updates.neckType = null;
@@ -346,19 +395,110 @@ export async function PATCH(
   }
 
   try {
-    const [updated] = await db
-      .update(moldingTemplates)
-      .set(updates)
-      .where(eq(moldingTemplates.id, id))
-      .returning();
+    const updated = await db.transaction(async (tx) => {
+      let linkRows: Array<{
+        fabricId: string;
+        sortOrder: number;
+        note: string | null;
+      }> = [];
+
+      if (parsedLinks?.success) {
+        linkRows = parsedLinks.data.fabricLinks
+          ? parsedLinks.data.fabricLinks.map((row, index) => ({
+              fabricId: row.fabricId,
+              sortOrder: row.sortOrder ?? index + 1,
+              note: row.note ?? null,
+            }))
+          : (parsedLinks.data.fabricIds ?? []).map((fabricId, index) => ({
+              fabricId,
+              sortOrder: index + 1,
+              note: null,
+            }));
+
+        const fabricIds = Array.from(new Set(linkRows.map((row) => row.fabricId)));
+
+        let availableFabrics: Array<{ id: string; name: string | null }> = [];
+
+        if (fabricIds.length > 0) {
+          availableFabrics = await tx
+            .select({ id: fabrics.id, name: fabrics.name })
+            .from(fabrics)
+            .where(inArray(fabrics.id, fabricIds));
+
+          const availableSet = new Set(availableFabrics.map((row) => row.id));
+          const invalidIds = fabricIds.filter(
+            (fabricId) => !availableSet.has(fabricId),
+          );
+
+          if (invalidIds.length > 0) {
+            throw new Error(`INVALID_FABRIC_IDS:${invalidIds.join(",")}`);
+          }
+
+          const nameById = new Map(
+            availableFabrics.map((row) => [row.id, String(row.name ?? "")]),
+          );
+          const snapshot = linkRows
+            .map((row) => nameById.get(row.fabricId) ?? "")
+            .filter(Boolean)
+            .join(", ");
+
+          updates.compatibleFabrics = snapshot || null;
+        } else {
+          updates.compatibleFabrics = null;
+        }
+
+        await tx
+          .delete(moldingTemplateFabrics)
+          .where(eq(moldingTemplateFabrics.moldingTemplateId, id));
+
+        if (linkRows.length > 0) {
+          await tx.insert(moldingTemplateFabrics).values(
+            linkRows.map((row, index) => ({
+              moldingTemplateId: id,
+              fabricId: row.fabricId,
+              sortOrder: row.sortOrder ?? index + 1,
+              note: row.note ?? null,
+            })),
+          );
+        }
+      }
+
+      const [updatedTemplate] = await tx
+        .update(moldingTemplates)
+        .set(updates)
+        .where(eq(moldingTemplates.id, id))
+        .returning();
+
+      const links = await listTemplateCompatibleFabrics({
+        dbOrTx: tx,
+        moldingTemplateId: id,
+      });
+
+      return { ...updatedTemplate, fabrics: links };
+    });
 
     return Response.json(updated);
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("INVALID_FABRIC_IDS:")) {
+      return jsonError(
+        422,
+        "FABRIC_NOT_FOUND",
+        "Una o mas telas no existen en el catalogo.",
+        {
+          fabricIds: [error.message.replace("INVALID_FABRIC_IDS:", "")],
+        },
+      );
+    }
+
     const response = dbErrorResponse(error);
 
     if (response) return response;
 
-    return new Response("Could not update molding template", { status: 500 });
+    return jsonError(
+      500,
+      "MOLDING_TEMPLATE_UPDATE_FAILED",
+      "No se pudo actualizar la molderia.",
+    );
   }
 }
 
@@ -388,7 +528,7 @@ export async function DELETE(
       .returning({ id: moldingTemplates.id });
 
     if (!deleted) {
-      return new Response("Molding template not found", { status: 404 });
+      return jsonError(404, "MOLDING_TEMPLATE_NOT_FOUND", "Molderia no encontrada.");
     }
 
     return Response.json({ success: true });
@@ -397,6 +537,10 @@ export async function DELETE(
 
     if (response) return response;
 
-    return new Response("Could not delete molding template", { status: 500 });
+    return jsonError(
+      500,
+      "MOLDING_TEMPLATE_DELETE_FAILED",
+      "No se pudo eliminar la molderia.",
+    );
   }
 }

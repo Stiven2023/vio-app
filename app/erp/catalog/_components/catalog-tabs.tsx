@@ -20,7 +20,7 @@ export function CatalogTabs({
   const [activeTab, setActiveTab] = useState<CatalogTabKey>("products");
 
   return (
-    <div className="min-w-0 overflow-x-hidden">
+    <div className="min-w-0 overflow-hidden">
       <Tabs
         aria-label="Catálogo"
         className="w-full"
@@ -34,7 +34,7 @@ export function CatalogTabs({
         <Tab key="categories" title="Categorías" />
       </Tabs>
 
-      <div className="mt-4 min-w-0 overflow-x-hidden">
+      <div className="mt-4 min-w-0 overflow-hidden">
         {activeTab === "products" ? (
           <ProductManagementTabs
             canCreate={canCreateItem}

@@ -4,6 +4,7 @@ import { db } from "@/src/db";
 import {
   employees,
   inventoryItems,
+  moldingTemplates,
   orderItemMaterials,
   orderItemPositions,
   orderItemPackaging,
@@ -18,6 +19,7 @@ import {
   quotationItems,
   quotations,
 } from "@/src/db/erp/schema";
+import { jsonError } from "@/src/utils/api-error";
 import {
   getEmployeeIdFromRequest,
   getRoleFromRequest,
@@ -30,6 +32,7 @@ import { parsePagination } from "@/src/utils/pagination";
 import { rateLimit } from "@/src/utils/rate-limit";
 import { getLatestUsdCopRate } from "@/src/utils/exchange-rate";
 import { getItemLeadDays } from "@/src/utils/quotation-delivery";
+import { isMoldingFabricCompatible } from "@/src/utils/molding-fabric-compat";
 
 function asNumber(v: unknown) {
   const n = Number(String(v ?? "0"));
@@ -685,6 +688,31 @@ export async function POST(request: Request) {
         additions: hasAdditions ? [{}] : [],
       });
 
+      const requestedMoldingTemplateId = toNullableString(body.moldingTemplateId);
+      const requestedFabric = toNullableString(body.fabric);
+
+      if (requestedMoldingTemplateId && requestedFabric) {
+        const [templateExists] = await tx
+          .select({ id: moldingTemplates.id })
+          .from(moldingTemplates)
+          .where(eq(moldingTemplates.id, requestedMoldingTemplateId))
+          .limit(1);
+
+        if (!templateExists) {
+          throw new Error("MOLDING_TEMPLATE_NOT_FOUND");
+        }
+
+        const compatible = await isMoldingFabricCompatible({
+          dbOrTx: tx,
+          moldingTemplateId: requestedMoldingTemplateId,
+          fabricName: requestedFabric,
+        });
+
+        if (!compatible) {
+          throw new Error("MOLDING_FABRIC_NOT_COMPATIBLE");
+        }
+      }
+
       const [oi] = await tx
         .insert(orderItems)
         .values({
@@ -884,6 +912,25 @@ export async function POST(request: Request) {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "No se pudo crear el diseño";
+
+    if (message === "MOLDING_TEMPLATE_NOT_FOUND") {
+      return jsonError(
+        404,
+        "MOLDING_TEMPLATE_NOT_FOUND",
+        "La moldería seleccionada no existe.",
+      );
+    }
+
+    if (message === "MOLDING_FABRIC_NOT_COMPATIBLE") {
+      return jsonError(
+        422,
+        "MOLDING_FABRIC_NOT_COMPATIBLE",
+        "La tela del diseño no es compatible con la moldería seleccionada.",
+        {
+          fabric: ["La tela no es compatible con la moldería seleccionada."],
+        },
+      );
+    }
 
     if (
       message.includes("required") ||

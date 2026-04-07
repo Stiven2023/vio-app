@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { CarteraTab } from "./_components/cartera-tab";
 import { ACCOUNTS_RECEIVABLE_COPY } from "./_lib/cartera.constants";
+import { BackToAccountingButton } from "../_components/back-to-accounting-button";
 
 import { resolveAccountingLocale } from "@/app/erp/contabilidad-modulo/_lib/hub";
 
@@ -32,6 +33,9 @@ export default async function CarteraPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-6 pt-16">
+      <div className="mb-4">
+        <BackToAccountingButton />
+      </div>
       <h1 className="text-2xl font-bold">{copy.pageTitle}</h1>
       <p className="mt-1 text-default-600">{copy.pageDescription}</p>
       <div className="mt-6">

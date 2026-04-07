@@ -322,9 +322,9 @@ export function ProductsTab({
   };
 
   return (
-    <div className="space-y-3 min-w-0 overflow-x-hidden">
+    <div className="space-y-3 min-w-0 overflow-hidden">
       <div className="space-y-3">
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:overflow-x-hidden">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:overflow-hidden">
           <FilterSearch
             className="sm:flex-1 sm:min-w-60"
             placeholder="Buscar por código…"
@@ -367,7 +367,7 @@ export function ProductsTab({
           />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:overflow-x-hidden">
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:overflow-hidden">
           <input
             ref={fileInputRef}
             accept=".csv,text/csv"
@@ -424,13 +424,26 @@ export function ProductsTab({
       </div>
 
       {productsLoading ? (
-        <TableSkeleton
-          ariaLabel="Productos"
-          headers={["Código", "Nombre", "Categoría", "Activo", "Acciones"]}
-        />
+        <div className="w-full min-w-0 overflow-hidden rounded-medium border border-default-200">
+          <TableSkeleton
+            removeWrapper
+            ariaLabel="Productos"
+            headers={["Código", "Nombre", "Categoría", "Activo", "Acciones"]}
+          />
+        </div>
       ) : (
-        <div className="w-full min-w-0 overflow-x-hidden">
-          <Table className="w-full table-fixed" removeWrapper aria-label="Productos">
+        <div className="w-full min-w-0 overflow-hidden rounded-medium border border-default-200">
+          <div className="w-full overflow-hidden">
+            <Table
+              className="w-full"
+              classNames={{
+                wrapper: "overflow-visible rounded-none bg-transparent p-0 shadow-none",
+                base: "overflow-visible",
+                table: "overflow-visible w-full",
+              }}
+              removeWrapper
+              aria-label="Productos"
+            >
             <TableHeader>
               <TableColumn>Código</TableColumn>
               <TableColumn>Nombre</TableColumn>
@@ -530,7 +543,8 @@ export function ProductsTab({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
       )}
 

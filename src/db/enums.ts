@@ -391,9 +391,7 @@ export const accountingAccountLevelValues = [
   "SUBCUENTA",
 ] as const;
 
-export const AccountingAccountLevelEnum = z.enum(
-  accountingAccountLevelValues,
-);
+export const AccountingAccountLevelEnum = z.enum(accountingAccountLevelValues);
 Object.defineProperty(AccountingAccountLevelEnum, "enumValues", {
   value: accountingAccountLevelValues,
 });
@@ -429,9 +427,7 @@ export const accountingClosureTypeValues = [
   "ANUAL",
 ] as const;
 
-export const AccountingClosureTypeEnum = z.enum(
-  accountingClosureTypeValues,
-);
+export const AccountingClosureTypeEnum = z.enum(accountingClosureTypeValues);
 Object.defineProperty(AccountingClosureTypeEnum, "enumValues", {
   value: accountingClosureTypeValues,
 });
@@ -479,9 +475,7 @@ export const accountingSourceModuleValues = [
   "GENERAL",
 ] as const;
 
-export const AccountingSourceModuleEnum = z.enum(
-  accountingSourceModuleValues,
-);
+export const AccountingSourceModuleEnum = z.enum(accountingSourceModuleValues);
 Object.defineProperty(AccountingSourceModuleEnum, "enumValues", {
   value: accountingSourceModuleValues,
 });
@@ -739,6 +733,11 @@ export const Permission = {
   APROBAR_PERMISO_EMPLEADO: "APROBAR_PERMISO_EMPLEADO",
   VER_PILA: "VER_PILA",
   GENERAR_PILA: "GENERAR_PILA",
+  // HCM - dedicated permissions
+  VER_PORTAL_HCM_EMPLEADO: "VER_PORTAL_HCM_EMPLEADO",
+  VER_COMISIONES_HCM: "VER_COMISIONES_HCM",
+  APROBAR_HORAS_EXTRAS_HCM: "APROBAR_HORAS_EXTRAS_HCM",
+  CONTABILIZAR_PRE_ASIENTOS_HCM: "CONTABILIZAR_PRE_ASIENTOS_HCM",
   // Historial
   VER_HISTORIAL_ESTADO: "VER_HISTORIAL_ESTADO",
   // Moldería
@@ -847,6 +846,11 @@ export const permissionValues = [
   "APROBAR_PERMISO_EMPLEADO",
   "VER_PILA",
   "GENERAR_PILA",
+  // HCM - dedicated permissions
+  "VER_PORTAL_HCM_EMPLEADO",
+  "VER_COMISIONES_HCM",
+  "APROBAR_HORAS_EXTRAS_HCM",
+  "CONTABILIZAR_PRE_ASIENTOS_HCM",
   // Historial
   "VER_HISTORIAL_ESTADO",
   // Moldería
@@ -1515,6 +1519,22 @@ Object.defineProperty(MesPaymentStatusEnum, "enumValues", {
 });
 
 /* ===========================
+   MOLDING - FABRIC CATALOG
+=========================== */
+export const fabricCategoryValues = [
+  "POLIESTER",
+  "LICRA",
+  "MALLA",
+  "ALGODON",
+  "OTRA",
+] as const;
+export type FabricCategory = (typeof fabricCategoryValues)[number];
+export const FabricCategoryEnum = z.enum(fabricCategoryValues);
+Object.defineProperty(FabricCategoryEnum, "enumValues", {
+  value: fabricCategoryValues,
+});
+
+/* ===========================
    MES — ESTADO APROBACIÓN MUESTRA
 =========================== */
 export const mesSampleApprovalStatusValues = [
@@ -1522,7 +1542,8 @@ export const mesSampleApprovalStatusValues = [
   "APROBADO",
   "RECHAZADO",
 ] as const;
-export type MesSampleApprovalStatus = (typeof mesSampleApprovalStatusValues)[number];
+export type MesSampleApprovalStatus =
+  (typeof mesSampleApprovalStatusValues)[number];
 export const MesSampleApprovalStatusEnum = z.enum(
   mesSampleApprovalStatusValues,
 );
@@ -1557,7 +1578,8 @@ export const mesProductionStageAreaValues = [
   "CONTROL_CALIDAD",
   "DESPACHO",
 ] as const;
-export type MesProductionStageArea = (typeof mesProductionStageAreaValues)[number];
+export type MesProductionStageArea =
+  (typeof mesProductionStageAreaValues)[number];
 export const MesProductionStageAreaEnum = z.enum(mesProductionStageAreaValues);
 Object.defineProperty(MesProductionStageAreaEnum, "enumValues", {
   value: mesProductionStageAreaValues,
