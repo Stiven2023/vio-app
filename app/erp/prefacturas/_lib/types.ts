@@ -21,6 +21,16 @@ export type PrefacturaRow = {
   siigoInvoiceId: string | null;
   siigoInvoiceNumber: string | null;
   siigoErrorMessage: string | null;
+  paidAmount: string | null;
+  paymentCoveragePercent: number | null;
+  overpaymentAmount: string | null;
+  paymentSettlementStatus:
+    | "PENDING_PAYMENT"
+    | "PAID_IN_FULL"
+    | "REFUND_PENDING"
+    | "UNKNOWN";
+  refundStatus: string | null;
+  refundPendingAmount: string | null;
 };
 
 export type BankOption = {

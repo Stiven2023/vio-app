@@ -158,11 +158,15 @@ function exportRowsToExcel(rows: WithholdingItem[]) {
 
 export function WithholdingsTab({
   canManageRates,
+  initialTab = "prefacturas",
+  hidePrefacturasTab = false,
 }: {
   canManageRates: boolean;
+  initialTab?: "prefacturas" | "rates";
+  hidePrefacturasTab?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<"prefacturas" | "rates">(
-    "prefacturas",
+    hidePrefacturasTab ? "rates" : initialTab,
   );
 
   const [query, setQuery] = useState("");
@@ -312,16 +316,18 @@ export function WithholdingsTab({
         </div>
       </div>
 
-      <Tabs
-        aria-label="Retenciones"
-        selectedKey={activeTab}
-        onSelectionChange={(key) =>
-          setActiveTab(key as "prefacturas" | "rates")
-        }
-      >
-        <Tab key="prefacturas" title="By Pre-invoice" />
-        <Tab key="rates" title="Rate configuration" />
-      </Tabs>
+      {hidePrefacturasTab ? null : (
+        <Tabs
+          aria-label="Retenciones"
+          selectedKey={activeTab}
+          onSelectionChange={(key) =>
+            setActiveTab(key as "prefacturas" | "rates")
+          }
+        >
+          <Tab key="prefacturas" title="By Pre-invoice" />
+          <Tab key="rates" title="Rate configuration" />
+        </Tabs>
+      )}
 
       {activeTab === "prefacturas" ? (
         <div className="space-y-4">

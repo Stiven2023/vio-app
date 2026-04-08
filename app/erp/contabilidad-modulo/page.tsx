@@ -34,10 +34,12 @@ export default async function AccountingLandingPage() {
     "VER_RECIBO_CAJA",
     "VER_CONCILIACION_BANCARIA",
     "VER_RETENCIONES",
+    "GESTIONAR_RETENCIONES",
     "VER_FACTORING",
     "VER_CARTERA",
     "VER_ESTADO_RESULTADOS",
     "VER_CAJA_MENOR",
+    "VER_FACTURAS_PROVEEDOR",
   ])) as AccessMap;
 
   const visibleGroups = buildAccountingHubGroups(locale, perms);

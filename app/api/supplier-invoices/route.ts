@@ -110,6 +110,8 @@ export async function GET(request: Request) {
         withholdingIca: supplierInvoices.withholdingIca,
         total: supplierInvoices.total,
         status: supplierInvoices.status,
+        documentType: supplierInvoices.documentType,
+        siigoStatus: supplierInvoices.siigoStatus,
         createdAt: supplierInvoices.createdAt,
       })
       .from(supplierInvoices)

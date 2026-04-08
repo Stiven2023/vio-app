@@ -61,11 +61,11 @@ export async function GET(request: Request) {
 
   if (limited) return limited;
 
-  const forbidden = await requirePermission(request, "VER_CARTERA");
-
-  if (forbidden) return forbidden;
-
   try {
+    const forbidden = await requirePermission(request, "VER_CARTERA");
+
+    if (forbidden) return forbidden;
+
     const { searchParams } = new URL(request.url);
     const rawQuery = Object.fromEntries(searchParams.entries());
     const parsedQuery = accountsReceivableQuerySchema.safeParse(rawQuery);
@@ -91,7 +91,7 @@ export async function GET(request: Request) {
       query.creditBackingType ?? null;
 
     const clauses: ReturnType<typeof sql>[] = [
-      sql`${preInvoices.paymentType} = ${paymentType}`,
+      eq(preInvoices.paymentType, paymentType),
       sql`${preInvoices.clientId} is not null`,
     ];
 
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
     }
 
     if (creditBackingType && paymentType === "CREDIT") {
-      clauses.push(sql`${clients.creditBackingType} = ${creditBackingType}`);
+      clauses.push(eq(clients.creditBackingType, creditBackingType));
     }
 
     if (agingBucket && paymentType === "CREDIT") {
@@ -120,7 +120,10 @@ export async function GET(request: Request) {
 
     const where = and(...clauses);
     const amountExpr = prefacturaAmountExpr();
-    const appliedExpr = sql<string>`coalesce((select sum(cra.applied_amount) from cash_receipt_applications cra join cash_receipts cr on cra.cash_receipt_id = cr.id where cra.prefactura_id = ${preInvoices.id} and cr.status = 'CONFIRMED'), 0)::text`;
+    const appliedExpr =
+      paymentType === "CREDIT"
+        ? sql<string>`coalesce((select sum(cra.applied_amount) from cash_receipt_applications cra join cash_receipts cr on cra.cash_receipt_id = cr.id where cra.prefactura_id = ${preInvoices.id} and cr.status = 'CONFIRMED'), 0)::text`
+        : sql<string>`'0'::text`;
 
     const [countRow] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -169,7 +172,7 @@ export async function GET(request: Request) {
       .selectDistinct({ id: clients.id, name: clients.name })
       .from(preInvoices)
       .innerJoin(clients, eq(preInvoices.clientId, clients.id))
-      .where(sql`${preInvoices.paymentType} = ${paymentType}`)
+      .where(eq(preInvoices.paymentType, paymentType))
       .orderBy(asc(clients.name));
 
     let summary: Record<string, string> | null = null;

@@ -2,6 +2,8 @@ import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/src/db";
 import {
+  cashReceiptApplications,
+  cashReceipts,
   clients,
   orderItems,
   orders,
@@ -20,6 +22,7 @@ import {
   siigoMissingClientIdentificationError,
   siigoMissingConfigurationError,
   siigoNotApplicableError,
+  siigoRequiresFullPaymentError,
   siigoUpstreamError,
 } from "@/src/utils/prefactura-siigo-contract";
 import { requirePermission } from "@/src/utils/permission-middleware";
@@ -239,6 +242,16 @@ export async function POST(
         ivaRate: prefacturas.ivaRate,
         total: prefacturas.total,
         totalAfterWithholdings: prefacturas.totalAfterWithholdings,
+        paidAmount: sql<string>`coalesce((
+          select sum(${cashReceiptApplications.appliedAmount})
+          from ${cashReceiptApplications}
+          inner join ${cashReceipts}
+            on ${cashReceipts.id} = ${cashReceiptApplications.cashReceiptId}
+          where ${cashReceiptApplications.prefacturaId} = ${prefacturas.id}
+            and ${cashReceipts.status} = 'CONFIRMED'
+        ), 0)::text`,
+        refundStatus: prefacturas.refundStatus,
+        refundPendingAmount: prefacturas.refundPendingAmount,
         siigoStatus: prefacturas.siigoStatus,
         orderId: prefacturas.orderId,
         quotationId: prefacturas.quotationId,
@@ -288,6 +301,48 @@ export async function POST(
     // Block if already SENT or INVOICED
     if (row.siigoStatus && BLOCKING_SIIGO_STATUSES.has(row.siigoStatus)) {
       return siigoAlreadySentError(row.siigoStatus);
+    }
+
+    const totalAmount = Number(row.total ?? 0);
+    const paidAmount = Number(row.paidAmount ?? 0);
+    const overpaymentAmount = Math.max(0, paidAmount - totalAmount);
+    const paymentDiff = Math.abs(paidAmount - totalAmount);
+
+    // Only exact full-payment (100%) is valid for SIIGO emission.
+    if (
+      !Number.isFinite(totalAmount) ||
+      totalAmount <= 0 ||
+      !Number.isFinite(paidAmount) ||
+      paymentDiff > 0.01
+    ) {
+      if (overpaymentAmount > 0) {
+        await db
+          .update(prefacturas)
+          .set({
+            refundStatus: "PENDING",
+            refundPendingAmount: overpaymentAmount.toFixed(2),
+            refundStatusUpdatedAt: new Date(),
+          })
+          .where(eq(prefacturas.id, id));
+      }
+
+      return siigoRequiresFullPaymentError({
+        paidAmount,
+        totalAmount,
+        overpaymentAmount,
+      });
+    }
+
+    // If there was a pending refund and now the settlement is exact, mark as resolved.
+    if (String(row.refundStatus ?? "").toUpperCase() === "PENDING") {
+      await db
+        .update(prefacturas)
+        .set({
+          refundStatus: "RESOLVED",
+          refundPendingAmount: "0",
+          refundStatusUpdatedAt: new Date(),
+        })
+        .where(eq(prefacturas.id, id));
     }
 
     const clientIdentification = String(

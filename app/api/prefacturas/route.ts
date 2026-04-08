@@ -3,6 +3,8 @@ import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { db } from "@/src/db";
 import {
   additions,
+  cashReceiptApplications,
+  cashReceipts,
   clients,
   employees,
   orderItemAdditions,
@@ -258,12 +260,74 @@ export async function GET(request: Request) {
       siigoInvoiceId: string | null;
       siigoInvoiceNumber: string | null;
       siigoErrorMessage: string | null;
+      paidAmount: string | null;
+      paymentCoveragePercent: number | null;
+      overpaymentAmount: string | null;
+      paymentSettlementStatus:
+        | "PENDING_PAYMENT"
+        | "PAID_IN_FULL"
+        | "REFUND_PENDING"
+        | "UNKNOWN";
+      refundStatus: string | null;
+      refundPendingAmount: string | null;
     }> = [];
     let total = 0;
 
     // Tier 1: full query with documentType computed from orders.ivaEnabled
     try {
       const documentTypeExpr = sql<string>`coalesce(cast(${quotations.documentType} as text), case when ${orders.ivaEnabled} then 'F' else 'R' end)`;
+      const paidAmountExpr = sql<string>`coalesce((
+        select sum(${cashReceiptApplications.appliedAmount})
+        from ${cashReceiptApplications}
+        inner join ${cashReceipts}
+          on ${cashReceipts.id} = ${cashReceiptApplications.cashReceiptId}
+        where ${cashReceiptApplications.prefacturaId} = ${prefacturas.id}
+          and ${cashReceipts.status} = 'CONFIRMED'
+      ), 0)::text`;
+      const overpaymentExpr = sql<string>`greatest(
+        coalesce((
+          select sum(${cashReceiptApplications.appliedAmount})
+          from ${cashReceiptApplications}
+          inner join ${cashReceipts}
+            on ${cashReceipts.id} = ${cashReceiptApplications.cashReceiptId}
+          where ${cashReceiptApplications.prefacturaId} = ${prefacturas.id}
+            and ${cashReceipts.status} = 'CONFIRMED'
+        ), 0) - coalesce(${prefacturas.total}, 0),
+        0
+      )::text`;
+      const paymentCoverageExpr = sql<number>`case
+        when coalesce(${prefacturas.total}, 0) <= 0 then 0
+        else round((coalesce((
+          select sum(${cashReceiptApplications.appliedAmount})
+          from ${cashReceiptApplications}
+          inner join ${cashReceipts}
+            on ${cashReceipts.id} = ${cashReceiptApplications.cashReceiptId}
+          where ${cashReceiptApplications.prefacturaId} = ${prefacturas.id}
+            and ${cashReceipts.status} = 'CONFIRMED'
+        ), 0) / nullif(coalesce(${prefacturas.total}, 0), 0)) * 100, 2)
+      end`;
+      const paymentSettlementExpr = sql<
+        "PENDING_PAYMENT" | "PAID_IN_FULL" | "REFUND_PENDING" | "UNKNOWN"
+      >`case
+        when coalesce(${prefacturas.total}, 0) <= 0 then 'UNKNOWN'
+        when coalesce((
+          select sum(${cashReceiptApplications.appliedAmount})
+          from ${cashReceiptApplications}
+          inner join ${cashReceipts}
+            on ${cashReceipts.id} = ${cashReceiptApplications.cashReceiptId}
+          where ${cashReceiptApplications.prefacturaId} = ${prefacturas.id}
+            and ${cashReceipts.status} = 'CONFIRMED'
+        ), 0) > coalesce(${prefacturas.total}, 0) + 0.01 then 'REFUND_PENDING'
+        when abs(coalesce((
+          select sum(${cashReceiptApplications.appliedAmount})
+          from ${cashReceiptApplications}
+          inner join ${cashReceipts}
+            on ${cashReceipts.id} = ${cashReceiptApplications.cashReceiptId}
+          where ${cashReceiptApplications.prefacturaId} = ${prefacturas.id}
+            and ${cashReceipts.status} = 'CONFIRMED'
+        ), 0) - coalesce(${prefacturas.total}, 0)) <= 0.01 then 'PAID_IN_FULL'
+        else 'PENDING_PAYMENT'
+      end`;
       const scopedFilters = [...filters] as Array<any>;
 
       if (documentType === "F" || documentType === "R") {
@@ -306,6 +370,12 @@ export async function GET(request: Request) {
           siigoInvoiceId: prefacturas.siigoInvoiceId,
           siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
           siigoErrorMessage: prefacturas.siigoErrorMessage,
+          refundStatus: prefacturas.refundStatus,
+          refundPendingAmount: prefacturas.refundPendingAmount,
+          paidAmount: paidAmountExpr,
+          paymentCoveragePercent: paymentCoverageExpr,
+          overpaymentAmount: overpaymentExpr,
+          paymentSettlementStatus: paymentSettlementExpr,
         })
         .from(prefacturas)
         .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -362,6 +432,14 @@ export async function GET(request: Request) {
             siigoInvoiceId: prefacturas.siigoInvoiceId,
             siigoInvoiceNumber: prefacturas.siigoInvoiceNumber,
             siigoErrorMessage: prefacturas.siigoErrorMessage,
+            refundStatus: prefacturas.refundStatus,
+            refundPendingAmount: prefacturas.refundPendingAmount,
+            paidAmount: sql<string>`null`,
+            paymentCoveragePercent: sql<number>`0`,
+            overpaymentAmount: sql<string>`null`,
+            paymentSettlementStatus: sql<
+              "PENDING_PAYMENT" | "PAID_IN_FULL" | "REFUND_PENDING" | "UNKNOWN"
+            >`'UNKNOWN'`,
           })
           .from(prefacturas)
           .leftJoin(quotations, eq(prefacturas.quotationId, quotations.id))
@@ -426,6 +504,12 @@ export async function GET(request: Request) {
             siigoInvoiceId: null,
             siigoInvoiceNumber: null,
             siigoErrorMessage: null,
+            refundStatus: null,
+            refundPendingAmount: null,
+            paidAmount: null,
+            paymentCoveragePercent: 0,
+            overpaymentAmount: null,
+            paymentSettlementStatus: "UNKNOWN" as const,
           }));
         } catch (err3) {
           console.error(

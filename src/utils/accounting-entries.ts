@@ -14,6 +14,7 @@ import {
   prefacturas,
 } from "@/src/db/schema";
 import { parseAccountingPeriod } from "@/src/utils/accounting-period";
+import { isConfirmedPaymentStatus } from "@/src/utils/payment-status";
 
 export const ACCOUNTING_ACCOUNT_CODES = {
   cashOnHand: "110505",
@@ -62,7 +63,42 @@ type OrderPaymentPostingInput = {
   paymentMethod: string;
   amount: string | number;
   referenceCode?: string | null;
+  appliedToReceivable?: string | number | null;
+  advanceAmount?: string | number | null;
+  paymentKind?: "ABONO" | "ANTICIPO" | "MIXTO";
 };
+
+type OrderPaymentBreakdownInput = {
+  amount: string | number;
+  orderTotal: string | number;
+  confirmedBeforePayment: string | number;
+};
+
+export function computeOrderPaymentBreakdown(input: OrderPaymentBreakdownInput) {
+  const amount = Math.max(0, toMoneyNumber(input.amount));
+  const orderTotal = Math.max(0, toMoneyNumber(input.orderTotal));
+  const confirmedBeforePayment = Math.max(
+    0,
+    toMoneyNumber(input.confirmedBeforePayment),
+  );
+  const outstanding = Math.max(0, orderTotal - confirmedBeforePayment);
+  const appliedToReceivable = Math.min(amount, outstanding);
+  const advanceAmount = Math.max(0, amount - appliedToReceivable);
+
+  let paymentKind: "ABONO" | "ANTICIPO" | "MIXTO" = "ANTICIPO";
+
+  if (appliedToReceivable > 0.001 && advanceAmount > 0.001) {
+    paymentKind = "MIXTO";
+  } else if (appliedToReceivable > 0.001) {
+    paymentKind = "ABONO";
+  }
+
+  return {
+    appliedToReceivable: toMoneyString(appliedToReceivable),
+    advanceAmount: toMoneyString(advanceAmount),
+    paymentKind,
+  };
+}
 
 export type AccountingLineDraft = {
   accountCode: string;
@@ -490,8 +526,25 @@ export function buildOrderPaymentAccountingLines(
   input: OrderPaymentPostingInput,
 ): AccountingLineDraft[] {
   const amount = toMoneyNumber(input.amount);
+  const providedApplied = Math.max(0, toMoneyNumber(input.appliedToReceivable));
+  const providedAdvance = Math.max(0, toMoneyNumber(input.advanceAmount));
+  const hasExplicitBreakdown =
+    input.appliedToReceivable !== undefined || input.advanceAmount !== undefined;
+  const receivableCredit = hasExplicitBreakdown
+    ? Math.min(amount, providedApplied)
+    : 0;
+  const advanceCredit = hasExplicitBreakdown
+    ? Math.max(0, amount - receivableCredit)
+    : amount;
+  const resolvedKind =
+    input.paymentKind ??
+    (receivableCredit > 0.001 && advanceCredit > 0.001
+      ? "MIXTO"
+      : receivableCredit > 0.001
+        ? "ABONO"
+        : "ANTICIPO");
 
-  return [
+  const lines: AccountingLineDraft[] = [
     {
       accountCode: getReceiptTreasuryAccountCode(input.paymentMethod),
       debit: toMoneyString(amount),
@@ -503,12 +556,33 @@ export function buildOrderPaymentAccountingLines(
         orderId: input.orderId,
         paymentId: input.paymentId,
         referenceCode: input.referenceCode ?? null,
+        paymentKind: resolvedKind,
       },
     },
-    {
+  ];
+
+  if (receivableCredit > 0.001) {
+    lines.push({
+      accountCode: ACCOUNTING_ACCOUNT_CODES.accountsReceivable,
+      debit: "0.00",
+      credit: toMoneyString(receivableCredit),
+      description: `Abono cliente pedido ${input.orderCode}`,
+      thirdPartyType: "CLIENTE",
+      thirdPartyId: input.clientId,
+      metadata: {
+        orderId: input.orderId,
+        paymentId: input.paymentId,
+        referenceCode: input.referenceCode ?? null,
+        paymentKind: resolvedKind,
+      },
+    });
+  }
+
+  if (advanceCredit > 0.001) {
+    lines.push({
       accountCode: ACCOUNTING_ACCOUNT_CODES.customerAdvances,
       debit: "0.00",
-      credit: toMoneyString(amount),
+      credit: toMoneyString(advanceCredit),
       description: `Anticipo cliente pedido ${input.orderCode}`,
       thirdPartyType: "CLIENTE",
       thirdPartyId: input.clientId,
@@ -516,9 +590,12 @@ export function buildOrderPaymentAccountingLines(
         orderId: input.orderId,
         paymentId: input.paymentId,
         referenceCode: input.referenceCode ?? null,
+        paymentKind: resolvedKind,
       },
-    },
-  ];
+    });
+  }
+
+  return lines;
 }
 
 export async function postOrderPaymentAccountingEntry(
@@ -763,7 +840,9 @@ export async function getOrderPaymentPostingPayload(tx: any, paymentId: string) 
       orderId: orderPayments.orderId,
       orderCode: orders.orderCode,
       clientId: orders.clientId,
+      orderTotal: orders.total,
       method: orderPayments.method,
+      status: orderPayments.status,
       amount: orderPayments.amount,
       referenceCode: orderPayments.referenceCode,
       createdAt: orderPayments.createdAt,
@@ -775,6 +854,33 @@ export async function getOrderPaymentPostingPayload(tx: any, paymentId: string) 
     .limit(1);
 
   if (!payment?.id || !payment.orderId || !payment.clientId) return null;
+
+  const siblingPayments: Array<{
+    id: string;
+    amount: string | number | null;
+    status: string | null;
+  }> = await tx
+    .select({
+      id: orderPayments.id,
+      amount: orderPayments.amount,
+      status: orderPayments.status,
+    })
+    .from(orderPayments)
+    .where(eq(orderPayments.orderId, payment.orderId));
+
+  const confirmedBeforePayment = siblingPayments.reduce((sum, row) => {
+    const samePayment = String(row.id) === String(payment.id);
+
+    if (samePayment || !isConfirmedPaymentStatus(row.status)) return sum;
+
+    return sum + toMoneyNumber(row.amount);
+  }, 0);
+
+  const breakdown = computeOrderPaymentBreakdown({
+    amount: String(payment.amount ?? "0"),
+    orderTotal: String(payment.orderTotal ?? "0"),
+    confirmedBeforePayment,
+  });
 
   const paymentDate = new Date(String(payment.createdAt ?? new Date().toISOString()))
     .toISOString()
@@ -789,6 +895,9 @@ export async function getOrderPaymentPostingPayload(tx: any, paymentId: string) 
     paymentMethod: String(payment.method ?? "EFECTIVO"),
     amount: String(payment.amount ?? "0"),
     referenceCode: payment.referenceCode ? String(payment.referenceCode) : null,
+    appliedToReceivable: breakdown.appliedToReceivable,
+    advanceAmount: breakdown.advanceAmount,
+    paymentKind: breakdown.paymentKind,
   } satisfies OrderPaymentPostingInput;
 }
 

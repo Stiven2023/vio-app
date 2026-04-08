@@ -89,6 +89,8 @@ export function PrefacturasTab({
   initialDocumentType = "all",
   lockDocumentTypeFilter = false,
   initialOrderStatus = "all",
+  showSiigoAction = true,
+  showRemisionAction = false,
 }: {
   canChangeStatus: boolean;
   canCreate: boolean;
@@ -99,6 +101,8 @@ export function PrefacturasTab({
   initialDocumentType?: string;
   lockDocumentTypeFilter?: boolean;
   initialOrderStatus?: string;
+  showSiigoAction?: boolean;
+  showRemisionAction?: boolean;
 }) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -165,6 +169,7 @@ export function PrefacturasTab({
   // ── SIIGO integration state ────────────────────────────────────────────────
   const [siigoSending, setSiigoSending] = useState<string | null>(null);
   const [siigoPolling, setSiigoPolling] = useState<string | null>(null);
+  const [remisionGenerating, setRemisionGenerating] = useState<string | null>(null);
   const [invoiceDownloadLoading, setInvoiceDownloadLoading] = useState<
     string | null
   >(null);
@@ -487,6 +492,62 @@ export function PrefacturasTab({
     return ["SENT", "DRAFT", "INVOICED", "ACCEPTED"].includes(status);
   };
 
+  const resolvePaymentSettlementStatus = (row: PrefacturaRow) => {
+    const persistedRefundStatus = String(row.refundStatus ?? "")
+      .trim()
+      .toUpperCase();
+
+    if (persistedRefundStatus === "PENDING") {
+      return "REFUND_PENDING";
+    }
+
+    const raw = String(row.paymentSettlementStatus ?? "")
+      .trim()
+      .toUpperCase();
+
+    if (
+      raw === "PENDING_PAYMENT" ||
+      raw === "PAID_IN_FULL" ||
+      raw === "REFUND_PENDING"
+    ) {
+      return raw;
+    }
+
+    const paid = Number(row.paidAmount ?? 0);
+    const total = Number(row.total ?? 0);
+
+    if (!Number.isFinite(total) || total <= 0 || !Number.isFinite(paid)) {
+      return "UNKNOWN";
+    }
+
+    if (paid > total + 0.01) return "REFUND_PENDING";
+    if (Math.abs(paid - total) <= 0.01) return "PAID_IN_FULL";
+
+    return "PENDING_PAYMENT";
+  };
+
+  const canSendToSiigoByPayment = (row: PrefacturaRow) => {
+    return resolvePaymentSettlementStatus(row) === "PAID_IN_FULL";
+  };
+
+  const getSiigoSendDisabledLabel = (row: PrefacturaRow) => {
+    const settlement = resolvePaymentSettlementStatus(row);
+
+    if (settlement === "REFUND_PENDING") {
+      return "Refund pending before SIIGO";
+    }
+
+    if (settlement === "PENDING_PAYMENT") {
+      return "Requires exact 100% payment";
+    }
+
+    if (settlement === "UNKNOWN") {
+      return "Payment status unavailable";
+    }
+
+    return "Send to SIIGO";
+  };
+
   const [siigoPollLoading, setSiigoPollLoading] = useState(false);
 
   const sendToSiigo = async (row: PrefacturaRow) => {
@@ -503,6 +564,23 @@ export function PrefacturasTab({
       toast.error(getErrorMessage(error));
     } finally {
       setSiigoSending(null);
+    }
+  };
+
+  const generateRemision = async (row: PrefacturaRow) => {
+    if (remisionGenerating) return;
+
+    try {
+      setRemisionGenerating(row.id);
+      await apiJson(`/api/prefacturas/${row.id}/remision/generate`, {
+        method: "POST",
+      });
+      toast.success(`Remision generated for ${row.prefacturaCode}`);
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setRemisionGenerating(null);
     }
   };
 
@@ -864,7 +942,19 @@ export function PrefacturasTab({
                 </TableCell>
                 <TableCell>{row.orderType ?? "-"}</TableCell>
                 <TableCell>{row.clientName ?? "-"}</TableCell>
-                <TableCell>{row.status}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    <span>{row.status}</span>
+                    {resolvePaymentSettlementStatus(row) === "REFUND_PENDING" ? (
+                      <span className="text-xs font-medium text-warning-600">
+                        Refund pending
+                        {Number(row.refundPendingAmount ?? 0) > 0
+                          ? ` (${formatMoney(row.refundPendingAmount)})`
+                          : ""}
+                      </span>
+                    ) : null}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1">
                     {getSiigoStatusChip(row)}
@@ -967,14 +1057,34 @@ export function PrefacturasTab({
                         </DropdownItem>
                       ) : null}
                       {canEdit &&
+                      showSiigoAction &&
                       row.documentType === "F" &&
                       !isSiigoBlocked(row) ? (
                         <DropdownItem
                           key="siigo-send"
+                          isDisabled={
+                            siigoSending === row.id || !canSendToSiigoByPayment(row)
+                          }
                           startContent={<BsSend />}
                           onPress={() => sendToSiigo(row)}
                         >
-                          Send to SIIGO
+                          {siigoSending === row.id
+                            ? "Sending..."
+                            : getSiigoSendDisabledLabel(row)}
+                        </DropdownItem>
+                      ) : null}
+                      {canEdit &&
+                      showRemisionAction &&
+                      row.documentType === "R" ? (
+                        <DropdownItem
+                          key="remision-generate"
+                          isDisabled={remisionGenerating === row.id}
+                          startContent={<BsFileEarmarkPdf />}
+                          onPress={() => generateRemision(row)}
+                        >
+                          {remisionGenerating === row.id
+                            ? "Generating..."
+                            : "Generate remision"}
                         </DropdownItem>
                       ) : null}
                       {canChangeStatus &&

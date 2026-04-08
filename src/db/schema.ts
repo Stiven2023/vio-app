@@ -1139,6 +1139,18 @@ export const prefacturas = pgTable("prefacturas", {
   siigoSentAt: timestamp("siigo_sent_at", { withTimezone: true }),
   siigoLastSyncAt: timestamp("siigo_last_sync_at", { withTimezone: true }),
   siigoErrorMessage: text("siigo_error_message"),
+  refundStatus: varchar("refund_status", { length: 20 })
+    .default("NONE")
+    .notNull(),
+  refundPendingAmount: numeric("refund_pending_amount", {
+    precision: 14,
+    scale: 2,
+  })
+    .default("0")
+    .notNull(),
+  refundStatusUpdatedAt: timestamp("refund_status_updated_at", {
+    withTimezone: true,
+  }),
 });
 
 /* =========================
@@ -2123,6 +2135,10 @@ export const supplierInvoices = pgTable(
     total: numeric("total", { precision: 14, scale: 2 }).notNull().default("0"),
     // status: RECIBIDA → VERIFICADA → APROBADA → CONTABILIZADA → PAGADA | RECHAZADA
     status: varchar("status", { length: 30 }).notNull().default("RECIBIDA"),
+    // documentType: "F" = invoice w/ VAT (send to Siigo), "R" = remision (no VAT, generate remision doc)
+    documentType: varchar("document_type", { length: 1 }),
+    // siigoStatus tracks the Siigo submission lifecycle (same values as preInvoices)
+    siigoStatus: varchar("siigo_status", { length: 20 }),
     notes: text("notes"),
     documentUrl: text("document_url"),
     verifiedBy: uuid("verified_by").references(() => employees.id),

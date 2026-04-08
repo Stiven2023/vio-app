@@ -5,10 +5,12 @@ export type AccountingPermissionKey =
   | "VER_RECIBO_CAJA"
   | "VER_CONCILIACION_BANCARIA"
   | "VER_RETENCIONES"
+  | "GESTIONAR_RETENCIONES"
   | "VER_FACTORING"
   | "VER_CARTERA"
   | "VER_ESTADO_RESULTADOS"
-  | "VER_CAJA_MENOR";
+  | "VER_CAJA_MENOR"
+  | "VER_FACTURAS_PROVEEDOR";
 
 export type AccountingAccessMap = Record<string, boolean>;
 
@@ -82,22 +84,22 @@ const ACCOUNTING_HUB_DEFINITIONS: AccountingHubGroupDefinition[] = [
     },
     items: [
       {
-        title: { en: "Invoices", es: "Facturas" },
-        href: "/erp/contabilidad-modulo/facturas",
+        title: { en: "Pre-invoices (Sales)", es: "Prefacturas (Ventas)" },
+        href: "/erp/contabilidad-modulo/prefacturas-workflow",
         description: {
-          en: "Final invoicing management.",
-          es: "Gestion de facturacion final.",
+          en: "F type: send to SIIGO. R type: generate remision.",
+          es: "Tipo F: enviar a SIIGO. Tipo R: generar remision.",
         },
         permission: "VER_PEDIDO",
       },
       {
-        title: { en: "Remissions", es: "Remisiones" },
-        href: "/erp/contabilidad-modulo/remisiones",
+        title: { en: "Supplier Invoices", es: "Facturas de proveedor" },
+        href: "/erp/contabilidad-modulo/facturas-proveedor",
         description: {
-          en: "Dispatch and support control.",
-          es: "Control de despachos y soportes.",
+          en: "F type: send to SIIGO. R type: generate remision.",
+          es: "Tipo F: enviar a SIIGO. Tipo R: generar remision.",
         },
-        permission: "VER_PEDIDO",
+        permission: "VER_FACTURAS_PROVEEDOR",
       },
       {
         title: { en: "Withholdings", es: "Retenciones" },
@@ -107,6 +109,15 @@ const ACCOUNTING_HUB_DEFINITIONS: AccountingHubGroupDefinition[] = [
           es: "Retefuente, reteICA y reteIVA.",
         },
         permission: "VER_RETENCIONES",
+      },
+      {
+        title: { en: "Withholding settings", es: "Configuracion retenciones" },
+        href: "/erp/contabilidad-modulo/configuracion-retenciones",
+        description: {
+          en: "Manage withholding rates by tax zone.",
+          es: "Gestiona tasas de retencion por zona tributaria.",
+        },
+        permission: "GESTIONAR_RETENCIONES",
       },
     ],
   },
@@ -214,8 +225,12 @@ const ACCOUNTING_HUB_DEFINITIONS: AccountingHubGroupDefinition[] = [
   },
 ];
 
-export function resolveAccountingLocale(value?: string | null): AccountingLocale {
-  const normalized = String(value ?? "en").trim().toLowerCase();
+export function resolveAccountingLocale(
+  value?: string | null,
+): AccountingLocale {
+  const normalized = String(value ?? "en")
+    .trim()
+    .toLowerCase();
 
   return normalized.startsWith("es") ? "es" : "en";
 }
@@ -235,10 +250,13 @@ export function buildAccountingHubGroups(
         href: item.href,
         description: item.description[locale],
       })),
-  })).filter((group) => group.items.length > 0);
+  }));
 }
 
-export function hasAccountingHubAccess(accessMap: AccountingAccessMap): boolean {
+/** Returns true if the user has access to at least one accounting hub item. */
+export function hasAccountingHubAccess(
+  accessMap: AccountingAccessMap,
+): boolean {
   return ACCOUNTING_HUB_DEFINITIONS.some((group) =>
     group.items.some((item) => Boolean(accessMap[item.permission])),
   );

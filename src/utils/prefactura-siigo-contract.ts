@@ -78,6 +78,46 @@ export function siigoNotApplicableError() {
   );
 }
 
+export function siigoRequiresFullPaymentError(args: {
+  paidAmount: number;
+  totalAmount: number;
+  overpaymentAmount: number;
+}) {
+  if (args.overpaymentAmount > 0) {
+    return withFieldErrors(
+      409,
+      "REFUND_PENDING",
+      "La prefactura tiene sobrepago y debe pasar a devolucion antes de enviar a SIIGO.",
+      {
+        paidAmount: ["El valor pagado supera el total de la prefactura."],
+        overpaymentAmount: [
+          `Hay ${args.overpaymentAmount.toFixed(2)} pendiente por devolver al cliente.`,
+        ],
+      },
+      {
+        paidAmount: args.paidAmount,
+        totalAmount: args.totalAmount,
+        overpaymentAmount: args.overpaymentAmount,
+      },
+    );
+  }
+
+  return withFieldErrors(
+    422,
+    "FULL_PAYMENT_REQUIRED",
+    "Solo se puede enviar a SIIGO una prefactura 100% pagada.",
+    {
+      paidAmount: ["Debes completar el pago total antes de enviar a SIIGO."],
+      totalAmount: ["El total pagado debe ser exactamente igual al total de la prefactura."],
+    },
+    {
+      paidAmount: args.paidAmount,
+      totalAmount: args.totalAmount,
+      overpaymentAmount: args.overpaymentAmount,
+    },
+  );
+}
+
 export function siigoAlreadySentError(status: string) {
   return withFieldErrors(
     409,

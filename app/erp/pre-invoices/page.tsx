@@ -40,6 +40,7 @@ export default async function PreInvoicesPage() {
           canCreate={canCreate}
           canDelete={canDelete}
           canEdit={canEdit}
+          showSiigoAction={false}
         />
       </div>
     </div>

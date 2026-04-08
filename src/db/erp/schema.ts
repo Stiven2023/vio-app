@@ -118,6 +118,18 @@ export const preInvoices = pgTable("prefacturas", {
   siigoSentAt: timestamp("siigo_sent_at", { withTimezone: true }),
   siigoLastSyncAt: timestamp("siigo_last_sync_at", { withTimezone: true }),
   siigoErrorMessage: text("siigo_error_message"),
+  refundStatus: varchar("refund_status", { length: 20 })
+    .default("NONE")
+    .notNull(),
+  refundPendingAmount: numeric("refund_pending_amount", {
+    precision: 14,
+    scale: 2,
+  })
+    .default("0")
+    .notNull(),
+  refundStatusUpdatedAt: timestamp("refund_status_updated_at", {
+    withTimezone: true,
+  }),
 });
 
 export const prefacturas = preInvoices;

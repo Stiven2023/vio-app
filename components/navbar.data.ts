@@ -251,6 +251,7 @@ export const buildNavbarSections = ({
         { name: labels.clients, href: "/maestros/clientes" },
         { name: labels.suppliers, href: "/maestros/proveedores" },
         { name: labels.banks, href: "/maestros/bancos" },
+        { name: labels.moldingTemplates, href: "/molding" },
         { name: labels.confectionists, href: "/confectionists" },
         { name: labels.packers, href: "/packers" },
         { name: labels.couriers, href: "/erp/compras/mensajeros" },
