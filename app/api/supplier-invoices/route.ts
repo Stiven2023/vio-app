@@ -8,27 +8,16 @@ import {
   suppliers,
 } from "@/src/db/erp/schema";
 import { getEmployeeIdFromRequest } from "@/src/utils/auth-middleware";
+import { calculateLegalDiscounts } from "@/src/utils/legal-discounts";
+import {
+  createSupplierInvoiceSchema,
+  type CreateSupplierInvoiceInput,
+} from "@/src/utils/supplier-invoices-contract";
 import { dbErrorResponse } from "@/src/utils/db-errors";
+import { jsonError, zodFirstErrorEnvelope } from "@/src/utils/api-error";
 import { requirePermission } from "@/src/utils/permission-middleware";
 import { rateLimit } from "@/src/utils/rate-limit";
 
-type CreateBody = {
-  supplierId?: unknown;
-  purchaseOrderId?: unknown;
-  purchaseOrderReceiptId?: unknown;
-  supplierInvoiceNumber?: unknown;
-  invoiceDate?: unknown;
-  dueDate?: unknown;
-  currency?: unknown;
-  subtotal?: unknown;
-  ivaAmount?: unknown;
-  withholdingTax?: unknown;
-  withholdingIva?: unknown;
-  withholdingIca?: unknown;
-  total?: unknown;
-  notes?: unknown;
-  documentUrl?: unknown;
-};
 
 function str(value: unknown) {
   return String(value ?? "").trim();
@@ -143,23 +132,19 @@ export async function POST(request: Request) {
   if (forbidden) return forbidden;
 
   try {
-    const body = (await request.json().catch(() => ({}))) as CreateBody;
-    const supplierId = str(body.supplierId);
-    const purchaseOrderId = str(body.purchaseOrderId);
-    const invoiceDate = str(body.invoiceDate);
-    const total = toPositiveDecimal(body.total);
+    const body = (await request.json().catch(() => ({}))) as unknown;
 
-    const errors: Record<string, string[]> = {};
+    // Validate with the new Zod schema
+    const parsed = createSupplierInvoiceSchema.safeParse(body);
 
-    if (!supplierId) errors.supplierId = ["Proveedor requerido."];
-    if (!purchaseOrderId) errors.purchaseOrderId = ["Orden de compra requerida."];
-    if (!isValidDate(invoiceDate)) errors.invoiceDate = ["Fecha de factura inválida (YYYY-MM-DD)."];
-    if (!total) errors.total = ["Total inválido."];
-
-    if (Object.keys(errors).length > 0) {
-      return Response.json({ errors }, { status: 422 });
+    if (!parsed.success) {
+      return zodFirstErrorEnvelope(
+        parsed.error,
+        "Datos de factura de proveedor inválidos."
+      );
     }
 
+    const input = parsed.data as CreateSupplierInvoiceInput;
     const employeeId = getEmployeeIdFromRequest(request);
 
     const created = await db.transaction(async (tx) => {
@@ -167,7 +152,7 @@ export async function POST(request: Request) {
       const [supplier] = await tx
         .select({ id: suppliers.id })
         .from(suppliers)
-        .where(eq(suppliers.id, supplierId))
+        .where(eq(suppliers.id, input.supplierId))
         .limit(1);
 
       if (!supplier) return { kind: "supplier-not-found" as const };
@@ -175,51 +160,90 @@ export async function POST(request: Request) {
       const [po] = await tx
         .select({ id: purchaseOrders.id })
         .from(purchaseOrders)
-        .where(eq(purchaseOrders.id, purchaseOrderId))
+        .where(eq(purchaseOrders.id, input.purchaseOrderId))
         .limit(1);
 
       if (!po) return { kind: "po-not-found" as const };
 
       // Verify receipt if provided
-      const purchaseOrderReceiptId = str(body.purchaseOrderReceiptId) || null;
-
-      if (purchaseOrderReceiptId) {
+      if (input.purchaseOrderReceiptId) {
         const [receipt] = await tx
           .select({ id: purchaseOrderReceipts.id })
           .from(purchaseOrderReceipts)
-          .where(eq(purchaseOrderReceipts.id, purchaseOrderReceiptId))
+          .where(eq(purchaseOrderReceipts.id, input.purchaseOrderReceiptId))
           .limit(1);
 
         if (!receipt) return { kind: "receipt-not-found" as const };
       }
 
       const invoiceCode = await nextInvoiceCode(tx);
-      const subtotal = toNonNegativeDecimal(body.subtotal);
-      const ivaAmount = toNonNegativeDecimal(body.ivaAmount);
-      const withholdingTax = toNonNegativeDecimal(body.withholdingTax);
-      const withholdingIva = toNonNegativeDecimal(body.withholdingIva);
-      const withholdingIca = toNonNegativeDecimal(body.withholdingIca);
+
+      // ── Compute tax amounts ──────────────────────────────────────
+      let ivaAmount: string;
+      let withholdingTax: string;
+      let withholdingIva: string;
+      let withholdingIca: string;
+
+      if (input.operationType && input.customerProfile) {
+        // OPCIÓN A: Auto-calculate using legal discounts motor
+        const legalDiscounts = calculateLegalDiscounts({
+          subtotal: Number(input.subtotal),
+          ivaRate: input.ivaRate ?? 19,
+          operationType: input.operationType,
+          customerProfile: input.customerProfile,
+          reteIcaRate: 0.966,
+          reteIvaRate: 15,
+          stampRate: 1.5,
+          contractRequiresStamps: false,
+        });
+
+        ivaAmount = legalDiscounts.ivaAmount;
+        withholdingTax = legalDiscounts.discounts.reteFuente;
+        withholdingIva = legalDiscounts.discounts.reteIva;
+        withholdingIca = legalDiscounts.discounts.reteIca;
+      } else {
+        // OPCIÓN B: Use manually provided values (backward compatibility)
+        ivaAmount = toNonNegativeDecimal(input.ivaAmount ?? 0);
+        withholdingTax = toNonNegativeDecimal(input.withholdingTax ?? 0);
+        withholdingIva = toNonNegativeDecimal(input.withholdingIva ?? 0);
+        withholdingIca = toNonNegativeDecimal(input.withholdingIca ?? 0);
+      }
+
+      // Calculate total: subtotal + IVA - withholdingTax - withholdingIva - withholdingIca
+      const subtotalNum = Number(input.subtotal);
+      const ivaNum = Number(ivaAmount);
+      const withTaxNum = Number(withholdingTax);
+      const withIvaNum = Number(withholdingIva);
+      const withIcaNum = Number(withholdingIca);
+
+      const total = (
+        subtotalNum +
+        ivaNum -
+        withTaxNum -
+        withIvaNum -
+        withIcaNum
+      ).toFixed(2);
 
       const [row] = await tx
         .insert(supplierInvoices)
         .values({
           invoiceCode,
-          supplierId,
-          purchaseOrderId,
-          purchaseOrderReceiptId,
-          supplierInvoiceNumber: str(body.supplierInvoiceNumber) || null,
-          invoiceDate,
-          dueDate: isValidDate(body.dueDate) ? str(body.dueDate) : null,
-          currency: str(body.currency) || "COP",
-          subtotal,
+          supplierId: input.supplierId,
+          purchaseOrderId: input.purchaseOrderId,
+          purchaseOrderReceiptId: input.purchaseOrderReceiptId || null,
+          supplierInvoiceNumber: input.supplierInvoiceNumber || null,
+          invoiceDate: input.invoiceDate,
+          dueDate: input.dueDate || null,
+          currency: input.currency || "COP",
+          subtotal: Number(input.subtotal).toFixed(2),
           ivaAmount,
           withholdingTax,
           withholdingIva,
           withholdingIca,
-          total: total!,
+          total,
           status: "RECIBIDA",
-          notes: str(body.notes) || null,
-          documentUrl: str(body.documentUrl) || null,
+          notes: input.notes || null,
+          documentUrl: input.documentUrl || null,
           createdBy: employeeId,
         })
         .returning({
@@ -230,9 +254,15 @@ export async function POST(request: Request) {
       return { kind: "ok" as const, id: row.id, invoiceCode: row.invoiceCode };
     });
 
-    if (created.kind === "supplier-not-found") return new Response("Proveedor no encontrado", { status: 404 });
-    if (created.kind === "po-not-found") return new Response("Orden de compra no encontrada", { status: 404 });
-    if (created.kind === "receipt-not-found") return new Response("Recibo no encontrado", { status: 404 });
+    if (created.kind === "supplier-not-found") {
+      return jsonError(404, "NOT_FOUND", "Proveedor no encontrado.");
+    }
+    if (created.kind === "po-not-found") {
+      return jsonError(404, "NOT_FOUND", "Orden de compra no encontrada.");
+    }
+    if (created.kind === "receipt-not-found") {
+      return jsonError(404, "NOT_FOUND", "Recibo de compra no encontrado.");
+    }
 
     return Response.json(created, { status: 201 });
   } catch (error) {

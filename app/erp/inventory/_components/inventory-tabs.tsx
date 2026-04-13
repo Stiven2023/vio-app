@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Tab, Tabs } from "@heroui/tabs";
 
 import { InventoryEntriesTab } from "@/app/erp/catalog/_components/inventory-entries/inventory-entries-tab";
-import { InventoryItemsTab } from "@/app/erp/catalog/_components/inventory-items/inventory-items-tab";
 import { InventoryOutputsTab } from "@/app/erp/catalog/_components/inventory-outputs/inventory-outputs-tab";
+import { MultiWarehouseInventoryTab } from "@/app/erp/inventory/_components/multi-warehouse-inventory-tab";
 import { WarehousesTab } from "@/app/erp/inventory/_components/warehouses-tab";
 
 type InventoryTabKey = "warehouses" | "inventory" | "entries" | "outputs";
@@ -61,11 +61,7 @@ export function InventoryTabs({
           <WarehousesTab canManage={canManageWarehouses} />
         ) : null}
         {activeTab === "inventory" && canViewInventoryItems ? (
-          <InventoryItemsTab
-            canCreate={canCreateItem}
-            canDelete={canDeleteItem}
-            canEdit={canEditItem}
-          />
+          <MultiWarehouseInventoryTab />
         ) : null}
         {activeTab === "entries" && canEntry ? (
           <InventoryEntriesTab

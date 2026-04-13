@@ -917,6 +917,14 @@ export const quotations = pgTable("quotations", {
     precision: 5,
     scale: 2,
   }).default("0"),
+  reteFuenteEnabled: boolean("rete_fuente_enabled").notNull().default(true),
+  reteIcaEnabled: boolean("rete_ica_enabled").notNull().default(true),
+  reteIvaEnabled: boolean("rete_iva_enabled").notNull().default(true),
+  estampillaEnabled: boolean("estampilla_enabled").notNull().default(false),
+  estampillaRate: numeric("estampilla_rate", {
+    precision: 5,
+    scale: 2,
+  }).notNull().default("0.5"),
   withholdingTaxAmount: numeric("withholding_tax_amount", {
     precision: 14,
     scale: 2,
@@ -929,6 +937,10 @@ export const quotations = pgTable("quotations", {
     precision: 14,
     scale: 2,
   }).default("0"),
+  estampillaAmount: numeric("estampilla_amount", {
+    precision: 14,
+    scale: 2,
+  }).notNull().default("0"),
   totalAfterWithholdings: numeric("total_after_withholdings", {
     precision: 14,
     scale: 2,
@@ -2848,6 +2860,28 @@ export const fabrics = pgTable(
     uniqueIndex("uq_fabrics_name").on(t.name),
     index("fabrics_is_active_idx").on(t.isActive),
     index("fabrics_category_idx").on(t.category),
+  ],
+);
+
+/* =========================
+   MOLDING CATALOG OPTIONS
+   Administrable select options for molding form fields
+========================= */
+export const moldingCatalogOptions = pgTable(
+  "molding_catalog_options",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    fieldKey: varchar("field_key", { length: 80 }).notNull(),
+    value: varchar("value", { length: 120 }).notNull(),
+    label: varchar("label", { length: 120 }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_molding_catalog_options_field_value").on(t.fieldKey, t.value),
+    index("molding_catalog_options_field_key_idx").on(t.fieldKey),
+    index("molding_catalog_options_is_active_idx").on(t.isActive),
   ],
 );
 

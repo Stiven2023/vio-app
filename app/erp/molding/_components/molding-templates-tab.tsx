@@ -187,7 +187,20 @@ function mapDetailToForm(detail: MoldingTemplateDetail): FormState {
     printTechnique: detail.screenPrint ? "DTF" : "NO",
     embroideryTechnique: detail.embroidery ? "HILO" : "NO",
     marquillaType: detail.tag ? "VIOMAR" : "NO",
-    pocketConfig: detail.hasPocket ? "EN EL PECHO" : "SIN BOLSILLOS",
+    pocketConfig: (() => {
+        // Try to recover pocketConfig from purchase rules stored in observations
+        const obs = String(detail.observations ?? "");
+        const rulesBlock = obs.includes("[REGLAS_COMPRAS]")
+          ? obs.split("[REGLAS_COMPRAS]")[1]?.split("[/REGLAS_COMPRAS]")[0] ?? ""
+          : "";
+        const pocketLine = rulesBlock
+          .split("\n")
+          .find((l) => l.startsWith("BOLSILLOS:"));
+        if (pocketLine) {
+          return pocketLine.replace("BOLSILLOS:", "").trim();
+        }
+        return detail.hasPocket ? "EN EL PECHO" : "SIN BOLSILLOS";
+      })(),
     hasElastic: Boolean(detail.hasElastic),
     hasInnerLining: Boolean(detail.hasInnerLining),
     hasPocket: Boolean(detail.hasPocket),
@@ -548,7 +561,7 @@ function getPocketOptions(garmentType: string): string[] {
   if (
     normalized.includes("PANTALON") ||
     normalized.includes("BERMUDA") ||
-    normalized.includes("PANTALOETA")
+    normalized.includes("PANTALONETA")
   ) {
     return [...POCKET_PANTS_OPTIONS];
   }
@@ -638,6 +651,25 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
   const { data, loading, page, setPage, refresh } =
     usePaginatedApi<MoldingTemplateRow>(endpoint, 20);
 
+  // Catalog options loaded from DB (with fallback to hardcoded arrays)
+  const [catalogGrouped, setCatalogGrouped] = useState<
+    Record<string, { value: string; label: string | null }[]>
+  >({});
+
+  useEffect(() => {
+    apiJson<{ grouped: Record<string, { value: string; label: string | null }[]> }>(
+      "/api/molding/catalog-options?fieldKeys=*&activeOnly=true",
+    )
+      .then((res) => setCatalogGrouped(res.grouped))
+      .catch(() => {
+        /* silently fall back to hardcoded arrays */
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dbOpts = (key: string): string[] =>
+    (catalogGrouped[key] ?? []).map((o: { value: string; label: string | null }) => o.value);
+
   const inventoryItemById = useMemo(() => {
     const map = new Map<string, InventoryItemOption>();
 
@@ -720,8 +752,12 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     [form.sleeveType],
   );
   const pocketOptions = useMemo(
-    () => getPocketOptions(form.garmentType),
-    [form.garmentType],
+    () => {
+      const dbPocket = dbOpts("pocketConfig");
+      return dbPocket.length ? dbPocket : getPocketOptions(form.garmentType);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [form.garmentType, catalogGrouped],
   );
   const shortSubtypeOptions = useMemo(() => {
     const current = String(form.garmentSubtype ?? "").trim();
@@ -868,7 +904,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
     return [
       `TELA: ${fabrics}`,
       `PROCESO: ${normalizeUpper(form.process) || "SIN DEFINIR"}`,
-      `SERIGRAFIA: ${normalizeUpper(form.printTechnique) || "NO"}`,
+      `TIPO_APLIQUE: ${normalizeUpper(form.printTechnique) || "NO"}`,
       `BORDADO: ${normalizeUpper(form.embroideryTechnique) || "NO"}`,
       `MARQUILLA: ${normalizeUpper(form.marquillaType) || "NO"}`,
       `MANGA: ${sleeve}`,
@@ -3009,7 +3045,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             setField("neckType", first ? String(first) : "");
                           }}
                         >
-                          {NECK_TYPE_OPTIONS.map((option) => (
+                          {(dbOpts("neckType").length ? dbOpts("neckType") : [...NECK_TYPE_OPTIONS]).map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
@@ -3152,7 +3188,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                       <Select
-                        label="Serigrafía"
+                        label="Tipo de aplique"
                         selectedKeys={new Set([form.printTechnique || "NO"])}
                         selectionMode="single"
                         onSelectionChange={(keys) => {
@@ -3165,7 +3201,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           }));
                         }}
                       >
-                        {PRINT_TECHNIQUE_OPTIONS.map((option) => (
+                        {(dbOpts("tipoAplique").length ? dbOpts("tipoAplique") : [...PRINT_TECHNIQUE_OPTIONS]).map((option) => (
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>
@@ -3183,7 +3219,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           }));
                         }}
                       >
-                        {EMBROIDERY_TECHNIQUE_OPTIONS.map((option) => (
+                        {(dbOpts("embroideryTechnique").length ? dbOpts("embroideryTechnique") : [...EMBROIDERY_TECHNIQUE_OPTIONS]).map((option) => (
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>
@@ -3201,7 +3237,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           }));
                         }}
                       >
-                        {MARQUILLA_OPTIONS.map((option) => (
+                        {(dbOpts("marquillaType").length ? dbOpts("marquillaType") : [...MARQUILLA_OPTIONS]).map((option) => (
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>
@@ -3498,7 +3534,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                                 setField("sesgoType", first ? String(first) : "");
                               }}
                             >
-                              {SESGO_TYPE_OPTIONS.map((option) => (
+                              {(dbOpts("sesgoType").length ? dbOpts("sesgoType") : [...SESGO_TYPE_OPTIONS]).map((option) => (
                                 <SelectItem key={option}>{option}</SelectItem>
                               ))}
                             </Select>
@@ -3600,7 +3636,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             setField("sleeveType", first ? String(first) : "");
                           }}
                         >
-                          {SLEEVE_TYPE_OPTIONS.map((option) => (
+                          {(dbOpts("sleeveType").length ? dbOpts("sleeveType") : [...SLEEVE_TYPE_OPTIONS]).map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
@@ -3616,7 +3652,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             setField("cuffType", first ? String(first) : "NO APLICA");
                           }}
                         >
-                          {CUFF_TYPE_OPTIONS.map((option) => (
+                          {(dbOpts("cuffType").length ? dbOpts("cuffType") : [...CUFF_TYPE_OPTIONS]).map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
@@ -3748,7 +3784,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                             setField("liningType", first ? String(first) : "");
                           }}
                         >
-                          {LINING_TYPE_OPTIONS.map((option) => (
+                          {(dbOpts("liningType").length ? dbOpts("liningType") : [...LINING_TYPE_OPTIONS]).map((option) => (
                             <SelectItem key={option}>{option}</SelectItem>
                           ))}
                         </Select>
@@ -3801,7 +3837,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                                 setField("hoodType", first ? String(first) : "");
                               }}
                             >
-                              {HOOD_TYPE_OPTIONS.map((option) => (
+                              {(dbOpts("hoodType").length ? dbOpts("hoodType") : [...HOOD_TYPE_OPTIONS]).map((option) => (
                                 <SelectItem key={option}>{option}</SelectItem>
                               ))}
                             </Select>
@@ -3907,7 +3943,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           setField("buttonType", first ? String(first) : "");
                         }}
                       >
-                        {BUTTON_TYPE_OPTIONS.map((option) => (
+                        {(dbOpts("buttonType").length ? dbOpts("buttonType") : [...BUTTON_TYPE_OPTIONS]).map((option) => (
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>
@@ -3927,7 +3963,7 @@ export function MoldingTemplatesTab({ canCreate, canEdit, canDelete }: Props) {
                           setField("buttonholeType", first ? String(first) : "");
                         }}
                       >
-                        {BUTTONHOLE_TYPE_OPTIONS.map((option) => (
+                        {(dbOpts("buttonholeType").length ? dbOpts("buttonholeType") : [...BUTTONHOLE_TYPE_OPTIONS]).map((option) => (
                           <SelectItem key={option}>{option}</SelectItem>
                         ))}
                       </Select>

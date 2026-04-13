@@ -1131,16 +1131,24 @@ Object.defineProperty(InventoryCategoryTypeEnum, "enumValues", {
 
 export const WarehousePurpose = {
   GENERAL: "GENERAL",
+  PRINCIPAL: "PRINCIPAL",
   MATERIA_PRIMA: "MATERIA_PRIMA",
   PRODUCCION: "PRODUCCION",
+  TIENDA: "TIENDA",
+  MUESTRAS: "MUESTRAS",
+  INSUMOS: "INSUMOS",
   PRODUCTO_TERMINADO: "PRODUCTO_TERMINADO",
   TRANSITO: "TRANSITO",
 } as const;
 
 export const warehousePurposeValues = [
   "GENERAL",
+  "PRINCIPAL",
   "MATERIA_PRIMA",
   "PRODUCCION",
+  "TIENDA",
+  "MUESTRAS",
+  "INSUMOS",
   "PRODUCTO_TERMINADO",
   "TRANSITO",
 ] as const;

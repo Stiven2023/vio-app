@@ -37,8 +37,12 @@ import { ConfirmActionModal } from "@/components/confirm-action-modal";
 
 const PURPOSE_LABELS: Record<string, string> = {
   GENERAL: "General",
+  PRINCIPAL: "Principal",
   MATERIA_PRIMA: "Materia Prima",
   PRODUCCION: "Producción",
+  TIENDA: "Tienda",
+  MUESTRAS: "Muestras",
+  INSUMOS: "Insumos",
   PRODUCTO_TERMINADO: "Producto Terminado",
   TRANSITO: "En Tránsito",
 };

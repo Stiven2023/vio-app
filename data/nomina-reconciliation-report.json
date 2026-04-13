@@ -1,0 +1,508 @@
+{
+  "executedAt": "2026-04-08T05:09:03.147Z",
+  "period": "2026-04-01_to_2026-04-15",
+  "statistics": {
+    "nominaCandidates": 69,
+    "nominaCandidatesValidatedExcludingErrors": 45,
+    "systemEmployees": 48,
+    "matchOk": 41,
+    "noMatch": 4,
+    "multiMatch": 0,
+    "inconsistent": 0,
+    "coverage": "91.1%"
+  },
+  "matches": [
+    {
+      "nominaRow": 17,
+      "nominaIdentification": "1152436767",
+      "nominaName": "ANGELO ZAPATA SALAZAR",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "06092a7f-7f75-4527-bf5f-bb17ce9849b5",
+      "matchedEmployeeCode": "EMP0003",
+      "confidence": 1,
+      "details": "Match exacto: EMP0003"
+    },
+    {
+      "nominaRow": 18,
+      "nominaIdentification": "1037580276",
+      "nominaName": "LUIS ALFONSO LONDOÑO CASTAÑO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "9d7f16b8-b5de-4c8f-ac00-165678823c79",
+      "matchedEmployeeCode": "EMP0014",
+      "confidence": 1,
+      "details": "Match exacto: EMP0014"
+    },
+    {
+      "nominaRow": 19,
+      "nominaIdentification": "1000862597",
+      "nominaName": "JUAN JOSE OCAMPO PAEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "35504547-3707-4486-9d96-95c6a7c226b2",
+      "matchedEmployeeCode": "EMP0039",
+      "confidence": 1,
+      "details": "Match exacto: EMP0039"
+    },
+    {
+      "nominaRow": 20,
+      "nominaIdentification": "1036669628",
+      "nominaName": "JUAN PABLO BENAVIDES ARIAS",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "04cf6604-bdc4-49fe-a9b4-93c2c47ff8f7",
+      "matchedEmployeeCode": "EMP0038",
+      "confidence": 1,
+      "details": "Match exacto: EMP0038"
+    },
+    {
+      "nominaRow": 21,
+      "nominaIdentification": "98607493",
+      "nominaName": "CARLOS AMADO TABORDA ECHEVERRI",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "332bdb62-c81a-4b20-b2f7-1d1e07e555d5",
+      "matchedEmployeeCode": "EMP0031",
+      "confidence": 1,
+      "details": "Match exacto: EMP0031"
+    },
+    {
+      "nominaRow": 22,
+      "nominaIdentification": "1001452597",
+      "nominaName": "MALLERLY JIMENEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "0b171e5c-fd68-4493-843f-38d40a50ff02",
+      "matchedEmployeeCode": "EMP0017",
+      "confidence": 1,
+      "details": "Match exacto: EMP0017"
+    },
+    {
+      "nominaRow": 24,
+      "nominaIdentification": "43840427",
+      "nominaName": "ELIANA MARIETH OCAMPO PINEDA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "7d3a00ee-96bc-4210-b4ec-80b540643cce",
+      "matchedEmployeeCode": "EMP0005",
+      "confidence": 1,
+      "details": "Match exacto: EMP0005"
+    },
+    {
+      "nominaRow": 26,
+      "nominaIdentification": "71728478",
+      "nominaName": "LUIS OSCAR GARCIA URAN",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "0cb75ac8-10a3-457e-9ebb-680bd9b5ff71",
+      "matchedEmployeeCode": "EMP0015",
+      "confidence": 1,
+      "details": "Match exacto: EMP0015"
+    },
+    {
+      "nominaRow": 27,
+      "nominaIdentification": "1100549200",
+      "nominaName": "DINA MARTINEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "9625c74a-0aac-4fc6-9799-c9be6b94c099",
+      "matchedEmployeeCode": "EMP0007",
+      "confidence": 1,
+      "details": "Match exacto: EMP0007"
+    },
+    {
+      "nominaRow": 28,
+      "nominaIdentification": "1063651775",
+      "nominaName": "ELEIDYS CALDERIN NADAD",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "9e284f71-fe8b-41f3-a267-0d714fb072f6",
+      "matchedEmployeeCode": "EMP0036",
+      "confidence": 1,
+      "details": "Match exacto: EMP0036"
+    },
+    {
+      "nominaRow": 29,
+      "nominaIdentification": "1037570183",
+      "nominaName": "DIANA CASTRO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "e78711c1-781a-487a-bfdc-1a2df296c036",
+      "matchedEmployeeCode": "EMP0006",
+      "confidence": 1,
+      "details": "Match exacto: EMP0006"
+    },
+    {
+      "nominaRow": 31,
+      "nominaIdentification": "1100401794",
+      "nominaName": "SEIDY JOHANA MARTINEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "fb486e1c-02b2-4250-98fc-ec294076e6b5",
+      "matchedEmployeeCode": "EMP0021",
+      "confidence": 1,
+      "details": "Match exacto: EMP0021"
+    },
+    {
+      "nominaRow": 33,
+      "nominaIdentification": "1036685824",
+      "nominaName": "LUISA FERNANDA HENAO SALAS",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 34,
+      "nominaIdentification": "1035416950",
+      "nominaName": "ANDRES FELIPE ALVAREZ CORDOBA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "af82caa0-4b7b-4182-8071-81981b820ef3",
+      "matchedEmployeeCode": "EMP0001",
+      "confidence": 1,
+      "details": "Match exacto: EMP0001"
+    },
+    {
+      "nominaRow": 35,
+      "nominaIdentification": "1035416950",
+      "nominaName": "ANDRES FELIPE ALVAREZ CORDOBA REAL",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "af82caa0-4b7b-4182-8071-81981b820ef3",
+      "matchedEmployeeCode": "EMP0001",
+      "confidence": 1,
+      "details": "Match exacto: EMP0001"
+    },
+    {
+      "nominaRow": 36,
+      "nominaIdentification": "1000416801",
+      "nominaName": "GINE ALEJANDRA LADINO VARGAS",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "3cd79152-ef7d-47a2-821b-9ac1acbc9fef",
+      "matchedEmployeeCode": "EMP0032",
+      "confidence": 1,
+      "details": "Match exacto: EMP0032"
+    },
+    {
+      "nominaRow": 37,
+      "nominaIdentification": "1006961266",
+      "nominaName": "JONIER ALEXANDER GOMEZ MARTÍNEZ",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 38,
+      "nominaIdentification": "1000871230",
+      "nominaName": "LUISA ALVAREZ",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 39,
+      "nominaIdentification": "1092357141",
+      "nominaName": "NAREN",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "547f9ae5-c8cd-48e3-9aec-eb3093a353be",
+      "matchedEmployeeCode": "EMP0019",
+      "confidence": 1,
+      "details": "Match exacto: EMP0019"
+    },
+    {
+      "nominaRow": 40,
+      "nominaIdentification": "1348434",
+      "nominaName": "YORMAN JOSUE GOMEZ SALAZAR",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "2273979d-270d-44ca-b3f0-eeeb0858caa0",
+      "matchedEmployeeCode": "EMP0030",
+      "confidence": 1,
+      "details": "Match exacto: EMP0030"
+    },
+    {
+      "nominaRow": 41,
+      "nominaIdentification": "1036616937",
+      "nominaName": "ALEJANDRA DIAZ HERNANDEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "a46d9334-2373-4a5a-9222-5e5a9c42ebfb",
+      "matchedEmployeeCode": "EMP0027",
+      "confidence": 1,
+      "details": "Match exacto: EMP0027"
+    },
+    {
+      "nominaRow": 42,
+      "nominaIdentification": "32109843",
+      "nominaName": "SOL MARIA CARDONA VALENCIA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "b132f950-3b9a-4dcb-8596-c8650c217cdc",
+      "matchedEmployeeCode": "EMP0022",
+      "confidence": 1,
+      "details": "Match exacto: EMP0022"
+    },
+    {
+      "nominaRow": 43,
+      "nominaIdentification": "32241321",
+      "nominaName": "SANDRA MILENA CASTAÑO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "2feeb78d-95d2-4e74-a022-a271be20be03",
+      "matchedEmployeeCode": "EMP0020",
+      "confidence": 1,
+      "details": "Match exacto: EMP0020"
+    },
+    {
+      "nominaRow": 44,
+      "nominaIdentification": "32241321",
+      "nominaName": "SANDRA MILENA CASTAÑO REAL",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "2feeb78d-95d2-4e74-a022-a271be20be03",
+      "matchedEmployeeCode": "EMP0020",
+      "confidence": 1,
+      "details": "Match exacto: EMP0020"
+    },
+    {
+      "nominaRow": 45,
+      "nominaIdentification": "1017266991",
+      "nominaName": "JOSE ANTONIO ESPITIA",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 46,
+      "nominaIdentification": "98666753",
+      "nominaName": "EDDISSON ALIRIO SALAZAR CASTAÑO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "7c862eca-8721-47a6-8736-750f6954259c",
+      "matchedEmployeeCode": "EMP0008",
+      "confidence": 1,
+      "details": "Match exacto: EMP0008"
+    },
+    {
+      "nominaRow": 47,
+      "nominaIdentification": "43346439",
+      "nominaName": "MARITZA JIMENEZ JIMENEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "bdfc2d70-e915-4c4e-bfc5-3b0dfb8c5a83",
+      "matchedEmployeeCode": "EMP0018",
+      "confidence": 1,
+      "details": "Match exacto: EMP0018"
+    },
+    {
+      "nominaRow": 48,
+      "nominaIdentification": "1152191643",
+      "nominaName": "HENRY ALEXIS MESA MONSALVE",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "55d63e48-6688-4314-a5ed-a72cd3ca70e9",
+      "matchedEmployeeCode": "EMP0028",
+      "confidence": 1,
+      "details": "Match exacto: EMP0028"
+    },
+    {
+      "nominaRow": 49,
+      "nominaIdentification": "21424578",
+      "nominaName": "TATIANA MARIA BUSTAMANTE HERNANDEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "71672030-f60b-4f63-80c9-38d9bac0a7ea",
+      "matchedEmployeeCode": "EMP0035",
+      "confidence": 1,
+      "details": "Match exacto: EMP0035"
+    },
+    {
+      "nominaRow": 50,
+      "nominaIdentification": "1020496424",
+      "nominaName": "VALENTINA VALENCIA QUINTERO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "c63894cc-238e-4b0b-9c16-15f401e0b64c",
+      "matchedEmployeeCode": "EMP0042",
+      "confidence": 1,
+      "details": "Match exacto: EMP0042"
+    },
+    {
+      "nominaRow": 51,
+      "nominaIdentification": "1193630748",
+      "nominaName": "JUAN JOSE BUSTAMANTE HERNANDEZ",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "39aacf3f-3f21-4d04-b53e-b421a6fae192",
+      "matchedEmployeeCode": "EMP0040",
+      "confidence": 1,
+      "details": "Match exacto: EMP0040"
+    },
+    {
+      "nominaRow": 52,
+      "nominaIdentification": "1001505828",
+      "nominaName": "JUAN DAVID VELEZ ALZATE",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "308a07fc-def4-4317-88e7-77ee6e72c07c",
+      "matchedEmployeeCode": "EMP0013",
+      "confidence": 1,
+      "details": "Match exacto: EMP0013"
+    },
+    {
+      "nominaRow": 53,
+      "nominaIdentification": "1214739016",
+      "nominaName": "BRAYAN ALEJANDRO GONZALEZ R.",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "1ba708e5-ca74-41ee-86ce-d25122caacc2",
+      "matchedEmployeeCode": "EMP0024",
+      "confidence": 1,
+      "details": "Match exacto: EMP0024"
+    },
+    {
+      "nominaRow": 54,
+      "nominaIdentification": "1000192462",
+      "nominaName": "DAVID ALEJANDRO SALDARRIAGA RIOS",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "38a96b5a-4bc6-4144-92b4-eaf085e8d7a6",
+      "matchedEmployeeCode": "EMP0029",
+      "confidence": 1,
+      "details": "Match exacto: EMP0029"
+    },
+    {
+      "nominaRow": 56,
+      "nominaIdentification": "1026132547",
+      "nominaName": "LUISA FERNANDA OTALVARO RODAS",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "c075f959-d9fe-4687-91ee-d55d494f03dc",
+      "matchedEmployeeCode": "EMP0025",
+      "confidence": 1,
+      "details": "Match exacto: EMP0025"
+    },
+    {
+      "nominaRow": 58,
+      "nominaIdentification": "43455439",
+      "nominaName": "BIBIANA ZULUAGA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "468f84f1-0855-4a8e-a00a-99ad4ced5195",
+      "matchedEmployeeCode": "EMP0004",
+      "confidence": 1,
+      "details": "Match exacto: EMP0004"
+    },
+    {
+      "nominaRow": 59,
+      "nominaIdentification": "43455439",
+      "nominaName": "BIBIANA ZULUAGA REAL",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "468f84f1-0855-4a8e-a00a-99ad4ced5195",
+      "matchedEmployeeCode": "EMP0004",
+      "confidence": 1,
+      "details": "Match exacto: EMP0004"
+    },
+    {
+      "nominaRow": 60,
+      "nominaIdentification": "43169005",
+      "nominaName": "ELIZABETH CUARTAS",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "425e23ff-d555-4744-ae06-87226658f7b4",
+      "matchedEmployeeCode": "EMP0009",
+      "confidence": 1,
+      "details": "Match exacto: EMP0009"
+    },
+    {
+      "nominaRow": 61,
+      "nominaIdentification": "1037605206",
+      "nominaName": "ANDRES FELIPE CASTAÑO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "60f73375-4002-4b0c-a7bd-4ee1504296b3",
+      "matchedEmployeeCode": "EMP0002",
+      "confidence": 1,
+      "details": "Match exacto: EMP0002"
+    },
+    {
+      "nominaRow": 62,
+      "nominaIdentification": "1037608041",
+      "nominaName": "JAMES MAURICIO GONZALEZ RIVERA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "b2230c64-6906-4221-85e9-69be41aba837",
+      "matchedEmployeeCode": "EMP0041",
+      "confidence": 1,
+      "details": "Match exacto: EMP0041"
+    },
+    {
+      "nominaRow": 63,
+      "nominaIdentification": "1037608041",
+      "nominaName": "JAMES MAURICIO GONZALEZ RIVERA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "b2230c64-6906-4221-85e9-69be41aba837",
+      "matchedEmployeeCode": "EMP0041",
+      "confidence": 1,
+      "details": "Match exacto: EMP0041"
+    },
+    {
+      "nominaRow": 64,
+      "nominaIdentification": "1036679905",
+      "nominaName": "LUISA RESTREPO",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "bb0f60da-0292-4625-a91f-3efa77968d12",
+      "matchedEmployeeCode": "EMP0016",
+      "confidence": 1,
+      "details": "Match exacto: EMP0016"
+    },
+    {
+      "nominaRow": 65,
+      "nominaIdentification": "1000895203",
+      "nominaName": "NATALIA CASTAÑEDA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "84e0516b-6c83-4001-bda2-8f4c5c48bea5",
+      "matchedEmployeeCode": "EMP0037",
+      "confidence": 1,
+      "details": "Match exacto: EMP0037"
+    },
+    {
+      "nominaRow": 66,
+      "nominaIdentification": "71381483",
+      "nominaName": "GIOVANNY ALBERTO OTALVARO CHICA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "88017f1b-baec-4e75-9cac-6fd52b40ce3f",
+      "matchedEmployeeCode": "EMP0011",
+      "confidence": 1,
+      "details": "Match exacto: EMP0011"
+    },
+    {
+      "nominaRow": 67,
+      "nominaIdentification": "1020466949",
+      "nominaName": "ALLAN SANTIAGO ZAPATA",
+      "matchType": "MATCH_OK",
+      "matchedEmployeeId": "d25e2fab-9488-46f2-9d95-fc0e67f4ec48",
+      "matchedEmployeeCode": "EMP0026",
+      "confidence": 1,
+      "details": "Match exacto: EMP0026"
+    }
+  ],
+  "issues": [
+    {
+      "nominaRow": 33,
+      "nominaIdentification": "1036685824",
+      "nominaName": "LUISA FERNANDA HENAO SALAS",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 37,
+      "nominaIdentification": "1006961266",
+      "nominaName": "JONIER ALEXANDER GOMEZ MARTÍNEZ",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 38,
+      "nominaIdentification": "1000871230",
+      "nominaName": "LUISA ALVAREZ",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    },
+    {
+      "nominaRow": 45,
+      "nominaIdentification": "1017266991",
+      "nominaName": "JOSE ANTONIO ESPITIA",
+      "matchType": "NO_MATCH",
+      "matchedEmployeeId": null,
+      "matchedEmployeeCode": null,
+      "confidence": 0,
+      "details": "Sin correspondencia en el sistema"
+    }
+  ]
+}

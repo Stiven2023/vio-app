@@ -74,6 +74,7 @@ type PrefacturaFormMode = "create" | "edit";
 type SupportedCurrency = "COP" | "USD";
 type ClientPriceType = "AUTORIZADO" | "MAYORISTA" | "VIOMAR" | "COLANTA";
 type TaxZone = "CONTINENTAL" | "FREE_ZONE" | "SAN_ANDRES" | "SPECIAL_REGIME";
+type EstampillaRate = 0.5 | 1;
 type BankOption = {
   id: string;
   code: string | null;
@@ -110,6 +111,7 @@ const TAX_ZONE_DEFAULT_RATES: Record<
     withholdingIvaRate: 0,
   },
 };
+const RETE_ICA_MIN_BASE_COP = 524000;
 
 function normalizeTaxZone(value: unknown): TaxZone {
   const raw = String(value ?? "CONTINENTAL")
@@ -129,6 +131,12 @@ function safeRate(value: unknown, fallback: number): number {
   if (!Number.isFinite(parsed) || parsed < 0) return fallback;
 
   return parsed;
+}
+
+function normalizeStampRate(value: unknown): EstampillaRate {
+  const parsed = Number(value);
+
+  return parsed === 1 ? 1 : 0.5;
 }
 
 export type PrefacturaFormData = {
@@ -182,6 +190,12 @@ export type PrefacturaFormData = {
   withholdingTaxAmount?: string | null;
   withholdingIcaAmount?: string | null;
   withholdingIvaAmount?: string | null;
+  reteFuenteEnabled?: boolean | null;
+  reteIcaEnabled?: boolean | null;
+  reteIvaEnabled?: boolean | null;
+  estampillaEnabled?: boolean | null;
+  estampillaRate?: string | null;
+  estampillaAmount?: string | null;
   totalAfterWithholdings?: string | null;
   ivaAmount?: string | null;
 };
@@ -408,16 +422,29 @@ export function PrefacturaForm({
   const [withholdingIcaRate, setWithholdingIcaRate] = useState<number>(
     safeRate(
       initial?.withholdingIcaRate,
-      TAX_ZONE_DEFAULT_RATES[normalizeTaxZone(initial?.taxZoneSnapshot)]
-        .withholdingIcaRate,
+      2.5,
     ),
   );
   const [withholdingIvaRate, setWithholdingIvaRate] = useState<number>(
     safeRate(
       initial?.withholdingIvaRate,
-      TAX_ZONE_DEFAULT_RATES[normalizeTaxZone(initial?.taxZoneSnapshot)]
-        .withholdingIvaRate,
+      15,
     ),
+  );
+  const [reteFuenteEnabled, setReteFuenteEnabled] = useState(
+    initial?.reteFuenteEnabled ?? true,
+  );
+  const [reteIcaEnabled, setReteIcaEnabled] = useState(
+    initial?.reteIcaEnabled ?? true,
+  );
+  const [reteIvaEnabled, setReteIvaEnabled] = useState(
+    initial?.reteIvaEnabled ?? true,
+  );
+  const [estampillaEnabled, setEstampillaEnabled] = useState(
+    initial?.estampillaEnabled ?? false,
+  );
+  const [estampillaRate, setEstampillaRate] = useState<EstampillaRate>(
+    normalizeStampRate(initial?.estampillaRate),
   );
 
   const totalPrefactura = Number(initial?.total ?? 0);
@@ -432,11 +459,26 @@ export function PrefacturaForm({
       : Number(advanceRequired || 0)
     : 0;
 
-  const withholdingTaxAmount = (subtotalValue * withholdingTaxRate) / 100;
-  const withholdingIcaAmount = (subtotalValue * withholdingIcaRate) / 100;
-  const withholdingIvaAmount = (ivaValue * withholdingIvaRate) / 100;
+  const reteIcaApplicable =
+    currency === "COP" && subtotalValue >= RETE_ICA_MIN_BASE_COP;
+  const effectiveReteIcaEnabled = reteIcaEnabled && reteIcaApplicable;
+  const withholdingTaxAmount = reteFuenteEnabled
+    ? (subtotalValue * withholdingTaxRate) / 100
+    : 0;
+  const withholdingIcaAmount = effectiveReteIcaEnabled
+    ? (subtotalValue * withholdingIcaRate) / 100
+    : 0;
+  const withholdingIvaAmount = reteIvaEnabled
+    ? (ivaValue * withholdingIvaRate) / 100
+    : 0;
+  const estampillaAmount = estampillaEnabled
+    ? (subtotalValue * estampillaRate) / 100
+    : 0;
   const totalWithholdings =
-    withholdingTaxAmount + withholdingIcaAmount + withholdingIvaAmount;
+    withholdingTaxAmount +
+    withholdingIcaAmount +
+    withholdingIvaAmount +
+    estampillaAmount;
   const totalAfterWithholdings = totalPrefactura - totalWithholdings;
   const advanceReceivedValue = Math.max(0, Number(advanceReceived || 0));
 
@@ -523,12 +565,8 @@ export function PrefacturaForm({
       setWithholdingTaxRate(
         safeRate(opt.withholdingTaxRate, fallbackRates.withholdingTaxRate),
       );
-      setWithholdingIcaRate(
-        safeRate(opt.withholdingIcaRate, fallbackRates.withholdingIcaRate),
-      );
-      setWithholdingIvaRate(
-        safeRate(opt.withholdingIvaRate, fallbackRates.withholdingIvaRate),
-      );
+      setWithholdingIcaRate(2.5);
+      setWithholdingIvaRate(15);
     }
   };
 
@@ -634,9 +672,15 @@ export function PrefacturaForm({
           withholdingTaxRate,
           withholdingIcaRate,
           withholdingIvaRate,
+          reteFuenteEnabled,
+          reteIcaEnabled,
+          reteIvaEnabled,
+          estampillaEnabled,
+          estampillaRate,
           withholdingTaxAmount,
           withholdingIcaAmount,
           withholdingIvaAmount,
+          estampillaAmount,
           totalAfterWithholdings,
         };
 
@@ -704,9 +748,15 @@ export function PrefacturaForm({
             withholdingTaxRate,
             withholdingIcaRate,
             withholdingIvaRate,
+            reteFuenteEnabled,
+            reteIcaEnabled,
+            reteIvaEnabled,
+            estampillaEnabled,
+            estampillaRate,
             withholdingTaxAmount,
             withholdingIcaAmount,
             withholdingIvaAmount,
+            estampillaAmount,
             totalAfterWithholdings,
           }),
         });
@@ -983,20 +1033,53 @@ export function PrefacturaForm({
               />
             </div>
 
-            <Select
-              label="Condiciones de pago"
-              selectedKeys={[paymentTerms]}
-              variant="bordered"
-              onSelectionChange={(keys) => {
-                const first = String(Array.from(keys)[0] ?? "TRANSFERENCIA");
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <Select
+                label="Condiciones de pago"
+                selectedKeys={[paymentTerms]}
+                variant="bordered"
+                onSelectionChange={(keys) => {
+                  const first = String(Array.from(keys)[0] ?? "TRANSFERENCIA");
 
-                setPaymentTerms(first || "TRANSFERENCIA");
-              }}
-            >
-              <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
-              <SelectItem key="EFECTIVO">Efectivo</SelectItem>
-              <SelectItem key="CREDITO">Credito</SelectItem>
-            </Select>
+                  setPaymentTerms(first || "TRANSFERENCIA");
+                }}
+              >
+                <SelectItem key="TRANSFERENCIA">Transferencia</SelectItem>
+                <SelectItem key="EFECTIVO">Efectivo</SelectItem>
+                <SelectItem key="CREDITO">Credito</SelectItem>
+              </Select>
+
+              <div className="space-y-2 rounded-xl border border-default-200 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Estampilla</p>
+                    <p className="text-xs text-default-500">
+                      Flag tributario sobre subtotal antes de IVA.
+                    </p>
+                  </div>
+                  <Switch
+                    isSelected={estampillaEnabled}
+                    size="sm"
+                    onValueChange={setEstampillaEnabled}
+                  />
+                </div>
+                {estampillaEnabled ? (
+                  <Select
+                    label="Tasa estampilla"
+                    selectedKeys={[String(estampillaRate)]}
+                    variant="bordered"
+                    onSelectionChange={(keys) => {
+                      const first = String(Array.from(keys)[0] ?? "0.5");
+
+                      setEstampillaRate(first === "1" ? 1 : 0.5);
+                    }}
+                  >
+                    <SelectItem key="0.5">0.5%</SelectItem>
+                    <SelectItem key="1">1%</SelectItem>
+                  </Select>
+                ) : null}
+              </div>
+            </div>
           </div>
         </CardBody>
       </Card>
@@ -1337,8 +1420,17 @@ export function PrefacturaForm({
 
             <div className="space-y-2 border-t border-default-200 pt-3">
               <p className="text-sm font-semibold">Retenciones</p>
+              <div className="flex items-center justify-between rounded-xl border border-default-200 px-3 py-2">
+                <span className="text-sm">Retefuente</span>
+                <Switch
+                  isSelected={reteFuenteEnabled}
+                  size="sm"
+                  onValueChange={setReteFuenteEnabled}
+                />
+              </div>
               <Input
                 label="Retención en la fuente (%)"
+                isDisabled={!reteFuenteEnabled}
                 type="number"
                 value={String(withholdingTaxRate)}
                 variant="bordered"
@@ -1346,8 +1438,17 @@ export function PrefacturaForm({
                   setWithholdingTaxRate(Math.max(0, Number(value || 0)))
                 }
               />
+              <div className="flex items-center justify-between rounded-xl border border-default-200 px-3 py-2">
+                <span className="text-sm">ReteICA</span>
+                <Switch
+                  isSelected={reteIcaEnabled}
+                  size="sm"
+                  onValueChange={setReteIcaEnabled}
+                />
+              </div>
               <Input
                 label="Retención ICA (%)"
+                isDisabled={!reteIcaEnabled}
                 type="number"
                 value={String(withholdingIcaRate)}
                 variant="bordered"
@@ -1355,8 +1456,23 @@ export function PrefacturaForm({
                   setWithholdingIcaRate(Math.max(0, Number(value || 0)))
                 }
               />
+              {reteIcaEnabled && !reteIcaApplicable ? (
+                <p className="text-xs text-warning">
+                  ReteICA no aplica en USD o cuando el subtotal es menor a
+                  524.000 COP. Se calcula en 0 automáticamente.
+                </p>
+              ) : null}
+              <div className="flex items-center justify-between rounded-xl border border-default-200 px-3 py-2">
+                <span className="text-sm">ReteIVA</span>
+                <Switch
+                  isSelected={reteIvaEnabled}
+                  size="sm"
+                  onValueChange={setReteIvaEnabled}
+                />
+              </div>
               <Input
                 label="Retención IVA (%)"
+                isDisabled={!reteIvaEnabled}
                 type="number"
                 value={String(withholdingIvaRate)}
                 variant="bordered"
@@ -1375,6 +1491,10 @@ export function PrefacturaForm({
               <div className="flex justify-between text-xs">
                 <span className="text-default-500">Valor Retención IVA</span>
                 <span>{formatMoney(withholdingIvaAmount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-default-500">Valor Estampilla</span>
+                <span>{formatMoney(estampillaAmount, currency)}</span>
               </div>
               <div className="flex justify-between text-sm font-semibold">
                 <span>Total retenciones</span>

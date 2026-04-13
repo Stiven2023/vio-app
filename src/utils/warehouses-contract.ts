@@ -2,8 +2,12 @@ import { z } from "zod";
 
 const warehousePurposeValues = [
   "GENERAL",
+  "PRINCIPAL",
   "MATERIA_PRIMA",
   "PRODUCCION",
+  "TIENDA",
+  "MUESTRAS",
+  "INSUMOS",
   "PRODUCTO_TERMINADO",
   "TRANSITO",
 ] as const;

@@ -26,6 +26,7 @@ const CLIENT_PRICE_TYPES = new Set([
   "VIOMAR",
   "COLANTA",
 ]);
+const RETE_ICA_MIN_BASE_COP = 524000;
 
 function toNullableNumericValue(value: unknown) {
   if (value === null || value === undefined || value === "") return null;
@@ -100,11 +101,101 @@ const PREFAC_PATCH_COLUMN_TO_KEY: Record<string, string> = {
   withholding_tax_rate: "withholdingTaxRate",
   withholding_ica_rate: "withholdingIcaRate",
   withholding_iva_rate: "withholdingIvaRate",
+  rete_fuente_enabled: "reteFuenteEnabled",
+  rete_ica_enabled: "reteIcaEnabled",
+  rete_iva_enabled: "reteIvaEnabled",
+  estampilla_enabled: "estampillaEnabled",
+  estampilla_rate: "estampillaRate",
   withholding_tax_amount: "withholdingTaxAmount",
   withholding_ica_amount: "withholdingIcaAmount",
   withholding_iva_amount: "withholdingIvaAmount",
+  estampilla_amount: "estampillaAmount",
   total_after_withholdings: "totalAfterWithholdings",
 };
+
+function normalizeRate(value: unknown, fallback: number) {
+  const n = typeof value === "number" ? value : Number(String(value));
+
+  if (!Number.isFinite(n) || n < 0) return fallback;
+
+  return n;
+}
+
+function normalizeStampRate(value: unknown, fallback: 0.5 | 1) {
+  const n = Number(value);
+
+  if (n === 0.5 || n === 1) return n;
+
+  return fallback;
+}
+
+function computePrefacturaWithholdings(input: {
+  documentType: "F" | "R";
+  currency: "COP" | "USD";
+  subtotal: number;
+  total: number;
+  ivaAmount: number;
+  withholdingTaxRate: number;
+  withholdingIcaRate: number;
+  withholdingIvaRate: number;
+  reteFuenteEnabled: boolean;
+  reteIcaEnabled: boolean;
+  reteIvaEnabled: boolean;
+  estampillaEnabled: boolean;
+  estampillaRate: 0.5 | 1;
+}) {
+  if (input.documentType === "R") {
+    return {
+      reteFuenteEnabled: false,
+      reteIcaEnabled: false,
+      reteIvaEnabled: false,
+      estampillaEnabled: false,
+      withholdingTaxRate: "0.00",
+      withholdingIcaRate: "0.00",
+      withholdingIvaRate: "0.00",
+      estampillaRate: "0.50",
+      withholdingTaxAmount: "0.00",
+      withholdingIcaAmount: "0.00",
+      withholdingIvaAmount: "0.00",
+      estampillaAmount: "0.00",
+      totalAfterWithholdings: String(Math.max(0, input.total)),
+    };
+  }
+
+  const isReteIcaApplicable =
+    input.currency === "COP" && input.subtotal >= RETE_ICA_MIN_BASE_COP;
+  const effectiveReteIcaEnabled = input.reteIcaEnabled && isReteIcaApplicable;
+  const taxAmount = input.reteFuenteEnabled
+    ? (input.subtotal * input.withholdingTaxRate) / 100
+    : 0;
+  const icaAmount = effectiveReteIcaEnabled
+    ? (input.subtotal * input.withholdingIcaRate) / 100
+    : 0;
+  const ivaAmount = input.reteIvaEnabled
+    ? (input.ivaAmount * input.withholdingIvaRate) / 100
+    : 0;
+  const estampillaAmount = input.estampillaEnabled
+    ? (input.subtotal * input.estampillaRate) / 100
+    : 0;
+
+  return {
+    reteFuenteEnabled: input.reteFuenteEnabled,
+    reteIcaEnabled: input.reteIcaEnabled,
+    reteIvaEnabled: input.reteIvaEnabled,
+    estampillaEnabled: input.estampillaEnabled,
+    withholdingTaxRate: String(input.reteFuenteEnabled ? input.withholdingTaxRate : 0),
+    withholdingIcaRate: String(effectiveReteIcaEnabled ? input.withholdingIcaRate : 0),
+    withholdingIvaRate: String(input.reteIvaEnabled ? input.withholdingIvaRate : 0),
+    estampillaRate: String(input.estampillaEnabled ? input.estampillaRate : 0.5),
+    withholdingTaxAmount: String(taxAmount),
+    withholdingIcaAmount: String(icaAmount),
+    withholdingIvaAmount: String(ivaAmount),
+    estampillaAmount: String(estampillaAmount),
+    totalAfterWithholdings: String(
+      Math.max(0, input.total - taxAmount - icaAmount - ivaAmount - estampillaAmount),
+    ),
+  };
+}
 
 async function applyPrefacturaPatchWithFallback(
   tx: any,
@@ -212,9 +303,15 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         withholdingTaxRate: prefacturas.withholdingTaxRate,
         withholdingIcaRate: prefacturas.withholdingIcaRate,
         withholdingIvaRate: prefacturas.withholdingIvaRate,
+        reteFuenteEnabled: prefacturas.reteFuenteEnabled,
+        reteIcaEnabled: prefacturas.reteIcaEnabled,
+        reteIvaEnabled: prefacturas.reteIvaEnabled,
+        estampillaEnabled: prefacturas.estampillaEnabled,
+        estampillaRate: prefacturas.estampillaRate,
         withholdingTaxAmount: prefacturas.withholdingTaxAmount,
         withholdingIcaAmount: prefacturas.withholdingIcaAmount,
         withholdingIvaAmount: prefacturas.withholdingIvaAmount,
+        estampillaAmount: prefacturas.estampillaAmount,
         totalAfterWithholdings: prefacturas.totalAfterWithholdings,
         // SIIGO electronic invoicing tracking
         siigoStatus: prefacturas.siigoStatus,
@@ -318,9 +415,15 @@ async function getPrefacturaById(id: string, advisorScope: string | null) {
         withholdingTaxRate: prefacturas.withholdingTaxRate,
         withholdingIcaRate: prefacturas.withholdingIcaRate,
         withholdingIvaRate: prefacturas.withholdingIvaRate,
+        reteFuenteEnabled: prefacturas.reteFuenteEnabled,
+        reteIcaEnabled: prefacturas.reteIcaEnabled,
+        reteIvaEnabled: prefacturas.reteIvaEnabled,
+        estampillaEnabled: prefacturas.estampillaEnabled,
+        estampillaRate: prefacturas.estampillaRate,
         withholdingTaxAmount: prefacturas.withholdingTaxAmount,
         withholdingIcaAmount: prefacturas.withholdingIcaAmount,
         withholdingIvaAmount: prefacturas.withholdingIvaAmount,
+        estampillaAmount: prefacturas.estampillaAmount,
         totalAfterWithholdings: prefacturas.totalAfterWithholdings,
         clientName: sql<
           string | null
@@ -665,6 +768,20 @@ export async function PATCH(
           advanceReferenceNumber: prefacturas.advanceReferenceNumber,
           advanceCurrency: prefacturas.advanceCurrency,
           advancePaymentImageUrl: prefacturas.advancePaymentImageUrl,
+          withholdingTaxRate: prefacturas.withholdingTaxRate,
+          withholdingIcaRate: prefacturas.withholdingIcaRate,
+          withholdingIvaRate: prefacturas.withholdingIvaRate,
+          reteFuenteEnabled: prefacturas.reteFuenteEnabled,
+          reteIcaEnabled: prefacturas.reteIcaEnabled,
+          reteIvaEnabled: prefacturas.reteIvaEnabled,
+          estampillaEnabled: prefacturas.estampillaEnabled,
+          estampillaRate: prefacturas.estampillaRate,
+          subtotal: prefacturas.subtotal,
+          total: prefacturas.total,
+          ivaAmount: prefacturas.ivaAmount,
+          quotationDocumentType: quotations.documentType,
+          orderIvaEnabled: orders.ivaEnabled,
+          currency: orders.currency,
         })
         .from(prefacturas)
         .leftJoin(orders, eq(prefacturas.orderId, orders.id))
@@ -814,6 +931,21 @@ export async function PATCH(
           Math.max(0, Number(body.withholdingIvaRate) || 0),
         );
       }
+      if ("reteFuenteEnabled" in body) {
+        patch.reteFuenteEnabled = Boolean(body.reteFuenteEnabled);
+      }
+      if ("reteIcaEnabled" in body) {
+        patch.reteIcaEnabled = Boolean(body.reteIcaEnabled);
+      }
+      if ("reteIvaEnabled" in body) {
+        patch.reteIvaEnabled = Boolean(body.reteIvaEnabled);
+      }
+      if ("estampillaEnabled" in body) {
+        patch.estampillaEnabled = Boolean(body.estampillaEnabled);
+      }
+      if ("estampillaRate" in body) {
+        patch.estampillaRate = String(normalizeStampRate(body.estampillaRate, 0.5));
+      }
       if ("withholdingTaxAmount" in body) {
         patch.withholdingTaxAmount = String(
           Math.max(0, Number(body.withholdingTaxAmount) || 0),
@@ -829,11 +961,62 @@ export async function PATCH(
           Math.max(0, Number(body.withholdingIvaAmount) || 0),
         );
       }
+      if ("estampillaAmount" in body) {
+        patch.estampillaAmount = String(
+          Math.max(0, Number(body.estampillaAmount) || 0),
+        );
+      }
       if ("totalAfterWithholdings" in body) {
         patch.totalAfterWithholdings = String(
           Math.max(0, Number(body.totalAfterWithholdings) || 0),
         );
       }
+
+      const resolvedDocumentType = String(
+        current.quotationDocumentType ?? (current.orderIvaEnabled === false ? "R" : "F"),
+      )
+        .trim()
+        .toUpperCase() === "R"
+        ? "R"
+        : "F";
+      const resolvedCurrency = normalizeCurrency(current.currency);
+      const recomputedWithholdings = computePrefacturaWithholdings({
+        documentType: resolvedDocumentType,
+        currency: resolvedCurrency,
+        subtotal: Math.max(0, toNullableNumericValue(current.subtotal) ?? 0),
+        total: Math.max(0, toNullableNumericValue(current.total) ?? 0),
+        ivaAmount: Math.max(0, toNullableNumericValue(current.ivaAmount) ?? 0),
+        withholdingTaxRate: normalizeRate(
+          patch.withholdingTaxRate ?? current.withholdingTaxRate,
+          0,
+        ),
+        withholdingIcaRate: normalizeRate(
+          patch.withholdingIcaRate ?? current.withholdingIcaRate,
+          2.5,
+        ),
+        withholdingIvaRate: normalizeRate(
+          patch.withholdingIvaRate ?? current.withholdingIvaRate,
+          15,
+        ),
+        reteFuenteEnabled: Boolean(
+          patch.reteFuenteEnabled ?? current.reteFuenteEnabled ?? true,
+        ),
+        reteIcaEnabled: Boolean(
+          patch.reteIcaEnabled ?? current.reteIcaEnabled ?? true,
+        ),
+        reteIvaEnabled: Boolean(
+          patch.reteIvaEnabled ?? current.reteIvaEnabled ?? true,
+        ),
+        estampillaEnabled: Boolean(
+          patch.estampillaEnabled ?? current.estampillaEnabled ?? false,
+        ),
+        estampillaRate: normalizeStampRate(
+          patch.estampillaRate ?? current.estampillaRate,
+          0.5,
+        ),
+      });
+
+      Object.assign(patch, recomputedWithholdings);
 
       if ("clientPriceType" in body) {
         const clientPriceType = String(body.clientPriceType ?? "")

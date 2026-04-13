@@ -1,730 +1,631 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { toast } from "react-hot-toast";
-import { Button } from "@heroui/button";
-import { Card, CardBody } from "@heroui/card";
-import { Chip } from "@heroui/chip";
-import { Input, Textarea } from "@heroui/input";
-import {
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-} from "@heroui/modal";
-import { Pagination } from "@heroui/pagination";
-import { Select, SelectItem } from "@heroui/select";
-import { Tab, Tabs } from "@heroui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableColumn,
-  TableHeader,
-  TableRow,
-} from "@heroui/table";
-import { BsPlus, BsClockHistory, BsFileEarmarkText } from "react-icons/bs";
+import { useEffect, useMemo, useState } from "react";
 
-import { apiJson, getErrorMessage } from "@/app/erp/orders/_lib/api";
+type Vista =
+  | "inicio"
+  | "solicitudes"
+  | "nomina"
+  | "colillas"
+  | "certificados220"
+  | "cartas"
+  | "formacion"
+  | "horas_extras";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+type TipoSolicitud =
+  | "licencia_no_remunerada"
+  | "licencia_remunerada"
+  | "licencia_maternidad"
+  | "licencia_paternidad"
+  | "incapacidad"
+  | "vacaciones"
+  | "horas_extras"
+  | "permiso_puntual";
 
-type LeaveRow = {
+type LeaveItem = {
   id: string;
-  leaveType: "PAID" | "UNPAID";
   startDate: string;
   endDate: string;
   durationDays: number;
-  hoursAbsent: string | null;
-  payrollDeduction: boolean | null;
   notes: string | null;
-  approvedBy: string | null;
   approvedByName: string | null;
-  createdAt: string;
 };
 
-type RequestRow = {
+type ColillaItem = {
   id: string;
-  type: RequestType;
-  subject: string;
-  description: string;
-  requestDate: string | null;
-  requestHours: string | null;
-  priority: PriorityKey;
-  status: RequestStatus;
-  responseNotes: string | null;
-  resolvedByName: string | null;
-  resolvedAt: string | null;
-  createdAt: string;
+  period: string;
+  status: string;
+  netoAPagar: string;
+  totalDevengado: string;
+  totalDeducciones: string;
+  pdfUrl: string | null;
 };
 
-type PaginatedLeaves = {
-  employee: { id: string; name: string; employeeCode: string | null } | null;
-  items: LeaveRow[];
-  page: number;
-  pageSize: number;
-  total: number;
-  hasNextPage: boolean;
+type Certificado220Item = {
+  id: string;
+  vigenciaFiscal: number;
+  totalIngresos: string;
+  totalRetenciones: string;
+  status: string;
+  pdfUrl: string | null;
 };
 
-type PaginatedRequests = {
-  items: RequestRow[];
-  page: number;
-  pageSize: number;
-  total: number;
-  hasNextPage: boolean;
+type HoraExtraItem = {
+  id: string;
+  fecha: string;
+  tipo: string;
+  totalHoras: string;
+  status: string;
 };
 
-type RequestType = "PERMISO" | "RECLAMO" | "SOLICITUD" | "SUGERENCIA" | "PQR";
-type PriorityKey = "BAJA" | "MEDIA" | "ALTA";
-type RequestStatus = "PENDIENTE" | "APROBADO" | "RECHAZADO" | "EN_REVISION" | "CERRADO";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-  const d = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(d.getTime())) return value;
-
-  return d.toLocaleDateString("es-CO");
-}
-
-function leaveStatusLabel(row: LeaveRow) {
-  return row.approvedBy ? "Aprobado" : "Pendiente";
-}
-
-function leaveStatusColor(row: LeaveRow): "success" | "warning" {
-  return row.approvedBy ? "success" : "warning";
-}
-
-function requestStatusColor(status: RequestStatus): "success" | "danger" | "warning" | "primary" | "default" {
-  switch (status) {
-    case "APROBADO": return "success";
-    case "RECHAZADO": return "danger";
-    case "EN_REVISION": return "primary";
-    case "CERRADO": return "default";
-    default: return "warning";
-  }
-}
-
-function priorityColor(p: PriorityKey): "danger" | "warning" | "default" {
-  if (p === "ALTA") return "danger";
-  if (p === "MEDIA") return "warning";
-
-  return "default";
-}
-
-const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
-  PERMISO: "Permiso",
-  RECLAMO: "Reclamo",
-  SOLICITUD: "Solicitud",
-  SUGERENCIA: "Sugerencia",
-  PQR: "PQR",
+type CertificacionItem = {
+  key: string;
+  label: string;
+  url: string | null;
 };
 
-const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
-  PENDIENTE: "Pendiente",
-  APROBADO: "Aprobado",
-  RECHAZADO: "Rechazado",
-  EN_REVISION: "En revisión",
-  CERRADO: "Cerrado",
+const MENU_ITEMS: { id: Vista; label: string; icon: string; badge?: string }[] = [
+  { id: "inicio", label: "Mi perfil", icon: "👤" },
+  { id: "solicitudes", label: "Mis solicitudes", icon: "📋", badge: "2" },
+  { id: "nomina", label: "Reporte de nómina", icon: "💰" },
+  { id: "colillas", label: "Colillas de pago", icon: "🧾" },
+  { id: "certificados220", label: "Certificado 220", icon: "📄" },
+  { id: "cartas", label: "Cartas laborales", icon: "✉️" },
+  { id: "formacion", label: "Formación", icon: "🎓" },
+  { id: "horas_extras", label: "Horas extras", icon: "⏰" },
+];
+
+const SOLICITUD_TIPOS: { value: TipoSolicitud; label: string; requiereDoc: boolean; diasMax?: number }[] = [
+  { value: "licencia_no_remunerada", label: "Licencia no remunerada", requiereDoc: false },
+  { value: "licencia_remunerada", label: "Licencia remunerada", requiereDoc: true },
+  { value: "licencia_maternidad", label: "Licencia de maternidad", requiereDoc: true, diasMax: 126 },
+  { value: "licencia_paternidad", label: "Licencia de paternidad", requiereDoc: true, diasMax: 14 },
+  { value: "incapacidad", label: "Incapacidad médica", requiereDoc: true },
+  { value: "vacaciones", label: "Vacaciones", requiereDoc: false },
+  { value: "permiso_puntual", label: "Permiso puntual", requiereDoc: false },
+];
+
+const CARTA_TIPOS = [
+  { value: "LABORAL_GENERAL", label: "Carta laboral general" },
+  { value: "LABORAL_BANCO", label: "Carta para entidad bancaria" },
+  { value: "LABORAL_VISA", label: "Carta para trámite de visa" },
+  { value: "INGRESO_SALARIO", label: "Constancia de ingresos y salario" },
+  { value: "PAZ_Y_SALVO", label: "Paz y salvo laboral" },
+] as const;
+
+const EMPLEADO_MOCK = {
+  nombres: "Empleado",
+  apellidos: "VIOMAR",
+  codigo: "EMP-0001",
+  cargo: "Colaborador",
+  departamento: "HCM",
+  fechaIngreso: "2024-01-01",
+  salarioBase: 2500000,
+  diasVacacionesPendientes: 8,
+  solicitudesPendientes: 2,
 };
 
-// ── Mis Solicitudes de Permiso (Leaves) ───────────────────────────────────────
+function Badge({ estado }: { estado: string }) {
+  const map: Record<string, string> = {
+    APROBADO: "bg-green-100 text-green-800",
+    aprobada: "bg-green-100 text-green-800",
+    PAGADA: "bg-green-100 text-green-800",
+    pagado: "bg-green-100 text-green-800",
+    EN_REVISION: "bg-yellow-100 text-yellow-800",
+    en_revision: "bg-yellow-100 text-yellow-800",
+    PENDIENTE: "bg-gray-100 text-gray-700",
+    pendiente: "bg-gray-100 text-gray-700",
+    RECHAZADO: "bg-red-100 text-red-800",
+    rechazada: "bg-red-100 text-red-800",
+  };
 
-function MisSolicitudesTab() {
-  const [data, setData] = useState<PaginatedLeaves | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${map[estado] ?? "bg-gray-100 text-gray-600"}`}>
+      {estado}
+    </span>
+  );
+}
 
-  // New leave modal
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [notes, setNotes] = useState("");
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`rounded-xl border border-gray-200 bg-white p-5 shadow-sm ${className}`}>{children}</div>;
+}
 
-  const totalPages = useMemo(() => {
-    if (!data) return 1;
-
-    return Math.max(1, Math.ceil(data.total / (data.pageSize ?? 10)));
-  }, [data]);
-
-  async function load(p = page) {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(p), pageSize: "10" });
-      const res = await fetch(`/api/hcm/mis-solicitudes?${params}`);
-
-      if (!res.ok) throw new Error(await res.text());
-      setData(await res.json());
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void load(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!startDate || !endDate) {
-      toast.error("Las fechas de inicio y fin son obligatorias");
-
-      return;
-    }
-    if (startDate > endDate) {
-      toast.error("La fecha final no puede ser anterior a la inicial");
-
-      return;
-    }
-    setSaving(true);
-    try {
-      await apiJson("/api/hcm/mis-solicitudes", {
-        method: "POST",
-        body: JSON.stringify({ startDate, endDate, notes }),
-      });
-      toast.success("Solicitud enviada correctamente");
-      setOpen(false);
-      setStartDate("");
-      setEndDate("");
-      setNotes("");
-      void load(1);
-      setPage(1);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
+function VistaPerfil() {
+  const e = EMPLEADO_MOCK;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <Card className="flex items-center gap-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-2xl font-bold text-white">
+          {e.nombres[0]}
+          {e.apellidos[0]}
+        </div>
         <div>
-          <p className="text-sm text-default-500">
-            Tus solicitudes de permiso y ausencias. Envía una nueva solicitud para que RR.HH. la revise.
-          </p>
-          {data?.employee ? (
-            <p className="mt-1 text-xs text-default-400">
-              Empleado: <strong>{data.employee.name}</strong>
-              {data.employee.employeeCode ? ` (${data.employee.employeeCode})` : ""}
-            </p>
-          ) : null}
+          <p className="text-lg font-semibold text-gray-900">{e.nombres} {e.apellidos}</p>
+          <p className="text-sm text-gray-500">{e.cargo} · {e.departamento}</p>
+          <p className="text-xs text-gray-400">Código: {e.codigo} · Ingreso: {e.fechaIngreso}</p>
         </div>
-        <Button
-          color="primary"
-          startContent={<BsPlus />}
-          onPress={() => setOpen(true)}
-        >
-          Nueva solicitud
-        </Button>
+      </Card>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Salario base", value: `$${(e.salarioBase / 1000).toFixed(0)}K` },
+          { label: "Vacaciones pendientes", value: `${e.diasVacacionesPendientes} días` },
+          { label: "Solicitudes activas", value: e.solicitudesPendientes },
+          { label: "Antigüedad", value: "2 años" },
+        ].map((item) => (
+          <Card key={item.label} className="text-center">
+            <p className="text-2xl font-bold text-blue-700">{item.value}</p>
+            <p className="mt-1 text-xs text-gray-500">{item.label}</p>
+          </Card>
+        ))}
       </div>
-
-      <div className="overflow-x-auto">
-      <Table aria-label="Mis solicitudes de permiso">
-        <TableHeader>
-          <TableColumn>Tipo</TableColumn>
-          <TableColumn>Desde</TableColumn>
-          <TableColumn>Hasta</TableColumn>
-          <TableColumn>Días</TableColumn>
-          <TableColumn>Estado</TableColumn>
-          <TableColumn>Aprobado por</TableColumn>
-          <TableColumn>Notas</TableColumn>
-          <TableColumn>Fecha solicitud</TableColumn>
-        </TableHeader>
-        <TableBody
-          emptyContent={loading ? "Cargando..." : "No tienes solicitudes registradas"}
-          items={data?.items ?? []}
-        >
-          {(row) => (
-            <TableRow key={row.id}>
-              <TableCell>
-                <Chip size="sm" variant="flat" color={row.leaveType === "PAID" ? "success" : "warning"}>
-                  {row.leaveType === "PAID" ? "Remunerado" : "No remunerado"}
-                </Chip>
-              </TableCell>
-              <TableCell>{formatDate(row.startDate)}</TableCell>
-              <TableCell>{formatDate(row.endDate)}</TableCell>
-              <TableCell>{row.durationDays}</TableCell>
-              <TableCell>
-                <Chip size="sm" variant="flat" color={leaveStatusColor(row)}>
-                  {leaveStatusLabel(row)}
-                </Chip>
-              </TableCell>
-              <TableCell>{row.approvedByName || "-"}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{row.notes || "-"}</TableCell>
-              <TableCell>{formatDate(row.createdAt)}</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-
-      </div>
-
-      {data && data.total > (data.pageSize ?? 10) ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-default-500">Total: {data.total}</p>
-          <Pagination page={page} total={totalPages} onChange={(p) => { setPage(p); }} />
-        </div>
-      ) : null}
-
-      {/* Modal nueva solicitud */}
-      <Modal disableAnimation isOpen={open} size="lg" onClose={() => setOpen(false)}>
-        <ModalContent>
-          <form onSubmit={(e) => void handleSubmit(e)}>
-            <ModalHeader>Nueva solicitud de permiso / ausencia</ModalHeader>
-            <ModalBody className="space-y-3">
-              <p className="text-sm text-default-500">
-                Selecciona el rango de fechas. RR.HH. revisará tu solicitud y la aprobará o rechazará.
-              </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Input
-                  isRequired
-                  label="Fecha inicio"
-                  min={new Date().toISOString().slice(0, 10)}
-                  type="date"
-                  value={startDate}
-                  variant="bordered"
-                  onValueChange={setStartDate}
-                />
-                <Input
-                  isRequired
-                  label="Fecha fin"
-                  min={startDate || new Date().toISOString().slice(0, 10)}
-                  type="date"
-                  value={endDate}
-                  variant="bordered"
-                  onValueChange={setEndDate}
-                />
-              </div>
-              <Textarea
-                label="Observaciones (opcional)"
-                minRows={3}
-                placeholder="Motivo del permiso u observaciones adicionales..."
-                value={notes}
-                variant="bordered"
-                onValueChange={setNotes}
-              />
-            </ModalBody>
-            <ModalFooter>
-              <Button isDisabled={saving} variant="flat" onPress={() => setOpen(false)}>
-                Cancelar
-              </Button>
-              <Button color="primary" isDisabled={saving} isLoading={saving} type="submit">
-                Enviar solicitud
-              </Button>
-            </ModalFooter>
-          </form>
-        </ModalContent>
-      </Modal>
     </div>
   );
 }
 
-// ── Mis Peticiones / PQR ──────────────────────────────────────────────────────
-
-const REQUEST_TYPES: Array<{ value: RequestType; label: string }> = [
-  { value: "PERMISO", label: "Permiso" },
-  { value: "RECLAMO", label: "Reclamo" },
-  { value: "SOLICITUD", label: "Solicitud" },
-  { value: "SUGERENCIA", label: "Sugerencia" },
-  { value: "PQR", label: "PQR" },
-];
-
-const PRIORITIES: Array<{ value: PriorityKey; label: string }> = [
-  { value: "BAJA", label: "Baja" },
-  { value: "MEDIA", label: "Media" },
-  { value: "ALTA", label: "Alta" },
-];
-
-function MisPeticionesTab() {
-  const [data, setData] = useState<PaginatedRequests | null>(null);
+function VistaSolicitudes() {
+  const [forma, setForma] = useState(false);
+  const [tipo, setTipo] = useState<TipoSolicitud | "">("");
+  const [inicio, setInicio] = useState("");
+  const [fin, setFin] = useState("");
+  const [motivo, setMotivo] = useState("");
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
+  const [msg, setMsg] = useState("");
+  const [items, setItems] = useState<LeaveItem[]>([]);
 
-  // New request modal
-  const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [type, setType] = useState<RequestType>("SOLICITUD");
-  const [subject, setSubject] = useState("");
-  const [description, setDescription] = useState("");
-  const [requestDate, setRequestDate] = useState("");
-  const [requestHours, setRequestHours] = useState("");
-  const [priority, setPriority] = useState<PriorityKey>("MEDIA");
+  const tipoInfo = SOLICITUD_TIPOS.find((t) => t.value === tipo);
 
-  // Detail modal
-  const [detailRow, setDetailRow] = useState<RequestRow | null>(null);
-
-  const totalPages = useMemo(() => {
-    if (!data) return 1;
-
-    return Math.max(1, Math.ceil(data.total / (data.pageSize ?? 10)));
-  }, [data]);
-
-  async function load(p = page) {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(p), pageSize: "10" });
-      const res = await fetch(`/api/hcm/mis-peticiones?${params}`);
-
-      if (!res.ok) throw new Error(await res.text());
-      setData(await res.json());
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
+  async function cargar() {
+    const res = await fetch("/api/hcm/mis-solicitudes?page=1&pageSize=10", { credentials: "include" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { items?: LeaveItem[] };
+    setItems(data.items ?? []);
   }
 
   useEffect(() => {
-    void load(page);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+    void cargar();
+  }, []);
 
-  function resetForm() {
-    setType("SOLICITUD");
-    setSubject("");
-    setDescription("");
-    setRequestDate("");
-    setRequestHours("");
-    setPriority("MEDIA");
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!subject.trim()) { toast.error("El asunto es obligatorio"); return; }
-    if (!description.trim()) { toast.error("La descripción es obligatoria"); return; }
-    if (type === "PERMISO" && !requestDate) {
-      toast.error("Para permisos debes indicar la fecha");
-
+  async function enviar() {
+    if (!tipo || !inicio || !motivo) {
+      setMsg("Completa todos los campos requeridos.");
       return;
     }
 
-    setSaving(true);
+    setLoading(true);
     try {
-      await apiJson("/api/hcm/mis-peticiones", {
+      const res = await fetch("/api/hcm/mis-solicitudes", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type,
-          subject: subject.trim(),
-          description: description.trim(),
-          requestDate: requestDate || undefined,
-          requestHours: requestHours ? Number(requestHours) : undefined,
-          priority,
+          startDate: inicio,
+          endDate: fin || inicio,
+          notes: `[${tipo}] ${motivo}`,
         }),
       });
-      toast.success("Petición enviada correctamente");
-      setOpen(false);
-      resetForm();
-      void load(1);
-      setPage(1);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
+
+      if (res.ok) {
+        setMsg("Solicitud enviada correctamente.");
+        setForma(false);
+        setTipo("");
+        setInicio("");
+        setFin("");
+        setMotivo("");
+        await cargar();
+      } else {
+        setMsg("No se pudo enviar la solicitud.");
+      }
+    } catch {
+      setMsg("Error de conexión");
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-default-500">
-          Tus reclamos, solicitudes, sugerencias y PQR enviados a RR.HH. Puedes ver el estado y la respuesta de cada uno.
-        </p>
-        <Button
-          color="primary"
-          startContent={<BsPlus />}
-          onPress={() => setOpen(true)}
-        >
-          Nueva petición
-        </Button>
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-gray-800">Mis solicitudes</h2>
+        <button className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700" onClick={() => setForma((v) => !v)} type="button">
+          {forma ? "Cancelar" : "+ Nueva solicitud"}
+        </button>
       </div>
 
-      <div className="overflow-x-auto">
-      <Table aria-label="Mis peticiones y PQR">
-        <TableHeader>
-          <TableColumn>Tipo</TableColumn>
-          <TableColumn>Asunto</TableColumn>
-          <TableColumn>Prioridad</TableColumn>
-          <TableColumn>Estado</TableColumn>
-          <TableColumn>Fecha solicitada</TableColumn>
-          <TableColumn>Respondido por</TableColumn>
-          <TableColumn>Creado</TableColumn>
-          <TableColumn>Detalle</TableColumn>
-        </TableHeader>
-        <TableBody
-          emptyContent={loading ? "Cargando..." : "No tienes peticiones registradas"}
-          items={data?.items ?? []}
-        >
-          {(row) => (
-            <TableRow key={row.id}>
-              <TableCell>
-                <Chip size="sm" variant="flat">
-                  {REQUEST_TYPE_LABELS[row.type]}
-                </Chip>
-              </TableCell>
-              <TableCell className="max-w-[200px] truncate font-medium">
-                {row.subject}
-              </TableCell>
-              <TableCell>
-                <Chip size="sm" variant="flat" color={priorityColor(row.priority)}>
-                  {row.priority}
-                </Chip>
-              </TableCell>
-              <TableCell>
-                <Chip size="sm" variant="flat" color={requestStatusColor(row.status)}>
-                  {REQUEST_STATUS_LABELS[row.status]}
-                </Chip>
-              </TableCell>
-              <TableCell>{row.requestDate ? formatDate(row.requestDate) : "-"}</TableCell>
-              <TableCell>{row.resolvedByName || "-"}</TableCell>
-              <TableCell>{formatDate(row.createdAt)}</TableCell>
-              <TableCell>
-                <Button
-                  size="sm"
-                  variant="flat"
-                  onPress={() => setDetailRow(row)}
-                >
-                  Ver
-                </Button>
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      {msg ? <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{msg}</div> : null}
 
-      </div>
-
-      {data && data.total > (data.pageSize ?? 10) ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-default-500">Total: {data.total}</p>
-          <Pagination page={page} total={totalPages} onChange={(p) => { setPage(p); }} />
-        </div>
+      {forma ? (
+        <Card>
+          <p className="mb-3 font-medium text-gray-800">Nueva solicitud</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs text-gray-500">Tipo de solicitud *</label>
+              <select className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setTipo(e.target.value as TipoSolicitud)} value={tipo}>
+                <option value="">Seleccionar...</option>
+                {SOLICITUD_TIPOS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+              {tipoInfo?.diasMax ? <p className="mt-1 text-xs text-amber-600">Máximo legal: {tipoInfo.diasMax} días</p> : null}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">Fecha inicio *</label>
+              <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setInicio(e.target.value)} type="date" value={inicio} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500">Fecha fin</label>
+              <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setFin(e.target.value)} type="date" value={fin} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs text-gray-500">Descripción / Motivo *</label>
+              <textarea className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setMotivo(e.target.value)} placeholder="Describe brevemente el motivo de tu solicitud..." rows={3} value={motivo} />
+            </div>
+          </div>
+          <button className="mt-4 w-full rounded-lg bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50" disabled={loading} onClick={enviar} type="button">
+            {loading ? "Enviando..." : "Enviar solicitud"}
+          </button>
+        </Card>
       ) : null}
 
-      {/* Nueva petición modal */}
-      <Modal disableAnimation isOpen={open} size="2xl" onClose={() => { setOpen(false); resetForm(); }}>
-        <ModalContent>
-          <form onSubmit={(e) => void handleSubmit(e)}>
-            <ModalHeader>Nueva petición / PQR</ModalHeader>
-            <ModalBody className="space-y-3">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Select
-                  isRequired
-                  label="Tipo"
-                  selectedKeys={[type]}
-                  variant="bordered"
-                  onSelectionChange={(keys) => setType(String(Array.from(keys)[0]) as RequestType)}
-                >
-                  {REQUEST_TYPES.map((t) => (
-                    <SelectItem key={t.value}>{t.label}</SelectItem>
-                  ))}
-                </Select>
-
-                <Select
-                  isRequired
-                  label="Prioridad"
-                  selectedKeys={[priority]}
-                  variant="bordered"
-                  onSelectionChange={(keys) => setPriority(String(Array.from(keys)[0]) as PriorityKey)}
-                >
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p.value}>{p.label}</SelectItem>
-                  ))}
-                </Select>
-              </div>
-
-              <Input
-                isRequired
-                label="Asunto"
-                maxLength={255}
-                placeholder="Describe brevemente el motivo"
-                value={subject}
-                variant="bordered"
-                onValueChange={setSubject}
-              />
-
-              <Textarea
-                isRequired
-                label="Descripción"
-                minRows={4}
-                placeholder="Explica en detalle tu petición, reclamo o solicitud..."
-                value={description}
-                variant="bordered"
-                onValueChange={setDescription}
-              />
-
-              {type === "PERMISO" ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Input
-                    isRequired
-                    label="Fecha del permiso"
-                    type="date"
-                    value={requestDate}
-                    variant="bordered"
-                    onValueChange={setRequestDate}
-                  />
-                  <Input
-                    label="Horas solicitadas (opcional)"
-                    max="24"
-                    min="0.5"
-                    step="0.5"
-                    type="number"
-                    value={requestHours}
-                    variant="bordered"
-                    onValueChange={setRequestHours}
-                  />
-                </div>
-              ) : null}
-            </ModalBody>
-            <ModalFooter>
-              <Button isDisabled={saving} variant="flat" onPress={() => { setOpen(false); resetForm(); }}>
-                Cancelar
-              </Button>
-              <Button color="primary" isDisabled={saving} isLoading={saving} type="submit">
-                Enviar petición
-              </Button>
-            </ModalFooter>
-          </form>
-        </ModalContent>
-      </Modal>
-
-      {/* Detalle petición modal */}
-      <Modal disableAnimation isOpen={Boolean(detailRow)} size="lg" onClose={() => setDetailRow(null)}>
-        <ModalContent>
-          <ModalHeader>
-            Detalle de petición
-          </ModalHeader>
-          <ModalBody className="space-y-3">
-            {detailRow ? (
-              <>
-                <div className="flex flex-wrap gap-2">
-                  <Chip size="sm" variant="flat">{REQUEST_TYPE_LABELS[detailRow.type]}</Chip>
-                  <Chip size="sm" variant="flat" color={requestStatusColor(detailRow.status)}>
-                    {REQUEST_STATUS_LABELS[detailRow.status]}
-                  </Chip>
-                  <Chip size="sm" variant="flat" color={priorityColor(detailRow.priority)}>
-                    Prioridad: {detailRow.priority}
-                  </Chip>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase text-default-400">Asunto</p>
-                  <p className="mt-0.5">{detailRow.subject}</p>
-                </div>
-
-                <div>
-                  <p className="text-xs font-semibold uppercase text-default-400">Descripción</p>
-                  <p className="mt-0.5 whitespace-pre-wrap text-sm">{detailRow.description}</p>
-                </div>
-
-                {detailRow.responseNotes ? (
-                  <div className="rounded-medium border border-default-200 bg-content2/50 p-3">
-                    <p className="text-xs font-semibold uppercase text-default-400">
-                      Respuesta de RR.HH.
-                      {detailRow.resolvedByName ? ` — ${detailRow.resolvedByName}` : ""}
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm">{detailRow.responseNotes}</p>
-                  </div>
-                ) : detailRow.status !== "PENDIENTE" ? (
-                  <p className="text-sm text-default-400 italic">Sin notas de respuesta</p>
-                ) : null}
-
-                <div className="grid grid-cols-2 gap-2 text-xs text-default-400">
-                  <div>
-                    <span className="font-semibold">Creado: </span>
-                    {formatDate(detailRow.createdAt)}
-                  </div>
-                  {detailRow.resolvedAt ? (
-                    <div>
-                      <span className="font-semibold">Resuelto: </span>
-                      {formatDate(detailRow.resolvedAt)}
-                    </div>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-          </ModalBody>
-          <ModalFooter>
-            <Button variant="flat" onPress={() => setDetailRow(null)}>Cerrar</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <div className="space-y-2">
+        {items.map((s) => (
+          <Card key={s.id} className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800">Solicitud</p>
+              <p className="text-xs text-gray-500">{s.startDate} → {s.endDate} · {s.durationDays} días · Cód. {s.id}</p>
+            </div>
+            <Badge estado={s.approvedByName ? "aprobada" : "pendiente"} />
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
 
-// ── Summary Cards ─────────────────────────────────────────────────────────────
+function VistaNomina() {
+  const [items, setItems] = useState<ColillaItem[]>([]);
 
-function SummaryCard({
-  icon,
-  title,
-  subtitle,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-}) {
+  useEffect(() => {
+    async function cargar() {
+      const res = await fetch("/api/hcm/colillas?page=1&pageSize=24", { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: ColillaItem[] };
+      setItems(data.items ?? []);
+    }
+
+    void cargar();
+  }, []);
+
+  const resumen = useMemo(() => {
+    return items.reduce(
+      (acc, item) => {
+        acc.dev += Number(item.totalDevengado || 0);
+        acc.ded += Number(item.totalDeducciones || 0);
+        acc.net += Number(item.netoAPagar || 0);
+        return acc;
+      },
+      { dev: 0, ded: 0, net: 0 },
+    );
+  }, [items]);
+
   return (
-    <Card className="border border-default-200/40">
-      <CardBody className="flex flex-row items-center gap-4 p-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-medium bg-primary/10 text-primary text-xl">
-          {icon}
-        </div>
-        <div>
-          <p className="text-base font-semibold">{title}</p>
-          <p className="text-xs text-default-500">{subtitle}</p>
-        </div>
-      </CardBody>
-    </Card>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <Card className="text-center"><p className="text-xs text-gray-500">Total devengado</p><p className="text-xl font-bold text-blue-700">${resumen.dev.toFixed(2)}</p></Card>
+      <Card className="text-center"><p className="text-xs text-gray-500">Total deducciones</p><p className="text-xl font-bold text-amber-700">${resumen.ded.toFixed(2)}</p></Card>
+      <Card className="text-center"><p className="text-xs text-gray-500">Neto a pagar</p><p className="text-xl font-bold text-green-700">${resumen.net.toFixed(2)}</p></Card>
+    </div>
   );
 }
 
-// ── Main Export ───────────────────────────────────────────────────────────────
+function VistaColillas() {
+  const [items, setItems] = useState<ColillaItem[]>([]);
+
+  useEffect(() => {
+    async function cargar() {
+      const res = await fetch("/api/hcm/colillas?page=1&pageSize=12", { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: ColillaItem[] };
+      setItems(data.items ?? []);
+    }
+
+    void cargar();
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-semibold text-gray-800">Colillas de pago</h2>
+      {items.map((c) => (
+        <Card key={c.id} className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Período {c.period}</p>
+            <p className="text-xs text-gray-500">Neto pagado: <strong className="text-green-700">${Number(c.netoAPagar || 0).toLocaleString("es-CO")}</strong></p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge estado={c.status} />
+            {c.pdfUrl ? <a className="text-xs text-blue-600 hover:underline" href={c.pdfUrl} rel="noreferrer" target="_blank">Descargar PDF</a> : null}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function VistaCertificados220() {
+  const [items, setItems] = useState<Certificado220Item[]>([]);
+
+  useEffect(() => {
+    async function cargar() {
+      const res = await fetch("/api/hcm/certificados220?page=1&pageSize=10", { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { items?: Certificado220Item[] };
+      setItems(data.items ?? []);
+    }
+
+    void cargar();
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-semibold text-gray-800">Certificado de ingresos y retenciones (220)</h2>
+      <p className="text-sm text-gray-500">Documento oficial para declaración de renta.</p>
+      {items.map((item) => (
+        <Card key={item.id} className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Vigencia fiscal {item.vigenciaFiscal}</p>
+            <p className="text-xs text-gray-500">Ingresos: {item.totalIngresos} · Retenciones: {item.totalRetenciones}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge estado={item.status} />
+            {item.pdfUrl ? <a className="text-xs text-blue-600 hover:underline" href={item.pdfUrl} rel="noreferrer" target="_blank">Descargar PDF</a> : null}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function VistaCartas() {
+  const [tipo, setTipo] = useState<string>("");
+  const [dest, setDest] = useState("");
+  const [prop, setProp] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function solicitar() {
+    if (!tipo) {
+      setMsg("Selecciona el tipo de carta.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hcm/cartas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, destinatario: dest, proposito: prop }),
+      });
+
+      setMsg(res.ok ? "Carta en cola. RH la generará en 24 h hábiles." : "No se pudo enviar la solicitud de carta.");
+    } catch {
+      setMsg("Error de conexión");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-semibold text-gray-800">Cartas laborales</h2>
+      {msg ? <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{msg}</div> : null}
+      <Card>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-xs text-gray-500">Tipo de carta *</label>
+            <select className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setTipo(e.target.value)} value={tipo}>
+              <option value="">Seleccionar...</option>
+              {CARTA_TIPOS.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-gray-500">Dirigida a (opcional)</label>
+            <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setDest(e.target.value)} value={dest} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-gray-500">Propósito (opcional)</label>
+            <input className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setProp(e.target.value)} value={prop} />
+          </div>
+        </div>
+        <button className="mt-4 w-full rounded-lg bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50" disabled={loading} onClick={solicitar} type="button">
+          {loading ? "Enviando..." : "Solicitar carta"}
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+function VistaFormacion() {
+  const [items, setItems] = useState<CertificacionItem[]>([]);
+
+  useEffect(() => {
+    async function cargar() {
+      const res = await fetch("/api/hcm/certifications", { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { certifications?: CertificacionItem[] };
+      setItems(data.certifications ?? []);
+    }
+
+    void cargar();
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      <h2 className="font-semibold text-gray-800">Mi plan de formación</h2>
+      {items.map((f) => (
+        <Card key={f.key} className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-800">{f.label}</p>
+            <p className="text-xs text-gray-500">Certificación</p>
+          </div>
+          {f.url ? <a className="text-xs text-blue-600 hover:underline" href={f.url} rel="noreferrer" target="_blank">Descargar</a> : <Badge estado="pendiente" />}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+function VistaHorasExtras() {
+  const [fecha, setFecha] = useState("");
+  const [inicio, setInicio] = useState("");
+  const [fin, setFin] = useState("");
+  const [tipo, setTipo] = useState("DIURNA_ORDINARIA");
+  const [actividad, setActividad] = useState("");
+  const [supervisorId, setSupervisorId] = useState("");
+  const [totalHoras, setTotalHoras] = useState("1");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [items, setItems] = useState<HoraExtraItem[]>([]);
+
+  async function cargar() {
+    const res = await fetch("/api/hcm/horas-extras?page=1&pageSize=10", { credentials: "include" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { items?: HoraExtraItem[] };
+    setItems(data.items ?? []);
+  }
+
+  useEffect(() => {
+    void cargar();
+  }, []);
+
+  async function enviar() {
+    if (!fecha || !inicio || !fin || !tipo || !actividad || !supervisorId) {
+      setMsg("Completa todos los campos requeridos.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hcm/horas-extras", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supervisorId,
+          fecha,
+          horaInicio: inicio,
+          horaFin: fin,
+          tipo,
+          totalHoras,
+          actividad,
+        }),
+      });
+
+      setMsg(res.ok ? "Solicitud enviada a tu supervisor." : "No se pudo enviar la solicitud.");
+      if (res.ok) await cargar();
+    } catch {
+      setMsg("Error de conexión");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="font-semibold text-gray-800">Solicitud de horas extras</h2>
+      {msg ? <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{msg}</div> : null}
+      <Card>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setFecha(e.target.value)} type="date" value={fecha} />
+          <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setInicio(e.target.value)} type="time" value={inicio} />
+          <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setFin(e.target.value)} type="time" value={fin} />
+          <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setSupervisorId(e.target.value)} placeholder="Supervisor ID" value={supervisorId} />
+          <input className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setTotalHoras(e.target.value)} placeholder="Total horas" type="number" value={totalHoras} />
+          <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setTipo(e.target.value)} value={tipo}>
+            <option value="DIURNA_ORDINARIA">Diurna ordinaria</option>
+            <option value="NOCTURNA_ORDINARIA">Nocturna ordinaria</option>
+            <option value="DOMINICAL_DIURNA">Dominical diurna</option>
+            <option value="DOMINICAL_NOCTURNA">Dominical nocturna</option>
+            <option value="FESTIVO_DIURNO">Festivo diurno</option>
+            <option value="FESTIVO_NOCTURNO">Festivo nocturno</option>
+          </select>
+          <textarea className="sm:col-span-3 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none" onChange={(e) => setActividad(e.target.value)} placeholder="Actividad realizada" rows={2} value={actividad} />
+        </div>
+        <button className="mt-4 w-full rounded-lg bg-blue-600 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50" disabled={loading} onClick={enviar} type="button">
+          {loading ? "Enviando..." : "Enviar solicitud"}
+        </button>
+      </Card>
+
+      <div className="space-y-2">
+        {items.map((item) => (
+          <Card key={item.id} className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800">{item.fecha} · {item.tipo}</p>
+              <p className="text-xs text-gray-500">{item.totalHoras} horas</p>
+            </div>
+            <Badge estado={item.status} />
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function HcmPortalClient() {
+  const [vista, setVista] = useState<Vista>("inicio");
+
+  const vistas: Record<Vista, React.ReactNode> = {
+    inicio: <VistaPerfil />,
+    solicitudes: <VistaSolicitudes />,
+    nomina: <VistaNomina />,
+    colillas: <VistaColillas />,
+    certificados220: <VistaCertificados220 />,
+    cartas: <VistaCartas />,
+    formacion: <VistaFormacion />,
+    horas_extras: <VistaHorasExtras />,
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <SummaryCard
-          icon={<BsClockHistory />}
-          subtitle="Permisos, ausencias y vacaciones"
-          title="Solicitudes de permiso"
-        />
-        <SummaryCard
-          icon={<BsFileEarmarkText />}
-          subtitle="Reclamos, PQR, sugerencias y solicitudes"
-          title="Peticiones y PQR"
-        />
+    <div className="flex min-h-[75vh] overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+      <aside className="hidden w-60 flex-col border-r border-gray-200 bg-white px-3 py-6 md:flex">
+        <div className="mb-6 px-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">VIOMAR · Portal RH</p>
+          <p className="mt-1 text-sm font-semibold text-gray-800">Portal del empleado</p>
+          <p className="text-xs text-gray-400">{EMPLEADO_MOCK.codigo}</p>
+        </div>
+        <nav className="flex-1 space-y-0.5">
+          {MENU_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
+                vista === item.id ? "bg-blue-50 font-medium text-blue-700" : "text-gray-600 hover:bg-gray-50"
+              }`}
+              onClick={() => setVista(item.id)}
+              type="button"
+            >
+              <span className="text-base" style={{ fontSize: 16 }}>{item.icon}</span>
+              <span className="flex-1 text-left">{item.label}</span>
+              {item.badge ? <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-xs text-white">{item.badge}</span> : null}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex border-t border-gray-200 bg-white">
+        {MENU_ITEMS.slice(0, 5).map((item) => (
+          <button
+            key={item.id}
+            className={`flex-1 px-1 py-2 text-xs ${vista === item.id ? "text-blue-600" : "text-gray-400"}`}
+            onClick={() => setVista(item.id)}
+            type="button"
+          >
+            <div style={{ fontSize: 18 }}>{item.icon}</div>
+            <div className="truncate">{item.label.split(" ")[0]}</div>
+          </button>
+        ))}
       </div>
 
-      <Tabs
-        aria-label="Portal empleado"
-        classNames={{
-          tabList: "border-b border-default-200/30 bg-transparent rounded-none p-0 gap-0",
-          tab: "rounded-none data-[selected=true]:border-b-2 data-[selected=true]:border-primary data-[selected=true]:text-primary text-default-500",
-          cursor: "hidden",
-        }}
-        variant="underlined"
-      >
-        <Tab key="solicitudes" title="Mis solicitudes de permiso">
-          <div className="pt-4">
-            <MisSolicitudesTab />
-          </div>
-        </Tab>
-        <Tab key="peticiones" title="Mis peticiones / PQR">
-          <div className="pt-4">
-            <MisPeticionesTab />
-          </div>
-        </Tab>
-      </Tabs>
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <div className="mx-auto max-w-3xl px-4 py-6">{vistas[vista]}</div>
+      </main>
     </div>
   );
 }

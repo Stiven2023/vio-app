@@ -1,0 +1,1631 @@
+{
+  "metadata": {
+    "sourceFile": "D:\\Programación\\Vio\\BASE NOMINA.xlsx",
+    "sheetName": "NOM VIOMAR",
+    "extractedAt": "2026-04-08T05:01:02.557Z",
+    "period": "2026-04-01_to_2026-04-15",
+    "totalRows": 69,
+    "rowsWithErrors": 24
+  },
+  "candidates": [
+    {
+      "rowIndex": 17,
+      "identification": "1152436767",
+      "identificationRaw": "1152436767",
+      "name": "ANGELO ZAPATA SALAZAR",
+      "nameRaw": "ANGELO ZAPATA SALAZAR",
+      "cargo": "ADMINISTRACION",
+      "period": "2026-04",
+      "salarioBase": 4114600,
+      "auxilioTransporte": 0,
+      "ibc": 4114600.0000000005,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 18,
+      "identification": "1037580276",
+      "identificationRaw": "1037580276",
+      "name": "LUIS ALFONSO LONDOÑO CASTAÑO",
+      "nameRaw": "LUIS ALFONSO LONDOÑO CASTAÑO",
+      "cargo": "ADMINISTRACION",
+      "period": "2026-04",
+      "salarioBase": 5170000,
+      "auxilioTransporte": 0,
+      "ibc": 5170000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 19,
+      "identification": "1000862597",
+      "identificationRaw": "1000862597",
+      "name": "JUAN JOSE OCAMPO PAEZ",
+      "nameRaw": "JUAN JOSE OCAMPO PAEZ",
+      "cargo": "APRENDIZ DE DISEÑO G..",
+      "period": "2026-04",
+      "salarioBase": 1313178,
+      "auxilioTransporte": 0,
+      "ibc": 1313178,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 20,
+      "identification": "1036669628",
+      "identificationRaw": "1036669628",
+      "name": "JUAN PABLO BENAVIDES ARIAS",
+      "nameRaw": "JUAN PABLO BENAVIDES ARIAS",
+      "cargo": "APRENDIZ LOGISTICA",
+      "period": "2026-04",
+      "salarioBase": 1313178,
+      "auxilioTransporte": 0,
+      "ibc": 1313178,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 21,
+      "identification": "98607493",
+      "identificationRaw": "98607493",
+      "name": "CARLOS AMADO TABORDA ECHEVERRI",
+      "nameRaw": "CARLOS AMADO TABORDA ECHEVERRI",
+      "cargo": "BODEGA",
+      "period": "2026-04",
+      "salarioBase": 2130000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2130000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 22,
+      "identification": "1001452597",
+      "identificationRaw": "1001452597",
+      "name": "MALLERLY JIMENEZ",
+      "nameRaw": "MALLERLY JIMENEZ",
+      "cargo": "COMPRAS",
+      "period": "2026-04",
+      "salarioBase": 2080000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2079999.9999999998,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 24,
+      "identification": "43840427",
+      "identificationRaw": "43840427",
+      "name": "ELIANA MARIETH OCAMPO PINEDA",
+      "nameRaw": "ELIANA MARIETH OCAMPO PINEDA",
+      "cargo": "CONTABILIDAD",
+      "period": "2026-04",
+      "salarioBase": 2300000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2300000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 25,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "ALEXANDER",
+      "nameRaw": "ALEXANDER",
+      "cargo": "CONTABILIDAD",
+      "period": "2026-04",
+      "salarioBase": 3752000,
+      "auxilioTransporte": 0,
+      "ibc": 3752000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: "
+      ]
+    },
+    {
+      "rowIndex": 26,
+      "identification": "71728478",
+      "identificationRaw": "71728478",
+      "name": "LUIS OSCAR GARCIA URAN",
+      "nameRaw": "LUIS OSCAR GARCIA URAN",
+      "cargo": "CORTE",
+      "period": "2026-04",
+      "salarioBase": 4114600,
+      "auxilioTransporte": 0,
+      "ibc": 4114600.0000000005,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 27,
+      "identification": "1100549200",
+      "identificationRaw": "1100549200",
+      "name": "DINA MARTINEZ",
+      "nameRaw": "DINA MARTINEZ",
+      "cargo": "CORTE LASER",
+      "period": "2026-04",
+      "salarioBase": 2080000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2079999.9999999998,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 28,
+      "identification": "1063651775",
+      "identificationRaw": "1063651775",
+      "name": "ELEIDYS CALDERIN NADAD",
+      "nameRaw": "ELEIDYS CALDERIN NADAD",
+      "cargo": "CORTE LASER",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 29,
+      "identification": "1037570183",
+      "identificationRaw": "1037570183",
+      "name": "DIANA CASTRO",
+      "nameRaw": "DIANA CASTRO",
+      "cargo": "CORTE LASER",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 30,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "VALERIA CARTAGENA",
+      "nameRaw": "VALERIA CARTAGENA",
+      "cargo": "CORTE LASER",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 13,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 31,
+      "identification": "1100401794",
+      "identificationRaw": "1100401794",
+      "name": "SEIDY JOHANA MARTINEZ",
+      "nameRaw": "SEIDY JOHANA MARTINEZ",
+      "cargo": "CORTE LASER",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 32,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "FELIPE C",
+      "nameRaw": "FELIPE C",
+      "cargo": "CORTE LASER",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: "
+      ]
+    },
+    {
+      "rowIndex": 33,
+      "identification": "1036685824",
+      "identificationRaw": "1036685824",
+      "name": "LUISA FERNANDA HENAO SALAS",
+      "nameRaw": "LUISA FERNANDA HENAO SALAS",
+      "cargo": "DESPACHOS",
+      "period": "2026-04",
+      "salarioBase": 2130000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2130000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 34,
+      "identification": "1035416950",
+      "identificationRaw": "1035416950",
+      "name": "ANDRES FELIPE ALVAREZ CORDOBA",
+      "nameRaw": "ANDRES FELIPE ALVAREZ CORDOBA",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 14220000,
+      "auxilioTransporte": 0,
+      "ibc": 14220000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 35,
+      "identification": "1035416950",
+      "identificationRaw": "1035416950",
+      "name": "ANDRES FELIPE ALVAREZ CORDOBA REAL",
+      "nameRaw": "ANDRES FELIPE ALVAREZ CORDOBA REAL",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 4114600,
+      "auxilioTransporte": 0,
+      "ibc": 4114600.0000000005,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 36,
+      "identification": "1000416801",
+      "identificationRaw": "1000416801",
+      "name": "GINE ALEJANDRA LADINO VARGAS",
+      "nameRaw": "GINE ALEJANDRA LADINO VARGAS",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 1927500,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1927500,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 37,
+      "identification": "1006961266",
+      "identificationRaw": "1006961266",
+      "name": "JONIER ALEXANDER GOMEZ MARTÍNEZ",
+      "nameRaw": "JONIER ALEXANDER GOMEZ MARTÍNEZ",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 2080000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2079999.9999999998,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 38,
+      "identification": "1000871230",
+      "identificationRaw": "1000871230",
+      "name": "LUISA ALVAREZ",
+      "nameRaw": "LUISA ALVAREZ",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 1980000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1980000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 39,
+      "identification": "1092357141",
+      "identificationRaw": "1092357141",
+      "name": "NAREN",
+      "nameRaw": "NAREN",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 2080000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2079999.9999999998,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 40,
+      "identification": "1348434",
+      "identificationRaw": "1348434",
+      "name": "YORMAN JOSUE GOMEZ SALAZAR",
+      "nameRaw": "YORMAN JOSUE GOMEZ SALAZAR",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 1927500,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1927500,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 41,
+      "identification": "1036616937",
+      "identificationRaw": "1036616937",
+      "name": "ALEJANDRA DIAZ HERNANDEZ",
+      "nameRaw": "ALEJANDRA DIAZ HERNANDEZ",
+      "cargo": "DISEÑADOR",
+      "period": "2026-04",
+      "salarioBase": 2080000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2079999.9999999998,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 42,
+      "identification": "32109843",
+      "identificationRaw": "32109843",
+      "name": "SOL MARIA CARDONA VALENCIA",
+      "nameRaw": "SOL MARIA CARDONA VALENCIA",
+      "cargo": "INTEGRACION",
+      "period": "2026-04",
+      "salarioBase": 1930000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1930000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 43,
+      "identification": "32241321",
+      "identificationRaw": "32241321",
+      "name": "SANDRA MILENA CASTAÑO",
+      "nameRaw": "SANDRA  MILENA CASTAÑO",
+      "cargo": "INTEGRACION",
+      "period": "2026-04",
+      "salarioBase": 1752000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1752000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 44,
+      "identification": "32241321",
+      "identificationRaw": "32241321",
+      "name": "SANDRA MILENA CASTAÑO REAL",
+      "nameRaw": "SANDRA  MILENA CASTAÑO REAL",
+      "cargo": "INTEGRACION",
+      "period": "2026-04",
+      "salarioBase": 2080000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2079999.9999999998,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 45,
+      "identification": "1017266991",
+      "identificationRaw": "1017266991",
+      "name": "JOSE ANTONIO ESPITIA",
+      "nameRaw": "JOSE ANTONIO ESPITIA",
+      "cargo": "LIDER PRODUCCION",
+      "period": "2026-04",
+      "salarioBase": 2330000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2330000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 46,
+      "identification": "98666753",
+      "identificationRaw": "98666753",
+      "name": "EDDISSON ALIRIO SALAZAR CASTAÑO",
+      "nameRaw": "EDDISSON ALIRIO SALAZAR CASTAÑO",
+      "cargo": "LOGISTICA",
+      "period": "2026-04",
+      "salarioBase": 4114600,
+      "auxilioTransporte": 0,
+      "ibc": 4114600.0000000005,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 47,
+      "identification": "43346439",
+      "identificationRaw": "43346439",
+      "name": "MARITZA JIMENEZ JIMENEZ",
+      "nameRaw": "MARITZA JIMENEZ JIMENEZ",
+      "cargo": "PLOTTER",
+      "period": "2026-04",
+      "salarioBase": 2380000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2380000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 48,
+      "identification": "1152191643",
+      "identificationRaw": "1152191643",
+      "name": "HENRY ALEXIS MESA MONSALVE",
+      "nameRaw": "HENRY ALEXIS MESA MONSALVE",
+      "cargo": "REDES",
+      "period": "2026-04",
+      "salarioBase": 2130000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2130000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 49,
+      "identification": "21424578",
+      "identificationRaw": "21424578",
+      "name": "TATIANA MARIA BUSTAMANTE HERNANDEZ",
+      "nameRaw": "TATIANA MARIA BUSTAMANTE HERNANDEZ",
+      "cargo": "SERVICIOS GENERALES",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 50,
+      "identification": "1020496424",
+      "identificationRaw": "1020496424",
+      "name": "VALENTINA VALENCIA QUINTERO",
+      "nameRaw": "VALENTINA VALENCIA QUINTERO",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 51,
+      "identification": "1193630748",
+      "identificationRaw": "1193630748",
+      "name": "JUAN JOSE BUSTAMANTE HERNANDEZ",
+      "nameRaw": "JUAN JOSE BUSTAMANTE HERNANDEZ",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 52,
+      "identification": "1001505828",
+      "identificationRaw": "1001505828",
+      "name": "JUAN DAVID VELEZ ALZATE",
+      "nameRaw": "JUAN DAVID VELEZ ALZATE",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1930000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1930000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 53,
+      "identification": "1214739016",
+      "identificationRaw": "1214739016",
+      "name": "BRAYAN ALEJANDRO GONZALEZ R.",
+      "nameRaw": "BRAYAN ALEJANDRO GONZALEZ R.",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 54,
+      "identification": "1000192462",
+      "identificationRaw": "1000192462",
+      "name": "DAVID ALEJANDRO SALDARRIAGA RIOS",
+      "nameRaw": "DAVID ALEJANDRO SALDARRIAGA RIOS",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 55,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "KATHERINE",
+      "nameRaw": "KATHERINE",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 7,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 56,
+      "identification": "1026132547",
+      "identificationRaw": "1026132547",
+      "name": "LUISA FERNANDA OTALVARO RODAS",
+      "nameRaw": "LUISA FERNANDA OTALVARO RODAS",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 57,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "YIGET MOSCOSO",
+      "nameRaw": "YIGET MOSCOSO",
+      "cargo": "SUBLIMACION",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: "
+      ]
+    },
+    {
+      "rowIndex": 58,
+      "identification": "43455439",
+      "identificationRaw": "43455439",
+      "name": "BIBIANA ZULUAGA",
+      "nameRaw": "BIBIANA ZULUAGA",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 15000000,
+      "auxilioTransporte": 0,
+      "ibc": 15000000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 59,
+      "identification": "43455439",
+      "identificationRaw": "43455439",
+      "name": "BIBIANA ZULUAGA REAL",
+      "nameRaw": "BIBIANA ZULUAGA REAL",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 2400000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2400000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 60,
+      "identification": "43169005",
+      "identificationRaw": "43169005",
+      "name": "ELIZABETH CUARTAS",
+      "nameRaw": "ELIZABETH CUARTAS",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 2540000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2540000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 61,
+      "identification": "1037605206",
+      "identificationRaw": "1037605206",
+      "name": "ANDRES FELIPE CASTAÑO",
+      "nameRaw": "ANDRES FELIPE CASTAÑO",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 3752000,
+      "auxilioTransporte": 0,
+      "ibc": 3752000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 62,
+      "identification": "1037608041",
+      "identificationRaw": "1037608041",
+      "name": "JAMES MAURICIO GONZALEZ RIVERA",
+      "nameRaw": "JAMES MAURICIO GONZALEZ RIVERA",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 63,
+      "identification": "1037608041",
+      "identificationRaw": "1037608041",
+      "name": "JAMES MAURICIO GONZALEZ RIVERA",
+      "nameRaw": "JAMES MAURICIO GONZALEZ RIVERA",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 2400000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2400000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 64,
+      "identification": "1036679905",
+      "identificationRaw": "1036679905",
+      "name": "LUISA RESTREPO",
+      "nameRaw": "LUISA RESTREPO",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 2200000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2200000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 65,
+      "identification": "1000895203",
+      "identificationRaw": "1000895203",
+      "name": "NATALIA CASTAÑEDA",
+      "nameRaw": "NATALIA CASTAÑEDA",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 2200000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2200000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 66,
+      "identification": "71381483",
+      "identificationRaw": "71381483",
+      "name": "GIOVANNY ALBERTO OTALVARO CHICA",
+      "nameRaw": "GIOVANNY ALBERTO OTALVARO CHICA",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 3330000,
+      "auxilioTransporte": 0,
+      "ibc": 3330000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 67,
+      "identification": "1020466949",
+      "identificationRaw": "1020466949",
+      "name": "ALLAN SANTIAGO ZAPATA",
+      "nameRaw": "ALLAN SANTIAGO ZAPATA",
+      "cargo": "VENTAS",
+      "period": "2026-04",
+      "salarioBase": 2840000,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 2840000,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": []
+    },
+    {
+      "rowIndex": 68,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "ASISTENTE",
+      "nameRaw": "ASISTENTE",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 1750905,
+      "auxilioTransporte": 249094.99999999997,
+      "ibc": 1750905,
+      "retencionFuente": 0,
+      "diasLaborados": 30,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: "
+      ]
+    },
+    {
+      "rowIndex": 72,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "PRIMA 8,33%",
+      "nameRaw": "PRIMA 8,33%",
+      "cargo": "11709476.767981365",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 1450000,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 73,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "CESANTIAS 8,33%",
+      "nameRaw": "CESANTIAS 8,33%",
+      "cargo": "11751647.752740001",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 162000,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 74,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "INT A LAS CESANTIAS 12%",
+      "nameRaw": "INT A LAS CESANTIAS 12%",
+      "cargo": "1410197.7303288002",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 1612000,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 75,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "VACACIONES 4,17%",
+      "nameRaw": "VACACIONES 4,17%",
+      "cargo": "5492878.7487",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 76,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "TOTAL",
+      "nameRaw": "TOTAL",
+      "cargo": "30364200.999750167",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 116,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 6666.666666666667,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 78,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "LUIS ALFONSO LONDOÑO CASTAÑO",
+      "nameRaw": "Luis Alfonso Londoño Castaño",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 2032000,
+      "auxilioTransporte": 748000,
+      "ibc": 2032000,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: "
+      ]
+    },
+    {
+      "rowIndex": 79,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "REPRESENTANTE LEGAL",
+      "nameRaw": "Representante Legal",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 67733.33333333333,
+      "auxilioTransporte": 0,
+      "ibc": 67733.33333333333,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: "
+      ]
+    },
+    {
+      "rowIndex": 85,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "8.33",
+      "nameRaw": "8.33",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 55,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 47628
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 86,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "8.33",
+      "nameRaw": "8.33",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 87,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "12",
+      "nameRaw": "12",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Nombre inválido o muy corto: 12",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 88,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "4.17",
+      "nameRaw": "4.17",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 89,
+      "identification": "VALORMENSUALNOMINA",
+      "identificationRaw": "VALOR MENSUAL NOMINA",
+      "name": "",
+      "nameRaw": "",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Nombre inválido o muy corto: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 90,
+      "identification": "23",
+      "identificationRaw": "23",
+      "name": "0.3283",
+      "nameRaw": "0.3283",
+      "cargo": "23",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 91,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "1300000",
+      "nameRaw": "1300000",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 92,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "4267.9",
+      "nameRaw": "4267.9",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 93,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "1726790",
+      "nameRaw": "1726790",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 94,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "426790",
+      "nameRaw": "426790",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    },
+    {
+      "rowIndex": 95,
+      "identification": "",
+      "identificationRaw": "",
+      "name": "3453580",
+      "nameRaw": "3453580",
+      "cargo": "",
+      "period": "2026-04",
+      "salarioBase": 0,
+      "auxilioTransporte": 0,
+      "ibc": 0,
+      "retencionFuente": 0,
+      "diasLaborados": 0,
+      "novedades": {
+        "incapacidad": 0,
+        "vacaciones": 0,
+        "noRemunerado": 0,
+        "licenciaRemunerada": 0
+      },
+      "validationErrors": [
+        "Identificación inválida: ",
+        "Salario base no válido: 0"
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "row": 25,
+      "message": "Identificación inválida: "
+    },
+    {
+      "row": 30,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 32,
+      "message": "Identificación inválida: "
+    },
+    {
+      "row": 55,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 57,
+      "message": "Identificación inválida: "
+    },
+    {
+      "row": 68,
+      "message": "Identificación inválida: "
+    },
+    {
+      "row": 72,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 73,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 74,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 75,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 76,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 78,
+      "message": "Identificación inválida: "
+    },
+    {
+      "row": 79,
+      "message": "Identificación inválida: "
+    },
+    {
+      "row": 85,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 86,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 87,
+      "message": "Identificación inválida: ; Nombre inválido o muy corto: 12; Salario base no válido: 0"
+    },
+    {
+      "row": 88,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 89,
+      "message": "Nombre inválido o muy corto: ; Salario base no válido: 0"
+    },
+    {
+      "row": 90,
+      "message": "Salario base no válido: 0"
+    },
+    {
+      "row": 91,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 92,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 93,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 94,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    },
+    {
+      "row": 95,
+      "message": "Identificación inválida: ; Salario base no válido: 0"
+    }
+  ],
+  "summary": {
+    "totalExtracted": 69,
+    "validCandidates": 45,
+    "candidatesWithErrors": 24,
+    "validTaxIds": 47
+  }
+}

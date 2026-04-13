@@ -76,6 +76,16 @@ export type MoldingTemplateInsumo = {
   createdAt: string | null;
 };
 
+export type MoldingCatalogOption = {
+  id: string;
+  fieldKey: string;
+  value: string;
+  label: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+};
+
 export type MoldingInsumoStatus =
   | "PENDIENTE"
   | "SOLICITADO_COMPRAS"

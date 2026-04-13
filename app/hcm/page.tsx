@@ -7,14 +7,14 @@ import { HcmPortalClient } from "./_components/hcm-portal-client";
 
 const HCM_COPY = {
   en: {
-    pageTitle: "My portal — HCM",
+    pageTitle: "Portal del empleado — HCM",
     pageDescription:
-      "Manage your leave requests, complaints and petitions to HR.",
+      "Gestionar solicitudes de empleados, servicios de nómina y flujos de trabajo de recursos humanos.",
   },
   es: {
-    pageTitle: "Mi portal — HCM",
+    pageTitle: "Portal del empleado — HCM",
     pageDescription:
-      "Gestiona tus solicitudes de permiso, reclamos y peticiones a RR.HH.",
+      "Gestionar solicitudes de empleados, servicios de nómina y flujos de trabajo de recursos humanos.",
   },
 } as const;
 

@@ -57,6 +57,103 @@ function toNumericString(value: unknown) {
   return n.toFixed(2);
 }
 
+const RETE_ICA_MIN_BASE_COP = 524000;
+
+function normalizeRate(value: unknown, fallback: number) {
+  const n = Number(value);
+
+  if (!Number.isFinite(n) || n < 0) return fallback;
+
+  return n;
+}
+
+function normalizeBoolean(value: unknown, fallback: boolean) {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
+
+  return fallback;
+}
+
+function normalizeStampRate(value: unknown, fallback: 0.5 | 1) {
+  const n = Number(value);
+
+  if (n === 0.5 || n === 1) return n;
+
+  return fallback;
+}
+
+function computePrefacturaWithholdings(input: {
+  documentType: "F" | "R";
+  currency: "COP" | "USD";
+  subtotal: number;
+  total: number;
+  ivaAmount: number;
+  withholdingTaxRate: number;
+  withholdingIcaRate: number;
+  withholdingIvaRate: number;
+  reteFuenteEnabled: boolean;
+  reteIcaEnabled: boolean;
+  reteIvaEnabled: boolean;
+  estampillaEnabled: boolean;
+  estampillaRate: 0.5 | 1;
+}) {
+  if (input.documentType === "R") {
+    return {
+      reteFuenteEnabled: false,
+      reteIcaEnabled: false,
+      reteIvaEnabled: false,
+      estampillaEnabled: false,
+      withholdingTaxRate: "0.00",
+      withholdingIcaRate: "0.00",
+      withholdingIvaRate: "0.00",
+      estampillaRate: "0.50",
+      withholdingTaxAmount: "0.00",
+      withholdingIcaAmount: "0.00",
+      withholdingIvaAmount: "0.00",
+      estampillaAmount: "0.00",
+      totalAfterWithholdings: toNumericString(input.total),
+      reteIcaAutoDisabled: false,
+    };
+  }
+
+  const isReteIcaApplicable =
+    input.currency === "COP" && input.subtotal >= RETE_ICA_MIN_BASE_COP;
+  const effectiveReteIcaEnabled = input.reteIcaEnabled && isReteIcaApplicable;
+
+  const withholdingTaxAmount = input.reteFuenteEnabled
+    ? (input.subtotal * input.withholdingTaxRate) / 100
+    : 0;
+  const withholdingIcaAmount = effectiveReteIcaEnabled
+    ? (input.subtotal * input.withholdingIcaRate) / 100
+    : 0;
+  const withholdingIvaAmount = input.reteIvaEnabled
+    ? (input.ivaAmount * input.withholdingIvaRate) / 100
+    : 0;
+  const estampillaAmount = input.estampillaEnabled
+    ? (input.subtotal * input.estampillaRate) / 100
+    : 0;
+  const totalAfterWithholdings =
+    input.total - withholdingTaxAmount - withholdingIcaAmount - withholdingIvaAmount - estampillaAmount;
+
+  return {
+    reteFuenteEnabled: input.reteFuenteEnabled,
+    reteIcaEnabled: input.reteIcaEnabled,
+    reteIvaEnabled: input.reteIvaEnabled,
+    estampillaEnabled: input.estampillaEnabled,
+    withholdingTaxRate: toNumericString(input.reteFuenteEnabled ? input.withholdingTaxRate : 0),
+    withholdingIcaRate: toNumericString(effectiveReteIcaEnabled ? input.withholdingIcaRate : 0),
+    withholdingIvaRate: toNumericString(input.reteIvaEnabled ? input.withholdingIvaRate : 0),
+    estampillaRate: toNumericString(input.estampillaEnabled ? input.estampillaRate : 0.5),
+    withholdingTaxAmount: toNumericString(withholdingTaxAmount),
+    withholdingIcaAmount: toNumericString(withholdingIcaAmount),
+    withholdingIvaAmount: toNumericString(withholdingIvaAmount),
+    estampillaAmount: toNumericString(estampillaAmount),
+    totalAfterWithholdings: toNumericString(Math.max(0, totalAfterWithholdings)),
+    reteIcaAutoDisabled: input.reteIcaEnabled && !isReteIcaApplicable,
+  };
+}
+
 function normalizeTaxZone(value: unknown) {
   const normalized = String(value ?? "CONTINENTAL")
     .trim()
@@ -632,6 +729,7 @@ export async function POST(request: Request) {
       const computedTotalProducts = calculateTotalProductsFromItems(items);
       const subtotal = toNumericString(body?.subtotal);
       const total = toNumericString(body?.total);
+      const ivaAmount = toNumericString(body?.ivaAmount);
       const municipalityFiscalSnapshot = String(
         body?.municipalityFiscalSnapshot ?? "",
       ).trim();
@@ -640,6 +738,21 @@ export async function POST(request: Request) {
       const shippingFee = shippingEnabled
         ? toNumericString(body?.shippingFee)
         : "0.00";
+      const withholdingPayload = computePrefacturaWithholdings({
+        documentType,
+        currency,
+        subtotal: asNumber(subtotal),
+        total: asNumber(total),
+        ivaAmount: asNumber(ivaAmount),
+        withholdingTaxRate: normalizeRate(body?.withholdingTaxRate, 0),
+        withholdingIcaRate: normalizeRate(body?.withholdingIcaRate, 2.5),
+        withholdingIvaRate: normalizeRate(body?.withholdingIvaRate, 15),
+        reteFuenteEnabled: normalizeBoolean(body?.reteFuenteEnabled, true),
+        reteIcaEnabled: normalizeBoolean(body?.reteIcaEnabled, true),
+        reteIvaEnabled: normalizeBoolean(body?.reteIvaEnabled, true),
+        estampillaEnabled: normalizeBoolean(body?.estampillaEnabled, false),
+        estampillaRate: normalizeStampRate(body?.estampillaRate, 0.5),
+      });
 
       const employeeId = await resolveEmployeeId(request);
 
@@ -1052,22 +1165,20 @@ export async function POST(request: Request) {
                 clientPriceType: clientPriceType || "VIOMAR",
                 municipalityFiscalSnapshot: municipalityFiscalSnapshot || null,
                 taxZoneSnapshot,
-                withholdingTaxRate:
-                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxRate),
-                withholdingIcaRate:
-                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaRate),
-                withholdingIvaRate:
-                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaRate),
-                withholdingTaxAmount:
-                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingTaxAmount),
-                withholdingIcaAmount:
-                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIcaAmount),
-                withholdingIvaAmount:
-                  documentType === "R" ? "0.00" : toNumericString(body?.withholdingIvaAmount),
-                totalAfterWithholdings:
-                  documentType === "R"
-                    ? toNumericString(body?.total)
-                    : toNumericString(body?.totalAfterWithholdings),
+                ivaAmount,
+                reteFuenteEnabled: withholdingPayload.reteFuenteEnabled,
+                reteIcaEnabled: withholdingPayload.reteIcaEnabled,
+                reteIvaEnabled: withholdingPayload.reteIvaEnabled,
+                estampillaEnabled: withholdingPayload.estampillaEnabled,
+                estampillaRate: withholdingPayload.estampillaRate,
+                withholdingTaxRate: withholdingPayload.withholdingTaxRate,
+                withholdingIcaRate: withholdingPayload.withholdingIcaRate,
+                withholdingIvaRate: withholdingPayload.withholdingIvaRate,
+                withholdingTaxAmount: withholdingPayload.withholdingTaxAmount,
+                withholdingIcaAmount: withholdingPayload.withholdingIcaAmount,
+                withholdingIvaAmount: withholdingPayload.withholdingIvaAmount,
+                estampillaAmount: withholdingPayload.estampillaAmount,
+                totalAfterWithholdings: withholdingPayload.totalAfterWithholdings,
               })
               .returning({
                 id: prefacturas.id,
@@ -1124,9 +1235,15 @@ export async function POST(request: Request) {
           withholdingTaxRate: body?.withholdingTaxRate,
           withholdingIcaRate: body?.withholdingIcaRate,
           withholdingIvaRate: body?.withholdingIvaRate,
+          reteFuenteEnabled: body?.reteFuenteEnabled,
+          reteIcaEnabled: body?.reteIcaEnabled,
+          reteIvaEnabled: body?.reteIvaEnabled,
+          estampillaEnabled: body?.estampillaEnabled,
+          estampillaRate: body?.estampillaRate,
           withholdingTaxAmount: body?.withholdingTaxAmount,
           withholdingIcaAmount: body?.withholdingIcaAmount,
           withholdingIvaAmount: body?.withholdingIvaAmount,
+          estampillaAmount: body?.estampillaAmount,
           totalAfterWithholdings: body?.totalAfterWithholdings,
         }),
         cache: "no-store",

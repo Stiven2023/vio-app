@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { MoldingTemplatesTab } from "./_components/molding-templates-tab";
 import { MoldingPurchaseNeedsTab } from "./_components/molding-purchase-needs-tab";
+import { MoldingCatalogOptionsTab } from "./_components/molding-catalog-options-tab";
 
 import { checkPermissions } from "@/src/utils/permission-middleware";
 
@@ -51,6 +52,14 @@ export default async function MoldingPage() {
         <section>
           <h2 className="mb-3 text-lg font-semibold">Purchase hints</h2>
           <MoldingPurchaseNeedsTab />
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-semibold">Configuración de opciones</h2>
+          <p className="mb-3 text-sm text-default-600">
+            Administra las opciones de los selectores (cuello, bolsillos, aplique, etc.) sin necesidad de un despliegue.
+          </p>
+          <MoldingCatalogOptionsTab canEdit={canEdit} />
         </section>
       </div>
     </div>

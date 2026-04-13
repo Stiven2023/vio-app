@@ -175,9 +175,15 @@ export async function POST(
       withholdingTaxRate: body?.withholdingTaxRate,
       withholdingIcaRate: body?.withholdingIcaRate,
       withholdingIvaRate: body?.withholdingIvaRate,
+      reteFuenteEnabled: body?.reteFuenteEnabled,
+      reteIcaEnabled: body?.reteIcaEnabled,
+      reteIvaEnabled: body?.reteIvaEnabled,
+      estampillaEnabled: body?.estampillaEnabled,
+      estampillaRate: body?.estampillaRate,
       withholdingTaxAmount: body?.withholdingTaxAmount,
       withholdingIcaAmount: body?.withholdingIcaAmount,
       withholdingIvaAmount: body?.withholdingIvaAmount,
+      estampillaAmount: body?.estampillaAmount,
       totalAfterWithholdings: body?.totalAfterWithholdings,
     };
   } catch {
@@ -266,6 +272,25 @@ export async function POST(
               prefacturaFiscalInput.withholdingIvaRate ??
                 quotation.withholdingIvaRate,
             ),
+            reteFuenteEnabled:
+              prefacturaFiscalInput.reteFuenteEnabled !== undefined
+                ? Boolean(prefacturaFiscalInput.reteFuenteEnabled)
+                : true,
+            reteIcaEnabled:
+              prefacturaFiscalInput.reteIcaEnabled !== undefined
+                ? Boolean(prefacturaFiscalInput.reteIcaEnabled)
+                : true,
+            reteIvaEnabled:
+              prefacturaFiscalInput.reteIvaEnabled !== undefined
+                ? Boolean(prefacturaFiscalInput.reteIvaEnabled)
+                : true,
+            estampillaEnabled:
+              prefacturaFiscalInput.estampillaEnabled !== undefined
+                ? Boolean(prefacturaFiscalInput.estampillaEnabled)
+                : false,
+            estampillaRate: toNumericString(
+              prefacturaFiscalInput.estampillaRate ?? 0.5,
+            ),
             withholdingTaxAmount: toNumericString(
               prefacturaFiscalInput.withholdingTaxAmount ??
                 quotation.withholdingTaxAmount,
@@ -277,6 +302,9 @@ export async function POST(
             withholdingIvaAmount: toNumericString(
               prefacturaFiscalInput.withholdingIvaAmount ??
                 quotation.withholdingIvaAmount,
+            ),
+            estampillaAmount: toNumericString(
+              prefacturaFiscalInput.estampillaAmount ?? 0,
             ),
             totalAfterWithholdings: toNumericString(
               prefacturaFiscalInput.totalAfterWithholdings ??
@@ -786,6 +814,25 @@ export async function POST(
                   prefacturaFiscalInput.withholdingIvaRate ??
                     quotation.withholdingIvaRate,
                 ),
+                reteFuenteEnabled:
+                  prefacturaFiscalInput.reteFuenteEnabled !== undefined
+                    ? Boolean(prefacturaFiscalInput.reteFuenteEnabled)
+                    : true,
+                reteIcaEnabled:
+                  prefacturaFiscalInput.reteIcaEnabled !== undefined
+                    ? Boolean(prefacturaFiscalInput.reteIcaEnabled)
+                    : true,
+                reteIvaEnabled:
+                  prefacturaFiscalInput.reteIvaEnabled !== undefined
+                    ? Boolean(prefacturaFiscalInput.reteIvaEnabled)
+                    : true,
+                estampillaEnabled:
+                  prefacturaFiscalInput.estampillaEnabled !== undefined
+                    ? Boolean(prefacturaFiscalInput.estampillaEnabled)
+                    : false,
+                estampillaRate: toNumericString(
+                  prefacturaFiscalInput.estampillaRate ?? 0.5,
+                ),
                 withholdingTaxAmount: toNumericString(
                   prefacturaFiscalInput.withholdingTaxAmount ??
                     quotation.withholdingTaxAmount,
@@ -797,6 +844,9 @@ export async function POST(
                 withholdingIvaAmount: toNumericString(
                   prefacturaFiscalInput.withholdingIvaAmount ??
                     quotation.withholdingIvaAmount,
+                ),
+                estampillaAmount: toNumericString(
+                  prefacturaFiscalInput.estampillaAmount ?? 0,
                 ),
                 totalAfterWithholdings: toNumericString(
                   prefacturaFiscalInput.totalAfterWithholdings ??

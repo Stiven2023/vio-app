@@ -41,6 +41,7 @@
     "db:schema:generate:iam": "drizzle-kit generate --config=drizzle.iam.config.ts",
 
     "db:seed:employees": "tsx db/seeds/employees-users.seed.ts",
+    "db:seed:third-parties": "tsx db/seeds/third-parties-bootstrap.seed.ts",
     "db:seed:accounting:centers": "tsx src/accounting/seeds/seed-cost-centers.ts",
     "db:seed:accounting:periods": "tsx src/accounting/seeds/seed-periods.ts",
     "db:seed:accounting:puc": "tsx src/accounting/seeds/seed-puc.ts",
@@ -50,6 +51,10 @@
     "db:seed:test": "tsx src/db/seed-test.ts",
     "db:seed:molding": "tsx src/db/seed-molding-templates.ts",
     "db:seed:fabrics": "tsx src/db/seed-fabrics.ts",
+    "db:seed:molding:templates": "tsx src/db/seed-molding-templates.ts",
+    "db:seed:molding:fabrics": "tsx src/db/seed-fabrics.ts",
+    "db:seed:molding:compat": "tsx src/db/seed-fabrics.ts",
+    "db:seed:molding:all": "pnpm db:seed:molding:templates && pnpm db:seed:molding:fabrics",
 
     "db:historical:profile:xlsx": "tsx scripts/profile-historical-workbook.ts",
     "db:historical:normalize:despacho:dry": "tsx scripts/normalize-despacho-workbook.ts --dry-run",
@@ -90,6 +95,9 @@
     "db:generate:mes": "pnpm db:schema:generate:mes",
     "db:generate:crm": "pnpm db:schema:generate:crm",
     "db:generate:iam": "pnpm db:schema:generate:iam",
+    "db:molding:create": "pnpm db:seed:molding:templates",
+    "db:molding:setup": "pnpm db:migrate:erp && pnpm db:seed:molding:all",
+    "typecheck": "pnpm -s tsc --noEmit",
     "db:repair:stock-links": "pnpm db:tools:repair:stock-links",
     "db:inventory:legacy-roles": "pnpm db:tools:legacy-roles:inventory",
     "db:normalize:legacy-roles:dry": "pnpm db:tools:legacy-roles:normalize:dry",
@@ -118,7 +126,10 @@
     "db:import:seguimiento": "pnpm db:historical:import:seguimiento",
     "db:verify:seguimiento": "pnpm db:historical:verify:seguimiento",
     "db:study:accounting:dry": "pnpm db:historical:study:accounting:dry",
-    "db:study:accounting": "pnpm db:historical:study:accounting"
+    "db:study:accounting": "pnpm db:historical:study:accounting",
+    "db:nomina:inspect": "tsx scripts/inspect-nomina-base.ts",
+    "db:nomina:extract": "tsx scripts/extract-nomina-base.ts",
+    "db:nomina:extract:file": "tsx scripts/extract-nomina-base.ts > data/nomina-base-normalized.json"
   },
   "dependencies": {
     "@heroui/accordion": "2.2.27",
