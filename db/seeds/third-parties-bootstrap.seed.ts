@@ -32,7 +32,8 @@ type ConfectionistExcelRow = {
   bankAccount: string | null;
 };
 
-const DEFAULT_XLSX_PATH = "D:/Programación/Vio/INFORMACION DE CONFECCIONISTAS.xlsx";
+const DEFAULT_XLSX_PATH =
+  "D:/Programación/Vio/INFORMACION DE CONFECCIONISTAS.xlsx";
 
 function normalizeHeader(value: unknown) {
   return String(value ?? "")
@@ -47,13 +48,11 @@ function normalizeText(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function pickValue(
-  row: Record<string, unknown>,
-  aliases: string[],
-): unknown {
+function pickValue(row: Record<string, unknown>, aliases: string[]): unknown {
   for (const alias of aliases) {
     if (alias in row) return row[alias];
   }
+
   return "";
 }
 
@@ -73,7 +72,9 @@ function asNullable(value: unknown) {
 
 function normalizeEmail(value: unknown) {
   const text = asNullable(value);
+
   if (!text) return null;
+
   return text.toLowerCase();
 }
 
@@ -104,13 +105,19 @@ function parseIdentification(rawValue: unknown): {
 
   if (compact.startsWith("CC")) {
     const identification = compact.replace(/^CC/, "").replace(/\D+/g, "");
+
     if (!identification) throw new Error(`Documento CC invalido: ${raw}`);
+
     return { identificationType: "CC", identification, dv: null };
   }
 
   if (compact.startsWith("CE")) {
-    const identification = compact.replace(/^CE/, "").replace(/[^A-Z0-9]+/g, "");
+    const identification = compact
+      .replace(/^CE/, "")
+      .replace(/[^A-Z0-9]+/g, "");
+
     if (!identification) throw new Error(`Documento CE invalido: ${raw}`);
+
     return { identificationType: "CE", identification, dv: null };
   }
 
@@ -118,7 +125,9 @@ function parseIdentification(rawValue: unknown): {
     const identification = compact
       .replace(/^PAS/, "")
       .replace(/[^A-Z0-9]+/g, "");
+
     if (!identification) throw new Error(`Documento PAS invalido: ${raw}`);
+
     return { identificationType: "PAS", identification, dv: null };
   }
 
@@ -131,6 +140,7 @@ function parseIdentification(rawValue: unknown): {
       .slice(0, 1);
 
     if (!identification) throw new Error(`Documento NIT invalido: ${raw}`);
+
     return {
       identificationType: "NIT",
       identification,
@@ -149,10 +159,13 @@ function parseIdentification(rawValue: unknown): {
 
 function taxRegimeFromIdType(type: IdType): TaxRegime {
   if (type === "NIT") return "REGIMEN_COMUN";
+
   return "NO_RESPONSABLE";
 }
 
-function loadConfectionistsFromExcel(filePath: string): ConfectionistExcelRow[] {
+function loadConfectionistsFromExcel(
+  filePath: string,
+): ConfectionistExcelRow[] {
   if (!fs.existsSync(filePath)) {
     throw new Error(`No existe el Excel en la ruta: ${filePath}`);
   }
@@ -196,9 +209,12 @@ function loadConfectionistsFromExcel(filePath: string): ConfectionistExcelRow[] 
         identification: "",
         dv: null,
       };
-      console.warn(`Documento invalido en Excel, se inventara identificacion para: ${name}`);
+      console.warn(
+        `Documento invalido en Excel, se inventara identificacion para: ${name}`,
+      );
     }
-    const address = normalizeText(normalizedRow["DIRECCION"]) || "SIN DIRECCION";
+    const address =
+      normalizeText(normalizedRow["DIRECCION"]) || "SIN DIRECCION";
 
     parsedRows.push({
       name,
@@ -221,6 +237,7 @@ function nextPassword(seed: string) {
     .replace(/\D+/g, "")
     .slice(-4)
     .padStart(4, "0");
+
   return `Vio*${tail}A`;
 }
 
@@ -232,6 +249,7 @@ function sanitizeUsernameBase(value: string) {
     .replace(/[^a-z0-9]+$/, "");
 
   if (base.length >= 3) return base.slice(0, 32);
+
   return "userseed";
 }
 
@@ -245,6 +263,7 @@ function usernameFromFirstNameAndSurname(fullName: string) {
   const firstSurname = parts[1] ?? parts[0] ?? "user";
 
   const base = `${firstName.charAt(0)}${firstSurname}`.toLowerCase();
+
   return sanitizeUsernameBase(base);
 }
 
@@ -282,7 +301,9 @@ async function buildNextEmployeeCode() {
     .orderBy(desc(employees.employeeCode))
     .limit(1);
 
-  const parsed = Number(String(lastEmployee?.employeeCode ?? "").replace(/^EMP/i, ""));
+  const parsed = Number(
+    String(lastEmployee?.employeeCode ?? "").replace(/^EMP/i, ""),
+  );
   let nextNumber = 1001;
 
   if (Number.isFinite(parsed) && parsed > 0) {
@@ -291,7 +312,9 @@ async function buildNextEmployeeCode() {
 
   return () => {
     const code = `EMP${nextNumber}`;
+
     nextNumber += 1;
+
     return code;
   };
 }
@@ -392,7 +415,12 @@ async function ensureUserAndEmployeeAccount(params: {
       .set(employeePatch)
       .where(eq(employees.id, employeeByUserId.id));
 
-    return { username, email, password: params.password, role: params.roleName };
+    return {
+      username,
+      email,
+      password: params.password,
+      role: params.roleName,
+    };
   }
 
   const employeeIdentification = await buildUniqueEmployeeIdentification(
@@ -408,7 +436,10 @@ async function ensureUserAndEmployeeAccount(params: {
   return { username, email, password: params.password, role: params.roleName };
 }
 
-async function getNextCode(prefix: string, source: "confectionists" | "packers") {
+async function getNextCode(
+  prefix: string,
+  source: "confectionists" | "packers",
+) {
   if (source === "confectionists") {
     const [last] = await erpDb
       .select({ code: confectionists.confectionistCode })
@@ -417,7 +448,11 @@ async function getNextCode(prefix: string, source: "confectionists" | "packers")
       .orderBy(desc(confectionists.confectionistCode))
       .limit(1);
 
-    const n = Number.parseInt(String(last?.code ?? "").replace(/^\D+/g, ""), 10);
+    const n = Number.parseInt(
+      String(last?.code ?? "").replace(/^\D+/g, ""),
+      10,
+    );
+
     return Number.isFinite(n) ? n + 1 : 1001;
   }
 
@@ -429,6 +464,7 @@ async function getNextCode(prefix: string, source: "confectionists" | "packers")
     .limit(1);
 
   const n = Number.parseInt(String(last?.code ?? "").replace(/^\D+/g, ""), 10);
+
   return Number.isFinite(n) ? n + 1 : 1001;
 }
 
@@ -457,7 +493,9 @@ async function seedConfectionistsFromExcel(filePath: string) {
       identificationType = "CC";
       dv = null;
       inventedIdCounter += 1;
-      console.warn(`Inventando identificacion para confeccionista ${row.name}: ${identification}`);
+      console.warn(
+        `Inventando identificacion para confeccionista ${row.name}: ${identification}`,
+      );
     }
 
     const [existing] = await erpDb
@@ -494,6 +532,7 @@ async function seedConfectionistsFromExcel(filePath: string) {
       updated += 1;
     } else {
       const code = `CON${nextCodeNumber}`;
+
       nextCodeNumber += 1;
 
       await erpDb.insert(confectionists).values({
@@ -548,10 +587,14 @@ async function seedDefaultPacker() {
   let updated = 0;
 
   if (existing) {
-    await erpDb.update(packers).set(defaultPacker).where(eq(packers.id, existing.id));
+    await erpDb
+      .update(packers)
+      .set(defaultPacker)
+      .where(eq(packers.id, existing.id));
     updated = 1;
   } else {
     const nextCodeNumber = await getNextCode("EMPA", "packers");
+
     await erpDb.insert(packers).values({
       packerCode: `EMPA${nextCodeNumber}`,
       ...defaultPacker,
@@ -623,7 +666,11 @@ async function seedMessengersAndDrivers() {
       .where(like(messengers.messengerCode, "MENS%"))
       .orderBy(desc(messengers.messengerCode))
       .limit(1);
-    const n = Number.parseInt(String(last?.code ?? "").replace(/^\D+/g, ""), 10);
+    const n = Number.parseInt(
+      String(last?.code ?? "").replace(/^\D+/g, ""),
+      10,
+    );
+
     return Number.isFinite(n) ? n + 1 : 1001;
   })();
 
@@ -634,7 +681,11 @@ async function seedMessengersAndDrivers() {
       .where(like(messengers.messengerCode, "COND%"))
       .orderBy(desc(messengers.messengerCode))
       .limit(1);
-    const n = Number.parseInt(String(last?.code ?? "").replace(/^\D+/g, ""), 10);
+    const n = Number.parseInt(
+      String(last?.code ?? "").replace(/^\D+/g, ""),
+      10,
+    );
+
     return Number.isFinite(n) ? n + 1 : 1001;
   })();
 
@@ -663,10 +714,15 @@ async function seedMessengersAndDrivers() {
     };
 
     if (existing) {
-      await erpDb.update(messengers).set(patch).where(eq(messengers.id, existing.id));
+      await erpDb
+        .update(messengers)
+        .set(patch)
+        .where(eq(messengers.id, existing.id));
       updated += 1;
     } else {
-      const code = row.role === "CONDUCTOR" ? `COND${condCode}` : `MENS${mensCode}`;
+      const code =
+        row.role === "CONDUCTOR" ? `COND${condCode}` : `MENS${mensCode}`;
+
       if (row.role === "CONDUCTOR") condCode += 1;
       if (row.role === "MENSAJERO") mensCode += 1;
 
@@ -689,9 +745,11 @@ async function seedMessengersAndDrivers() {
 function getExcelArgPath() {
   const argv = process.argv.slice(2);
   const idx = argv.findIndex((arg) => arg === "--xlsx");
+
   if (idx >= 0 && argv[idx + 1]) {
     return argv[idx + 1];
   }
+
   return process.env.CONFECTIONISTS_XLSX_PATH ?? DEFAULT_XLSX_PATH;
 }
 
@@ -708,9 +766,15 @@ export async function seedThirdPartiesBootstrap() {
   const packerResult = await seedDefaultPacker();
   const messengerResult = await seedMessengersAndDrivers();
 
-  const credentials: Array<{ username: string; email: string; password: string; role: ThirdRole }> = [];
+  const credentials: Array<{
+    username: string;
+    email: string;
+    password: string;
+    role: ThirdRole;
+  }> = [];
 
   let confIndex = 1;
+
   for (const row of confectionistsResult.seeded) {
     const account = await ensureUserAndEmployeeAccount({
       roleName: "CONFECCIONISTA",
@@ -721,6 +785,7 @@ export async function seedThirdPartiesBootstrap() {
       employeeIdentificationBase: 78000000 + confIndex,
       nextEmployeeCode,
     });
+
     credentials.push(account);
     confIndex += 1;
   }
@@ -734,6 +799,7 @@ export async function seedThirdPartiesBootstrap() {
     employeeIdentificationBase: 79000001,
     nextEmployeeCode,
   });
+
   credentials.push(packerAccount);
 
   let messengerIndex = 1;
@@ -748,9 +814,12 @@ export async function seedThirdPartiesBootstrap() {
       password: row.password,
       displayName: row.name,
       employeeIdentificationBase:
-        roleName === "MENSAJERO" ? 79500000 + messengerIndex : 79600000 + driverIndex,
+        roleName === "MENSAJERO"
+          ? 79500000 + messengerIndex
+          : 79600000 + driverIndex,
       nextEmployeeCode,
     });
+
     credentials.push(account);
 
     if (roleName === "MENSAJERO") messengerIndex += 1;
@@ -759,13 +828,17 @@ export async function seedThirdPartiesBootstrap() {
 
   console.log("== Seed terceros bootstrap ==");
   console.log(`Excel confecionistas: ${excelPath}`);
-  console.log(`Confecionistas Excel leidos: ${confectionistsResult.totalExcelRows}`);
+  console.log(
+    `Confecionistas Excel leidos: ${confectionistsResult.totalExcelRows}`,
+  );
   console.log(`Confecionistas creados: ${confectionistsResult.created}`);
   console.log(`Confecionistas actualizados: ${confectionistsResult.updated}`);
   console.log(`Empaque creados: ${packerResult.created}`);
   console.log(`Empaque actualizados: ${packerResult.updated}`);
   console.log(`Mensajeros/Conductores creados: ${messengerResult.created}`);
-  console.log(`Mensajeros/Conductores actualizados: ${messengerResult.updated}`);
+  console.log(
+    `Mensajeros/Conductores actualizados: ${messengerResult.updated}`,
+  );
   console.log("");
   console.log("== Credenciales (username | password | role) ==");
   for (const row of credentials) {
